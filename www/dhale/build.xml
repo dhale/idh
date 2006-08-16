@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<project name="Dave Hale's web site" default="all" basedir=".">
+
+  <description>
+    Dave Hale&apos;s web site
+  </description>
+
+  <property name="src" value="${basedir}/src"/>
+  <property name="build" value="${basedir}/build"/>
+
+  <target name="init" unless="init.done">
+    <mkdir dir="${build}"/>
+    <property name="init.done" value="true"/>
+    <typedef resource="foundrylogic/vpp/typedef.properties" />
+    <taskdef resource="foundrylogic/vpp/taskdef.properties" />
+  </target>
+
+  <target name="all" depends="copy, vppcopy"
+      description="build everything"/>
+
+  <target name="clean" 
+      description="delete all products of build">
+    <delete dir="${build}"/>
+  </target>
+
+  <target name="copy" depends="init">
+    <copy todir="${build}">
+      <fileset dir="${src}" excludes="**/*.vpp.html"/>
+    </copy>
+  </target>
+
+  <target name="vppcopy" depends="init">
+    <vppcopy todir="${build}" overwrite="true">
+      <config>
+        <engine>
+          <property key="velocimacro.library" add="yes" value="vpp/macros.vpp"/>
+        </engine>
+      </config>
+      <fileset dir="${src}" includes="**/*.vpp.html"/>
+      <mapper type="glob" from="*.vpp.html" to="*.html"/>
+    </vppcopy>
+  </target>
+
+</project>
