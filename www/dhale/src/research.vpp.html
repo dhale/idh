@@ -1,0 +1,344 @@
+#header( "." "research" "research" )
+
+<div id="title">
+  <div id="title-text">
+    <h1>Research</h1>
+    <h2>
+      Image processing, computer graphics, subsurface modeling,
+      seismic imaging, fluid flow, ...
+    </h2>
+  </div>
+</div>
+
+#content()
+
+<h3>
+  An efficient method for computing local cross-correlations
+  of multi-dimensional signals
+</h3>
+<dl class="img first">
+  <dt><img src="${base}/images/LocalCrossCorrelations.png" 
+       width="200" height="208" alt=""/>
+  </dt>
+  <dd>
+    Consider two multi-dimensional digital signals, each with S samples.
+    For some number of lags L (L much less than S), the cost of computing 
+    a single cross-correlation of these two signals is proportional to 
+    S&times;L.
+    By exploiting several properties of Gaussian windows, we can compute 
+    S <em>local</em> cross-correlations, again with computational cost 
+    proportional to S&times;L.
+    Here, <em>local</em> means the cross-correlation of signals after 
+    applying a Gaussian window centered on a single sample.
+    Computational cost is independent of the size of the window.
+  </dd>
+  <dd>
+    <a href="http://www.mines.edu/~dhale">Hale</a>, D.,
+    2006,
+    <cite>
+      CWP Report 544.
+    </cite>
+  </dd>
+  <dd>
+    <a href="${base}/papers/Hale06LocalCrossCorrelations.pdf">
+      [Report]
+    </a>
+  </dd>
+</dl>
+
+<hr/>
+
+<h3>
+  Seamless local prediction filtering
+</h3>
+<dl class="img first">
+  <dt><img src="${base}/images/LocalPredictionFilters.png" 
+       width="200" height="199" alt=""/>
+  </dt>
+  <dd>
+    An efficient method for computing local auto-correlations leads to a new 
+    method for local adaptive prediction or prediction error filtering of 
+    multi-dimensional images. 
+    Using a conjugate-gradient method for least-squares optimization, we 
+    compute a different prediction filter for each sample in an image. 
+    These adaptive prediction filters preserve locally coherent signals, 
+    while attenuating random noise.
+  </dd>
+  <dd>
+    <a href="http://www.mines.edu/~dhale">Hale</a>, D.,
+    2006,
+    <cite>
+      CWP Report 545.
+    </cite>
+  </dd>
+  <dd>
+    <a href="${base}/papers/Hale06LocalPredictionFilters.pdf">
+      [Report]
+    </a>
+  </dd>
+</dl>
+
+<hr/>
+
+<h3>
+  Recursive Gaussian filters
+</h3>
+<dl class="img first">
+  <dt><img src="${base}/images/RecursiveGaussianFilters.png" 
+       width="200" height="198" alt=""/>
+  </dt>
+ <dd>
+    Gaussian or Gaussian derivative filtering is in several ways optimal
+    for applications requiring low-pass filters or running averages.
+    For short filters with lengths of a dozen samples or so, 
+    direct convolution with a finite-length approximation to a Gaussian
+    is the best implementation.
+    However, for longer filters such as those used in computing running
+    averages, recursive implementations may be much more efficient.
+    Based on the filter length, we select one of two popular methods for 
+    designing and implementing recursive Gaussian filters.
+  </dd>
+  <dd>
+    <a href="http://www.mines.edu/~dhale">Hale</a>, D.,
+    2006,
+    <cite>
+      CWP Report 546.
+    </cite>
+  </dd>
+  <dd>
+    <a href="${base}/papers/Hale06RecursiveGaussianFilters.pdf">
+      [Report]
+    </a>
+  </dd>
+</dl>
+
+<hr/>
+
+<h3>
+  Meshing for velocity modeling and ray tracing in 
+  complex velocity fields
+</h3>
+<dl class="img first">
+  <dt><img src="${base}/images/SaltTetMesh10.png" 
+       width="200" height="164" alt=""/>
+  </dt>
+  <dd>
+    We automatically generate meshes of subsurface velocity structures 
+    from finely-sampled uniform velocity grids without providing external 
+    additional constraints such as horizons and faults. 
+    Unlike uniform grids, these new meshes provide a topological framework 
+    that enables rapid editing of velocity models, while facilitating 
+    numerical tasks such as seismic modeling and inversion.
+  </dd>
+  <dd>
+    <a href="mailto:arueger@lgc.com">R&#252;ger</a>, A., &amp;
+    <a href="http://www.mines.edu/~dhale">Hale</a>, D.,
+    2004,
+    <cite>
+      74th Annual International Meeting, 
+      Society of Exploration Geophysicists.
+    </cite>
+  </dd>
+  <dd>
+    <a href="${base}/papers/Rueger04MeshingForVelocityModelingAndRayTracing.pdf">
+      [Expanded Abstract]
+    </a>
+  </dd>
+</dl>
+
+<hr/>
+
+<h3>Seismic interpretation with fluid flow simulation</h3>
+<dl class="img">
+  <dt><img src="${base}/images/Tnt3DWithFakeWells.png" 
+       width="200" height="164" alt=""/>
+  </dt>
+  <dd>
+    We construct simple reservoir models with a small number of flow units, 
+    such as geologic layers and fault blocks.
+    We call these units <em>tanks</em> and connect them with <em>tubes</em>.
+    For such simple models, we may interactively adjust reservoir properties,
+    such as porosities of tanks and transmissibilities of tubes, and then
+    simulate fluid flow <em>during</em> seismic interpretation.
+    Numerical experiments suggest that parameters we estimate for coarse
+    tanks &amp; tubes models are meaningful; specifically, they may be used 
+    to constrain more detailed models.
+  </dd>
+  <dd>
+    <a href="http://www.mines.edu/~dhale">Hale</a>, D.,
+    <a href="http://www.lgc.com/about+us/research+fellows/johnkillough/index.htm">Killough</a>, J., &amp; 
+    <a href="mailto:jeff@transformsw.com">Emanuel</a>, J.,
+    2004,
+    <cite>
+      74th Annual International Meeting, 
+      Society of Exploration Geophysicists.
+    </cite>
+  </dd>
+  <dd>
+    <a href="${base}/papers/Hale04SeismicInterpretationWithFluidFlowSimulation.pdf">
+    [Expanded Abstract]
+    </a>
+  </dd>
+</dl>
+
+<hr/>
+
+<h3>Seismic interpretation using global image segmentation</h3>
+<dl class="img">
+  <dt><img src="${base}/images/FaultSegments.png" 
+       width="200" height="200" alt=""/>
+  </dt>
+  <dd>
+    A first step in seismic interpretation is seismic image segmentation.
+    For most seismic images, with incompletely or poorly imaged faults and 
+    horizons, global methods for segmentation are more robust than local 
+    event tracking or region growing methods often used today.
+    The disadvantage of global image segmentation methods has been their 
+    relatively high computational cost.
+    We reduce this cost by applying these methods to a space-filling mesh 
+    aligned automatically with features in seismic images.
+    The mesh makes global segmentation of 3-D seismic images feasible.
+  </dd>
+  <dd>
+    <a href="http://www.mines.edu/~dhale">Hale</a>, D., &amp;
+    <a href="mailto:jeff@transformsw.com">Emanuel</a>, J.,
+    2003,
+    <cite>
+      73th Annual International Meeting, 
+      Society of Exploration Geophysicists.
+    </cite>
+  </dd>
+  <dd>
+    <a href="${base}/papers/Hale03SeismicInterpretationUsingGlobalImageSegmentation.pdf">[Expanded Abstract]
+    </a>
+  </dd>
+</dl>
+
+<hr/>
+
+<h3>Atomic meshing of seismic images</h3>
+<dl class="img">
+  <dt><img src="${base}/images/Mp3PeaksParts548Inner.png" 
+       width="199" height="165" alt=""/>
+  </dt>
+  <dd>
+    Today's work cycle from seismic imaging to reservoir simulation 
+    requires a variety of data structures - simple arrays, triangulated 
+    surfaces, non-manifold frameworks, corner-point grids, etc. - to 
+    represent the earth's subsurface. 
+    Conversions among these different representations are both time 
+    consuming and error prone.
+    Using simple image processing techniques, we automatically align a 
+    lattice of points (atoms) with horizons and faults in a seismic image. 
+    Connecting these points yields an unstructured space-filling polyhedral 
+    (atomic) mesh. 
+    This single data structure can integrate multiple tasks, such as seismic 
+    interpretation, reservoir characterization, and flow simulation, thereby 
+    reducing work cycle times and errors.
+  </dd>
+  <dd>
+    <a href="http://www.mines.edu/~dhale">Hale</a>, D., &amp;
+    <a href="mailto:jeff@transformsw.com">Emanuel</a>, J.,
+    2002,
+    <cite>
+      72th Annual International Meeting, 
+      Society of Exploration Geophysicists.
+    </cite>
+  </dd>
+  <dd>
+    <a href="${base}/papers/Hale03SeismicInterpretationUsingGlobalImageSegmentation.pdf">[Expanded Abstract]
+    </a>
+  </dd>
+</dl>
+
+<hr/>
+
+<h3>Atomic meshes &mdash; from seismic imaging to reservoir simulation</h3>
+<dl class="img">
+  <dt><img src="${base}/images/PolyPressure.png" 
+       width="200" height="200" alt=""/>
+  </dt>
+  <dd>
+    Seismically imaged horizons and faults often correspond to 
+    discontinuities in subsurface properties, such as permeability.
+    We automatically align a lattice of points (atoms) either on or 
+    alongside such features.
+    3-D Delaunay triangulation of atoms aligned <em>on</em> image 
+    features yields a tetrahedral mesh, with triangular faces of 
+    tetrahedra coincident with subsurface discontinuities.
+    Alternatively, the same triangulation of atoms aligned 
+    <em>alongside</em> image features yields a dual Voronoi polyhedral 
+    mesh in which polygonal faces coincide with subsurface discontinuities.
+    Either mesh is suitable for fluid flow simulation.
+  </dd>
+  <dd>
+    <a href="http://www.mines.edu/~dhale">Hale</a>, D.,
+    2002,
+    <cite>
+      Proceedings of the 8th European Conference on the 
+      Mathematics of Oil Recovery.
+    </cite>
+  </dd>
+  <dd>
+    <a href="${base}/papers/Hale02AtomicMeshes.pdf">[Paper]</a>
+  </dd>
+</dl>
+
+<hr/>
+
+<h3>Atomic images &mdash; a method for meshing digital images</h3>
+<dl class="img">
+  <dt><img src="${base}/images/headMesh2.png" 
+       width="199" height="195" alt=""/>
+  </dt>
+  <dd>
+  </dd>
+  <dd>
+    By combining a digital image with a lattice of points called 
+    <em>atoms</em>, in which atom coordinates are computed to minimize 
+    a potential energy function of the combination, we obtain a mesh 
+    suitable for further computations.
+    Each atom in the lattice contributes a potential function to an 
+    atomic potential field. 
+    The image represents another potential field. 
+    Total potential energy of the lattice is a weighted sum of the 
+    atomic and image potential fields, evaluated at atom coordinates. 
+    Beginning with a pseudo-regular lattice, a generic optimization 
+    algorithm moves atoms to minimize this total potential energy.
+    After optimization, we connect the atoms to form a mesh that tends 
+    to be aligned with image features.
+  </dd>
+  <dd>
+    <a href="http://www.mines.edu/~dhale">Hale</a>, D.,
+    2001,
+    <cite>
+      Proceedings of the 10th International Meshing Roundtable, p. 85-196.
+    </cite>
+  </dd>
+  <dd>
+    <a href="${base}/papers/Hale01AtomicImages.pdf">[Paper]</a>
+  </dd>
+</dl>
+
+#sidebar()
+
+<h3>CWP</h3>
+<p>
+At Mines I work with the 
+<a href="http://www.cwp.mines.edu">Center for Wave Phenomena (CWP)</a>
+a research consortium founded over twenty years ago by Norm Bleistein 
+and Jack Cohen.
+Today my <a href="http://timna.mines.edu/faculty.html">colleagues</a> 
+in CWP include
+</p>
+<ul>
+  <li><a href="http://www.cwp.mines.edu/~norm">Norm Bleistein</a></li>
+  <li><a href="http://www.geophysics.mines.edu/directory_faculty_larner.html">
+    Ken Larner</a></li>
+  <li><a href="http://www.cwp.mines.edu/~psava">Paul Sava</a></li>
+  <li><a href="http://www.mines.edu/~rsnieder">Roel Sneider</a></li>
+  <li><a href="http://www.cwp.mines.edu/tsvankin_files/">
+    Ilya Tsvankin</a></li>
+</ul>
+
+#footer()

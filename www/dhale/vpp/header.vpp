@@ -1,0 +1,60 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+#if( ${title}=="" )
+  <title>Dave Hale</title>
+#else
+  <title>Dave Hale | ${title}</title>
+#end
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+  <meta name="description" content="Dave Hale's ${active}"/>
+  <meta name="keywords" content="dave hale, geophysics, cwp, csm, mines"/>
+  <meta name="author" content="Dave Hale"/>
+  <link rel="stylesheet" type="text/css" media="screen" 
+    href="${base}/css/screen.css"/>
+  <link rel="stylesheet" type="text/css" media="print" 
+    href="${base}/css/print.css"/>
+</head>
+<body id="${active}">
+<div id="wrap">
+
+#############################################################################
+## header
+<div id="header">
+  <h1>dave hale @ mines</h1>
+</div>
+
+#############################################################################
+## navigation bar
+<div id="nav">
+  <ul>
+#if( ${active}=="home" )
+    <li><a href="${base}/index.html" class="active">home</a></li>
+#else
+    <li><a href="${base}/index.html">home</a></li>
+#end
+#if( ${active}=="teaching" )
+    <li><a href="${base}/teaching.html" class="active">teaching</a></li>
+#else
+    <li><a href="${base}/teaching.html">teaching</a></li>
+#end
+#if( ${active}=="research" )
+    <li><a href="${base}/research.html" class="active">research</a></li>
+#else
+    <li><a href="${base}/research.html">research</a></li>
+#end
+#if( ${active}=="software" )
+    <li><a href="${base}/software.html" class="active">software</a></li>
+#else
+    <li><a href="${base}/software.html">software</a></li>
+#end
+#if( ${active}=="calendar" )
+    <li><a href="${base}/calendar.html" class="active">calendar</a></li>
+#else
+    <li><a href="${base}/calendar.html">calendar</a></li>
+#end
+  </ul>
+</div>
+<hr/>
+

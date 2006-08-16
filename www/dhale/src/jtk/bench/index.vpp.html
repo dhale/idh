@@ -1,0 +1,146 @@
+#header( "../.." "benchmarks" "software" )
+
+<div id="title">
+  <div id="title-text">
+    <h1>Java versus C++</h1>
+    <h2>
+      Benchmarks for digital signal processing.
+    </h2>
+  </div>
+</div>
+
+#content()
+
+<h3>DSP kernels</h3>
+<p>
+These benchmark programs measure the in-cache performance of the following 
+kernels for digital signal processing (DSP):
+</p>
+<dl>
+  <dt>Convolution (C)</dt>
+  <dd>
+    Convolution of a sequence of 100 samples with a sequence of 10000 samples.
+  </dd>
+  <dt>Recursive Filtering (RF)</dt>
+  <dd>
+    Application of a recursive 2nd-order filter to a sequence of 10000 samples.
+  </dd>
+  <dt>Fast Fourier Transform (FFT)</dt>
+  <dd>
+    Prime factor fast Fourier transform of a sequence of 1008 complex samples.
+  </dd>
+  <dt>Sinc Interpolation (SI)</dt>
+  <dd>
+    Resampling of a sequence of 10000 samples via a tabulated 
+    finite-length approximation of the sinc function.
+  </dd>
+</dl>
+<p>
+I say <em>in-cache</em> because the input and output sequences for each 
+program are small enough to fit in fast cache memory of modern processors,
+and each program applies its kernel repeatedly to the same sequences.
+Therefore, these benchmark programs tend to highlight differences in 
+compilers that may be insignificant in applications where inputs and
+outputs must be loaded/stored to/from slower memory or disk storage.
+</p>
+<p>
+I call these operations <em>kernels</em> because they often comprise 
+more complex operations in digital signal processing.
+Given the performance of these kernels, one can often estimate the 
+performance of those more complex operations.
+</p>
+<p>
+Another important aspect of these four kernels is that they are 
+<em>independent</em>.
+For example, they differ significantly in their access of computer memory.
+Such differences imply that the kernels are not redundant.
+The performance of one kernel does not predict the performance of another,
+and the results shown below are consistent with this independence.
+</p>
+<p>
+The implementations of these kernels are <em>efficient</em>.
+For example, the convolution kernel requires only one load from
+memory per multiply-add.
+A simpler and less efficient implementation would require two loads 
+per multiply-add.
+</p>
+<p>
+Both Java and C++ versions of single- and double-precision kernels
+are tested.
+The Java versions were adapted from the DSP package in the open-source 
+<a href="../index.html"> Mines Java Toolkit</a>.
+The C++ versions are as similar as possible to the Java versions.
+</p>
+
+<h3>90% Pure Java?</h3>
+<p>
+Between about 1998 and 2003 or so, C versions of these kernels were up to 
+three times faster than Java versions.
+Then, I would implement the Java versions by wrapping the C versions,
+using the Java Native Interface (JNI).
+This <em>90% Pure Java</em> strategy worked well.
+Computational kernels for which Java was slow were written in C, and 
+everything else, especially anything object-oriented, was written in Java.
+This strategy worked best for applications in which most of the time
+was spent in that small amount of code written in C.
+</p>
+<p>
+Today, the differences between Java and C++ (or C) performance for these 
+benchmarks are less significant.
+And in some cases, the Java versions are faster.
+(See results below.)
+Today, one might use JNI only for wrapping huge software packages such as 
+OpenGL and LAPACK, for which only C or FORTRAN interfaces are available.
+</p>
+
+<h3>Compiling and running</h3>
+<p>
+The benchmark programs are contained in four files:
+</p>
+<ul>
+  <li><a href="./DspBench.cpp">DspBench.cpp</a></li>
+  <li><a href="./DspBench.java">DspBench.java</a></li>
+  <li><a href="./DspBenchDouble.cpp">DspBenchDouble.cpp</a></li>
+  <li><a href="./DspBenchDouble.java">DspBenchDouble.java</a></li>
+</ul>
+<p>
+Typically, the C++ programs are compiled with <code>-O2</code> 
+optimization, as in
+</p><pre><code>
+g++ -o DspBench -O2 DspBench.cpp
+</code></pre><p>
+When the Hotspot Java virtual machine (JVM) is used, 
+the Java programs are run with -server, as in 
+</p><pre><code>
+java -server DspBench
+</code></pre><p>
+The benchmark programs run each of the four kernels three times for
+a fixed number of seconds.
+</p>
+
+<h3>Benchmark results</h3>
+<p>
+These results are computation rates, in MFLOPS 
+(millions of floating point operations per second), 
+so <strong>higher is faster is better</strong>.
+The results shown below are the fastest (highest MFLOPS) of the three runs.
+</p>
+<h4>Dave Hale, Colorado School of Mines, 07/04/2006</h4>
+<img src="images/Hale20060704.png" alt=""/>
+<hr/>
+<h4>Steve Smith, Colorado School of Mines, 10/11/2005</h4>
+<img src="images/Smith20051011a.png" alt=""/>
+<hr/>
+<h4>Steve Smith, Colorado School of Mines, 10/11/2005</h4>
+Steve Smith, Colorado School of Mines, 10/11/2005<br/>
+<img src="images/Smith20051011b.png" alt=""/>
+<hr/>
+<h4>Dave Hale, Colorado School of Mines, 10/15/2005</h4>
+<img src="images/Hale20051015.png" alt=""/>
+<hr/>
+<h4>Dave Hale, Colorado School of Mines, 10/18/2005</h4>
+<img src="images/Hale20051018.png" alt=""/>
+
+#sidebar()
+
+#footer()

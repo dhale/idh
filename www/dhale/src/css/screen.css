@@ -1,0 +1,6 @@
+/* Adapted by Dave Hale from CSS by Dan Cederholm (www.simplebits.com). */
+
+/* import stylesheets and hide from ie/mac \*/
+@import url("master.css");
+@import url("ie.css");
+/* end import/hide */

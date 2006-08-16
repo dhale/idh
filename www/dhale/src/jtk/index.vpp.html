@@ -1,0 +1,84 @@
+#header( ".." "mines jtk" "software" )
+
+<div id="title">
+  <div id="title-text">
+    <h1>Mines Java Toolkit (JTK)</h1>
+    <h2>
+      Open-source Java packages for science and engineering.
+    </h2>
+  </div>
+</div>
+
+#content()
+
+<p>
+The Mines Java Toolkit (JTK) is a set of Java packages and native (non-Java) 
+code libraries for science and engineering. Applications
+currently include digital signal processing and 2-D and 3-D graphics.
+</p>
+<p>
+The Mines JTK is open-source software made available under the terms of the 
+<a href="./license.html">Common Public License - v 1.0</a>.
+</p>
+<p>
+You may browse 
+<a href="http://boole.mines.edu/doc/api/index.html">documentation online</a>
+for all Java packages, classes, and methods in the Mines JTK.
+</p>
+<p>
+Source code is our most up-to-date and least ambiguous documentation, 
+and you can browse our
+<a href="http://boole.mines.edu/jtk/trunk">source code online</a>.
+</p>
+<p>
+For more information on using and modifying the Mines JTK, please read our
+<a href="http://boole.mines.edu/jtk/trunk/readme.txt">
+build instructions (readme.txt)
+</a> for the jtk project.
+</p>
+
+<h3>90% Pure Java</h3>
+<p>
+To take advantage of useful existing software not written in Java, we wrap 
+such software using the Java Native Interface (JNI). Where needed, we load
+JNI libraries dynamically via Java's System.loadLibrary method. Examples 
+include our JNI libraries that wrap OpenGL (for 3-D graphics) and LAPACK 
+(for dense linear algebra). 
+</p>
+<p>
+To simplify development, we include pre-compiled binaries for our JNI 
+libraries with the source code for the Mines JTK. Currently, we provide
+JNI libraries for 32-bit x86 systems running Linux or Windows. For these
+platforms, you need only a Java compiler to build the Mines JTK.
+</p>
+<p>
+For other platforms, or to modify the JNI libraries used by the Mines JTK, 
+please read our
+<a href="http://boole.mines.edu/jtkjni/trunk/readme.txt">
+build instructions (readme.txt)
+</a> for the jtkjni project.
+</p>
+
+#sidebar()
+
+<h3>Standard Tools</h3>
+<p>
+To build and use the Mines JTK, you need only the
+</p>
+<ul>
+  <li><a href="http://java.sun.com/javase/downloads/index.jsp">Java (SE)
+  Development Kit</a>,
+  which includes the Java compiler and runtime environment, and</li>
+  <li><a href="http://ant.apache.org">Apache Ant</a>,
+  which is like a portable <em>make</em> for Java programming, and a</li>
+  <li><a href="http://subversion.tigris.org">Subversion client</a>,
+  which enables you to download (checkout) our source code onto your 
+  computer.</li>
+</ul>
+<p>
+These tools are widely used among Java software developers.
+Complete instructions are
+<a href="http://boole.mines.edu/jtk/trunk/readme.txt">here</a>.
+</p>
+
+#footer()

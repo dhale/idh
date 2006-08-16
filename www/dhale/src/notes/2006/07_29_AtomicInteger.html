@@ -1,0 +1,176 @@
+<h3>Parallel loops with atomic integers</h3>
+<p>July 29, 2006</p>
+<p>
+A computer you buy today is likely to have multiple cores.
+A "core" is a CPU that may coexist with other CPUs within a single 
+microprocessor.
+For example, if you have a dual-processor system with dual-core
+processors, then you really have a quad-core system, one with 
+essentially four CPUs.
+</p>
+<p>
+Systems like these are becoming commonplace,
+because CPUs are not getting faster as they once did.
+Instead, we are getting more CPUs in a single package.
+</p>
+<p>
+To take advantage of multi-core computers, we might simply run 
+multiple applications simultaneously.
+But this solution may be impractical.
+Sometimes we need a single software application to run faster.
+In this case, we need to get multiple processors working simultaneously
+on the same problem within a single application.
+</p>
+<p>
+Our current situation is summarized well by Herb Sutter, in
+<a href="http://www.gotw.ca/publications/concurrency-ddj.htm">
+The Free Lunch is Over: A Fundamental Turn Toward Concurrency in Software</a>
+(2005, Dr. Dobb's Journal, v. 30, n. 3).
+</p>
+<h4>An example</h4>
+<p>
+Scientific computing often has outer loops with iterations
+that can be performed independently and <em>concurrently</em>.
+For example, when computing a matrix product C = A&times;B, we might
+compute each column of the matrix C independently.
+Here is some Java code that computes the <code>j</code>'th column of C:
+</p><pre><code>
+static void computeColumn(
+  int j, float[][] a, float[][] b, float[][] c) 
+{
+  int ni = c.length;
+  int nk = b.length;
+  for (int i=0; i&lt;ni; ++i) {
+    float cij = 0.0f;
+    for (int k=0; k&lt;nk; ++k)
+      cij += a[i][k]*b[k][j];
+    c[i][j] = cij;
+  }
+}
+</code></pre><p>
+We usually optimize this code by mixing and unrolling these loops,
+but those optimizations are not relevant here.
+</p>
+<p>
+To compute the matrix product C, we need only an outer loop over its columns:
+</p><pre><code>
+int nj = c[0].length;
+for (int j=0; j&lt;nj; ++j)
+  computeColumn(j,a,b,c);
+</code></pre><p>
+The problem with this <em>single-threaded</em> program is that it will not 
+run any faster on a quad-core system than it would on a single-core system.
+Three CPUs may be idle while one does all the work.
+</p>
+
+<h4>Multi-threading</h4>
+<p>
+To use all four cores concurrently in a single program, 
+we need multiple threads.
+We could write the outer loop like this:
+</p><pre><code>
+int nthread = 4;
+final int nj = c[0].length;
+Thread[] threads = new Thread[nthread];
+for (int ithread=0; ithread&lt;nthread; ++ithread) {
+  threads[ithread] = new Thread(new Runnable() {
+    public void run() {
+      for (int j=0; j&lt;nj; ++j)
+        computeColumn(j,a,b,c);
+    }
+  });
+}
+startAndJoin(threads);
+</code></pre><p>
+The last statement calls a utility method that simply starts and 
+then joins all of the threads in the specified array of threads.
+This is easy enough with Java's standard classes 
+<code>Thread</code> and <code>Runnable</code>.
+</p>
+<p>
+<em>But this multi-threaded program is no faster!</em>
+Each thread maintains it's own loop index <code>j</code>
+and will simply duplicate the work of the other three threads.
+All four cores will be busy <em>(good)</em> doing the same work 
+<em>(bad)</em>.
+</p>
+
+<h4>Chunky multi-threading</h4>
+<p>
+We want different threads to compute different columns.
+But which columns do we assign to each thread?
+We could simply divide our outer loop into four chunks,
+so that each of the four threads computes one fourth of the columns:
+</p><pre><code>
+int nthread = 4;
+int nj = c[0].length;
+int mj = 1+nj/nthread;
+Thread[] threads = new Thread[nthread];
+for (int ithread=0; ithread&lt;nthread; ++ithread) {
+  final int jfirst = ithread*mj;
+  final int jlast = min(jfirst+mj,nj);
+  threads[ithread] = new Thread(new Runnable() {
+    public void run() {
+      for (int j=jfirst; j&lt;jlast; ++j)
+        computeColumn(j,a,b,c);
+    }
+  });
+}
+startAndJoin(threads);
+</code></pre><p>
+This program is better, but is efficient only when all four threads 
+get equal access to the four CPUs. 
+That seldom happens.
+Threads that finish computing their chunk of columns simply stop working.
+They do not help other threads complete their chunks.
+(Have you ever worked with a group like this?)
+This program is only as fast as its slowest thread.
+</p>
+
+<h4>An atomic outer loop index</h4>
+<p>
+A more efficient solution is to have all four threads keep working 
+until all columns have been computed.
+(No one stops working until the job is done.)
+Let's have each thread compute the next column not already computed 
+or being computed.
+We do that by letting all four threads share a single outer loop index,
+using the standard Java class <code>AtomicInteger</code>:
+</p><pre><code>
+int nthread = 4;
+final int nj = c[0].length;
+<strong>final AtomicInteger aj = new AtomicInteger();</strong>
+Thread[] threads = new Thread[nthread];
+for (int ithread=0; ithread&lt;nthread; ++ithread) {
+  threads[ithread] = new Thread(new Runnable() {
+    public void run() {
+      for (int <strong>j=aj.getAndIncrement()</strong>; j&lt;nj; 
+               <strong>j=aj.getAndIncrement()</strong>)
+        computeColumn(j,a,b,c);
+    }
+  });
+}
+startAndJoin(threads);
+</code></pre><p>
+The <code>AtomicInteger aj</code> holds the shared outer loop index
+that all threads get and increment.
+The name <code>AtomicInteger</code> implies that this 
+get-and-increment is an indivisible <em>atomic</em> operation, 
+one that cannot be interrupted or corrupted by another thread 
+doing the same thing.
+</p>
+<p>
+With this program, our four threads need not perform an equal amount 
+of work, and all threads continue to run until all of the columns are 
+computed.
+On an otherwise quiet quad-core system, this program runs 
+approximately four times faster than the single-threaded version.
+</p>
+<p>
+Moreover, on a single-core system this program is almost as fast
+as the single-threaded version.
+For large matrices, the extra computation required to launch multiple 
+threads and get-and-increment an <code>AtomicInteger</code> is negligible.
+For small matrices, we might apply the same technique to some other more 
+outer loop.
+</p>

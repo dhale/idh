@@ -1,0 +1,32 @@
+/* Adapted by Dave Hale from CSS by Dan Cederholm (www.simplebits.com). */
+
+/* import stylesheets and hide from ie/mac \*/
+@import url("master.css");
+@import url("ie.css");
+/* end import/hide */
+
+body {
+  margin: .6in;
+  font-family: Verdana, Helvetica, sans-serif;
+  font-size: 12pt;
+}
+/*
+#title h2 {
+  color: gray;
+  font-size: 90%;
+  font-weight: normal;
+  margin-bottom: 1.5em;
+}
+*/
+
+#content {
+  width: 100%;
+}
+
+#header, #nav, #sidebar, #footer, hr {
+  display: none;
+}
+	
+a:link, a:visited {
+  color: gray;
+}	

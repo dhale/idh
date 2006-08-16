@@ -1,0 +1,354 @@
+/* 
+ * This CSS was adapted from one by Dan Cederholm (www.simplebits.com).
+ * Dan's book --- Bulletproof Web Design, 2006, PeachPit Press --- is
+ * wonderful; and it describes most of this design.
+ *
+ * Page structure:
+ * body (must have width of frame)
+ *   wrap (has min-max widths)
+ *     header (my name)
+ *     title (title in h1, sub-title/text in h2)
+ *       title-text (left 70% of title)
+ *     guts (content & sidebar)
+ *       content (left 70% of guts)
+ *         content-inner (for a fixed right margin)
+ *       sidebar (right 30% of guts, not printed)
+ *     footer (copyrights, etc.)
+ * 
+ * I chose colors from a photograph of Boulder, Colorado.
+ * blues (from ridgeline and sky):
+ *   #305093 hyperlinks a
+ *   #486e93 header background
+ *   #b6e0ff border for sidebar h3
+ *   #174366 navbar background, title h1, sidebar h3, a:hover
+ *   #2f516c lighter navbar button background when a.active or a:hover
+ *   #233955 darker navbar buttons border-right and border-bottom
+ * reds (from flatirons and rooftops):
+ *   #fff2eb context and sidebar (wrap) background
+ *   #a15428 content h3
+ *   #f4d3b2 title background, border for content h3, and footer
+ * grays:
+ *   #000000 black for most text on light backgrounds
+ *   #333333 dark gray at left and right edges of body
+ *   #666666 gray sidebar text
+ *   #ffffff white for text on dark backgrounds
+ *
+ * - Dave Hale, 2006.
+ */
+
+body {
+  margin: 0;
+  padding: 0 1%;
+  font-family: Verdana, Helvetica, sans-serif;
+  font-size: small;
+  text-align: center;
+  line-height: 1.5em;
+  color: #000000;
+  background: #333333;
+}
+#wrap {
+  position: relative;
+  min-width: 580px;
+  max-width: 900px;
+  margin: 0 auto;
+  font-size: 100%;
+  text-align: left;
+  background: #fff2eb;
+}
+#guts {
+  padding: 10px 30px 20px 30px;
+}
+#content {
+  float: left;
+  width: 70%;
+}
+#content-inner {
+  margin: 0 30px 0 0;
+}
+#sidebar {
+  float: right;
+  width: 30%;
+  font-size: 90%;
+  line-height: 1.5em;
+  color: #666666;
+}
+#footer {
+  clear: both;
+  margin: 0;
+  padding: 5px 30px 12px 30px;
+  border-top: 1px solid #f4d3b2;
+}
+
+/* common */
+a:link, a:visited {
+  padding: 0 0 1px 0;
+  font-weight: bold;
+  text-decoration: none;
+  color: #305093;
+}
+a:hover {
+  color: #174366;
+  text-decoration: underline;
+}
+pre {
+  margin: -1.3em 0 1.0em 0; /* -1.3em compensates for first newline */
+  padding: 0;
+  line-height: 1.2em;
+  font-family: Monaco, monospace;
+}
+code {
+  font-family: Monaco, monospace;
+  font-size: 100%;
+}
+em, cite {
+  font-style: italic;
+  font-size: 100%;
+}
+strong {
+  font-weight: bold;
+}
+.newpage {
+  page-break-before: always;
+}
+
+/* header */
+#header {
+  padding: 1px 30px 1px 30px;
+  color: #ffffff;
+  background: #486e93;
+}
+#header h1 {
+  font-size: 200%;
+  font-weight: normal;
+}
+
+/* navigation */
+#nav {
+  padding: 12px 30px 12px 30px;
+  background: #174366;
+}
+#nav ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+#nav li {
+  float: left;
+  margin: 0;
+  padding: 0;
+}
+#nav li a {
+  float: left;
+  margin: 0 1px 0 0;
+  padding: 4px 9px;
+  font-size: 100%;
+  font-weight: normal;
+  text-decoration: none;
+  color: #ffffff;
+}
+#nav li a:hover {
+  color: #ffffff;
+  background: #2f516c;
+}
+#nav li a.active {
+  font-weight: bold;
+  color: #ffffff;
+  border-bottom: 1px solid #233955;
+  border-right: 1px solid #233955;
+  background: #2f516c;
+}
+
+/* title */
+#title {
+  margin: 0;
+  padding: 12px 30px 12px 30px;
+  border-top: 1px solid #FFF;
+  color: #333333;
+  background: #f4d3b2 url(TitleTopFade.gif) repeat-x top left;
+}
+body#home #title {
+  padding-bottom: 0px;
+}
+#title-text {
+  float: left;
+  width: 70%;
+}
+#title h1 {
+  margin: 0 0 5px 0;
+  padding: 0;
+  font-size: 160%;
+  font-weight: normal;
+  letter-spacing: -1px;
+  color: #174366;
+}
+#title h2 {
+  margin: 0 30px 0 0;
+  padding: 0;
+  font-size: 100%;
+  line-height: 1.6em;
+  font-weight: normal;
+}
+#title dl.img {
+  margin: 0;
+  padding: 0;
+}
+#title dl.img dt img {
+  float: left;
+  margin: 0 10px 0 0;
+  padding: 0;
+}
+#title dl.img dd {
+  margin: 0 0 2px 0;
+  padding: 0;
+  line-height: 1.5em;
+}
+
+/* content */
+#content p {
+  margin: 0 0 1.0em 0;
+  padding: 0;
+}
+#content h1 {
+  margin: 1.0em 0 1.0em 0;
+  padding: 0;
+  font-size: 150%;
+  font-weight: bold;
+  line-height: 1em;
+  color: #174366;
+}
+#content h3 {
+  margin: 1.5em 0 0.2em 0;
+  padding: 0;
+  font-size: 100%;
+  font-weight: bold;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #a32911;
+  border-top: 1px solid #f4d3b2;
+}
+#content h4 {
+  margin: 0.5em 0 0.2em 0;
+  padding: 0;
+  font-size: 100%;
+  font-weight: bold;
+  color: #000000;
+}
+#content ul, #content ol, #content dl {
+  margin: 0 0 1.0em 20px;
+  padding: 0;
+}
+#content li {
+  margin: 0 0 0.2em 0;
+  padding: 0;
+  line-height: 1.4em;
+}
+#content dl dt {
+  font-weight: bold;
+}
+#content dl dd {
+  margin: 0 0 0.2em;
+  padding: 0;
+}
+#content dl.img {
+  margin: 0.5em 0 1.0em 0;
+  padding: 0;
+}
+#content dl.img dt {
+  margin: 0;
+  padding: 0;
+}
+#content dl.img dd {
+  margin: 0 0 0.2em 0;
+  padding: 0;
+}
+#content dl.img dt img {
+  float: left;
+  margin: 0 10px 0 0;
+  padding: 0;
+}
+#content dl.img dt a img {
+  border: #486e93 2px solid;
+}
+#content dl.img dd {
+  margin: 0 0 0.2em 0;
+  padding: 0;
+  line-height: 1.5em;
+}
+#content dl.img dd a {
+  font-weight: bold;
+}
+#content table.course-schedule {
+  border-collapse: collapse;
+  margin: 0.2em 0 1.0em 0;
+  padding: 0;
+  width: 100%;
+  border-top: 1px solid #000000;
+  border-left: 1px solid #000000;
+}
+#content table.course-schedule th, 
+#content table.course-schedule td {
+  padding: 2px;
+  border-bottom: 1px solid #000000;
+  border-right: 1px solid #000000;
+}
+
+/* sidebar */
+#sidebar p {
+  margin: 0 0 0.5em 0;
+  padding: 0;
+}
+#sidebar h3 {
+  margin: 1.6em 0 0.2em 0;
+  padding: 0;
+  font-size: 110%;
+  font-weight: bold;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #174366;
+  border-top: 1px solid #b6e0ff;
+}
+#sidebar ul, #sidebar ol, #sidebar dl {
+  margin: 0 0 0 20px;
+  padding: 0;
+}
+#sidebar li {
+  margin: 0 0 0.2em 0;
+  padding: 0;
+  line-height: 1.4em;
+}
+#sidebar dl dt {
+  font-weight: normal;
+}
+#sidebar dl dd {
+  margin: 0 0 0 20px;
+  padding: 0;
+}
+
+/* footer */
+#footer {
+  font-size: 90%;
+}
+#footer p {
+  margin: 0;
+  padding: 0;
+}
+
+/* misc. */
+hr, .hide {
+  display: none;
+}
+a img {
+  border: 0;
+}
+
+/* self-clearing floats */
+#nav:after, 
+#title:after, 
+#guts:after, 
+dl.img:after {
+  content: "."; 
+  display: block; 
+  height: 0; 
+  clear: both; 
+  visibility: hidden;
+}

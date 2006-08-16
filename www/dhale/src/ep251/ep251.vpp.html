@@ -1,0 +1,207 @@
+#header( ".." "EPIC 251" "teaching" )
+
+<div id="title">
+  <div id="title-text">
+    <h1>EPIC 251 &mdash; Geophysical Computing</h1>
+    <h2>
+      An introduction to computer programming, typically for 
+      sophomores majoring in Geophysics at Mines.
+    </h2>
+  </div>
+</div>
+
+#content()
+
+<h3>Summary</h3>
+<p>
+Geophysicists today use some of the most powerful computers in the world.
+This is partly because geophysical data volumes are vast and growing.
+Another reason is that raw geophysical data are not easily understood,
+and typically require substantial processing and interactive 
+visualization and exploration before we can make sense of them.
+</p>
+<p>
+This section of EPICS 251 introduces students of geophysics at Mines 
+to the <em>development</em> of computer software for analyzing 
+geophysical data. 
+We will use freely available tools, such as the programming languages 
+Python and Java, and free libraries of software written in these and 
+other languages.
+We will work in teams, and practice good software engineering.
+</p>
+<dl class="img">
+  <dt>
+    <img src="${base}/images/GravityIsoReg.png" width="180" height="107"
+     alt=""/>
+  </dt>
+  <dd>
+    We will analyze freely available geophysical data. 
+    The image shown here is an example of data available from the 
+    <a href="http://www.ngdc.noaa.gov/ngdc.html">
+      National Geophysical Data Center
+    </a>.
+    Can you guess what it is?
+  </dd>
+</dl>
+<p>
+Although this section of EPICS 251 is designed for geophysics majors,
+others (particularly those with a strong interest in computing) are 
+welcome with permission of the instructor.
+</p>
+
+<h3>Time and place</h3>
+<p>
+  Mondays and Wednesdays, 8:00-9:50 am; Fridays, 8:00-8:50 am; GC 265
+</p>
+
+<h3>Text</h3>
+<p>
+  <cite>Learning Python, 2nd Edition</cite>, by Lutz and Ascher.
+  Available at the CSM bookstore and at
+<a href="http://www.amazon.com/exec/obidos/tg/detail/-/0596002815/qid=1124670853/sr=1-1/ref=sr_1_1/104-6977939-5361558">amazon.com</a>.
+</p>
+
+<h3>Grading</h3>
+<p>
+Your course grade is determined entirely by your performance in class.
+</p>
+<dl>
+  <dt>50%: programming prowess</dt>
+  <dd>
+    <ul>
+      <li>Reuse of software written by others.</li>
+      <li>Rapid software development.</li>
+      <li>Software quality and style.</li>
+    </ul>
+  </dd>
+</dl>
+<dl>
+  <dt>50%: class participation</dt>
+  <dd>
+    <ul>
+      <li>In-class programming exercises.</li>
+      <li>Discussion of assigned reading.</li>
+      <li>Helping others, teamwork.</li>
+    </ul>
+  </dd>
+</dl>
+
+<h3 class="newpage">Schedule</h3>
+<table class="course-schedule">
+<tr>
+  <th scope="col">Week</th>
+  <th scope="col">Dates</th>
+  <th scope="col">Subjects</th>
+</tr>
+<tr>
+  <td>0</td>
+  <td>08/23-08/25</td>
+  <td>Introduction to Linux</td>
+</tr>
+<tr>
+  <td>1</td>
+  <td>08/28-09/01</td>
+  <td>Editing programs with Vim or Emacs</td>
+</tr>
+<tr>
+  <td>2</td>
+  <td>09/04-09/08</td>
+  <td>Running Python (Chapters 1, 2, 3)</td>
+</tr>
+<tr>
+  <td>3</td>
+  <td>09/11-09/15</td>
+  <td>Types and operations (Chapters 4, 5)</td>
+</tr>
+<tr>
+  <td>4</td>
+  <td>09/18-09/22</td>
+  <td>Types and operations (Chapters 6, 7)</td>
+</tr>
+<tr>
+  <td>5</td>
+  <td>09/25-09/29</td>
+  <td>Statements and syntax (Chapters 8, 9)</td>
+</tr>
+<tr>
+  <td>6</td>
+  <td>10/02-10/06</td>
+  <td>Statements and syntax (Chapters 10, 11)</td>
+</tr>
+<tr>
+  <td>7</td>
+  <td>10/09-10/13</td>
+  <td>Functions (Chapters 12, 13)</td>
+</tr>
+<tr>
+  <td>8</td>
+  <td>10/18-10/20</td>
+  <td>Modules (Chapters 15, 16)</td>
+</tr>
+<tr>
+  <td>9</td>
+  <td>10/23-10/27</td>
+  <td>Scipy (Scientific computing)</td>
+</tr>
+<tr>
+  <td>10</td>
+  <td>10/30-11/03</td>
+  <td>Displaying f(x) (1-D graphics)</td>
+</tr>
+<tr>
+  <td>11</td>
+  <td>11/06-11/10</td>
+  <td>Displaying f(x,y) (2-D graphics)</td>
+</tr>
+<tr>
+  <td>12</td>
+  <td>11/13-11/17</td>
+  <td>Reading and processing binary data</td>
+</tr>
+<tr>
+  <td>13</td>
+  <td>11/20-11/22</td>
+  <td>Object-oriented programming (Chapters 19, 20)</td>
+</tr>
+<tr>
+  <td>14</td>
+  <td>11/27-12/01</td>
+  <td>Object-oriented programming (Chapters 21, 22)</td>
+</tr>
+<tr>
+  <td>15</td>
+  <td>12/04-12/06</td>
+  <td>Jython and Java</td>
+</tr>
+</table>
+
+#sidebar()
+
+<h3>Resources</h3>
+<p>
+  Download and install <a href="http://www.python.org/">Python</a>
+  on your computer.
+  (If you use Linux, you already have it.)
+</p>
+<p>
+  For scientific computing, you will want to download and install 
+  <a href="http://www.scipy.org/">SciPy</a> as well. 
+  Note that <a href="http://www.scipy.org/">SciPy</a> depends on
+  <a href="http://numeric.scipy.org/">NumPy</a>, which you must 
+  install first.
+</p>
+<p>
+  <a href="http://www.jython.org">Jython</a> is 
+  <a href="http://www.python.org/">Python</a> for
+  <a href="http://java.sun.com">Java</a> programmers.
+</p>
+<h3>Wisdom</h3>
+<p>
+  The three chief virtues of a programmer are Laziness, 
+  Impatience, and Hubris. &mdash; Larry Wall
+</p>
+<p>
+  Half of life is just showing up. &mdash; Woody Allen
+</p>
+
+#footer()

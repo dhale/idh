@@ -1,0 +1,19 @@
+#macro( header $b $t $a )
+#set( $base = $b )
+#set( $title = $t )
+#set( $active = $a )
+#parse( "vpp/header.vpp" )
+#end
+
+#macro( content )
+#include( "vpp/content.vpp" )
+#end
+
+#macro( sidebar )
+#include( "vpp/sidebar.vpp" )
+#end
+
+#macro( footer )
+#include( "vpp/footer.vpp" )
+#end
+

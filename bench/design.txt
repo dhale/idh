@@ -1,0 +1,71 @@
+Goals:
+Establish conventions for research project and class names.
+For any paper or talk, be able to regenerate any or all figures.
+Make it easy for others to do the same (if they have my data).
+Enable demos that anyone can run.
+Enable lab exercises that anyone can run.
+Make source code available.
+Separate research from (but ease migration to) Mines JTK.
+Make stuff easier to find.
+
+Java Web Start:
+Make DataFile work for RandomAccessFile or JNLPRandomAccessFile
+  enables local file access without signing
+  JNLPRandomAccessFile has not FileChannel or FileDescriptor
+  make a wrapper class that will construct one or the other
+  make wrappers for getting file names
+Do something similar for InputStream and Outputstream.
+
+Tricks:
+As in JUnit, use reflection to find methods with names figureXXX; e.g.,
+public void figureSeisLag55() {
+  ...
+}
+
+Subset
+  subset(
+    ArrayFile ai, ArrayFile ao,
+    int n1i, int n2i, int n3i,
+    int n1o, int n2o, int n3o,
+    int j1o, int j2o, int j3o,
+
+Subset.java
+  constructed for a specified Float3
+
+lcc
+  Run.java
+  Cwp.java
+  Seg.java
+  LocalCrossCorrelations.tex
+  build.xml
+
+demo
+  AcousticWaves.java
+
+gp404
+  PolesAndZeros
+
+
+# run warp and Rulison examples for local cross-correlations (lcc)
+# reads and writes data files
+j lcc.Run -rwarp -rrul
+
+j lcc.Run -p -t -fseislag55 -fwindow
+
+# make all figures for CWP report on lcc
+j lcc.Cwp
+
+# make figures seis and seislag55 for CWP report on lcc
+j lcc.Cwp seis seislag55
+
+# make figures seis and seislag55 for CWP talk on lcc
+j lcc.Cwp seis seislag55
+
+# demonstrate interactive modeling of acoustic wave propagation
+j demo.AcousticWaves
+
+# run poles-and-zeros filter design for GP404 lab
+j gp404.PolesAndZeros
+
+maven
+ idh/src

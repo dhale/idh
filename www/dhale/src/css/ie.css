@@ -1,0 +1,25 @@
+/* Adapted by Dave Hale from CSS by Dan Cederholm (www.simplebits.com). */
+
+/* fixes font-size keyword problem for IE5/Win */
+body {
+  font-size: x-small; /* IE5 Win */
+  voice-family: "\"}\""; 
+  voice-family: inherit;
+  font-size: small;
+}
+html>body { /* be nice to Opera */
+  font-size: small;
+}
+
+/* self-clearing floats */
+* html #nav, 
+* html #title, 
+* html #guts, 
+* html dl.img {
+  height: 1%;
+}
+
+/* fixes weird IE body padding issue */
+* html #wrap { 
+  height: 1%; 
+}
