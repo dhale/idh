@@ -1,0 +1,75 @@
+<?xml version="1.0"?>
+<!--*************************************************************************
+Copyright (c) 2006, Colorado School of Mines and others. All rights reserved.
+This program and accompanying materials are made available under the terms of
+the Common Public License - v1.0, which accompanies this distribution, and is
+available at http://www.eclipse.org/legal/cpl-v10.html
+*************************************************************************-->
+<project name="gp404" default="all" basedir=".">
+
+  <description>
+    Java packages for GPGN 404 Dave Hale
+  </description>
+
+  <!-- Project directories -->
+  <property name="src" value="${basedir}/src"/>
+  <property name="build" value="${basedir}/build"/>
+  <property name="build.cls" value="${build}/cls"/>
+  <property name="build.jar" value="${build}/jar"/>
+
+  <!-- Other global settings -->
+  <property name="title" value="Dave Hale's Java"/>
+  <property environment="env"/>
+  <path id="classpath">
+    <fileset dir="${java.home}" includes="lib/javaws.jar"/>
+    <fileset dir="${basedir}/../../../jtk/trunk">
+      <include name="jar/*.jar"/>
+      <include name="build/jar/edu_mines_jtk.jar"/>
+    </fileset>
+  </path>
+
+  <!-- Initialize -->
+  <target name="init">
+    <tstamp/>
+    <mkdir dir="${build}"/>
+    <mkdir dir="${build.cls}"/>
+    <mkdir dir="${build.jar}"/>
+  </target>
+
+  <!-- Compile Java -->
+  <target name="compile-java" depends="init">
+    <javac srcdir="${src}" destdir="${build.cls}" 
+      compiler="javac1.5"
+      debug="on" 
+      deprecation="on">
+      <compilerarg value="-Xlint:all,-serial"/>
+      <classpath refid="classpath"/>
+      <exclude name="**/old/**"/>
+      <exclude name="**/new/**"/>
+    </javac>
+  </target>
+
+  <!-- Build Java archive -->
+  <target name="jar" depends="compile-java,copy-data"
+      description="build Java archive">
+    <jar jarfile="${build.jar}/gp404.jar" basedir="${build.cls}"/>
+  </target>
+  <target name="copy-data">
+    <copy todir="${build.cls}">
+      <fileset dir="${src}">
+        <include name="**/data/*"/>
+      </fileset>
+    </copy>
+  </target>
+
+  <!-- Build everything -->
+  <target name="all" depends="jar"
+      description="build everything"/>
+
+  <!-- Cleanup -->
+  <target name="clean"
+      description="delete all products of build">
+    <delete dir="${build}"/>
+  </target>
+
+</project>
