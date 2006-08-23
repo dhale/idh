@@ -67,13 +67,13 @@ public class SequenceReader {
     }
     try {
       Scanner s = new Scanner(br);
-      s.findWithinHorizon("nx1=",0);
+      s.findWithinHorizon("nt=",0);
       int nt = s.nextInt();
-      s.findWithinHorizon("dx1=",0);
+      s.findWithinHorizon("dt=",0);
       double dt = s.nextDouble();
-      s.findWithinHorizon("fx1=",0);
+      s.findWithinHorizon("ft=",0);
       double ft = s.nextDouble();
-      s.findWithinHorizon("f=",0);
+      s.findWithinHorizon("x=",0);
       s.nextLine();
       float[] x = new float[nt];
       for (int it=0; it<nt; ++it) {

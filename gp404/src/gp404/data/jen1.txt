@@ -18,10 +18,10 @@ PS the first column is time (s), the second amplitude of the particle
 velocity in ice. 
 
 
-nx1=4096
-dx1=40.0e-9 s
-fx1=0.0 s
-f=
+nt=4096
+dt=40.0e-9 s
+ft=0.0 s
+x=
 0.000000000	+0.001221
 0.000000040	-0.007324
 0.000000080	-0.015380

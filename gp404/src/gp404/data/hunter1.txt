@@ -6,10 +6,10 @@ Hunter
 
 time (s)	acceleration (m/s^2)
 
-nx1=615
-dx1=1 s
-fx1=0 s
-f=
+nt=615
+dt=1 s
+ft=0 s
+x=
 1	0.034
 2	0.1236
 3	0.1236

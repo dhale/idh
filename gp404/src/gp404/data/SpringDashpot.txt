@@ -1,10 +1,10 @@
 Gary Olhoeft, GPGN210
 April 11, 2006
 Spring and dashpot in parallel
-nx1=2500 
-dx1=0.002 s
-fx1=0.000 s
-f=
+nt=2500 
+dt=0.002 s
+ft=0.000 s
+x=
 0.789999962
 0.810000002
 0.829999983
