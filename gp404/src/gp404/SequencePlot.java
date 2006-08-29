@@ -35,6 +35,35 @@ public class SequencePlot {
   }
 
   /**
+   * Constructs a plot for two sequences.
+   * @param l1 a sequence label.
+   * @param s1 a sequence.
+   * @param l2 a sequence label.
+   * @param s2 a sequence.
+   */
+  public SequencePlot(String l1, Sequence s1,
+                      String l2, Sequence s2) {
+    this(new String[]{l1,l2},
+         new Sequence[]{s1,s2});
+  }
+
+  /**
+   * Constructs a plot for three sequences.
+   * @param l1 a sequence label.
+   * @param s1 a sequence.
+   * @param l2 a sequence label.
+   * @param s2 a sequence.
+   * @param l3 a sequence label.
+   * @param s3 a sequence.
+   */
+  public SequencePlot(String l1, Sequence s1,
+                      String l2, Sequence s2,
+                      String l3, Sequence s3) {
+    this(new String[]{l1,l2,l3},
+         new Sequence[]{s1,s2,s3});
+  }
+
+  /**
    * Constructs a plot for multiple sequences.
    * @param al array of sequence labels.
    * @param as array of sequences.
