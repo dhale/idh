@@ -93,7 +93,7 @@ public class SequencePlot {
         }
         _frame = new PlotFrame(_panel);
         addButtons();
-        _frame.setSize(950,250*as.length);
+        _frame.setSize(950,240*as.length);
         _frame.setDefaultCloseOperation(PlotFrame.EXIT_ON_CLOSE);
         _frame.setVisible(true);
       }
