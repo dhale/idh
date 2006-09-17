@@ -27,84 +27,70 @@ public class Warp1 {
   private int _width = 900;
   private int _height = 800;
 
+  private static final LocalCorrelationFilter.Type SIMPLE =
+    LocalCorrelationFilter.Type.SIMPLE;
+  private static final LocalCorrelationFilter.Type SYMMETRIC =
+    LocalCorrelationFilter.Type.SYMMETRIC;
+
+  private static final LocalCorrelationFilter.Window GAUSSIAN = 
+    LocalCorrelationFilter.Window.GAUSSIAN;
+  private static final LocalCorrelationFilter.Window RECTANGLE = 
+    LocalCorrelationFilter.Window.RECTANGLE;
+
+  private int _length = 315;
+  private float _flo = 0.15f;
+  private float _fhi = 0.25f;
+  private float _dmax = 5.5f;
+  private int _lmax = 8;
+  private int _lmin = -_lmax;
+  private LocalCorrelationFilter.Type _type = SIMPLE; 
+  private LocalCorrelationFilter.Window _window = GAUSSIAN; 
+  private float _sigma = 8.0f;
+  private Displacement _disp = new SinusoidDisplacement(_dmax,_length);
+  //private Displacement _disp = new ConstantDisplacement(_dmax,_length);
+  private float[] _sequence = makeRandom(_length,_flo,_fhi);
+
   private Warp1(String[] args) {
-
-    // Small sigma (< delay) yields lots of bad peaks; bias ~ 0.4 sample
-    //testDelay(0.15f,0.25f,4.5f,4.0f);
-
-    // Small sigma (> delay) yields one bad peak; bias ~ 0.1 sample
-    //testDelay(0.15f,0.25f,4.5f,6.0f);
-
-    // Slightly larger sigma eliminates bad peak; bias ~ 0.1 sample
-    testDelay(0.15f,0.25f,4.5f,10.0f);
-    //testDelay(0.15f,0.25f,4.5f,8.0f);
-
-    // Larger sigma has no bad peaks; bias < 0.01 sample
-    //testDelay(0.15f,0.25f,4.5f,32.0f);
-
-    //testWarp(0.15f,0.25f,4.5f,10.0f);
+    testSimpleSymmetric();
+    //testGaussianRectangle();
   }
 
-  /**
-   * Tests warp of filtered random sequence.
-   * @param fl frequency at which filter amplitude response ~ 0.99
-   * @param fh frequency at which filter amplitude response ~ 0.01
-   * @param delay the maximum delay such that g(t) = f(t-delay).
-   * @param sigma half-width of Gaussian window.
-   */
-  private void testWarp(float fl, float fh, float delay, float sigma) {
-    int n = 315;
-    int lmax =  8;
-    int lmin = -lmax;
+  private void testSimpleSymmetric() {
+    _type = SIMPLE;
+    testWarp();
+    _type = SYMMETRIC;
+    testWarp();
+  }
+
+  private void testGaussianRectangle() {
+    _window = GAUSSIAN;
+    testWarp();
+    _window = RECTANGLE;
+    testWarp();
+  }
+
+  private void testWarp() {
+    float sigma = _sigma;
+    int n = _length;
+    int lmin = _lmin;
+    int lmax = _lmax;
     int nlag = 1+lmax-lmin;
-    float[] f = makeRandom(n,fl,fh);
-    float[][] xyd = computeWarpFunctions(n);
-    float[] x = xyd[0];
-    float[] y = xyd[1];
-    float[] d = xyd[2];
-    float[] g = warp(x,f);
+    float[] f = _sequence;
+    float[] g = _disp.warp(f);
+    float[] d = (_type==SIMPLE)?_disp.ux():_disp.um();
     float[][] c = new float[nlag][n];
     float[] u = new float[n];
     lcc(sigma,lmin,lmax,f,g,c,u);
-    //f = applyGaussianWindow(79,sigma,f);
-    //g = applyGaussianWindow(79,sigma,g);
     plot(f,g,c,u,d);
-  }
-
-  /**
-   * Tests constant delay of filtered random sequence.
-   * @param fl frequency at which filter amplitude response ~ 0.99
-   * @param fh frequency at which filter amplitude response ~ 0.01
-   * @param delay the delay such that g(t) = f(t-delay).
-   * @param sigma half-width of Gaussian window.
-   */
-  private void testDelay(float fl, float fh, float delay, float sigma) {
-    int n = 315;
-    int lmax =  8;
-    int lmin = -lmax;
-    int nlag = 1+lmax-lmin;
-    //float[] f = makeRandom(n,fl,fh);
-    float[] f = makeSweep(n,0.5f*fl,0.5f*fl);
-    float[] g = delay(delay,f);
-    float[][] c = new float[nlag][n];
-    float[] u = new float[n];
-    lcc(sigma,lmin,lmax,f,g,c,u);
-    float[] d = Array.fillfloat(delay,n);
-    //f = applyGaussianWindow(79,sigma,f);
-    //g = applyGaussianWindow(79,sigma,g);
-    plot(f,g,c,u,d);
-  }
-
-  private static float gauss(double s, double x) {
-    double e = x/s;
-    return (float)exp(-0.5f*e*e);
   }
 
   private static float[] applyGaussianWindow(double x, double s, float[] f) {
     int n = f.length;
     float[] g = new float[n];
-    for (int i=0; i<n; ++i)
-      g[i] = f[i]*gauss(s,i-x);
+    for (int i=0; i<n; ++i) {
+      double e = (i-x)/s;
+      g[i] = f[i]*(float)exp(-0.5*e*e);
+    }
     return g;
   }
 
@@ -134,25 +120,14 @@ public class Warp1 {
     return f;
   }
 
-  private float[] delay(double d, float[] f) {
-    int n = f.length;
-    float[] g = new float[n];
-    SincInterpolator si = new SincInterpolator();
-    si.setUniform(n,1.0,0.0,f);
-    si.interpolate(n,1.0,-d,g);
-    return g;
-  }
-
   private void lcc(
     double sigma, int lmin, int lmax, float[] f, float[] g,
     float[][] c, float[] u)
   {
     int n = f.length;
     int nlag = 1+lmax-lmin;
-    LocalCorrelationFilter.Type type = 
-      LocalCorrelationFilter.Type.SIMPLE;
-    LocalCorrelationFilter.Window window = 
-      LocalCorrelationFilter.Window.RECTANGLE;
+    LocalCorrelationFilter.Type type = _type;
+    LocalCorrelationFilter.Window window = _window;
     LocalCorrelationFilter lcf = 
       new LocalCorrelationFilter(type,window,sigma);
     lcf.setInputs(f,g);
@@ -198,89 +173,187 @@ public class Warp1 {
   }
 
   /**
-   * Computes functions that define warping, unwarping and displacement.
-   * Warping is q(y) = p(x(y)). Unwarping is p(x) = q(y(x)). The displacement
-   * implied by warping is e = y(x)-x. (The displacement implied by unwarping
-   * is x(y)-y, but is not computed.) All functions are uniformly-sampled.
+   * Abstract base class for synthetic displacements.
+   * The function u(x) is displacement. The function e(x) is strain.
+   * A point x is displaced to a point y(x) = x+u(x).
+   * <p>
+   * Warping is the computation of the sequence g(y) = f(x(y)).
+   * Unwarping is the computation of the sequence f(x) = g(y(x)).
+   * <p>
+   * For warping, we need the function x(y) = y-u(x(y)) = y-uy(y). We 
+   * compute the displacement uy(y) by iteration so that uy(y) = u(x(y).
+   * <p>
+   * We also define a midpoint m(x) = (x+y(x))/2, and compute the 
+   * displacement um(m) = u(x(m)) from u(x) by iteration so that 
+   * um(m) = u(x(m)).
    */
-  private static float[][] computeWarpFunctions(int n) {
-    float a = 0.20f;
-    float b = (float)((n-1)/2);
-    float s = 50.0f;
-    float[] x = warpGauss(a,b,s,n);
-    float[] y = unwarpGauss(a,b,s,n);
-    float[] z = Array.rampfloat(0.0f,1.0f,n);
-    float[] d = Array.sub(y,z);
-    return new float[][]{x,y,d};
-  }
-
-  /**
-   * Adjusts estimated displacements for symmetric correlations.
-   */
-  private static void adjustu(float[] u) {
-    int n = u.length;
-    float[] x = Array.rampfloat(0.0f,1.0f,n);
-    CubicInterpolator.Method method = CubicInterpolator.Method.LINEAR;
-    CubicInterpolator ci = new CubicInterpolator(method,n,x,u);
-    for (int i=0; i<n; ++i) {
-      float xa = x[i];
-      for (int iter=0; iter<5; ++iter) {
-        xa = x[i]+0.5f*ci.interpolate(xa);
-      }
-      //if ((xa-x[i])*u[i]>0.0f)
-        u[i] = ci.interpolate(xa);
+  private static abstract class Displacement {
+    public abstract double u(double x);
+    public abstract double e(double x);
+    public abstract double umax();
+    public abstract double emax();
+    public double ux(double x) {
+      return u(x);
     }
-  }
-
-  /**
-   * Uses interpolation to compute q(i) = p(x[i]).
-   */
-  private static float[] warp(float[] x, float[] p) {
-    int n = p.length;
-    SincInterpolator si = new SincInterpolator();
-    si.setUniform(n,1.0,0.0,p);
-    float[] q = new float[n];
-    si.interpolate(n,x,q);
-    return q;
-  }
-
-  /**
-   * Computes a uniformly-sampled warping function based on a gaussian. 
-   * The warping function is x = x(y) for uniformly-sampled y. The 
-   * function x is defined so that x equals y when y equals b, 
-   * x is less than y for y less than b, and x is greater than y for y 
-   * greater than b. Thus the parameter b controls the location of 
-   * displacment. The parameter a controls the maximum displacement, and 
-   * the parameter s controls the spatial extent of displacement.
-   */
-  private static float[] warpGauss(float a, float b, float s, int n) {
-    float[] x = new float[n];
-    for (int i=0; i<n; ++i) {
-      float y = (float)i-b;
-      x[i] = b+y*(1.0f+a*gauss(s,y));
-    }
-    return x;
-  }
-
-  /**
-   * Computes a uniformly-sampled unwarping function based on a gaussian. 
-   * The unwarping function is y = y(x). In other words, the unwarping 
-   * function y(x) is the inverse of the warping function x(y). The 
-   * inverse y(x) is computed by iteration, because x(y) and y(x) are 
-   * transcendental functions.
-   */
-  private static float[] unwarpGauss(float a, float b, float s, int n) {
-    float[] y = new float[n];
-    for (int i=0; i<n; ++i) {
-      float x = (float)i-b;
-      float yi = x;
-      float yp;
+    public double um(double m) {
+      double um = 0.0;
+      double up;
       do {
-        yp = yi;
-        yi = x/(1.0f+a*gauss(s,yp));
-      } while (abs(yi-yp)>0.001f);
-      y[i] = yi+b;
+        up = um;
+        um = u(m-0.5*um);
+      } while (abs(um-up)>0.0001);
+      return um;
     }
-    return y;
+    public double uy(double y) {
+      double uy = 0.0;
+      double up;
+      do {
+        up = uy;
+        uy = u(y-uy);
+      } while (abs(uy-up)>0.0001);
+      return uy;
+    }
+    public float[] ux() {
+      float[] u = new float[_n];
+      for (int i=0; i<_n; ++i) {
+        double x = i;
+        u[i] = (float)ux(x);
+      }
+      return u;
+    }
+    public float[] um() {
+      float[] u = new float[_n];
+      for (int i=0; i<_n; ++i) {
+        double m = i;
+        u[i] = (float)um(m);
+      }
+      return u;
+    }
+    public float[] uy() {
+      float[] u = new float[_n];
+      for (int i=0; i<_n; ++i) {
+        double y = i;
+        u[i] = (float)uy(y);
+      }
+      return u;
+    }
+    public float[] warp(float[] f) {
+      SincInterpolator si = new SincInterpolator();
+      si.setUniform(_n,1.0,0.0,f);
+      float[] g = new float[_n];
+      for (int i=0; i<_n; ++i) {
+        double y = i;
+        double x = y-uy(y);
+        g[i] = si.interpolate(x);
+      }
+      return g;
+    }
+    public float[] unwarp(float[] g) {
+      SincInterpolator si = new SincInterpolator();
+      si.setUniform(_n,1.0,0.0,g);
+      float[] f = new float[_n];
+      for (int i=0; i<_n; ++i) {
+        double x = i;
+        double y = x+ux(x);
+        f[i] = si.interpolate(y);
+      }
+      return f;
+    }
+    protected Displacement(int n) {
+      _n = n;
+    }
+    private int _n;
+  }
+
+  /**
+   * Constant (zero-strain) displacement.
+   */
+  private static class ConstantDisplacement extends Displacement {
+    public ConstantDisplacement(double u, int n) {
+      super(n);
+      _u = u;
+      System.out.println("ConstantDisplacement: max u="+umax());
+      System.out.println("ConstantDisplacement: max e="+emax());
+    }
+    public double u(double x) {
+      return _u;
+    }
+    public double umax() {
+      return _u;
+    }
+    public double e(double x) {
+      return 0.0;
+    }
+    public double emax() {
+      return 0.0;
+    }
+    private double _u;
+  }
+
+  /**
+   * Derivative-of-Gaussian displacement.
+   */
+  private static class GaussianDisplacement extends Displacement {
+    public GaussianDisplacement(double umax, int n) {
+      super(n);
+      _a = (n-1)/2.0;
+      _b = _a/3;
+      _c = umax*exp(0.5)/_b;
+      _umax = umax;
+      _emax = _c;
+      System.out.println("GaussianDisplacement: max u="+umax());
+      System.out.println("GaussianDisplacement: max e="+emax());
+    }
+    public double u(double x) {
+      double xa = x-_a;
+      return -_c*xa*exp(-0.5*(xa*xa)/(_b*_b));
+    }
+    public double umax() {
+      return _umax;
+    }
+    public double e(double x) {
+      double xa = x-_a;
+      return -_c*(1.0-(xa*xa)/(_b*_b))*exp(-0.5*(xa*xa)/(_b*_b));
+    }
+    public double emax() {
+      return _emax;
+    }
+    private double _a;
+    private double _b;
+    private double _c;
+    private double _umax;
+    private double _emax;
+  }
+
+  /**
+   * Sinusoid displacement.
+   */
+  private static class SinusoidDisplacement extends Displacement {
+    public SinusoidDisplacement(double umax, int n) {
+      super(n);
+      double l = n-1;
+      _a = umax;
+      _b = 2.0*PI/l;
+      _umax = umax;
+      _emax = _a*_b;
+      System.out.println("SinusoidDisplacement: max u="+umax());
+      System.out.println("SinusoidDisplacement: max e="+emax());
+    }
+    public double u(double x) {
+      return _a*sin(_b*x);
+    }
+    public double umax() {
+      return _umax;
+    }
+    public double e(double x) {
+      return _a*_b*cos(_b*x);
+    }
+    public double emax() {
+      return _emax;
+    }
+    private double _a;
+    private double _b;
+    private double _umax;
+    private double _emax;
   }
 }

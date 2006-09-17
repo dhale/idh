@@ -21,12 +21,35 @@ public class Warp2 {
     });
   }
 
-  private float[][] _f,_g;
   private int _fontSize = 24;
   private int _width = 650;
   private int _height = 500;
+
   private String _pngDir = System.getProperty("png.dir");
   private String _dataDir = "/data";
+
+  private static final LocalCorrelationFilter.Type SIMPLE =
+    LocalCorrelationFilter.Type.SIMPLE;
+  private static final LocalCorrelationFilter.Type SYMMETRIC =
+    LocalCorrelationFilter.Type.SYMMETRIC;
+
+  private static final LocalCorrelationFilter.Window GAUSSIAN = 
+    LocalCorrelationFilter.Window.GAUSSIAN;
+  private static final LocalCorrelationFilter.Window RECTANGLE = 
+    LocalCorrelationFilter.Window.RECTANGLE;
+
+  int _n1 = 315;
+  int _n2 = 315;
+  private float _d1max = 6.00f;
+  private float _d2max = 3.00f;
+  private int _lmax = 7;
+  private int _lmin = -_lmax;
+  private LocalCorrelationFilter.Type _type = SIMPLE; 
+  private LocalCorrelationFilter.Window _window = GAUSSIAN; 
+  private float _sigma = 8.0f;
+  private Displacement _disp = 
+    new GaussianDisplacement(_d1max,_d2max,_n1,_n2);
+  private float[][] _f,_g;
 
   private Warp2(String[] args) {
     if (_pngDir==null)
@@ -44,16 +67,7 @@ public class Warp2 {
 
   private void initImages() {
     _f = readImage();
-    int n1 = _f[0].length;
-    int n2 = _f.length;
-    float[][][][] xye = computeWarpFunctions(n1,n2);
-    float[][] x1 = xye[0][0];
-    float[][] x2 = xye[0][1];
-    float[][] y1 = xye[1][0];
-    float[][] y2 = xye[1][1];
-    float[][] e1 = xye[2][0];
-    float[][] e2 = xye[2][1];
-    _g = warp(x1,x2,_f);
+    _g = _disp.warp(_f);
   }
 
   private void doIntro() {
@@ -81,128 +95,252 @@ public class Warp2 {
 
   private PlotFrame frame(PlotPanel panel, String png) {
     PlotFrame frame = new PlotFrame(panel);
+    frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
     frame.setFontSize(_fontSize);
     frame.setSize(_width,_height);
     frame.setVisible(true);
-    if (png!=null)
-      frame.paintToPng(200,6,_pngDir+"/"+png+".png");
+    //if (png!=null)
+    //  frame.paintToPng(200,6,_pngDir+"/"+png+".png");
     return frame;
   }
 
   /**
-   * Computes functions that define warping, unwarping and displacement.
-   * Warping is q(y) = p(x(y)). Unwarping is p(x) = q(y(x)). The displacement
-   * implied by warping is e = y(x)-x. (The displacement implied by unwarping
-   * is x(y)-y, but is not computed.) All functions are uniformly-sampled.
+   * Abstract base class for synthetic displacements.
+   * The function u(x) is displacement. The function e(x) is strain.
+   * A point x is displaced to a point y(x) = x+u(x).
+   * <p>
+   * Warping is the computation of the sequence g(y) = f(x(y)).
+   * Unwarping is the computation of the sequence f(x) = g(y(x)).
+   * <p>
+   * For warping, we need the function x(y) = y-u(x(y)) = y-uy(y). We 
+   * compute the displacement uy(y) by iteration so that uy(y) = u(x(y).
+   * <p>
+   * We also define a midpoint m(x) = (x+y(x))/2, and compute the 
+   * displacement um(m) = u(x(m)) from u(x) by iteration so that 
+   * um(m) = u(x(m)).
    */
-  private static float[][][][] computeWarpFunctions(int n1, int n2) {
-    float a1 = 0.20f;
-    float a2 = 0.10f;
-    float b1 = (float)((n1-1)/2);
-    float b2 = (float)((n2-1)/2);
-    float s1 = 50.0f;
-    float s2 = 50.0f;
-    float[][][] x = warpGauss(a1,a2,b1,b2,s1,s2,n1,n2);
-    float[][] x1 = x[0];
-    float[][] x2 = x[1];
-    float[][][] y = unwarpGauss(a1,a2,b1,b2,s1,s2,n1,n2);
-    float[][] y1 = y[0];
-    float[][] y2 = y[1];
-    float[][] z1 = Array.rampfloat(0.0f,1.0f,0.0f,n1,n2);
-    float[][] z2 = Array.rampfloat(0.0f,0.0f,1.0f,n1,n2);
-    float[][] e1 = Array.sub(y1,z1);
-    float[][] e2 = Array.sub(y2,z2);
-    return new float[][][][]{{x1,x2},{y1,y2},{e1,e2}};
-  }
-
-  /**
-   * Uses 2-D sinc interpolation to compute q(i1,i2) = p(x1(i1,i2),x2[i1,i2]).
-   * Here, functions f(i1,i2) are specified and returned as arrays f[i2][i1].
-   */
-  private static float[][] warp(float[][] x1, float[][] x2, float[][] p) {
-    int n1 = p[0].length;
-    int n2 = p.length;
-    SincInterpolator si = new SincInterpolator();
-    si.setUniform(n1,1.0,0.0,n2,1.0,0.0,p);
-    float[][] q = new float[n2][n1];
-    for (int i2=0; i2<n2; ++i2) {
-      for (int i1=0; i1<n1; ++i1) {
-        q[i2][i1] = si.interpolate(x1[i2][i1],x2[i2][i1]);
-      }
+  private static abstract class Displacement {
+    public abstract double u1(double x1, double x2);
+    public abstract double u2(double x1, double x2);
+    public double u1x(double x1, double x2) {
+      return u1(x1,x2);
     }
-    return q;
-  }
-
-  /**
-   * Computes a uniformly-sampled warping function based on a gaussian. 
-   * The warping function is x = (x1,x2), where x1 = x1(y1,y2) and 
-   * x2 = x2(y1,y2) for sampled values of (y1,y2). The function x is defined 
-   * so that x equals y when y equals b, x is less than y for y less than b, 
-   * and x is greater than y for y greater than b. Thus the parameters b1 and 
-   * b2 control the location of displacment. The parameters a control the 
-   * maximum displacement, and the parameters s control the spatial extent of 
-   * displacement.
-   */
-  private static float[][][] warpGauss(
-    float a1, float a2, 
-    float b1, float b2, 
-    float s1, float s2, 
-    int n1, int n2)
-  {
-    float[][][] x = new float[2][n2][n1];
-    float[][] x1 = x[0];
-    float[][] x2 = x[1];
-    for (int i2=0; i2<n2; ++i2) {
-      float y2 = (float)i2-b2;
-      for (int i1=0; i1<n1; ++i1) {
-        float y1 = (float)i1-b1;
-        x1[i2][i1] = b1+y1*(1.0f+a1*gauss(s1,s2,y1,y2));
-        x2[i2][i1] = b2+y2*(1.0f+a2*gauss(s1,s2,y1,y2));
-      }
+    public double u2x(double x1, double x2) {
+      return u2(x1,x2);
     }
-    return x;
-  }
-
-  /**
-   * Computes a uniformly-sampled unwarping function based on a gaussian. 
-   * The unwarping function is y = (y1,y2), where y1 = y1(x1,x2) and 
-   * y2 = y2(x1,x2). In other words, the unwarping function y(x) is the 
-   * inverse of the warping function x(y). The inverse y(x) is computed 
-   * by iteration, because x(y) and y(x) are transcendental functions.
-   */
-  private static float[][][] unwarpGauss(
-    float a1, float a2, 
-    float b1, float b2, 
-    float s1, float s2, 
-    int n1, int n2)
-  {
-    float[][][] y = new float[2][n2][n1];
-    for (int i2=0; i2<n2; ++i2) {
-      float x2 = (float)i2-b2;
-      for (int i1=0; i1<n1; ++i1) {
-        float x1 = (float)i1-b1;
-        float y1 = x1;
-        float y2 = x2;
-        float y1p,y2p;
-        do {
-          y1p = y1;
-          y2p = y2;
-          y1 = x1/(1.0f+a1*gauss(s1,s2,y1p,y2p));
-          y2 = x2/(1.0f+a2*gauss(s1,s2,y1p,y2p));
-        } while (abs(y1-y1p)>0.001f || abs(y2-y2p)>0.001f);
-        y[0][i2][i1] = y1+b1;
-        y[1][i2][i1] = y2+b2;
-      }
+    public double u1m(double m1, double m2) {
+      double u1p;
+      double u1m = 0.0;
+      double u2m = 0.0;
+      do {
+        u1p = u1m;
+        u1m = u1(m1-0.5*u1m,m2-0.5*u2m);
+        u2m = u2(m1-0.5*u1m,m2-0.5*u2m);
+      } while (abs(u1m-u1p)>0.0001);
+      return u1m;
     }
-    return y;
+    public double u2m(double m1, double m2) {
+      double u2p;
+      double u1m = 0.0;
+      double u2m = 0.0;
+      do {
+        u2p = u2m;
+        u1m = u1(m1-0.5*u1m,m2-0.5*u2m);
+        u2m = u2(m1-0.5*u1m,m2-0.5*u2m);
+      } while (abs(u2m-u2p)>0.0001);
+      return u2m;
+    }
+    public double u1y(double y1, double y2) {
+      double u1p;
+      double u1y = 0.0;
+      double u2y = 0.0;
+      do {
+        u1p = u1y;
+        u1y = u1(y1-u1y,y2-u2y);
+        u2y = u2(y1-u1y,y2-u2y);
+      } while (abs(u1y-u1p)>0.0001);
+      return u1y;
+    }
+    public double u2y(double y1, double y2) {
+      double u2p;
+      double u1y = 0.0;
+      double u2y = 0.0;
+      do {
+        u2p = u2y;
+        u1y = u1(y1-u1y,y2-u2y);
+        u2y = u2(y1-u1y,y2-u2y);
+      } while (abs(u2y-u2p)>0.0001);
+      return u2y;
+    }
+    public float[][] u1x() {
+      float[][] u = new float[_n2][_n1];
+      for (int i2=0; i2<_n2; ++i2) {
+        double x2 = i2;
+        for (int i1=0; i1<_n1; ++i1) {
+          double x1 = i1;
+          u[i2][i1] = (float)u1x(x1,x2);
+        }
+      }
+      return u;
+    }
+    public float[][] u2x() {
+      float[][] u = new float[_n2][_n1];
+      for (int i2=0; i2<_n2; ++i2) {
+        double x2 = i2;
+        for (int i1=0; i1<_n1; ++i1) {
+          double x1 = i1;
+          u[i2][i1] = (float)u2x(x1,x2);
+        }
+      }
+      return u;
+    }
+    public float[][] u1m() {
+      float[][] u = new float[_n2][_n1];
+      for (int i2=0; i2<_n2; ++i2) {
+        double m2 = i2;
+        for (int i1=0; i1<_n1; ++i1) {
+          double m1 = i1;
+          u[i2][i1] = (float)u1m(m1,m2);
+        }
+      }
+      return u;
+    }
+    public float[][] u2m() {
+      float[][] u = new float[_n2][_n1];
+      for (int i2=0; i2<_n2; ++i2) {
+        double m2 = i2;
+        for (int i1=0; i1<_n1; ++i1) {
+          double m1 = i1;
+          u[i2][i1] = (float)u2m(m1,m2);
+        }
+      }
+      return u;
+    }
+    public float[][] u1y() {
+      float[][] u = new float[_n2][_n1];
+      for (int i2=0; i2<_n2; ++i2) {
+        double y2 = i2;
+        for (int i1=0; i1<_n1; ++i1) {
+          double y1 = i1;
+          u[i2][i1] = (float)u1y(y1,y2);
+        }
+      }
+      return u;
+    }
+    public float[][] u2y() {
+      float[][] u = new float[_n2][_n1];
+      for (int i2=0; i2<_n2; ++i2) {
+        double y2 = i2;
+        for (int i1=0; i1<_n1; ++i1) {
+          double y1 = i1;
+          u[i2][i1] = (float)u2y(y1,y2);
+        }
+      }
+      return u;
+    }
+    public float[][] warp(float[][] f) {
+      SincInterpolator si = new SincInterpolator();
+      si.setUniform(_n1,1.0,0.0,_n2,1.0,0.0,f);
+      float[][] g = new float[_n2][_n1];
+      for (int i2=0; i2<_n2; ++i2) {
+        double y2 = i2;
+        for (int i1=0; i1<_n1; ++i1) {
+          double y1 = i1;
+          double x1 = y1-u1y(y1,y2);
+          double x2 = y2-u2y(y1,y2);
+          g[i2][i1] = si.interpolate(x1,x2);
+        }
+      }
+      return g;
+    }
+    public float[][] unwarp(float[][] g) {
+      SincInterpolator si = new SincInterpolator();
+      si.setUniform(_n1,1.0,0.0,_n2,1.0,0.0,g);
+      float[][] f = new float[_n2][_n1];
+      for (int i2=0; i2<_n2; ++i2) {
+        double x2 = i2;
+        for (int i1=0; i1<_n1; ++i1) {
+          double x1 = i1;
+          double y1 = x1+u1x(x1,x2);
+          double y2 = x2+u2x(x1,x2);
+          f[i2][i1] = si.interpolate(y1,y2);
+        }
+      }
+      return f;
+    }
+    protected Displacement(int n1, int n2) {
+      _n1 = n1;
+      _n2 = n2;
+    }
+    private int _n1,_n2;
   }
 
   /**
-   * 2-D gaussian function with specified widths (sigmas) s1 and s2.
+   * Constant (zero-strain) displacement.
    */
-  private static float gauss(float s1, float s2, float x1, float x2) {
-    float e1 = x1/s1;
-    float e2 = x2/s2;
-    return exp(-0.5f*(e1*e1+e2*e2));
+  private static class ConstantDisplacement extends Displacement {
+    public ConstantDisplacement(double u1, double u2, int n1, int n2) {
+      super(n1,n2);
+      _u1 = u1;
+      _u2 = u2;
+    }
+    public double u1(double x1, double x2) {
+      return _u1;
+    }
+    public double u2(double x1, double x2) {
+      return _u2;
+    }
+    private double _u1,_u2;
+  }
+
+  /**
+   * Derivative-of-Gaussian displacement.
+   */
+  private static class GaussianDisplacement extends Displacement {
+    public GaussianDisplacement(double u1max, double u2max, int n1, int n2) {
+      super(n1,n2);
+      _a1 = (n1-1)/2.0;
+      _a2 = (n2-1)/2.0;
+      _b1 = _a1/3.0;
+      _b2 = _a2/3.0;
+      _c1 = u1max*exp(0.5)/_b1;
+      _c2 = u2max*exp(0.5)/_b2;
+    }
+    public double u1(double x1, double x2) {
+      double xa1 = x1-_a1;
+      double xa2 = x2-_a2;
+      return -_c1*xa1*exp(-0.5*((xa1*xa1)/(_b1*_b1)+(xa2*xa2)/(_b2*_b2)));
+    }
+    public double u2(double x1, double x2) {
+      double xa1 = x1-_a1;
+      double xa2 = x2-_a2;
+      return -_c2*xa2*exp(-0.5*((xa1*xa1)/(_b1*_b1)+(xa2*xa2)/(_b2*_b2)));
+    }
+    private double _a1,_a2;
+    private double _b1,_b2;
+    private double _c1,_c2;
+  }
+
+  /**
+   * Sinusoid displacement.
+   */
+  private static class SinusoidDisplacement extends Displacement {
+    public SinusoidDisplacement(double u1max, double u2max, int n1, int n2) {
+      super(n1,n2);
+      double l1 = n1-1;
+      double l2 = n2-1;
+      _a1 = u1max;
+      _a2 = u2max;
+      _b1 = 2.0*PI/l1;
+      _b2 = 2.0*PI/l2;
+    }
+    public double u1(double x1, double x2) {
+      return _a1*sin(_b1*x1)*sin(0.5*_b2*x2);
+    }
+    public double u2(double x1, double x2) {
+      return _a2*sin(_b2*x2)*sin(0.5*_b1*x1);
+    }
+    private double _a1,_a2;
+    private double _b1,_b2;
   }
 }

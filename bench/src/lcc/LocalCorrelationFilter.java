@@ -16,11 +16,6 @@ import static edu.mines.jtk.util.MathPlus.*;
  * an output array c of local cross-correlation coefficients, one for each
  * sample in the input arrays f and g.
  * <p>
- * Two types of windows are implemented: Gaussian and rectangle.
- * The rectangle window is faster but is otherwise a poor choice.
- * The Gaussian window has an optimal spatial-spectral resolution
- * product and is isotropic in multiple dimensions.
- * <p>
  * Two types of cross-correlation are implemented. Both types can be 
  * normalized to obtain cross-correlation coefficients with magnitudes 
  * that do not exceed one. The normalization varies, depending on the 
@@ -51,21 +46,21 @@ import static edu.mines.jtk.util.MathPlus.*;
 public class LocalCorrelationFilter {
 
   /**
+   * Cross-correlations windows.
+   * The default window is GAUSSIAN.
+   */
+  enum Window {
+    GAUSSIAN,
+    RECTANGLE
+  };
+
+  /**
    * Cross-correlations types.
    * The default type is simple.
    */
   enum Type {
     SIMPLE,
     SYMMETRIC
-  };
-
-  /**
-   * Cross-correlation windows.
-   * The default window is Gaussian.
-   */
-  enum Window {
-    GAUSSIAN,
-    RECTANGLE
   };
 
   /**
@@ -124,59 +119,14 @@ public class LocalCorrelationFilter {
     _sigma2 = sigma2;
     _sigma3 = sigma3;
     if (window==Window.GAUSSIAN) {
-      _f1 = new GFilter(sigma1);
-      _f2 = new GFilter(sigma2);
-      _f3 = new GFilter(sigma3);
-    } else if (window==Window.RECTANGLE) {
-      _f1 = new RFilter(sigma1);
-      _f2 = new RFilter(sigma2);
-      _f3 = new RFilter(sigma3);
+      _f1 = new GaussianFilter(sigma1);
+      _f2 = new GaussianFilter(sigma2);
+      _f3 = new GaussianFilter(sigma3);
+    } else {
+      _f1 = new RectangleFilter(sigma1);
+      _f2 = new RectangleFilter(sigma2);
+      _f3 = new RectangleFilter(sigma3);
     }
-  }
-
-  /** 
-   * Removes bias by subtracting local means from the specified array.
-   * @param f the input array.
-   * @return the output array, with bias subtracted.
-   */
-  public float[] unbias(float[] f) {
-    int n1 = f.length;
-    float[] t = new float[n1];
-    _f1.apply(f,t);
-    Array.sub(f,t,t);
-    return t;
-  }
-
-  /** 
-   * Removes bias by subtracting local means from the specified array.
-   * @param f the input array.
-   * @return the output array, with bias subtracted.
-   */
-  public float[][] unbias(float[][] f) {
-    int n1 = f[0].length;
-    int n2 = f.length;
-    float[][] t = new float[n2][n1];
-    _f1.apply1(f,t);
-    _f2.apply2(t,t);
-    Array.sub(f,t,t);
-    return t;
-  }
-
-  /** 
-   * Removes bias by subtracting local means from the specified array.
-   * @param f the input array.
-   * @return the output array, with bias subtracted.
-   */
-  public float[][][] unbias(float[][][] f) {
-    int n1 = f[0][0].length;
-    int n2 = f[0].length;
-    int n3 = f.length;
-    float[][][] t = new float[n3][n2][n1];
-    _f1.apply1(f,t);
-    _f2.apply2(t,t);
-    _f3.apply3(t,t);
-    Array.sub(f,t,t);
-    return t;
   }
 
   /**
@@ -424,6 +374,58 @@ public class LocalCorrelationFilter {
     }
   }
 
+  /** 
+   * Removes bias by subtracting local means from the specified array.
+   * @param f the input array.
+   * @return the output array, with bias subtracted.
+   */
+  public float[] unbias(float[] f) {
+    int n1 = f.length;
+    float[] t = new float[n1];
+    _f1.apply(f,t);
+    Array.sub(f,t,t);
+    return t;
+  }
+
+  /** 
+   * Removes bias by subtracting local means from the specified array.
+   * @param f the input array.
+   * @return the output array, with bias subtracted.
+   */
+  public float[][] unbias(float[][] f) {
+    int n1 = f[0].length;
+    int n2 = f.length;
+    float[][] t = new float[n2][n1];
+    _f1.apply1(f,t);
+    _f2.apply2(t,t);
+    Array.sub(f,t,t);
+    return t;
+  }
+
+  /** 
+   * Removes bias by subtracting local means from the specified array.
+   * @param f the input array.
+   * @return the output array, with bias subtracted.
+   */
+  public float[][][] unbias(float[][][] f) {
+    int n1 = f[0][0].length;
+    int n2 = f[0].length;
+    int n3 = f.length;
+    float[][][] t = new float[n3][n2][n1];
+    _f1.apply1(f,t);
+    _f2.apply2(t,t);
+    _f3.apply3(t,t);
+    Array.sub(f,t,t);
+    return t;
+  }
+
+  /**
+   * Applies this correlation filter for the specified lag.
+   * @param lag the lag.
+   * @param f the 1st input array; can be the same as g.
+   * @param g the 2nd input array; can be the same as f.
+   * @param c the output array; cannot be the same as f or g.
+   */
   public void apply(int lag, float[] f, float[] g, float[] c) {
     setInputs(f,g);
     correlate(lag,c);
@@ -569,233 +571,6 @@ public class LocalCorrelationFilter {
         normalize(l1,t);
       for (int i1c=0; i1c<n1c; ++i1c) {
         c[i1c][l1-l1min] = t[j1c+i1c*k1c];
-      }
-    }
-  }
-
-  /**
-   * Like {@link #apply(int,int,int,int,float[],float[],float[][])}, but
-   * uses conventional windowing and FFTs to perform the cross-correlations.
-   * Best for small numbers of cross-correlation windows.
-   * The number of lags is nl1 = l1max-l1min+1.
-   * @param l1min the minimum lag in the 1st dimension.
-   * @param l1max the maximum lag in the 1st dimension.
-   * @param j1c the sample index of the first correlation.
-   * @param k1c the sample stride between correlations.
-   * @param f the 1st input array; can be the same as g.
-   * @param g the 2nd input array; can be the same as f.
-   * @param c the output array; cannot be the same as f or g.
-   */
-  // Not yet tested!
-  private void applyFft(
-    int l1min, int l1max, int j1c, int k1c,
-    float[] f, float[] g, float[][] c)
-  {
-    float[] w1 = makeGaussianWindow(_sigma1);
-    int n1f = f.length;
-    int n1c = c.length;
-    int n1w = w1.length;
-    int n1h = (n1w-1)/2;
-    int n1l = l1max-l1min+1;
-    int n1p = n1w+max(-l1min,n1l-1+l1min);
-    int n1fft = FftReal.nfftFast(n1p);
-    int n1pad = n1fft+2;
-    FftReal fft = new FftReal(n1fft);
-    float[] fpad = new float[n1pad];
-    float[] gpad = new float[n1pad];
-    int j1f = max(0, l1min);
-    int j1g = max(0,-l1min);
-    for (int i1c=0; i1c<n1c; ++i1c) {
-      int m1c = j1c+i1c*k1c;
-      Array.zero(fpad);
-      Array.zero(gpad);
-      applyWindow(w1,m1c,f,n1h+j1f,fpad);
-      applyWindow(w1,m1c,g,n1h+j1g,gpad);
-      fft.realToComplex(-1,fpad,fpad);
-      fft.realToComplex(-1,gpad,gpad);
-      for (int i1=0; i1<n1pad; i1+=2) {
-        float fr = fpad[i1  ];
-        float fi = fpad[i1+1];
-        float gr = gpad[i1  ];
-        float gi = gpad[i1+1];
-        gpad[i1  ] = fr*gr+fi*gi;
-        gpad[i1+1] = fr*gi-fi*gr;
-      }
-      fft.complexToReal(1,gpad,gpad);
-      float s = 1.0f/(float)n1fft;
-      float[] cc = c[i1c];
-      for (int i1=0; i1<n1l; ++i1)
-        cc[i1] = s*gpad[i1];
-    }
-  }
-
-  // Not yet tested!
-  private void applyFft(
-    int l1min, int l1max, int j1c, int k1c,
-    int l2min, int l2max, int j2c, int k2c,
-    float[][] f, float[][] g, float[][][] c)
-  {
-    float[] w1 = makeGaussianWindow(_sigma1);
-    float[] w2 = makeGaussianWindow(_sigma2);
-    int j1f = max(0, l1min);
-    int j1g = max(0,-l1min);
-    int n1f = f[0].length;
-    int n1g = g[0].length;
-    int n1c = c[0].length;
-    int n1w = w1.length;
-    int n1h = (n1w-1)/2;
-    int n1l = l1max-l1min+1;
-    int n1p = n1w+max(-l1min,n1l-1+l1min);
-    int n1fft = FftReal.nfftFast(n1p);
-    int n1pad = n1fft+2;
-    int j2f = max(0, l2min);
-    int j2g = max(0,-l2min);
-    int n2f = f.length;
-    int n2g = g.length;
-    int n2c = c.length;
-    int n2w = w2.length;
-    int n2h = (n2w-1)/2;
-    int n2l = l2max-l2min+1;
-    int n2p = n2w+max(-l2min,n2l-1+l2min);
-    int n2fft = FftComplex.nfftFast(n2p);
-    int n2pad = n2fft*2;
-    FftReal fft1 = new FftReal(n1fft);
-    FftComplex fft2 = new FftComplex(n2fft);
-    float[][] fpad = new float[n2pad][n1pad];
-    float[][] gpad = new float[n2pad][n1pad];
-    for (int i2c=0; i2c<n2c; ++i2c) {
-      int m2c = j2c+i2c*k2c;
-      for (int i1c=0; i1c<n1c; ++i1c) {
-        int m1c = j1c+i1c*k1c;
-        Array.zero(fpad);
-        Array.zero(gpad);
-        applyWindow(w1,w2,m1c,m2c,f,n1h+j1f,n2h+j2f,fpad);
-        applyWindow(w1,w2,m1c,m2c,g,n1h+j1g,n2h+j2g,gpad);
-        fft1.realToComplex1(-1,n2p,fpad,fpad);
-        fft1.realToComplex1(-1,n2p,gpad,gpad);
-        fft2.complexToComplex2(-1,n1fft/2+1,fpad,fpad);
-        fft2.complexToComplex2(-1,n1fft/2+1,gpad,gpad);
-        for (int i2=0; i2<n2fft; ++i2) {
-          float[] fpad2 = fpad[i2];
-          float[] gpad2 = gpad[i2];
-          for (int i1=0; i1<n1pad; i1+=2) {
-            float fr = fpad2[i1  ];
-            float fi = fpad2[i1+1];
-            float gr = gpad2[i1  ];
-            float gi = gpad2[i1+1];
-            gpad2[i1  ] = fr*gr+fi*gi;
-            gpad2[i1+1] = fr*gi-fi*gr;
-          }
-        }
-        fft2.complexToComplex2(1,n1fft/2+1,gpad,gpad);
-        fft1.realToComplex1(1,n2l,gpad,gpad);
-        float s = 1.0f/((float)n1fft*(float)n2fft);
-        float[] cc = c[i2c][i1c];
-        for (int i2=0,ic=0; i2<n2l; ++i2) {
-          float[] gpad2 = gpad[i2];
-          for (int i1=0; i1<n1l; ++i1,++ic) {
-            cc[ic] = s*gpad2[i1];
-          }
-        }
-      }
-    }
-  }
-
-  // Not yet tested!
-  private void applyFft(
-    int l1min, int l1max, int j1c, int k1c,
-    int l2min, int l2max, int j2c, int k2c,
-    int l3min, int l3max, int j3c, int k3c,
-    float[][][] f, float[][][] g, float[][][][] c)
-  {
-    float[] w1 = makeGaussianWindow(_sigma1);
-    float[] w2 = makeGaussianWindow(_sigma2);
-    float[] w3 = makeGaussianWindow(_sigma3);
-    int j1f = max(0, l1min);
-    int j1g = max(0,-l1min);
-    int n1f = f[0][0].length;
-    int n1g = g[0][0].length;
-    int n1c = c[0][0].length;
-    int n1w = w1.length;
-    int n1h = (n1w-1)/2;
-    int n1l = l1max-l1min+1;
-    int n1p = n1w+max(-l1min,n1l-1+l1min);
-    int n1fft = FftReal.nfftFast(n1p);
-    int n1pad = n1fft+2;
-    int j2f = max(0, l2min);
-    int j2g = max(0,-l2min);
-    int n2f = f[0].length;
-    int n2g = g[0].length;
-    int n2c = c[0].length;
-    int n2w = w2.length;
-    int n2h = (n2w-1)/2;
-    int n2l = l2max-l2min+1;
-    int n2p = n2w+max(-l2min,n2l-1+l2min);
-    int n2fft = FftComplex.nfftFast(n2p);
-    int n2pad = n2fft*2;
-    int j3f = max(0, l3min);
-    int j3g = max(0,-l3min);
-    int n3f = f.length;
-    int n3g = g.length;
-    int n3c = c.length;
-    int n3w = w3.length;
-    int n3h = (n3w-1)/2;
-    int n3l = l3max-l3min+1;
-    int n3p = n3w+max(-l3min,n3l-1+l3min);
-    int n3fft = FftComplex.nfftFast(n3p);
-    int n3pad = n3fft*2;
-    FftReal fft1 = new FftReal(n1fft);
-    FftComplex fft2 = new FftComplex(n2fft);
-    FftComplex fft3 = new FftComplex(n3fft);
-    float[][][] fpad = new float[n3pad][n2pad][n1pad];
-    float[][][] gpad = new float[n3pad][n2pad][n1pad];
-    for (int i3c=0; i3c<n3c; ++i3c) {
-      int m3c = j3c+i3c*k3c;
-      for (int i2c=0; i2c<n2c; ++i2c) {
-        int m2c = j2c+i2c*k2c;
-        for (int i1c=0; i1c<n1c; ++i1c) {
-          int m1c = j1c+i1c*k1c;
-          Array.zero(fpad);
-          Array.zero(gpad);
-          applyWindow(w1,w2,w3,m1c,m2c,m3c,f,n1h+j1f,n2h+j2f,j3f+n3h,fpad);
-          applyWindow(w1,w2,w3,m1c,m2c,m3c,g,n1h+j1g,n2h+j2g,j3g+n3h,gpad);
-          fft1.realToComplex1(-1,n2p,n3p,fpad,fpad);
-          fft1.realToComplex1(-1,n2p,n3p,gpad,gpad);
-          fft2.complexToComplex2(-1,n1fft/2+1,n3p,fpad,fpad);
-          fft2.complexToComplex2(-1,n1fft/2+1,n3p,gpad,gpad);
-          fft3.complexToComplex3(-1,n1fft/2+1,n2fft,fpad,fpad);
-          fft3.complexToComplex3(-1,n1fft/2+1,n2fft,gpad,gpad);
-          for (int i3=0; i3<n3fft; ++i3) {
-            float[][] fpad3 = fpad[i3];
-            float[][] gpad3 = gpad[i3];
-            for (int i2=0; i2<n2fft; ++i2) {
-              float[] fpad32 = fpad3[i2];
-              float[] gpad32 = gpad3[i2];
-              for (int i1=0; i1<n1pad; i1+=2) {
-                float fr = fpad32[i1  ];
-                float fi = fpad32[i1+1];
-                float gr = gpad32[i1  ];
-                float gi = gpad32[i1+1];
-                gpad32[i1  ] = fr*gr+fi*gi;
-                gpad32[i1+1] = fr*gi-fi*gr;
-              }
-            }
-          }
-          fft3.complexToComplex3(1,n1fft/2+1,n2fft,gpad,gpad);
-          fft2.complexToComplex2(1,n1fft/2+1,n3l,gpad,gpad);
-          fft1.realToComplex1(1,n2l,n3l,gpad,gpad);
-          float s = 1.0f/((float)n1fft*(float)n2fft*(float)n3fft);
-          float[] cc = c[i3c][i2c][i1c];
-          for (int i3=0,ic=0; i3<n3l; ++i3) {
-            float[][] gpad3 = gpad[i3];
-            for (int i2=0; i2<n2l; ++i2) {
-              float[] gpad32 = gpad3[i2];
-              for (int i1=0; i1<n1l; ++i1,++ic) {
-                cc[ic] = s*gpad32[i1];
-              }
-            }
-          }
-        }
       }
     }
   }
@@ -1336,6 +1111,7 @@ public class LocalCorrelationFilter {
     applyWindow(w1,w2,w3,j1f,j2f,j3f,f,j1g,j2g,j3g,g);
   }
 
+
   ///////////////////////////////////////////////////////////////////////////
   // private
 
@@ -1567,8 +1343,8 @@ public class LocalCorrelationFilter {
     {-C227,  C118,  C118,  C118,  C112,  C112,  C112,  C118,  C118,  C118},
   };
 
+  private Window _window = Window.GAUSSIAN; // window for correlations
   private Type _type = Type.SIMPLE; // correlation type
-  private Window _window = Window.GAUSSIAN; // window type
   private double _sigma1,_sigma2,_sigma3; // window half-widths
   private Filter _f1,_f2,_f3; // filters used to implement windows
   private int _dimension; // dimension of input arrays; 0 if no inputs
@@ -1607,7 +1383,7 @@ public class LocalCorrelationFilter {
     double scale1 = 1.0;
     if (_window==Window.GAUSSIAN) {
       scale1 *= sqrt(2.0*PI)*_sigma1;
-    } else if (_window==Window.RECTANGLE) {
+    } else {
       scale1 *= 1.0+2.0*_sigma1;
     }
 
@@ -1619,8 +1395,8 @@ public class LocalCorrelationFilter {
     if (_type==Type.SYMMETRIC) {
       if (_window==Window.GAUSSIAN) {
         scale1 *= exp((-0.125*l1*l1)/(_sigma1*_sigma1));
-      } else if (_window==Window.RECTANGLE) {
-        scale1 *= max(0,1.0+2.0*_sigma1-abs(l1))/(1.0+2.0*_sigma1);
+      } else {
+        scale1 *= max(0.0,1.0+2.0*_sigma1-abs(l1))/(1.0+2.0*_sigma1);
       }
     }
     float scale = (float)scale1;
@@ -1633,8 +1409,8 @@ public class LocalCorrelationFilter {
       h[i1] = scale*f[i1-l1f]*g[i1+l1g];
     }
 
-    // If symmetric and Gaussian and odd lag, delay (shift) by 1/2 sample.
-    if (_type==Type.SYMMETRIC && _window==Window.GAUSSIAN) {
+    // If Gaussian and symmetric and odd lag, delay (shift) by 1/2 sample.
+    if (_window==Window.GAUSSIAN && _type==Type.SYMMETRIC) {
       if (l1f!=l1g) {
         shift(h,c);
         Array.copy(c,h);
@@ -1645,8 +1421,8 @@ public class LocalCorrelationFilter {
     // with a rectangle window, the width of the product rectangle depends 
     // on the lag, so we construct a new rectangle filter for each lag.
     Filter f1 = _f1;
-    if (_type==Type.SYMMETRIC && _window==Window.RECTANGLE)
-      f1 = new RFilter(_sigma1,l1);
+    if (_window==Window.RECTANGLE && _type==Type.SYMMETRIC)
+      f1 = new RectangleFilter(_sigma1,l1);
     f1.apply(h,c);
   }
 
@@ -1674,14 +1450,30 @@ public class LocalCorrelationFilter {
       l2g = (l2>=0)?(l2+1)/2:(l2+0)/2;
     }
 
-    // Scale factor so that peak of window = 1.0.
-    double scale1 = sqrt(2.0*PI)*_sigma1;
-    double scale2 = sqrt(2.0*PI)*_sigma2;
+    // Scale factor so that center of window = 1.
+    double scale1 = 1.0;
+    double scale2 = 1.0;
+    if (_window==Window.GAUSSIAN) {
+      scale1 *= sqrt(2.0*PI)*_sigma1;
+      scale2 *= sqrt(2.0*PI)*_sigma2;
+    } else {
+      scale1 *= 1.0+2.0*_sigma1;
+      scale2 *= 1.0+2.0*_sigma2;
+    }
 
-    // If symmetric correlation, extra lag-dependent scaling.
+    // If symmetric correlation, need extra lag-dependent scaling.
+    // This scaling accounts for the separation (by lag samples) of 
+    // the two windows implicitly applied to f and g. The filter we
+    // apply below to the correlation product h is the product of 
+    // those two windows.
     if (_type==Type.SYMMETRIC) {
-      scale1 *= exp((-0.125*l1*l1)/(_sigma1*_sigma1));
-      scale2 *= exp((-0.125*l2*l2)/(_sigma2*_sigma2));
+      if (_window==Window.GAUSSIAN) {
+        scale1 *= exp((-0.125*l1*l1)/(_sigma1*_sigma1));
+        scale2 *= exp((-0.125*l2*l2)/(_sigma2*_sigma2));
+      } else {
+        scale1 *= max(0.0,1.0+2.0*_sigma1-abs(l1))/(1.0+2.0*_sigma1);
+        scale2 *= max(0.0,1.0+2.0*_sigma2-abs(l2))/(1.0+2.0*_sigma2);
+      }
     }
     float scale = (float)(scale1*scale2);
 
@@ -1700,8 +1492,8 @@ public class LocalCorrelationFilter {
       }
     }
 
-    // If symmetric and odd lag, delay (shift) by 1/2 sample.
-    if (_type==Type.SYMMETRIC) {
+    // If Gaussian and symmetric and odd lag, delay (shift) by 1/2 sample.
+    if (_window==Window.GAUSSIAN && _type==Type.SYMMETRIC) {
       if (l1f!=l1g) {
         shift1(h,c);
         Array.copy(c,h);
@@ -1712,10 +1504,18 @@ public class LocalCorrelationFilter {
       }
     }
 
-    // Filter correlation product with window.
-    _f1.apply1(h,c);
+    // Filter correlation product with window. For symmetric correlations
+    // with a rectangle window, the width of the product rectangle depends 
+    // on the lag, so we construct a new rectangle filter for each lag.
+    Filter f1 = _f1;
+    Filter f2 = _f2;
+    if (_window==Window.RECTANGLE && _type==Type.SYMMETRIC) {
+      f1 = new RectangleFilter(_sigma1,l1);
+      f2 = new RectangleFilter(_sigma2,l2);
+    }
+    f1.apply1(h,c);
     Array.copy(c,h);
-    _f2.apply2(h,c);
+    f2.apply2(h,c);
   }
 
   private void correlate(
@@ -1748,16 +1548,35 @@ public class LocalCorrelationFilter {
       l3g = (l3>=0)?(l3+1)/2:(l3+0)/2;
     }
 
-    // Scale factor so that peak of window = 1.0.
-    double scale1 = sqrt(2.0*PI)*_sigma1;
-    double scale2 = sqrt(2.0*PI)*_sigma2;
-    double scale3 = sqrt(2.0*PI)*_sigma3;
+    // Scale factor so that center of window = 1.
+    double scale1 = 1.0;
+    double scale2 = 1.0;
+    double scale3 = 1.0;
+    if (_window==Window.GAUSSIAN) {
+      scale1 *= sqrt(2.0*PI)*_sigma1;
+      scale2 *= sqrt(2.0*PI)*_sigma2;
+      scale3 *= sqrt(2.0*PI)*_sigma3;
+    } else {
+      scale1 *= 1.0+2.0*_sigma1;
+      scale2 *= 1.0+2.0*_sigma2;
+      scale3 *= 1.0+2.0*_sigma3;
+    }
 
-    // If symmetric correlation, extra lag-dependent scaling.
+    // If symmetric correlation, need extra lag-dependent scaling.
+    // This scaling accounts for the separation (by lag samples) of 
+    // the two windows implicitly applied to f and g. The filter we
+    // apply below to the correlation product h is the product of 
+    // those two windows.
     if (_type==Type.SYMMETRIC) {
-      scale1 *= exp((-0.125*l1*l1)/(_sigma1*_sigma1));
-      scale2 *= exp((-0.125*l2*l2)/(_sigma2*_sigma2));
-      scale3 *= exp((-0.125*l3*l3)/(_sigma3*_sigma3));
+      if (_window==Window.GAUSSIAN) {
+        scale1 *= exp((-0.125*l1*l1)/(_sigma1*_sigma1));
+        scale2 *= exp((-0.125*l2*l2)/(_sigma2*_sigma2));
+        scale3 *= exp((-0.125*l3*l3)/(_sigma3*_sigma3));
+      } else {
+        scale1 *= max(0.0,1.0+2.0*_sigma1-abs(l1))/(1.0+2.0*_sigma1);
+        scale2 *= max(0.0,1.0+2.0*_sigma2-abs(l2))/(1.0+2.0*_sigma2);
+        scale3 *= max(0.0,1.0+2.0*_sigma3-abs(l3))/(1.0+2.0*_sigma3);
+      }
     }
     float scale = (float)(scale1*scale2*scale3);
 
@@ -1783,8 +1602,8 @@ public class LocalCorrelationFilter {
       }
     }
 
-    // If symmetric and odd lag, delay (shift) by 1/2 sample.
-    if (_type==Type.SYMMETRIC) {
+    // If Gaussian and symmetric and odd lag, delay (shift) by 1/2 sample.
+    if (_window==Window.GAUSSIAN && _type==Type.SYMMETRIC) {
       if (l1f!=l1g) {
         shift1(h,c);
         Array.copy(c,h);
@@ -1799,12 +1618,22 @@ public class LocalCorrelationFilter {
       }
     }
 
-    // Filter correlation product with window.
-    _f1.apply1(h,c);
+    // Filter correlation product with window. For symmetric correlations
+    // with a rectangle window, the width of the product rectangle depends 
+    // on the lag, so we construct a new rectangle filter for each lag.
+    Filter f1 = _f1;
+    Filter f2 = _f2;
+    Filter f3 = _f3;
+    if (_window==Window.RECTANGLE && _type==Type.SYMMETRIC) {
+      f1 = new RectangleFilter(_sigma1,l1);
+      f2 = new RectangleFilter(_sigma2,l2);
+      f3 = new RectangleFilter(_sigma3,l3);
+    }
+    f1.apply1(h,c);
     Array.copy(c,h);
-    _f2.apply2(h,c);
+    f2.apply2(h,c);
     Array.copy(c,h);
-    _f3.apply3(h,c);
+    f3.apply3(h,c);
   }
 
   private void updateNormalize() {
@@ -1832,8 +1661,8 @@ public class LocalCorrelationFilter {
         float[][] g = _g[0];
         float[][] sf = _s[0][0];
         float[][] sg = _s[1][0];
-        //correlate(0,f,f,sf);
-        //correlate(0,g,g,sg);
+        correlate(0,0,f,f,sf);
+        correlate(0,0,g,g,sg);
         Array.sqrt(sf,sf);
         Array.sqrt(sg,sg);
         Array.div(1.0f,sf,sf);
@@ -1843,8 +1672,8 @@ public class LocalCorrelationFilter {
         float[][][] g = _g;
         float[][][] sf = _s[0];
         float[][][] sg = _s[1];
-        //correlate(0,f,f,sf);
-        //correlate(0,g,g,sg);
+        correlate(0,0,0,f,f,sf);
+        correlate(0,0,0,g,g,sg);
         Array.sqrt(sf,sf);
         Array.sqrt(sg,sg);
         Array.div(1.0f,sf,sf);
@@ -1868,8 +1697,8 @@ public class LocalCorrelationFilter {
         float[][] s = _s[0][0];
         float[][] sf = s;
         float[][] sg = new float[_n2][_n1];
-        //correlate(0,f,f,sf);
-        //correlate(0,g,g,sg);
+        correlate(0,0,f,f,sf);
+        correlate(0,0,g,g,sg);
         Array.mul(sf,sg,s);
         Array.sqrt(s,s);
         Array.div(1.0f,s,s);
@@ -1879,8 +1708,8 @@ public class LocalCorrelationFilter {
         float[][][] s = _s[0];
         float[][][] sf = s;
         float[][][] sg = new float[_n3][_n2][_n1];
-        //correlate(0,f,f,sf);
-        //correlate(0,g,g,sg);
+        correlate(0,0,0,f,f,sf);
+        correlate(0,0,0,g,g,sg);
         Array.mul(sf,sg,s);
         Array.sqrt(s,s);
         Array.div(1.0f,s,s);
@@ -2007,30 +1836,6 @@ public class LocalCorrelationFilter {
         g2[i3] = g[i3][i2];
       }
       shift2(f2,g2);
-    }
-  }
-
-  private static void get2(int i2, float[][][] x, float[][] x2) {
-    int n3 = x2.length;
-    int n1 = x2[0].length;
-    for (int i3=0; i3<n3; ++i3) {
-      float[] x32 = x[i3][i2];
-      float[] x23 = x2[i3];
-      for (int i1=0; i1<n1; ++i1) {
-        x23[i1] = x32[i1];
-      }
-    }
-  }
-
-  private static void set2(int i2, float[][] x2, float[][][] x) {
-    int n3 = x2.length;
-    int n1 = x2[0].length;
-    for (int i3=0; i3<n3; ++i3) {
-      float[] x32 = x[i3][i2];
-      float[] x23 = x2[i3];
-      for (int i1=0; i1<n1; ++i1) {
-        x32[i1] = x23[i1];
-      }
     }
   }
 
@@ -2191,11 +1996,11 @@ public class LocalCorrelationFilter {
     public void apply2(float[][][] x, float[][][] y);
     public void apply3(float[][][] x, float[][][] y);
   }
-  private class RFilter implements Filter {
-    public RFilter(double sigma) {
+  private class RectangleFilter implements Filter {
+    public RectangleFilter(double sigma) {
       this(sigma,0);
     }
-    public RFilter(double sigma, int lag) {
+    public RectangleFilter(double sigma, int lag) {
       int n = (int)round(1+2*sigma);
       int m = max(0,(n-1-abs(lag))/2);
       int l = (lag%2==0)?-m:-m-1;
@@ -2221,8 +2026,8 @@ public class LocalCorrelationFilter {
     }
     private RecursiveRectangleFilter _rrf;
   }
-  private class GFilter implements Filter {
-    public GFilter(double sigma) {
+  private class GaussianFilter implements Filter {
+    public GaussianFilter(double sigma) {
       _rgf = new RecursiveGaussianFilter(sigma);
     }
     public void apply(float[] x, float[] y) {
@@ -2244,5 +2049,232 @@ public class LocalCorrelationFilter {
       _rgf.applyXX0(x,y);
     }
     private RecursiveGaussianFilter _rgf;
+  }
+
+  /**
+   * Like {@link #apply(int,int,int,int,float[],float[],float[][])}, but
+   * uses conventional windowing and FFTs to perform the cross-correlations.
+   * Best for small numbers of cross-correlation windows.
+   * The number of lags is nl1 = l1max-l1min+1.
+   * @param l1min the minimum lag in the 1st dimension.
+   * @param l1max the maximum lag in the 1st dimension.
+   * @param j1c the sample index of the first correlation.
+   * @param k1c the sample stride between correlations.
+   * @param f the 1st input array; can be the same as g.
+   * @param g the 2nd input array; can be the same as f.
+   * @param c the output array; cannot be the same as f or g.
+   */
+  // Not yet tested!
+  private void applyFft(
+    int l1min, int l1max, int j1c, int k1c,
+    float[] f, float[] g, float[][] c)
+  {
+    float[] w1 = makeGaussianWindow(_sigma1);
+    int n1f = f.length;
+    int n1c = c.length;
+    int n1w = w1.length;
+    int n1h = (n1w-1)/2;
+    int n1l = l1max-l1min+1;
+    int n1p = n1w+max(-l1min,n1l-1+l1min);
+    int n1fft = FftReal.nfftFast(n1p);
+    int n1pad = n1fft+2;
+    FftReal fft = new FftReal(n1fft);
+    float[] fpad = new float[n1pad];
+    float[] gpad = new float[n1pad];
+    int j1f = max(0, l1min);
+    int j1g = max(0,-l1min);
+    for (int i1c=0; i1c<n1c; ++i1c) {
+      int m1c = j1c+i1c*k1c;
+      Array.zero(fpad);
+      Array.zero(gpad);
+      applyWindow(w1,m1c,f,n1h+j1f,fpad);
+      applyWindow(w1,m1c,g,n1h+j1g,gpad);
+      fft.realToComplex(-1,fpad,fpad);
+      fft.realToComplex(-1,gpad,gpad);
+      for (int i1=0; i1<n1pad; i1+=2) {
+        float fr = fpad[i1  ];
+        float fi = fpad[i1+1];
+        float gr = gpad[i1  ];
+        float gi = gpad[i1+1];
+        gpad[i1  ] = fr*gr+fi*gi;
+        gpad[i1+1] = fr*gi-fi*gr;
+      }
+      fft.complexToReal(1,gpad,gpad);
+      float s = 1.0f/(float)n1fft;
+      float[] cc = c[i1c];
+      for (int i1=0; i1<n1l; ++i1)
+        cc[i1] = s*gpad[i1];
+    }
+  }
+
+  // Not yet tested!
+  private void applyFft(
+    int l1min, int l1max, int j1c, int k1c,
+    int l2min, int l2max, int j2c, int k2c,
+    float[][] f, float[][] g, float[][][] c)
+  {
+    float[] w1 = makeGaussianWindow(_sigma1);
+    float[] w2 = makeGaussianWindow(_sigma2);
+    int j1f = max(0, l1min);
+    int j1g = max(0,-l1min);
+    int n1f = f[0].length;
+    int n1g = g[0].length;
+    int n1c = c[0].length;
+    int n1w = w1.length;
+    int n1h = (n1w-1)/2;
+    int n1l = l1max-l1min+1;
+    int n1p = n1w+max(-l1min,n1l-1+l1min);
+    int n1fft = FftReal.nfftFast(n1p);
+    int n1pad = n1fft+2;
+    int j2f = max(0, l2min);
+    int j2g = max(0,-l2min);
+    int n2f = f.length;
+    int n2g = g.length;
+    int n2c = c.length;
+    int n2w = w2.length;
+    int n2h = (n2w-1)/2;
+    int n2l = l2max-l2min+1;
+    int n2p = n2w+max(-l2min,n2l-1+l2min);
+    int n2fft = FftComplex.nfftFast(n2p);
+    int n2pad = n2fft*2;
+    FftReal fft1 = new FftReal(n1fft);
+    FftComplex fft2 = new FftComplex(n2fft);
+    float[][] fpad = new float[n2pad][n1pad];
+    float[][] gpad = new float[n2pad][n1pad];
+    for (int i2c=0; i2c<n2c; ++i2c) {
+      int m2c = j2c+i2c*k2c;
+      for (int i1c=0; i1c<n1c; ++i1c) {
+        int m1c = j1c+i1c*k1c;
+        Array.zero(fpad);
+        Array.zero(gpad);
+        applyWindow(w1,w2,m1c,m2c,f,n1h+j1f,n2h+j2f,fpad);
+        applyWindow(w1,w2,m1c,m2c,g,n1h+j1g,n2h+j2g,gpad);
+        fft1.realToComplex1(-1,n2p,fpad,fpad);
+        fft1.realToComplex1(-1,n2p,gpad,gpad);
+        fft2.complexToComplex2(-1,n1fft/2+1,fpad,fpad);
+        fft2.complexToComplex2(-1,n1fft/2+1,gpad,gpad);
+        for (int i2=0; i2<n2fft; ++i2) {
+          float[] fpad2 = fpad[i2];
+          float[] gpad2 = gpad[i2];
+          for (int i1=0; i1<n1pad; i1+=2) {
+            float fr = fpad2[i1  ];
+            float fi = fpad2[i1+1];
+            float gr = gpad2[i1  ];
+            float gi = gpad2[i1+1];
+            gpad2[i1  ] = fr*gr+fi*gi;
+            gpad2[i1+1] = fr*gi-fi*gr;
+          }
+        }
+        fft2.complexToComplex2(1,n1fft/2+1,gpad,gpad);
+        fft1.realToComplex1(1,n2l,gpad,gpad);
+        float s = 1.0f/((float)n1fft*(float)n2fft);
+        float[] cc = c[i2c][i1c];
+        for (int i2=0,ic=0; i2<n2l; ++i2) {
+          float[] gpad2 = gpad[i2];
+          for (int i1=0; i1<n1l; ++i1,++ic) {
+            cc[ic] = s*gpad2[i1];
+          }
+        }
+      }
+    }
+  }
+
+  // Not yet tested!
+  private void applyFft(
+    int l1min, int l1max, int j1c, int k1c,
+    int l2min, int l2max, int j2c, int k2c,
+    int l3min, int l3max, int j3c, int k3c,
+    float[][][] f, float[][][] g, float[][][][] c)
+  {
+    float[] w1 = makeGaussianWindow(_sigma1);
+    float[] w2 = makeGaussianWindow(_sigma2);
+    float[] w3 = makeGaussianWindow(_sigma3);
+    int j1f = max(0, l1min);
+    int j1g = max(0,-l1min);
+    int n1f = f[0][0].length;
+    int n1g = g[0][0].length;
+    int n1c = c[0][0].length;
+    int n1w = w1.length;
+    int n1h = (n1w-1)/2;
+    int n1l = l1max-l1min+1;
+    int n1p = n1w+max(-l1min,n1l-1+l1min);
+    int n1fft = FftReal.nfftFast(n1p);
+    int n1pad = n1fft+2;
+    int j2f = max(0, l2min);
+    int j2g = max(0,-l2min);
+    int n2f = f[0].length;
+    int n2g = g[0].length;
+    int n2c = c[0].length;
+    int n2w = w2.length;
+    int n2h = (n2w-1)/2;
+    int n2l = l2max-l2min+1;
+    int n2p = n2w+max(-l2min,n2l-1+l2min);
+    int n2fft = FftComplex.nfftFast(n2p);
+    int n2pad = n2fft*2;
+    int j3f = max(0, l3min);
+    int j3g = max(0,-l3min);
+    int n3f = f.length;
+    int n3g = g.length;
+    int n3c = c.length;
+    int n3w = w3.length;
+    int n3h = (n3w-1)/2;
+    int n3l = l3max-l3min+1;
+    int n3p = n3w+max(-l3min,n3l-1+l3min);
+    int n3fft = FftComplex.nfftFast(n3p);
+    int n3pad = n3fft*2;
+    FftReal fft1 = new FftReal(n1fft);
+    FftComplex fft2 = new FftComplex(n2fft);
+    FftComplex fft3 = new FftComplex(n3fft);
+    float[][][] fpad = new float[n3pad][n2pad][n1pad];
+    float[][][] gpad = new float[n3pad][n2pad][n1pad];
+    for (int i3c=0; i3c<n3c; ++i3c) {
+      int m3c = j3c+i3c*k3c;
+      for (int i2c=0; i2c<n2c; ++i2c) {
+        int m2c = j2c+i2c*k2c;
+        for (int i1c=0; i1c<n1c; ++i1c) {
+          int m1c = j1c+i1c*k1c;
+          Array.zero(fpad);
+          Array.zero(gpad);
+          applyWindow(w1,w2,w3,m1c,m2c,m3c,f,n1h+j1f,n2h+j2f,j3f+n3h,fpad);
+          applyWindow(w1,w2,w3,m1c,m2c,m3c,g,n1h+j1g,n2h+j2g,j3g+n3h,gpad);
+          fft1.realToComplex1(-1,n2p,n3p,fpad,fpad);
+          fft1.realToComplex1(-1,n2p,n3p,gpad,gpad);
+          fft2.complexToComplex2(-1,n1fft/2+1,n3p,fpad,fpad);
+          fft2.complexToComplex2(-1,n1fft/2+1,n3p,gpad,gpad);
+          fft3.complexToComplex3(-1,n1fft/2+1,n2fft,fpad,fpad);
+          fft3.complexToComplex3(-1,n1fft/2+1,n2fft,gpad,gpad);
+          for (int i3=0; i3<n3fft; ++i3) {
+            float[][] fpad3 = fpad[i3];
+            float[][] gpad3 = gpad[i3];
+            for (int i2=0; i2<n2fft; ++i2) {
+              float[] fpad32 = fpad3[i2];
+              float[] gpad32 = gpad3[i2];
+              for (int i1=0; i1<n1pad; i1+=2) {
+                float fr = fpad32[i1  ];
+                float fi = fpad32[i1+1];
+                float gr = gpad32[i1  ];
+                float gi = gpad32[i1+1];
+                gpad32[i1  ] = fr*gr+fi*gi;
+                gpad32[i1+1] = fr*gi-fi*gr;
+              }
+            }
+          }
+          fft3.complexToComplex3(1,n1fft/2+1,n2fft,gpad,gpad);
+          fft2.complexToComplex2(1,n1fft/2+1,n3l,gpad,gpad);
+          fft1.realToComplex1(1,n2l,n3l,gpad,gpad);
+          float s = 1.0f/((float)n1fft*(float)n2fft*(float)n3fft);
+          float[] cc = c[i3c][i2c][i1c];
+          for (int i3=0,ic=0; i3<n3l; ++i3) {
+            float[][] gpad3 = gpad[i3];
+            for (int i2=0; i2<n2l; ++i2) {
+              float[] gpad32 = gpad3[i2];
+              for (int i1=0; i1<n1l; ++i1,++ic) {
+                cc[ic] = s*gpad32[i1];
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }
