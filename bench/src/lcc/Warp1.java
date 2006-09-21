@@ -56,6 +56,7 @@ public class Warp1 {
   }
 
   private void testSimpleSymmetric() {
+    _window = RECTANGLE;
     _type = SIMPLE;
     testWarp();
     _type = SYMMETRIC;
@@ -71,6 +72,8 @@ public class Warp1 {
 
   private void testWarp() {
     float sigma = _sigma;
+    if (_window==RECTANGLE)
+      sigma = (float)(0.5*(sqrt(2.0*PI)*sigma-1.0)); // area same as Gaussian
     int n = _length;
     int lmin = _lmin;
     int lmax = _lmax;

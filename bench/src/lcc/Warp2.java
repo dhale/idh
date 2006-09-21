@@ -3,6 +3,7 @@ package lcc;
 import java.awt.*;
 import javax.swing.*;
 
+import edu.mines.jtk.awt.*;
 import edu.mines.jtk.dsp.*;
 import edu.mines.jtk.io.*;
 import edu.mines.jtk.mosaic.*;
@@ -44,11 +45,15 @@ public class Warp2 {
   private float _d2max = 3.00f;
   private int _lmax = 7;
   private int _lmin = -_lmax;
-  private LocalCorrelationFilter.Type _type = SIMPLE; 
+  private LocalCorrelationFilter.Type _type = SYMMETRIC; 
   private LocalCorrelationFilter.Window _window = GAUSSIAN; 
-  private float _sigma = 8.0f;
+  private float _sigma = 6.0f;
+  private LocalCorrelationFilter _lcf = 
+    new LocalCorrelationFilter(_type,_window,_sigma);
   private Displacement _disp = 
     new GaussianDisplacement(_d1max,_d2max,_n1,_n2);
+  //private Displacement _disp = 
+  //  new SinusoidDisplacement(_d1max,_d2max,_n1,_n2);
   private float[][] _f,_g;
 
   private Warp2(String[] args) {
@@ -56,6 +61,7 @@ public class Warp2 {
       _pngDir = ".";
     initImages();
     doIntro();
+    doFindLags();
   }
 
   private float[][] readImage() {
@@ -76,9 +82,41 @@ public class Warp2 {
     plot(_g,clip,"imageg");
   }
 
+  private void doFindLags() {
+    _lcf.setInputs(_f,_g);
+    int min1 = _lmin;
+    int max1 = _lmax;
+    int min2 = _lmin;
+    int max2 = _lmax;
+    byte[][] l1 = new byte[_n2][_n1];
+    byte[][] l2 = new byte[_n2][_n1];
+    float[][] u1 = new float[_n2][_n1];
+    float[][] u2 = new float[_n2][_n1];
+    _lcf.findMaxLags(min1,max1,min2,max2,l1,l2);
+    _lcf.refineLags(l1,l2,u1,u2);
+    plotu(u1,_d1max,null);
+    plotu(u2,_d2max,null);
+    float[][] e1 = _disp.u1m();
+    float[][] e2 = _disp.u2m();
+    plotu(e1,_d1max,null);
+    plotu(e2,_d2max,null);
+  }
+
   private void plot(float[][] f, float clip, String png) {
     PlotPanel panel = panel();
     PixelsView pv = panel.addPixels(f);
+    if (clip!=0.0f) {
+      pv.setClips(-clip,clip);
+    } else {
+      pv.setPercentiles(1.0f,99.0f);
+    }
+    frame(panel,png);
+  }
+
+  private void plotu(float[][] u, float clip, String png) {
+    PlotPanel panel = panel();
+    PixelsView pv = panel.addPixels(u);
+    pv.setColorModel(ColorMap.JET);
     if (clip!=0.0f) {
       pv.setClips(-clip,clip);
     } else {
