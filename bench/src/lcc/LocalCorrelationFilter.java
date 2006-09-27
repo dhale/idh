@@ -56,7 +56,7 @@ public class LocalCorrelationFilter {
 
   /**
    * Cross-correlations types.
-   * The default type is simple.
+   * The default type is SYMMETRIC.
    */
   enum Type {
     SIMPLE,
@@ -1188,7 +1188,7 @@ public class LocalCorrelationFilter {
   };
 
   private Window _window = Window.GAUSSIAN; // window for correlations
-  private Type _type = Type.SIMPLE; // correlation type
+  private Type _type = Type.SYMMETRIC; // correlation type
   private double _sigma1,_sigma2,_sigma3; // window half-widths
   private Filter _f1,_f2,_f3; // filters used to implement windows
   private int _dimension; // dimension of input arrays; 0 if no inputs
