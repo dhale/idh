@@ -763,7 +763,6 @@ public class LocalCorrelationFilter {
     for (int i2=0; i2<n2; ++i2) {
       for (int i1=0; i1<n1; ++i1) {
         boolean pd = false;
-        double q0 = 0.0;
         double aa0 = a0[i2][i1];
         double aa1 = a1[i2][i1];
         double aa2 = a2[i2][i1];
