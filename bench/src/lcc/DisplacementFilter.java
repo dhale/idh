@@ -44,7 +44,7 @@ public class DisplacementFilter {
   // private
 
 
-  // Vector.
+  // Vector of displacements u.
   private static class UVect extends ArrayVect3f {
     UVect(float[][][] q) {
       _q = q;
@@ -101,7 +101,7 @@ public class DisplacementFilter {
     private float[][][] _q;
   }
 
-  // Smoothing transform.
+  // Smoothing transform u = S*v and its transpose.
   private static class VSmooth implements LinearTransform {
     public void forward(Vect data, VectConst model) {
       float[][][] v = ((ArrayVect3f)model).getData();
@@ -120,8 +120,13 @@ public class DisplacementFilter {
       float[][][] u = ((ArrayVect3f)data).getData();
       float[][] u1 = u[0];
       float[][] u2 = u[1];
-      _df.applyInverseTranspose(u1,v1);
-      _df.applyInverseTranspose(u2,v2);
+      int n1 = u1[0].length;
+      int n2 = u1.length;
+      float[][] vt = new float[n2][n1];
+      _df.applyInverseTranspose(u1,vt);
+      Array.add(vt,v1,v1);
+      _df.applyInverseTranspose(u2,vt);
+      Array.add(vt,v2,v2);
     }
     public void inverseHessian(Vect model) {
     }
