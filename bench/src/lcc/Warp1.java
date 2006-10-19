@@ -40,8 +40,8 @@ public class Warp1 {
   private int _length = 315;
   private float _flo = 0.15f;
   private float _fhi = 0.25f;
-  private float _dmax = 5.5f;
-  private int _lmax = 8;
+  private float _dmax = 0.5f;
+  private int _lmax = 1;
   private int _lmin = -_lmax;
   private LocalCorrelationFilter.Type _type = SIMPLE; 
   private LocalCorrelationFilter.Window _window = GAUSSIAN; 
@@ -51,8 +51,8 @@ public class Warp1 {
   private float[] _sequence = makeRandom(_length,_flo,_fhi);
 
   private Warp1(String[] args) {
-    testSimpleSymmetric();
-    //testGaussianRectangle();
+    //testSimpleSymmetric();
+    testGaussianRectangle();
   }
 
   private void testSimpleSymmetric() {
@@ -153,6 +153,7 @@ public class Warp1 {
     SequenceView fv = panel.addSequence(0,0,s,f);
     SequenceView gv = panel.addSequence(1,0,s,g);
     PixelsView cv = panel.addPixels(2,0,s,slag,c);
+    cv.setClips(-1.0f,1.0f);
     cv.setColorModel(ColorMap.JET);
     PointsView dv = panel.addPoints(2,0,s,d);
     dv.setLineColor(Color.WHITE);

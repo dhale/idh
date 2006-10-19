@@ -185,6 +185,7 @@ public class SwView extends JFrame {
     //float[][][] h = HorizonReader.readTopBase();
     //addHorizons(world,h);
     addSlices(world,loadData("sw02a.dat"),5000.0f,ColorMap.GRAY);
+    //addSlices(world,loadData("sw04a.dat"),5000.0f,ColorMap.GRAY);
     //addSlices(world,loadData("sw04a13.dat"),5000.0f,ColorMap.GRAY);
     //addSlices(world,loadData("r1.dat"),5000.0f,ColorMap.GRAY);
     //addSlices(world,loadData("r13.dat"),5000.0f,ColorMap.GRAY);

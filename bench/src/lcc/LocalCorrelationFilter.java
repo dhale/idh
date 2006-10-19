@@ -696,6 +696,14 @@ public class LocalCorrelationFilter {
     byte[][] l1, byte[][] l2,
     float[][] u1, float[][] u2) 
   {
+    refineLags(l1,l2,u1,u2,null);
+  }
+
+  public void refineLags(
+    byte[][] l1, byte[][] l2,
+    float[][] u1, float[][] u2,
+    float[][][] q)
+  {
     int n1 = _n1;
     int n2 = _n2;
 
@@ -720,6 +728,7 @@ public class LocalCorrelationFilter {
 
     // Coefficients for quadratic fit.
     float[][] c = new float[n2][n1];
+    float[][] a0 = new float[n2][n1];
     float[][] a1 = new float[n2][n1];
     float[][] a2 = new float[n2][n1];
     float[][] a3 = new float[n2][n1];
@@ -728,7 +737,7 @@ public class LocalCorrelationFilter {
     for (int lag2=min2-1; lag2<=max2+1; ++lag2) {
       for (int lag1=min1-1; lag1<=max1+1; ++lag1) {
         correlate(lag1,lag2,c);
-        if (_type==Type.SIMPLE)
+        if (_type==Type.SIMPLE || q!=null)
           normalize(lag1,lag2,c);
         for (int i2=0; i2<n2; ++i2) {
           for (int i1=0; i1<n1; ++i1) {
@@ -738,6 +747,7 @@ public class LocalCorrelationFilter {
               int k = (k1+1)+3*(k2+1);
               float[] ck = C2[k];
               float ci = c[i2][i1];
+              a0[i2][i1] += ck[0]*ci;
               a1[i2][i1] += ck[1]*ci;
               a2[i2][i1] += ck[2]*ci;
               a3[i2][i1] += ck[3]*ci;
@@ -752,19 +762,28 @@ public class LocalCorrelationFilter {
     // Cholesky decomposition solves 2x2 system for refined lags.
     for (int i2=0; i2<n2; ++i2) {
       for (int i1=0; i1<n1; ++i1) {
+        boolean pd = false;
+        double q0 = 0.0;
+        double aa0 = a0[i2][i1];
+        double aa1 = a1[i2][i1];
+        double aa2 = a2[i2][i1];
+        double aa3 = a3[i2][i1];
+        double aa4 = a4[i2][i1];
+        double aa5 = a5[i2][i1];
         double w1 = 0.0;
         double w2 = 0.0;
-        double b1 = a1[i2][i1];
-        double b2 = a2[i2][i1];
-        double a21 = -a3[i2][i1];
-        double a11 = -2.0*a4[i2][i1];
-        double a22 = -2.0*a5[i2][i1];
+        double b1 = aa1;
+        double b2 = aa2;
+        double a21 = -aa3;
+        double a11 = -2.0*aa4;
+        double a22 = -2.0*aa5;
         double d11 = a11;
         if (d11>0.0) {
           double l11 = sqrt(d11);
           double l21 = a21/l11;
           double d22 = a22-l21*l21;
           if (d22>0.0) {
+            pd = true;
             double l22 = sqrt(d22);
             double v1 = b1/l11;
             double v2 = (b2-l21*v1)/l22;
@@ -782,8 +801,27 @@ public class LocalCorrelationFilter {
             }
           }
         }
+
+        // Refined lags.
         u1[i2][i1] = (float)(w1+l1[i2][i1]);
         u2[i2][i1] = (float)(w2+l2[i2][i1]);
+
+        // Optional fitting coefficients.
+        if (q!=null) {
+          q[0][i2][i1] = 0.0f;
+          q[1][i2][i1] = 0.0f;
+          q[2][i2][i1] = 0.0f;
+          q[3][i2][i1] = 0.0f;
+          if (pd) {
+            double cp = aa0+aa1*w1+aa2*w2+aa3*w1*w2+aa4*w1*w1+aa5*w2*w2;
+            if (cp>0.0) {
+              q[0][i2][i1] = (float)cp;
+              q[1][i2][i1] = (float)(0.5*a11);
+              q[2][i2][i1] = (float)(0.5*a21);
+              q[3][i2][i1] = (float)(0.5*a22);
+            }
+          }
+        }
       }
     }
   }
