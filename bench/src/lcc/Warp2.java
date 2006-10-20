@@ -41,18 +41,18 @@ public class Warp2 {
 
   int _n1 = 315;
   int _n2 = 315;
-  private float _d1max = 2.00f;
-  private float _d2max = 1.00f;
-  private int _lmax = 3;
+  private float _d1max = 6.00f;
+  private float _d2max = 3.00f;
+  private int _lmax = 7;
   private int _lmin = -_lmax;
   private LocalCorrelationFilter.Type _type = SYMMETRIC; 
   private LocalCorrelationFilter.Window _window = GAUSSIAN; 
-  private float _sigma = 8.0f;
+  private float _sigma = 12.0f;
   private LocalCorrelationFilter _lcf = 
     new LocalCorrelationFilter(_type,_window,_sigma);
   private Displacement _disp = 
     new GaussianDisplacement(_d1max,_d2max,_n1,_n2);
-  private DisplacementFilter _df = new DisplacementFilter(2.0e-5);
+  private DisplacementFilter _df = new DisplacementFilter(9.0e-5);
   //private Displacement _disp = 
   //  new SinusoidDisplacement(_d1max,_d2max,_n1,_n2);
   private float[][] _f,_g;

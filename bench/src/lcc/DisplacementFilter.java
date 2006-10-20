@@ -92,7 +92,7 @@ public class DisplacementFilter {
       float[][][] u = getData();
       float[][] u1 = u[0];
       float[][] u2 = u[1];
-      float[][] q0 = _q[0];
+      //float[][] q0 = _q[0];
       float[][] q1 = _q[1];
       float[][] q2 = _q[2];
       float[][] q3 = _q[3];
@@ -102,12 +102,12 @@ public class DisplacementFilter {
         for (int i1=0; i1<n1; ++i1) {
           float u1i = u1[i2][i1];
           float u2i = u2[i2][i1];
-          float q0i = q0[i2][i1];
+          //float q0i = q0[i2][i1];
           float q1i = q1[i2][i1];
           float q2i = q2[i2][i1];
           float q3i = q3[i2][i1];
-          u1[i2][i1] = q0i*(q1i*u1i+q2i*u2i);
-          u2[i2][i1] = q0i*(q2i*u1i+q3i*u2i);
+          u1[i2][i1] = q1i*u1i+q2i*u2i;
+          u2[i2][i1] = q2i*u1i+q3i*u2i;
         }
       }
     }
@@ -115,7 +115,7 @@ public class DisplacementFilter {
       float[][][] u = getData();
       float[][] u1 = u[0];
       float[][] u2 = u[1];
-      float[][] q0 = _q[0];
+      //float[][] q0 = _q[0];
       float[][] q1 = _q[1];
       float[][] q2 = _q[2];
       float[][] q3 = _q[3];
@@ -126,12 +126,12 @@ public class DisplacementFilter {
         for (int i1=0; i1<n1; ++i1) {
           float u1i = u1[i2][i1];
           float u2i = u2[i2][i1];
-          float q0i = q0[i2][i1];
+          //float q0i = q0[i2][i1];
           float q1i = q1[i2][i1];
           float q2i = q2[i2][i1];
           float q3i = q3[i2][i1];
-          float u1t = q0i*(q1i*u1i+q2i*u2i);
-          float u2t = q0i*(q2i*u1i+q3i*u2i);
+          float u1t = q1i*u1i+q2i*u2i;
+          float u2t = q2i*u1i+q3i*u2i;
           sum += u1i*u1t+u2i*u2t;
         }
       }
