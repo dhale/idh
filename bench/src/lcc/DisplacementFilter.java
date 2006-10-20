@@ -48,11 +48,33 @@ public class DisplacementFilter {
     VectConst uvect = new UVect(q,u);
     LinearTransform lt = new VSmooth();
     boolean dop = false;
-    int ncg = 10;
+    int ncg = 100;
     LogMonitor lm = new LogMonitor("qs: ",Logger.global);
     Vect vvect = QuadraticSolver.solve(uvect,rvect,lt,dop,ncg,lm);
     Vect tvect = new ArrayVect3f(u,1.0);
-    lt.forward(vvect,tvect);
+    /*
+    float[][] u1 = u[0];
+    float[][] u2 = u[1];
+    System.out.println("apply: u1 min/max=" +
+      Array.min(u1)+"/"+Array.max(u1));
+    System.out.println("apply: u2 min/max=" +
+      Array.min(u2)+"/"+Array.max(u2));
+    */
+    lt.forward(tvect,vvect);
+    /*
+    System.out.println("apply: u1 min/max=" +
+      Array.min(u1)+"/"+Array.max(u1));
+    System.out.println("apply: u2 min/max=" +
+      Array.min(u2)+"/"+Array.max(u2));
+    */
+    /*
+    VectUtil.test(uvect);
+    float[][][] v = ((ArrayVect3f)vvect).getData();
+    Array.rand(v);
+    int tp = VectUtil.getTransposePrecision(uvect,vvect,
+      new LinearTransformWrapper(lt));
+    System.out.println("tp="+tp);
+    */
   }
 
   ///////////////////////////////////////////////////////////////////////////
@@ -67,7 +89,6 @@ public class DisplacementFilter {
       _q = q;
     }
     public void multiplyInverseCovariance() {
-      System.out.println("UVect.mic: q="+_q);
       float[][][] u = getData();
       float[][] u1 = u[0];
       float[][] u2 = u[1];
@@ -114,7 +135,6 @@ public class DisplacementFilter {
           sum += u1i*u1t+u2i*u2t;
         }
       }
-      System.out.println("UVect.mag: sum="+sum);
       return sum;
     }
     private float[][][] _q;
@@ -123,18 +143,20 @@ public class DisplacementFilter {
   // Smoothing transform u = S*v and its transpose.
   private static class VSmooth implements LinearTransform {
     public void forward(Vect data, VectConst model) {
-      float[][][] v = ((ArrayVect3f)model).getData();
-      float[][] v1 = v[0];
-      float[][] v2 = v[1];
       float[][][] u = ((ArrayVect3f)data).getData();
       float[][] u1 = u[0];
       float[][] u2 = u[1];
+      float[][][] v = ((ArrayVect3f)model).getData();
+      float[][] v1 = v[0];
+      float[][] v2 = v[1];
       _df.applyInverse(v1,u1);
       _df.applyInverse(v2,u2);
+      /*
       System.out.println("VSmooth.forward: u1 min/max=" +
         Array.min(u1)+"/"+Array.max(u1));
       System.out.println("VSmooth.forward: u2 min/max=" +
         Array.min(u2)+"/"+Array.max(u2));
+      */
     }
     public void addTranspose(VectConst data, Vect model) {
       float[][][] u = ((ArrayVect3f)data).getData();
@@ -150,10 +172,12 @@ public class DisplacementFilter {
       Array.add(vt,v1,v1);
       _df.applyInverseTranspose(u2,vt);
       Array.add(vt,v2,v2);
+      /*
       System.out.println("VSmooth.addTranspose: v1 min/max=" +
         Array.min(v1)+"/"+Array.max(v1));
       System.out.println("VSmooth.addTranspose: v2 min/max=" +
         Array.min(v2)+"/"+Array.max(v2));
+      */
     }
     public void inverseHessian(Vect model) {
     }

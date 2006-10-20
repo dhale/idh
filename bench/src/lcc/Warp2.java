@@ -41,18 +41,18 @@ public class Warp2 {
 
   int _n1 = 315;
   int _n2 = 315;
-  private float _d1max = 6.00f;
-  private float _d2max = 3.00f;
-  private int _lmax = 7;
+  private float _d1max = 2.00f;
+  private float _d2max = 1.00f;
+  private int _lmax = 3;
   private int _lmin = -_lmax;
   private LocalCorrelationFilter.Type _type = SYMMETRIC; 
   private LocalCorrelationFilter.Window _window = GAUSSIAN; 
-  private float _sigma = 6.0f;
+  private float _sigma = 8.0f;
   private LocalCorrelationFilter _lcf = 
     new LocalCorrelationFilter(_type,_window,_sigma);
   private Displacement _disp = 
     new GaussianDisplacement(_d1max,_d2max,_n1,_n2);
-  private DisplacementFilter _df = new DisplacementFilter(1.0e10);
+  private DisplacementFilter _df = new DisplacementFilter(2.0e-5);
   //private Displacement _disp = 
   //  new SinusoidDisplacement(_d1max,_d2max,_n1,_n2);
   private float[][] _f,_g;
@@ -94,8 +94,9 @@ public class Warp2 {
     float[][] u1 = new float[_n2][_n1];
     float[][] u2 = new float[_n2][_n1];
     _lcf.findMaxLags(min1,max1,min2,max2,l1,l2);
-    float[][][] q = new float[4][_n2][_n1];
+
     float[][][] u = {u1,u2};
+    float[][][] q = new float[4][_n2][_n1];
     _lcf.refineLags(l1,l2,u1,u2,q);
     plot(q[0],0.0f,null);
     plot(q[1],0.0f,null);
@@ -103,13 +104,15 @@ public class Warp2 {
     plot(q[3],0.0f,null);
     plotu(u1,_d1max,null);
     plotu(u2,_d2max,null);
+
     _df.apply(q,u);
     plotu(u1,_d1max,null);
     plotu(u2,_d2max,null);
-    //float[][] e1 = _disp.u1m();
-    //float[][] e2 = _disp.u2m();
-    //plotu(e1,_d1max,null);
-    //plotu(e2,_d2max,null);
+
+    float[][] e1 = _disp.u1m();
+    float[][] e2 = _disp.u2m();
+    plotu(e1,_d1max,null);
+    plotu(e2,_d2max,null);
   }
 
   private void plot(float[][] f, float clip, String png) {
