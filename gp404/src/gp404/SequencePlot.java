@@ -72,24 +72,41 @@ public class SequencePlot {
     makeFrame(al,as);
   }
 
+  /**
+   * Sets the visibility of function value zero in this view.
+   * The default visibility is SequenceView.Zero.ALWAYS.
+   * @param zero the visibility of function value zero.
+   */
+  public void setZero(final SequenceView.Zero zero) {
+    SwingUtilities.invokeLater(new Runnable() {
+      public void run() {
+        for (int is=0; is<_views.length; ++is)
+          _views[is].setZero(zero);
+      }
+    });
+  }
+
   ///////////////////////////////////////////////////////////////////////////
   // private
 
   private PlotFrame _frame;
   private PlotPanel _panel;
+  private SequenceView[] _views;
 
   private void makeFrame(final String[] al, final Sequence[] as) {
     Check.argument(al.length==as.length,"al.length==as.length");
     SwingUtilities.invokeLater(new Runnable() {
       public void run() {
         int ns = as.length;
+        _views = new SequenceView[ns];
         _panel = new PlotPanel(ns,1);
         _panel.setHLabel("time");
+        _panel.setHFormat("%1.6f");
         for (int is=0; is<ns; ++is) {
           Sequence s = as[is];
           String l = al[is];
           _panel.setVLabel(is,l);
-          _panel.addSequence(is,0,s.getSampling(),s.getValues());
+          _views[is] = _panel.addSequence(is,0,s.getSampling(),s.getValues());
         }
         _frame = new PlotFrame(_panel);
         addButtons();
