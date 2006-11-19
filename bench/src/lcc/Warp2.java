@@ -22,13 +22,6 @@ public class Warp2 {
     });
   }
 
-  private int _fontSize = 24;
-  private int _width = 650;
-  private int _height = 500;
-
-  private String _pngDir = System.getProperty("png.dir");
-  private String _dataDir = "/data";
-
   private static final LocalCorrelationFilter.Type SIMPLE =
     LocalCorrelationFilter.Type.SIMPLE;
   private static final LocalCorrelationFilter.Type SYMMETRIC =
@@ -39,21 +32,28 @@ public class Warp2 {
   private static final LocalCorrelationFilter.Window RECTANGLE = 
     LocalCorrelationFilter.Window.RECTANGLE;
 
+  private int _fontSize = 24;
+  private int _width = 640;
+  private int _height = 505;
+  private int _widthColorBar = 80;
+
+  private String _pngDir = System.getProperty("png.dir");
+  private String _dataDir = "/data";
+
   int _n1 = 315;
   int _n2 = 315;
-  private float _d1max = 6.00f;
+  private float _d1max = 3.00f;
   private float _d2max = 3.00f;
   private int _lmax = 7;
   private int _lmin = -_lmax;
-  private LocalCorrelationFilter.Type _type = SYMMETRIC; 
+  private LocalCorrelationFilter.Type _type = SIMPLE; 
   private LocalCorrelationFilter.Window _window = GAUSSIAN; 
   private float _sigma = 12.0f;
   private LocalCorrelationFilter _lcf = 
     new LocalCorrelationFilter(_type,_window,_sigma);
+  private DisplacementFilter _df = new DisplacementFilter(1.0e-5);
   private Displacement _disp = 
     new GaussianDisplacement(_d1max,_d2max,_n1,_n2);
-  private DisplacementFilter _df = new DisplacementFilter(9.0e-5);
-  //private Displacement _disp = 
   //  new SinusoidDisplacement(_d1max,_d2max,_n1,_n2);
   private float[][] _f,_g;
 
@@ -62,7 +62,11 @@ public class Warp2 {
       _pngDir = ".";
     initImages();
     doIntro();
-    doFindLags();
+    //doLcc();
+    //doLpf();
+    //doLcc();
+    //doFindLags();
+    doShift();
   }
 
   private float[][] readImage() {
@@ -78,9 +82,105 @@ public class Warp2 {
   }
 
   private void doIntro() {
-    float clip = 6.0f;
-    plot(_f,clip,"imagef");
-    plot(_g,clip,"imageg");
+    plot(_f,6.0f,"imagef");
+    plot(_g,6.0f,"imageg");
+  }
+
+  private void doShift() {
+    int n1 = _n1;
+    int n2 = _n2;
+    int l1 = 7;
+    int l2 = 7;
+    int m1 = 1+2*l1;
+    int m2 = 1+2*l2;
+    ShiftFinder _sf = new ShiftFinder(_sigma);
+    float[][] f = Array.copy(_f);
+    float[][] g = Array.copy(_g);
+    _sf.whiten(_f,f);
+    _sf.whiten(_g,g);
+    float[][] u1 = new float[n2][n1];
+    float[][] u2 = new float[n2][n1];
+    float[][] du = new float[n2][n1];
+    float[][] h1 = Array.copy(g);
+    float[][] h2 = Array.copy(g);
+
+    plot(f,0.0f,null);
+    plot(g,0.0f,null);
+    plot(Array.sub(g,f),0.0f,null);
+
+    for (int iter=0; iter<4; ++iter) {
+      _sf.find1(-l1,l1,f,h1,du);
+      _sf.shift1(du,h1,h2,u1,u2);
+      _sf.find2(-l2,l2,f,h2,du);
+      _sf.shift2(du,h2,h1,u1,u2);
+      plotu(u1,_d1max,"u1");
+      plotu(u2,_d2max,"u2");
+    }
+
+    float[][] e1 = _disp.u1x();
+    float[][] e2 = _disp.u2x();
+    plotu(e1,_d1max,"e1");
+    plotu(e2,_d2max,"e2");
+    plot(Array.sub(h1,f),0.0f,null);
+  }
+
+  private void doLcc() {
+    int n1 = _n1;
+    int n2 = _n2;
+    int l1 = 7;
+    int l2 = 7;
+    int m1 = 1+2*l1;
+    int m2 = 1+2*l2;
+    _lcf.setInputs(_f,_g);
+    float[][] c = new float[n2][n1];
+    float[][] t = new float[n2][n1];
+    int[] k1 = { 38, 98,113,150,98,172};
+    int[] k2 = {172,216,230,105,132,227};
+    int nk = k1.length;
+    float[][][] ck = new float[nk][m2][m1];
+    for (int lag2=-l2; lag2<=l2; ++lag2) {
+      for (int lag1=-l1; lag1<=l1; ++lag1) {
+        _lcf.correlate(lag1,lag2,t);
+        _lcf.normalize(lag1,lag2,t);
+        Array.copy(n1/m1,n2/m2,l1,l2,m1,m2,t,l1+lag1,l2+lag2,m1,m2,c);
+        for (int k=0; k<nk; ++k) {
+          ck[k][l2+lag2][l1+lag1] = t[k2[k]][k1[k]];
+        }
+      }
+    }
+    plot(c,0.0f,"lcc");
+    for (int k=0; k<nk; ++k)
+      plot(ck[k],0.0f,"lcc"+k);
+  }
+
+  private void doLpf() {
+    int n1 = _n1;
+    int n2 = _n2;
+    LocalPredictionFilter lpf = new LocalPredictionFilter(_sigma);
+    RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(sqrt(1.0));
+    float[][] t = new float[n2][n1];
+    /*
+    int[] lag1 = {          1, 2,
+                  -2,-1, 0, 1, 2};
+    int[] lag2 = {          0, 0,
+                   1, 1, 1, 1, 1};
+    int[] lag1 = {       1,
+                  -1, 0, 1};
+    int[] lag2 = {       0,
+                   1, 1, 1};
+    */
+    int[] lag1 = {1, 0};
+    int[] lag2 = {0, 1};
+    lpf.applyPef(lag1,lag2,_f,t);
+    Array.copy(t,_f);
+    rgf.apply0X(_f,_f);
+    rgf.applyX0(_f,_f);
+    lpf.applyPef(lag1,lag2,_g,t);
+    Array.copy(t,_g);
+    rgf.apply0X(_g,_g);
+    rgf.applyX0(_g,_g);
+    plot(_f,0.6f,"lpeff");
+    plot(_g,0.6f,"lpefg");
   }
 
   private void doFindLags() {
@@ -98,31 +198,36 @@ public class Warp2 {
     float[][][] u = {u1,u2};
     float[][][] q = new float[4][_n2][_n1];
     _lcf.refineLags(l1,l2,u1,u2,q);
-    plot(q[0],0.0f,null);
-    plot(q[1],0.0f,null);
-    plot(q[2],0.0f,null);
-    plot(q[3],0.0f,null);
-    plotu(u1,_d1max,null);
-    plotu(u2,_d2max,null);
+    plotu(u1,_d1max,"u1");
+    plotu(u2,_d2max,"u2");
 
-    _df.apply(q,u);
-    plotu(u1,_d1max,null);
-    plotu(u2,_d2max,null);
+    //_df.apply(q,u);
+    //plotu(u1,_d1max,null);
+    //plotu(u2,_d2max,null);
 
-    float[][] e1 = _disp.u1m();
-    float[][] e2 = _disp.u2m();
-    plotu(e1,_d1max,null);
-    plotu(e2,_d2max,null);
+    float[][] e1 = (_type==SIMPLE)?_disp.u1x():_disp.u1m();
+    float[][] e2 = (_type==SIMPLE)?_disp.u2x():_disp.u2m();
+    plotu(e1,_d1max,"e1");
+    plotu(e2,_d2max,"e2");
   }
 
   private void plot(float[][] f, float clip, String png) {
     PlotPanel panel = panel();
-    PixelsView pv = panel.addPixels(f);
+    int n1 = f[0].length;
+    int n2 = f.length;
+    Sampling s1 = new Sampling(n1,1,0);
+    Sampling s2 = new Sampling(n2,1,0);
+    if (n1<50 && n2<50) {
+      s1 = new Sampling(n1,1,-(n1-1)/2);
+      s2 = new Sampling(n2,1,-(n2-1)/2);
+    }
+    PixelsView pv = panel.addPixels(s1,s2,f);
     if (clip!=0.0f) {
       pv.setClips(-clip,clip);
     } else {
-      pv.setPercentiles(1.0f,99.0f);
+      pv.setPercentiles(0.0f,100.0f);
     }
+    pv.setInterpolation(PixelsView.Interpolation.NEAREST);
     frame(panel,png);
   }
 
@@ -133,7 +238,7 @@ public class Warp2 {
     if (clip!=0.0f) {
       pv.setClips(-clip,clip);
     } else {
-      pv.setPercentiles(1.0f,99.0f);
+      pv.setPercentiles(1.0f,99.9f);
     }
     frame(panel,png);
   }
@@ -141,6 +246,7 @@ public class Warp2 {
   private PlotPanel panel() {
     PlotPanel panel = new PlotPanel(PlotPanel.Orientation.X1DOWN_X2RIGHT);
     panel.addColorBar();
+    panel.setColorBarWidthMinimum(_widthColorBar);
     return panel;
   }
 

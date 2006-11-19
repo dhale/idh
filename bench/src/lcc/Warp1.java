@@ -40,23 +40,23 @@ public class Warp1 {
   private int _length = 315;
   private float _flo = 0.15f;
   private float _fhi = 0.25f;
-  private float _dmax = 0.5f;
-  private int _lmax = 1;
+  private float _dmax = 1.5f;
+  private int _lmax = 3;
   private int _lmin = -_lmax;
-  private LocalCorrelationFilter.Type _type = SIMPLE; 
+  private LocalCorrelationFilter.Type _type = SYMMETRIC; 
   private LocalCorrelationFilter.Window _window = GAUSSIAN; 
-  private float _sigma = 8.0f;
+  private float _sigma = 6.0f;
   private Displacement _disp = new SinusoidDisplacement(_dmax,_length);
   //private Displacement _disp = new ConstantDisplacement(_dmax,_length);
   private float[] _sequence = makeRandom(_length,_flo,_fhi);
 
   private Warp1(String[] args) {
-    //testSimpleSymmetric();
-    testGaussianRectangle();
+    testSimpleSymmetric();
+    //testGaussianRectangle();
   }
 
   private void testSimpleSymmetric() {
-    _window = RECTANGLE;
+    _window = GAUSSIAN;
     _type = SIMPLE;
     testWarp();
     _type = SYMMETRIC;
