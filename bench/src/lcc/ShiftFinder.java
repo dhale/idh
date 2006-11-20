@@ -23,7 +23,9 @@ import static edu.mines.jtk.util.MathPlus.*;
  * <p>
  * This shift finder estimates each component of displacement using local
  * cross-correlations. For each image sample, the estimated shift is that 
- * which yields the maximum correlation coefficient.
+ * which yields the maximum correlation coefficient. This coefficient is
+ * found by quadratic interpolation of correlation functions sampled at
+ * integer lags.
  * <p>
  * Methods are provided to find and compensate for each component of shift 
  * sequentially. As each component is found, that component can be removed 
