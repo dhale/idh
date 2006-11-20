@@ -407,9 +407,9 @@ public class ShiftFinder {
     float[][] s = rp0;
     float[][] t = r0p;
     for (int i2=0; i2<n2; ++i2)
-      g[i2][0] = 0.0f;
+      s[i2][0] = 0.0f;
     for (int i1=0; i1<n1; ++i1)
-      g[0][i1] = 0.0f;
+      s[0][i1] = 0.0f;
     for (int i2=1; i2<n2; ++i2) {
       for (int i1=1; i1<n1; ++i1) {
         double b1 = rp0[i2][i1];
@@ -469,13 +469,13 @@ public class ShiftFinder {
     _lcfSymmetric.correlate( 0, 0, 1,r00p);
     for (int i3=0; i3<n3; ++i3)
       for (int i2=0; i2<n2; ++i2)
-        g[i3][i2][0] = 0.0f;
+        s[i3][i2][0] = 0.0f;
     for (int i2=0; i2<n2; ++i2)
       for (int i1=0; i1<n1; ++i1)
-        g[0][i2][i1] = 0.0f;
+        s[0][i2][i1] = 0.0f;
     for (int i3=0; i3<n3; ++i3)
       for (int i1=0; i1<n1; ++i1)
-        g[i3][0][i1] = 0.0f;
+        s[i3][0][i1] = 0.0f;
     for (int i3=1; i3<n3; ++i3) {
       for (int i2=1; i2<n2; ++i2) {
         for (int i1=1; i1<n1; ++i1) {
