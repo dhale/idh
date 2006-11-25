@@ -100,14 +100,14 @@ public class Warp3 {
     ShiftFinder _sf = new ShiftFinder(_sigma);
     float[][][] f = Array.copy(_f);
     float[][][] g = Array.copy(_g);
-    {
+    /*{
       _sf.whiten(_f,f);
       _sf.whiten(_g,g);
       World world = new World();
       addSlices(world,f,0.0f,ColorMap.GRAY);
       addSlices(world,_f,0.0f,ColorMap.GRAY);
       frame(world);
-    }
+    }*/
     float[][][] u1 = new float[n3][n2][n1];
     float[][][] u2 = new float[n3][n2][n1];
     float[][][] u3 = new float[n3][n2][n1];
