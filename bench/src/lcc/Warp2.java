@@ -89,10 +89,8 @@ public class Warp2 {
   private void doShift() {
     int n1 = _n1;
     int n2 = _n2;
-    int l1 = 7;
-    int l2 = 7;
-    int m1 = 1+2*l1;
-    int m2 = 1+2*l2;
+    int l1 = _lmax;
+    int l2 = _lmax;
     ShiftFinder _sf = new ShiftFinder(_sigma);
     float[][] f = Array.copy(_f);
     float[][] g = Array.copy(_g);
