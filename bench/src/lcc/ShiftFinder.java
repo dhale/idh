@@ -524,118 +524,6 @@ public class ShiftFinder {
     _rgfSmooth.applyXX0(s,g);
   }
 
-  /**
-   * Applies local prediction-error (spectal whitening) filters.
-   * The input and output arrays f and g can be the same array.
-   * @param f the input array.
-   * @param g the output array.
-   */
-  public void whitenX(float[][][] f, float[][][] g) {
-    int n1 = f[0][0].length;
-    int n2 = f[0].length;
-    int n3 = f.length;
-    float[][][] r000 = new float[n3][n2][n1];
-    float[][][] rpm0 = new float[n3][n2][n1];
-    float[][][] rp0m = new float[n3][n2][n1];
-    float[][][] r0pm = new float[n3][n2][n1];
-    float[][][] rp00 = new float[n3][n2][n1];
-    float[][][] r0p0 = new float[n3][n2][n1];
-    float[][][] r00p = new float[n3][n2][n1];
-    float[][][] s = r000;
-    float[][][] t = rpm0;
-    float[][][] ap00 = rp00;
-    float[][][] a0p0 = r0p0;
-    float[][][] a00p = r00p;
-    _lcfSymmetric.setInputs(f,f);
-    _lcfSymmetric.correlate( 0, 0, 0,r000);
-    _lcfSymmetric.correlate( 1,-1, 0,rpm0);
-    _lcfSymmetric.correlate( 1, 0,-1,rp0m);
-    _lcfSymmetric.correlate( 0, 1,-1,r0pm);
-    _lcfSymmetric.correlate( 1, 0, 0,rp00);
-    _lcfSymmetric.correlate( 0, 1, 0,r0p0);
-    _lcfSymmetric.correlate( 0, 0, 1,r00p);
-    for (int i3=1; i3<n3; ++i3) {
-      for (int i2=1; i2<n2; ++i2) {
-        for (int i1=1; i1<n1; ++i1) {
-          double b1 = rp00[i3][i2][i1];
-          double b2 = r0p0[i3][i2][i1];
-          double b3 = r00p[i3][i2][i1];
-          double a11 = r000[i3][i2][i1];
-          double a21 = rpm0[i3][i2][i1];
-          double a31 = rp0m[i3][i2][i1];
-          double a32 = r0pm[i3][i2][i1];
-          double a22 = a11;
-          double a33 = a11;
-          double x1 = 0.0;
-          double x2 = 0.0;
-          double x3 = 0.0;
-          double l11 = sqrt(a11);
-          double l21 = a21/l11;
-          double l31 = a31/l11;
-          double d22 = a22-l21*l21;
-          if (d22>0.0) {
-            double l22 = sqrt(d22);
-            double l32 = (a32-l31*l21)/l22;
-            double d33 = a33-l31*l31-l32*l32;
-            if (d33>0.0) {
-              double l33 = sqrt(d33);
-              double v1 = b1/l11;
-              double v2 = (b2-l21*v1)/l22;
-              double v3 = (b3-l31*v1-l32*v2)/l33;
-              x3 = v3/l33;
-              x2 = (v2-l32*x3)/l22;
-              x1 = (v1-l21*x2-l31*x3)/l11;
-            }
-          }
-          ap00[i3][i2][i1] = (float)x1;
-          a0p0[i3][i2][i1] = (float)x2;
-          a00p[i3][i2][i1] = (float)x3;
-        }
-      }
-    }
-    for (int i3=0; i3<n3; ++i3)
-      for (int i2=0; i2<n2; ++i2)
-        t[i3][i2][0] = 0.0f;
-    for (int i3=0; i3<n3; ++i3)
-      for (int i1=0; i1<n1; ++i1)
-        t[i3][0][i1] = 0.0f;
-    for (int i2=0; i2<n2; ++i2)
-      for (int i1=0; i1<n1; ++i1)
-        t[0][i2][i1] = 0.0f;
-    for (int i3=1; i3<n3; ++i3) {
-      for (int i2=1; i2<n2; ++i2) {
-        for (int i1=1; i1<n1; ++i1) {
-          t[i3][i2][i1] = f[i3][i2][i1]
-                        - ap00[i3][i2][i1]*f[i3][i2][i1-1]
-                        - a0p0[i3][i2][i1]*f[i3][i2-1][i1]
-                        - a00p[i3][i2][i1]*f[i3-1][i2][i1];
-        }
-      }
-    }
-    for (int i3=0; i3<n3; ++i3)
-      for (int i2=0; i2<n2; ++i2)
-        s[i3][i2][n1-1] = 0.0f;
-    for (int i3=0; i3<n3; ++i3)
-      for (int i1=0; i1<n1; ++i1)
-        s[i3][n2-1][i1] = 0.0f;
-    for (int i2=0; i2<n2; ++i2)
-      for (int i1=0; i1<n1; ++i1)
-        s[n3-1][i2][i1] = 0.0f;
-    for (int i3=n3-2; i3>=0; --i3) {
-      for (int i2=n2-2; i2>=0; --i2) {
-        for (int i1=n1-2; i1>=0; --i1) {
-          s[i3][i2][i1] = t[i3][i2][i1]
-                        - ap00[i3][i2][i1]*t[i3][i2][i1+1]
-                        - a0p0[i3][i2][i1]*t[i3][i2+1][i1]
-                        - a00p[i3][i2][i1]*t[i3+1][i2][i1];
-        }
-      }
-    }
-    _rgfSmooth.apply0XX(s,t);
-    _rgfSmooth.applyX0X(t,s);
-    _rgfSmooth.applyXX0(s,g);
-  }
-
   ///////////////////////////////////////////////////////////////////////////
   // private
 
@@ -651,6 +539,9 @@ public class ShiftFinder {
     int n1 = f[0].length;
     int n2 = f.length;
 
+    // Default shifts are zero.
+    Array.zero(u);
+
     // Arrays to contain cross-correlations for three consecutive lags.
     float[][][] c = new float[3][n2][n1];
 
@@ -658,11 +549,12 @@ public class ShiftFinder {
     float[][] cmax = new float[n2][n1];
 
     // Correlate for min lag.
-    _lcfSimple.setInputs(f,g);
+    LocalCorrelationFilter lcf = _lcfSimple;
+    lcf.setInputs(f,g);
     int lag1 = (dim==1)?min:0;
     int lag2 = (dim==2)?min:0;
-    _lcfSimple.correlate(lag1,lag2,c[1]);
-    _lcfSimple.normalize(lag1,lag2,c[1]);
+    lcf.correlate(lag1,lag2,c[1]);
+    lcf.normalize(lag1,lag2,c[1]);
 
     // For all lags in range [min,max], ...
     for (int lag=min; lag<=max; ++lag) {
@@ -682,8 +574,8 @@ public class ShiftFinder {
       if (lag<max) {
         lag1 = (dim==1)?lag+1:0;
         lag2 = (dim==2)?lag+1:0;
-        _lcfSimple.correlate(lag1,lag2,cc);
-        _lcfSimple.normalize(lag1,lag2,cc);
+        lcf.correlate(lag1,lag2,cc);
+        lcf.normalize(lag1,lag2,cc);
       }
 
       // For each sample, check for a local max correlation value. For each 
@@ -720,6 +612,9 @@ public class ShiftFinder {
     int n2 = f[0].length;
     int n3 = f.length;
 
+    // Default shifts are zero.
+    Array.zero(u);
+
     // Arrays to contain cross-correlations for three consecutive lags.
     float[][][][] c = new float[3][n3][n2][n1];
 
@@ -727,12 +622,13 @@ public class ShiftFinder {
     float[][][] cmax = new float[n3][n2][n1];
 
     // Correlate for min lag.
-    _lcfSimple.setInputs(f,g);
+    LocalCorrelationFilter lcf = _lcfSimple;
+    lcf.setInputs(f,g);
     int lag1 = (dim==1)?min:0;
     int lag2 = (dim==2)?min:0;
     int lag3 = (dim==3)?min:0;
-    _lcfSimple.correlate(lag1,lag2,lag3,c[1]);
-    _lcfSimple.normalize(lag1,lag2,lag3,c[1]);
+    lcf.correlate(lag1,lag2,lag3,c[1]);
+    lcf.normalize(lag1,lag2,lag3,c[1]);
 
     // For all lags in range [min,max], ...
     for (int lag=min; lag<=max; ++lag) {
@@ -753,8 +649,8 @@ public class ShiftFinder {
         lag1 = (dim==1)?lag+1:0;
         lag2 = (dim==2)?lag+1:0;
         lag3 = (dim==3)?lag+1:0;
-        _lcfSimple.correlate(lag1,lag2,lag3,cc);
-        _lcfSimple.normalize(lag1,lag2,lag3,cc);
+        lcf.correlate(lag1,lag2,lag3,cc);
+        lcf.normalize(lag1,lag2,lag3,cc);
       }
 
       // For each sample, check for a local max correlation value. For each 

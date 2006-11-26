@@ -1,4 +1,3 @@
-
 package lcc;
 
 import java.awt.*;
@@ -8,12 +7,9 @@ import javax.swing.*;
 import edu.mines.jtk.awt.*;
 import edu.mines.jtk.dsp.*;
 import edu.mines.jtk.io.*;
-import edu.mines.jtk.mosaic.*;
 import edu.mines.jtk.sgl.*;
 import edu.mines.jtk.util.*;
 import static edu.mines.jtk.util.MathPlus.*;
-
-import util.*;
 
 public class Warp3 {
 
@@ -25,24 +21,6 @@ public class Warp3 {
     });
   }
 
-  private static final LocalCorrelationFilter.Type SIMPLE =
-    LocalCorrelationFilter.Type.SIMPLE;
-  private static final LocalCorrelationFilter.Type SYMMETRIC =
-    LocalCorrelationFilter.Type.SYMMETRIC;
-
-  private static final LocalCorrelationFilter.Window GAUSSIAN = 
-    LocalCorrelationFilter.Window.GAUSSIAN;
-  private static final LocalCorrelationFilter.Window RECTANGLE = 
-    LocalCorrelationFilter.Window.RECTANGLE;
-
-  private int _fontSize = 24;
-  private int _width = 640;
-  private int _height = 505;
-  private int _widthColorBar = 80;
-
-  private String _pngDir = System.getProperty("png.dir");
-  private String _dataDir = "/data";
-
   int _n1 = 101;
   int _n2 = 103;
   int _n3 = 105;
@@ -51,18 +29,12 @@ public class Warp3 {
   private float _d3max = 1.00f;
   private int _lmax = 2;
   private int _lmin = -_lmax;
-  private LocalCorrelationFilter.Type _type = SIMPLE; 
-  private LocalCorrelationFilter.Window _window = GAUSSIAN; 
   private float _sigma = 8.0f;
-  private LocalCorrelationFilter _lcf = 
-    new LocalCorrelationFilter(_type,_window,_sigma);
   private Displacement _disp = 
     new GaussianDisplacement(_d1max,_d2max,_d3max,_n1,_n2,_n3);
   private float[][][] _f,_g;
 
   private Warp3(String[] args) {
-    if (_pngDir==null)
-      _pngDir = ".";
     initImages();
     doIntro();
     doShift();
@@ -138,56 +110,6 @@ public class Warp3 {
       addSlices(world,u3,_d3max,ColorMap.JET);
       frame(world);
     }
-  }
-
-  private void plot(float[][] f, float clip, String png) {
-    PlotPanel panel = panel();
-    int n1 = f[0].length;
-    int n2 = f.length;
-    Sampling s1 = new Sampling(n1,1,0);
-    Sampling s2 = new Sampling(n2,1,0);
-    if (n1<50 && n2<50) {
-      s1 = new Sampling(n1,1,-(n1-1)/2);
-      s2 = new Sampling(n2,1,-(n2-1)/2);
-    }
-    PixelsView pv = panel.addPixels(s1,s2,f);
-    if (clip!=0.0f) {
-      pv.setClips(-clip,clip);
-    } else {
-      pv.setPercentiles(0.0f,100.0f);
-    }
-    pv.setInterpolation(PixelsView.Interpolation.NEAREST);
-    frame(panel,png);
-  }
-
-  private void plotu(float[][] u, float clip, String png) {
-    PlotPanel panel = panel();
-    PixelsView pv = panel.addPixels(u);
-    pv.setColorModel(ColorMap.JET);
-    if (clip!=0.0f) {
-      pv.setClips(-clip,clip);
-    } else {
-      pv.setPercentiles(1.0f,99.9f);
-    }
-    frame(panel,png);
-  }
-
-  private PlotPanel panel() {
-    PlotPanel panel = new PlotPanel(PlotPanel.Orientation.X1DOWN_X2RIGHT);
-    panel.addColorBar();
-    panel.setColorBarWidthMinimum(_widthColorBar);
-    return panel;
-  }
-
-  private PlotFrame frame(PlotPanel panel, String png) {
-    PlotFrame frame = new PlotFrame(panel);
-    frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
-    frame.setFontSize(_fontSize);
-    frame.setSize(_width,_height);
-    frame.setVisible(true);
-    //if (png!=null)
-    //  frame.paintToPng(200,6,_pngDir+"/"+png+".png");
-    return frame;
   }
 
   private JFrame frame(World world) {

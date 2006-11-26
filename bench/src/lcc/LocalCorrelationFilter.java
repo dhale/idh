@@ -683,10 +683,10 @@ public class LocalCorrelationFilter {
       float w = 0.0f;
       if (a2i<0.0)
         w = -0.5f*a1i/a2i;
-      if (w<-1.0f) {
-        w = -1.0f;
-      } else if (w>1.0f) {
-        w = 1.0f;
+      if (w<-0.5f) {
+        w = -0.5f;
+      } else if (w>0.5f) {
+        w = 0.5f;
       }
       u[i] = (float)(w+l[i]);
     }
@@ -763,16 +763,9 @@ public class LocalCorrelationFilter {
     }
 
     // Cholesky decomposition solves 2x2 system for refined lags.
-    int i1min = -1;
-    int i2min = -1;
-    float d0min = FLT_MAX;
     int i1max = -1;
     int i2max = -1;
-    float w1max = 0.0f;
-    float w2max = 0.0f;
-    float[][] a = new float[2][2];
-    float[][] v = new float[2][2];
-    float[] d = new float[2];
+    float wsmax = 0.0f;
     for (int i2=0; i2<n2; ++i2) {
       for (int i1=0; i1<n1; ++i1) {
         double aa0 = a0[i2][i1];
@@ -788,20 +781,6 @@ public class LocalCorrelationFilter {
         double a21 = -aa3;
         double a11 = -2.0*aa4;
         double a22 = -2.0*aa5;
-        a[0][0] = (float)a11;  a[0][1] = (float)a21;
-        a[1][0] = (float)a21;  a[1][1] = (float)a22;
-        Eigen.solveSymmetric22(a,v,d);
-        float e = 0.001f*max(d[0],d[1]);
-        if (d[0]<d0min) {
-          d0min = d[0];
-          i1min = i1;
-          i2min = i2;
-        }
-        d[0] = max(e,d[0]);
-        d[1] = max(e,d[1]);
-        a11 = d[0]*v[0][0]*v[0][0]+d[1]*v[1][0]*v[1][0];
-        a21 = d[0]*v[0][0]*v[0][1]+d[1]*v[1][0]*v[1][1];
-        a22 = d[0]*v[0][1]*v[0][1]+d[1]*v[1][1]*v[1][1];
         boolean pd = false;
         double d11 = a11;
         if (d11>0.0) {
@@ -814,9 +793,8 @@ public class LocalCorrelationFilter {
             double v2 = (b2-l21*v1)/l22;
             w2 = v2/l22;
             w1 = (v1-l21*w2)/l11;
-            if (w1>w1max || w2>w2max) {
-              w1max = (float)w1;
-              w2max = (float)w2;
+            if (w1*w1+w2*w2>wsmax) {
+              wsmax = (float)(w1*w1+w2*w2);
               i1max = i1;
               i2max = i2;
             }
@@ -835,7 +813,7 @@ public class LocalCorrelationFilter {
         }
         if (!pd)
           System.out.println("!pd i1="+i1+" i2="+i2);
-        if (abs(w1)==1.0 || abs(w2)==1.0) {
+        if (abs(w1)==0.5 || abs(w2)==0.5) {
           //System.out.println("i1="+i1+" i2="+i2+" w1="+w1+" w2="+w2);
           //Array.dump(ca[i2][i1]);
           ++nbad;
@@ -862,11 +840,7 @@ public class LocalCorrelationFilter {
       }
     }
     System.out.println("refineLags: nbad="+nbad);
-    System.out.println(
-      "refineLags: d0min="+d0min + " i1min="+i1min + " i2min="+i2min);
-    Array.dump(ca[i2min][i1min]);
-    System.out.println("lags: l1="+l1[i2min][i1min]+" l2="+l2[i2min][i1min]);
-    System.out.println("refineLags: w1max="+w1max + " w2max="+w2max);
+    System.out.println("refineLags: sqrt(wsmax)="+sqrt(wsmax));
     System.out.println("refineLags: i1max="+i1max + " i2max="+i2max);
     Array.dump(ca[i2max][i1max]);
     System.out.println("lags: l1="+l1[i2max][i1max]+" l2="+l2[i2max][i1max]);
@@ -986,20 +960,20 @@ public class LocalCorrelationFilter {
                 w3 = v3/l33;
                 w2 = (v2-l32*w3)/l22;
                 w1 = (v1-l21*w2-l31*w3)/l11;
-                if (w1<-1.0) {
-                  w1 = -1.0;
-                } else if (w1>1.0) {
-                  w1 = 1.0;
+                if (w1<-0.5) {
+                  w1 = -0.5;
+                } else if (w1>0.5) {
+                  w1 = 0.5;
                 }
-                if (w2<-1.0) {
-                  w2 = -1.0;
-                } else if (w2>1.0) {
-                  w2 = 1.0;
+                if (w2<-0.5) {
+                  w2 = -0.5;
+                } else if (w2>0.5) {
+                  w2 = 0.5;
                 }
-                if (w3<-1.0) {
-                  w3 = -1.0;
-                } else if (w3>1.0) {
-                  w3 = 1.0;
+                if (w3<-0.5) {
+                  w3 = -0.5;
+                } else if (w3>0.5) {
+                  w3 = 0.5;
                 }
               }
             }

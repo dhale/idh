@@ -49,9 +49,11 @@ public class Warp2 {
   private LocalCorrelationFilter.Type _type = SIMPLE; 
   private LocalCorrelationFilter.Window _window = GAUSSIAN; 
   private float _sigma = 12.0f;
+  private boolean _whiten = true;
+  private boolean _smoothAfterWhiten = true;
+  private boolean _randomTestImage = false;
   private LocalCorrelationFilter _lcf = 
     new LocalCorrelationFilter(_type,_window,_sigma);
-  private DisplacementFilter _df = new DisplacementFilter(1.0e-5);
   private Displacement _disp = 
     new GaussianDisplacement(_d1max,_d2max,_n1,_n2);
   //  new SinusoidDisplacement(_d1max,_d2max,_n1,_n2);
@@ -63,21 +65,36 @@ public class Warp2 {
     initImages();
     doIntro();
     //doLcc();
-    //doLpf();
-    //doLcc();
-    //doFindLags();
-    doShift();
+    if (_whiten) {
+      doLpf();
+      //doLcc();
+    }
+    //doEstimateDisplacements();
+    doSequentialShifts();
   }
 
   private float[][] readImage() {
-    int n1 = 315;
-    int n2 = 315;
+    int n1 = _n1;
+    int n2 = _n2;
     String fileName = _dataDir+"/seis/vg/junks.dat";
     return Floats.readLittleEndian(fileName,n1,n2);
   }
 
+  private float[][] makeImage() {
+    float[][] f = Array.mul(Array.sub(Array.randfloat(_n1,_n2),0.5f),20.0f); 
+    RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(1.5);
+    rgf.apply0X(f,f);
+    rgf.applyX0(f,f);
+    System.out.println("makeImage: f min="+Array.min(f)+" max="+Array.max(f));
+    return f;
+  }
+
   private void initImages() {
-    _f = readImage();
+    if (_randomTestImage) {
+      _f = makeImage();
+    } else {
+      _f = readImage();
+    }
     _g = _disp.warp(_f);
   }
 
@@ -86,7 +103,7 @@ public class Warp2 {
     plot(_g,6.0f,"imageg");
   }
 
-  private void doShift() {
+  private void doSequentialShifts() {
     int n1 = _n1;
     int n2 = _n2;
     int l1 = _lmax;
@@ -94,23 +111,34 @@ public class Warp2 {
     ShiftFinder _sf = new ShiftFinder(_sigma);
     float[][] f = Array.copy(_f);
     float[][] g = Array.copy(_g);
-    _sf.whiten(_f,f);
-    _sf.whiten(_g,g);
+    /*
+    if (_whiten) {
+      _sf.whiten(_f,f);
+      _sf.whiten(_g,g);
+    }
+    */
     float[][] u1 = new float[n2][n1];
     float[][] u2 = new float[n2][n1];
     float[][] du = new float[n2][n1];
-    float[][] h1 = Array.copy(g);
-    float[][] h2 = Array.copy(g);
+    float[][] ha = Array.copy(g);
+    float[][] hb = Array.copy(g);
 
     plot(f,0.0f,null);
     plot(g,0.0f,null);
     plot(Array.sub(g,f),0.0f,null);
 
     for (int iter=0; iter<4; ++iter) {
-      _sf.find1(-l1,l1,f,h1,du);
-      _sf.shift1(du,h1,h2,u1,u2);
-      _sf.find2(-l2,l2,f,h2,du);
-      _sf.shift2(du,h2,h1,u1,u2);
+      float[][] ht;
+      _sf.find1(-l1,l1,f,ha,du);
+      System.out.println("1: du min="+Array.min(du)+" max="+Array.max(du));
+      _sf.shift1(du,ha,hb,u1,u2);
+      System.out.println("1: u1 min="+Array.min(u1)+" max="+Array.max(u1));
+      ht = ha; ha = hb; hb = ht;
+      _sf.find2(-l2,l2,f,ha,du);
+      System.out.println("2: du min="+Array.min(du)+" max="+Array.max(du));
+      _sf.shift2(du,ha,hb,u1,u2);
+      System.out.println("2: u2 min="+Array.min(u2)+" max="+Array.max(u2));
+      ht = ha; ha = hb; hb = ht;
       plotu(u1,_d1max,"u1");
       plotu(u2,_d2max,"u2");
     }
@@ -119,14 +147,14 @@ public class Warp2 {
     float[][] e2 = _disp.u2x();
     plotu(e1,_d1max,"e1");
     plotu(e2,_d2max,"e2");
-    plot(Array.sub(h1,f),0.0f,null);
+    plot(Array.sub(ha,f),0.0f,null);
   }
 
   private void doLcc() {
     int n1 = _n1;
     int n2 = _n2;
-    int l1 = 7;
-    int l2 = 7;
+    int l1 = _lmax;
+    int l2 = _lmax;
     int m1 = 1+2*l1;
     int m2 = 1+2*l2;
     _lcf.setInputs(_f,_g);
@@ -158,10 +186,6 @@ public class Warp2 {
     RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(sqrt(1.0));
     float[][] t = new float[n2][n1];
     /*
-    int[] lag1 = {          1, 2,
-                  -2,-1, 0, 1, 2};
-    int[] lag2 = {          0, 0,
-                   1, 1, 1, 1, 1};
     int[] lag1 = {       1,
                   -1, 0, 1};
     int[] lag2 = {       0,
@@ -171,17 +195,19 @@ public class Warp2 {
     int[] lag2 = {0, 1};
     lpf.applyPef(lag1,lag2,_f,t);
     Array.copy(t,_f);
-    rgf.apply0X(_f,_f);
-    rgf.applyX0(_f,_f);
     lpf.applyPef(lag1,lag2,_g,t);
     Array.copy(t,_g);
-    rgf.apply0X(_g,_g);
-    rgf.applyX0(_g,_g);
+    if (_smoothAfterWhiten) { 
+      rgf.apply0X(_f,_f);
+      rgf.applyX0(_f,_f);
+      rgf.apply0X(_g,_g);
+      rgf.applyX0(_g,_g);
+    }
     plot(_f,0.6f,"lpeff");
     plot(_g,0.6f,"lpefg");
   }
 
-  private void doFindLags() {
+  private void doEstimateDisplacements() {
     _lcf.setInputs(_f,_g);
     int min1 = _lmin;
     int max1 = _lmax;
@@ -198,10 +224,6 @@ public class Warp2 {
     _lcf.refineLags(l1,l2,u1,u2,q);
     plotu(u1,_d1max,"u1");
     plotu(u2,_d2max,"u2");
-
-    //_df.apply(q,u);
-    //plotu(u1,_d1max,null);
-    //plotu(u2,_d2max,null);
 
     float[][] e1 = (_type==SIMPLE)?_disp.u1x():_disp.u1m();
     float[][] e2 = (_type==SIMPLE)?_disp.u2x():_disp.u2m();
