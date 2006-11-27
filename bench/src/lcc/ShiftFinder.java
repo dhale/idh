@@ -393,6 +393,18 @@ public class ShiftFinder {
    * @param g the output array.
    */
   public void whiten(float[][] f, float[][] g) {
+    whiten(1.0,f,g);
+  }
+
+  /**
+   * Applies local prediction-error (spectal whitening) filters.
+   * The input and output arrays f and g can be the same array.
+   * @param sigma half-width of Gaussian smoothing applied after whitening;
+   *  less than one for no smoothing.
+   * @param f the input array.
+   * @param g the output array.
+   */
+  public void whiten(double sigma, float[][] f, float[][] g) {
     int n1 = f[0].length;
     int n2 = f.length;
     float[][] r00 = new float[n2][n1];
@@ -436,17 +448,35 @@ public class ShiftFinder {
                   - a0p*f[i2-1][i1];
       }
     }
-    _rgfSmooth.apply0X(s,t);
-    _rgfSmooth.applyX0(t,g);
+    if (sigma>0.0) {
+      RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(sigma);
+      rgf.apply0X(s,t);
+      rgf.applyX0(t,g);
+    } else {
+      Array.copy(s,g);
+    }
   }
 
   /**
    * Applies local prediction-error (spectal whitening) filters.
    * The input and output arrays f and g can be the same array.
+   * Smooths the output with a Gaussian filter with half-width sigma = 1.0.
    * @param f the input array.
    * @param g the output array.
    */
   public void whiten(float[][][] f, float[][][] g) {
+    whiten(1.0,f,g);
+  }
+
+  /**
+   * Applies local prediction-error (spectal whitening) filters.
+   * The input and output arrays f and g can be the same array.
+   * @param sigma half-width of Gaussian smoothing applied after whitening;
+   *  less than one for no smoothing.
+   * @param f the input array.
+   * @param g the output array.
+   */
+  public void whiten(double sigma, float[][][] f, float[][][] g) {
     int n1 = f[0][0].length;
     int n2 = f[0].length;
     int n3 = f.length;
@@ -519,9 +549,14 @@ public class ShiftFinder {
         }
       }
     }
-    _rgfSmooth.apply0XX(s,t);
-    _rgfSmooth.applyX0X(t,s);
-    _rgfSmooth.applyXX0(s,g);
+    if (sigma>0.0) {
+      RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(sigma);
+      rgf.apply0XX(s,t);
+      rgf.applyX0X(t,s);
+      rgf.applyXX0(s,g);
+    } else {
+      Array.copy(s,g);
+    }
   }
 
   ///////////////////////////////////////////////////////////////////////////

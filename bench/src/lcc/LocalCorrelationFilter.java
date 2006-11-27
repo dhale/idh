@@ -49,7 +49,7 @@ public class LocalCorrelationFilter {
    * Cross-correlations windows.
    * The default window is GAUSSIAN.
    */
-  enum Window {
+  public enum Window {
     GAUSSIAN,
     RECTANGLE
   };
@@ -58,7 +58,7 @@ public class LocalCorrelationFilter {
    * Cross-correlations types.
    * The default type is SYMMETRIC.
    */
-  enum Type {
+  public enum Type {
     SIMPLE,
     SYMMETRIC
   };

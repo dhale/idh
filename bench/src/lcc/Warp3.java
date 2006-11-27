@@ -491,7 +491,7 @@ public class Warp3 {
       _b3 = _a3/3.0;
       _c1 = u1max*exp(0.5)/_b1;
       _c2 = u2max*exp(0.5)/_b2;
-      _c3 = u2max*exp(0.5)/_b3;
+      _c3 = u3max*exp(0.5)/_b3;
     }
     public double u1(double x1, double x2, double x3) {
       double xa1 = x1-_a1;
