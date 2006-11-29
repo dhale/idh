@@ -18,8 +18,8 @@ fontSize = 24
 width = 640
 height = 505
 widthColorBar = 80
-pngDir = "."
 dataDir = "/data"
+pngDir = "."
 
 n1 = 315
 n2 = 315
@@ -43,7 +43,7 @@ def main(args):
   #goImages()
   #goLcc()
   #goLagSearch()
-  goSequentialShifts()
+  #goSequentialShifts()
   return
 
 def goLcc():
@@ -76,18 +76,18 @@ def doExact():
 def doImages():
   f = readImage()
   g = warpImage(f)
-  plot(f,0.0,"f");
-  plot(g,0.0,"g");
+  plot(f,0.0,"f")
+  plot(g,0.0,"g")
   return f,g
 
 def doLcc(f,g,whiten,smooth):
   f,g = doImages()
   f,g,suffix = preprocess(f,g,whiten,smooth)
-  l1 = lmax;
-  l2 = lmax;
-  m1 = 1+2*l1;
-  m2 = 1+2*l2;
-  lcf.setInputs(f,g);
+  l1 = lmax
+  l2 = lmax
+  m1 = 1+2*l1
+  m2 = 1+2*l2
+  lcf.setInputs(f,g)
   c = Array.zerofloat(n1,n2)
   t = Array.zerofloat(n1,n2)
   k1 = ( 38, 98,113,150, 98,172)
@@ -96,18 +96,18 @@ def doLcc(f,g,whiten,smooth):
   ck = Array.zerofloat(m1,m2,nk)
   for lag2 in range(-l2,l2+1):
     for lag1 in range(-l1,l1+1):
-      lcf.correlate(lag1,lag2,t);
-      lcf.normalize(lag1,lag2,t);
-      Array.copy(n1/m1,n2/m2,l1,l2,m1,m2,t,l1+lag1,l2+lag2,m1,m2,c);
+      lcf.correlate(lag1,lag2,t)
+      lcf.normalize(lag1,lag2,t)
+      Array.copy(n1/m1,n2/m2,l1,l2,m1,m2,t,l1+lag1,l2+lag2,m1,m2,c)
       for k in range(nk):
         ck[k][l2+lag2][l1+lag1] = t[k2[k]][k1[k]]
-  plot(c,1.0,"lcc"+suffix);
+  plot(c,1.0,"lcc"+suffix)
   for k in range(nk):
-    plot(ck[k],0.0,"lcc"+suffix+"_"+str(k1[k])+"_"+str(k2[k]));
+    plot(ck[k],0.0,"lcc"+suffix+"_"+str(k1[k])+"_"+str(k2[k]))
 
 def doLagSearch(f,g,whiten,smooth):
   f,g,suffix = preprocess(f,g,whiten,smooth)
-  lcf.setInputs(f,g);
+  lcf.setInputs(f,g)
   l1 = Array.zerobyte(n1,n2)
   l2 = Array.zerobyte(n1,n2)
   lcf.findMaxLags(lmin,lmax,lmin,lmax,l1,l2)
@@ -129,12 +129,12 @@ def doSequentialShifts(f,g,whiten,smooth):
   for iter in range(4):
     sf.find1(lmin,lmax,f,ha,du)
     print "1: du min =",Array.min(du),"max =",Array.max(du)
-    sf.shift1(du,ha,hb,u1,u2);
+    sf.shift1(du,ha,hb,u1,u2)
     print "1: u1 min =",Array.min(u1),"max =",Array.max(u1)
     ht = ha; ha = hb; hb = ht
     sf.find2(lmin,lmax,f,ha,du)
     print "2: du min =",Array.min(du),"max =",Array.max(du)
-    sf.shift2(du,ha,hb,u1,u2);
+    sf.shift2(du,ha,hb,u1,u2)
     print "2: u2 min =",Array.min(u2),"max =",Array.max(u2)
     ht = ha; ha = hb; hb = ht
     plotu(u1,d1max,"u1"+suffix+"ss"+str(iter))
@@ -145,7 +145,7 @@ def doSequentialShifts(f,g,whiten,smooth):
 
 def readImage():
   fileName = dataDir+"/seis/vg/junks.dat"
-  ais = ArrayInputStream(fileName,ByteOrder.LITTLE_ENDIAN);
+  ais = ArrayInputStream(fileName,ByteOrder.LITTLE_ENDIAN)
   f = Array.zerofloat(n1,n2)
   ais.readFloats(f)
   ais.close()
@@ -157,7 +157,7 @@ def warpImage(f):
 def preprocess(f,g,whiten,smooth):
   if not whiten:
     return f,g,""
-  sf = ShiftFinder(lcfSigma);
+  sf = ShiftFinder(lcfSigma)
   fw = Array.copy(f)
   gw = Array.copy(g)
   sigma = 0.0
@@ -185,7 +185,7 @@ def plot(f,clip=0.0,png=None):
     s2 = Sampling(n2,1,-(n2-1)/2)
   pv = p.addPixels(s1,s2,f)
   if clip!=0.0:
-    pv.setClips(-clip,clip);
+    pv.setClips(-clip,clip)
   else:
     pv.setPercentiles(0.0,100.0)
   pv.setInterpolation(PixelsView.Interpolation.NEAREST)
@@ -193,16 +193,16 @@ def plot(f,clip=0.0,png=None):
 
 def plotu(u,clip=0.0,png=None):
     p = panel()
-    pv = p.addPixels(u);
-    pv.setColorModel(ColorMap.JET);
+    pv = p.addPixels(u)
+    pv.setColorModel(ColorMap.JET)
     if clip!=0.0:
-      pv.setClips(-clip,clip);
+      pv.setClips(-clip,clip)
     else:
       pv.setPercentiles(1.0,99.0)
     frame(p,png)
 
 def panel():
-  p = PlotPanel(PlotPanel.Orientation.X1DOWN_X2RIGHT);
+  p = PlotPanel(PlotPanel.Orientation.X1DOWN_X2RIGHT)
   p.addColorBar()
   p.setColorBarWidthMinimum(widthColorBar)
   return p
