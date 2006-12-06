@@ -23,8 +23,8 @@ pngDir = None
 
 n1 = 315
 n2 = 315
-order = 2
-sigma = 6
+order = 1
+sigma = 8
 
 #############################################################################
 # functions
@@ -35,7 +35,7 @@ def main(args):
 
 def goBurg():
   x = doImage()
-  y = doBurg(x,order,sigma)
+  doBurg(x,order,sigma)
 
 def doImage():
   x = readImage()
@@ -44,23 +44,36 @@ def doImage():
   return x
 
 def doBurg(x,order,sigma):
-  y = Array.zerofloat(n1,n2)
   lbf = LocalBurgFilter(sigma)
-  c = lbf.applyQ1(order,x,y)
-  c = lbf.applyQ4(order,y,y)
-  plot(y,1.0,"y");
-  c = lbf.applyQ3(order,x,y)
-  c = lbf.applyQ4(order,y,y)
-  plot(y,1.0,"y")
-  return y
+  c1 = Array.zerofloat(n1,n2,order)
+  c2 = Array.zerofloat(n1,n2,order)
+  y = Array.zerofloat(n1,n2)
+  lbf.applyQ1(order,x,y,c1,c2)
+  plot(y,2.0,"y")
+  z = Array.zerofloat(n1,n2)
+  lbf.applyForward(c1,c2,x,z)
+  plot(z,2.0,"z")
+  w = Array.zerofloat(n1,n2)
+  lbf.applyInverse(c1,c2,z,w)
+  plot(w,10.0,"w")
+  print "max diff =",Array.max(Array.sub(w,x))
+  plot(Array.sub(w,x),10.0,"w-x")
 
 def readImage():
   fileName = dataDir+"/seis/vg/junks.dat"
-  ais = ArrayInputStream(fileName,ByteOrder.LITTLE_ENDIAN);
+  ais = ArrayInputStream(fileName,ByteOrder.LITTLE_ENDIAN)
   f = Array.zerofloat(n1,n2)
   ais.readFloats(f)
   ais.close()
   return f
+
+def flip2(f):
+  n1 = len(f[0])
+  n2 = len(f)
+  g = Array.zerofloat(n1,n2)
+  for i2 in range(n2):
+    Array.copy(f[n2-1-i2],g[i2])
+  return g
 
 #############################################################################
 # plot
@@ -76,14 +89,14 @@ def plot(f,clip=0.0,png=None):
     s2 = Sampling(n2,1,-(n2-1)/2)
   pv = p.addPixels(s1,s2,f)
   if clip!=0.0:
-    pv.setClips(-clip,clip);
+    pv.setClips(-clip,clip)
   else:
     pv.setPercentiles(0.0,100.0)
   pv.setInterpolation(PixelsView.Interpolation.NEAREST)
   frame(p,png)
 
 def panel():
-  p = PlotPanel(PlotPanel.Orientation.X1DOWN_X2RIGHT);
+  p = PlotPanel(PlotPanel.Orientation.X1DOWN_X2RIGHT)
   p.addColorBar()
   p.setColorBarWidthMinimum(widthColorBar)
   return p
