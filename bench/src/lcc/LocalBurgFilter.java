@@ -25,6 +25,168 @@ public class LocalBurgFilter {
       sigma);
   }
 
+  public float[][] findQ1(int m, float[][] x) {
+    int n1 = x[0].length;
+    int n2 = x.length;
+    int m2 = m*2;
+    float[][] c = new float[n2][n1*m2];
+    float[][] f = new float[n2][n1];
+    float[][] b = new float[n2][n1];
+    float[][] r00 = new float[n2][n1];
+    float[][] rpm = new float[n2][n1];
+    float[][] rp0 = new float[n2][n1];
+    float[][] r0p = new float[n2][n1];
+    float[][] rxx = new float[n2][n1];
+    Array.copy(x,f);
+    Array.copy(x,b);
+    for (int k=0; k<m; ++k) {
+      _lcf.setInputs(b,b);
+      _lcf.correlate(0,0,r00);
+      _lcf.correlate(1,-1,rpm);
+      if (k>0) {
+        _lcf.setInputs(f,f);
+        _lcf.correlate(0,0,rxx);
+        Array.add(rxx,r00,r00);
+        _lcf.correlate(1,-1,rxx);
+        Array.add(rxx,rpm,rpm);
+      } else {
+        Array.mul(2.0f,r00,r00);
+        Array.mul(2.0f,rpm,rpm);
+      }
+      _lcf.setInputs(b,f);
+      _lcf.correlate(1,0,rp0);
+      Array.mul(2.0f,rp0,rp0);
+      _lcf.correlate(0,1,r0p);
+      Array.mul(2.0f,r0p,r0p);
+      for (int i2=n2-1; i2>k; --i2) {
+        for (int i1=n1-1,kc=i1*m2+k*2; i1>k; --i1,kc-=m2) {
+          double b1 = rp0[i2][i1];
+          double b2 = r0p[i2][i1];
+          double a11 = r00[i2][i1];
+          double a21 = rpm[i2][i1];
+          double a22 = a11;
+          double l11 = sqrt(a11);
+          double l21 = a21/l11;
+          double d22 = a22-l21*l21;
+          double x1 = 0.0;
+          double x2 = 0.0;
+          if (d22>0.0) {
+            double l22 = sqrt(d22);
+            double v1 = b1/l11;
+            double v2 = (b2-l21*v1)/l22;
+            x2 = v2/l22;
+            x1 = (v1-l21*x2)/l11;
+          } else {
+            System.out.println("not pd: i1="+i1+" i2="+i2);
+          }
+          float c1 = (float)x1;
+          float c2 = (float)x2;
+          float ca = abs(c1)+abs(c2);
+          if (ca>CMAX) {
+            float cs = CMAX/ca;
+            c1 *= cs;
+            c2 *= cs;
+          }
+          c[i2][kc  ] = c1;
+          c[i2][kc+1] = c2;
+          float f00 = f[i2][i1];
+          float f0m = f[i2-1][i1];
+          float fm0 = f[i2][i1-1];
+          float bmm = b[i2-1][i1-1];
+          float b0m = b[i2-1][i1];
+          float bm0 = b[i2][i1-1];
+          f[i2][i1] = f00-c1*bm0-c2*b0m;
+          b[i2][i1] = bmm-c1*f0m-c2*fm0;
+        }
+      }
+    }
+    return c;
+  }
+  public void applyQ1Forward(float[][] c, float[][] x, float[][] y) {
+    int n1 = x[0].length;
+    int n2 = x.length;
+    int m = c[0].length/n1/2;
+    int m2 = m*2;
+    float[][] f  = new float[n1][m+1];
+    float[][] b  = new float[n1][m+1];
+    float[][] f2 = new float[n1][m+1];
+    float[][] b2 = new float[n1][m+1];
+    for (int i2=0; i2<n2; ++i2) {
+      float[] cc = c[i2];
+      f[0][0] = b[0][0] = x[i2][0];
+      for (int k=1,kc=0; k<=m; ++k,kc+=2) {
+        float c1 = cc[kc  ];
+        float c2 = cc[kc+1];
+        f[0][k] = f[0][k-1]-c2*b2[0][k-1];
+        b[0][k] =          -c1*f2[0][k-1];
+      }
+      y[i2][0] = f[0][m];
+      for (int i1=1,ic=m2; i1<n1; ++i1,ic+=m2) {
+        f[i1][0] = x[i2][i1];
+        b[i1][0] = x[i2][i1];
+        for (int k=1,kc=ic; k<=m; ++k,kc+=2) {
+          float c1 = cc[kc  ];
+          float c2 = cc[kc+1];
+          f[i1][k] =  f[i1  ][k-1]-c1* b[i1-1][k-1]-c2*b2[i1  ][k-1];
+          b[i1][k] = b2[i1-1][k-1]-c1*f2[i1  ][k-1]-c2* f[i1-1][k-1];
+        }
+        y[i2][i1] = f[i1][m];
+      }
+      float[][] ft = f2;  f2 = f;  f = ft;
+      float[][] bt = b2;  b2 = b;  b = bt;
+    }
+  }
+  public void applyQ1Inverse(float[][] c, float[][] x, float[][] y) {
+    int n1 = x[0].length;
+    int n2 = x.length;
+    int m = c[0].length/n1/2;
+    int m2 = m*2;
+    float[][] f  = new float[n1][m+1];
+    float[][] b  = new float[n1][m+1];
+    float[][] f2 = new float[n1][m+1];
+    float[][] b2 = new float[n1][m+1];
+    for (int i2=0; i2<n2; ++i2) {
+      float[] cc = c[i2];
+      f[0][m] = x[i2][0];
+      for (int k=m,kc=m2-2; k>=1; --k,kc-=2) {
+        float c1 = cc[kc  ];
+        float c2 = cc[kc+1];
+        f[0][k-1] = f[0][k]+c2*b2[0][k-1];
+        b[0][k  ] =        -c1*f2[0][k-1];
+      }
+      y[i2][0] = b[0][0] = f[0][0];
+      for (int i1=1,ic=m2; i1<n1; ++i1,ic+=m2) {
+        f[i1][m] = x[i2][i1];
+        for (int k=m,kc=ic+m2-2; k>=1; --k,kc-=2) {
+          float c1 = cc[kc  ];
+          float c2 = cc[kc+1];
+          f[i1][k-1] =  f[i1  ][k  ]+c1* b[i1-1][k-1]+c2*b2[i1  ][k-1];
+          b[i1][k  ] = b2[i1-1][k-1]-c1*f2[i1  ][k-1]-c2* f[i1-1][k-1];
+        }
+        y[i2][i1] = b[i1][0] = f[i1][0];
+      }
+      float[][] ft = f2;  f2 = f;  f = ft;
+      float[][] bt = b2;  b2 = b;  b = bt;
+    }
+  }
+
+  public float[][] findQ4(int m, float[][] x) {
+    return flip2(findQ1(m,flip2(x)));
+  }
+  public void applyQ4Forward(float[][] c, float[][] x, float[][] y) {
+    applyQ1Forward(flip2(c),flip2(x),flip2(y));
+  }
+  public void applyQ4Inverse(float[][] c, float[][] x, float[][] y) {
+    applyQ1Inverse(flip2(c),flip2(x),flip2(y));
+  }
+  private float[][] flip2(float[][] x) {
+    int n2 = x.length;
+    float[][] xt = new float[n2][];
+    for (int i2=0; i2<n2; ++i2)
+      xt[i2] = x[n2-i2-1];
+    return xt;
+  }
+
   /**
    * Applies filter.
    * The input and output arrays f and g can be the same array.
@@ -32,10 +194,7 @@ public class LocalBurgFilter {
    * @param x the input array.
    * @param y the output array.
    */
-  public void applyQ1(
-    int m, float[][] x, float[][] y, 
-    float[][][] c1, float[][][] c2) 
-  {
+  public void applyQ1(int m, float[][] x, float[][] y) {
     int n1 = x[0].length;
     int n2 = x.length;
     float[][] f = y;
@@ -87,31 +246,27 @@ public class LocalBurgFilter {
           } else {
             System.out.println("not pd: i1="+i1+" i2="+i2);
           }
-          float c1k = (float)x1;
-          float c2k = (float)x2;
-          float ca = abs(c1k)+abs(c2k);
+          float c1 = (float)x1;
+          float c2 = (float)x2;
+          float ca = abs(c1)+abs(c2);
           if (ca>CMAX) {
             float cs = CMAX/ca;
-            c1k *= cs;
-            c2k *= cs;
+            c1 *= cs;
+            c2 *= cs;
           }
-          if (c1!=null) {
-            c1[k][i2][i1] = c1k;
-            c2[k][i2][i1] = c2k;
-          }
-          float bmm = b[i2-1][i1-1];
-          float b0m = b[i2-1][i1];
-          float bm0 = b[i2][i1-1];
           float f00 = f[i2][i1];
           float f0m = f[i2-1][i1];
           float fm0 = f[i2][i1-1];
-          b[i2][i1] = bmm-c2k*f0m-c1k*fm0;
-          f[i2][i1] = f00-c1k*bm0-c2k*b0m;
+          float bmm = b[i2-1][i1-1];
+          float b0m = b[i2-1][i1];
+          float bm0 = b[i2][i1-1];
+          f[i2][i1] = f00-c1*bm0-c2*b0m;
+          b[i2][i1] = bmm-c1*f0m-c2*fm0;
         }
       }
     }
   }
-  public void applyForward(
+  public void applyForwardX(
     float[][][] c1, float[][][] c2, 
     float[][] x, float[][] y) 
   {
@@ -156,64 +311,6 @@ public class LocalBurgFilter {
       }
       for (int i1=0; i1<n1; ++i1) {
         y[i2][i1] = f[m][i1];
-      }
-    }
-  }
-  public void applyInverse(
-    float[][][] c1, float[][][] c2, 
-    float[][] x, float[][] y) 
-  {
-    int m = c1.length;
-    int n1 = x[0].length;
-    int n2 = x.length;
-    float[][] f = new float[m+1][n1];
-    float[][] b = new float[m+1][n1];
-    float[][] f2 = new float[m+1][n1];
-    float[][] b2 = new float[m+1][n1];
-    for (int i2=0; i2<n2; ++i2) {
-      float[] fm = f[m];
-      for (int i1=0; i1<n1; ++i1) {
-        fm[i1] = x[i2][i1];
-      }
-      for (int k=m; k>=1; --k) {
-        float[] fk = f[k];
-        float[] fkm = f[k-1];
-        float[] bkm = b[k-1];
-        float[] b2m = b2[k-1];
-        float[] c1k = c1[k-1][i2];
-        float[] c2k = c2[k-1][i2];
-        int i1 = k-1;
-        fkm[i1] = fk[i1]+c2k[i1]*b2m[i1];
-        for (i1=k; i1<n1; ++i1) {
-          fkm[i1] = fk[i1]+c1k[i1]*bkm[i1-1]+c2k[i1]*b2m[i1];
-        }
-      }
-      float[] b0 = b[0];
-      float[] f0 = f[0];
-      for (int i1=0; i1<n1; ++i1) {
-        b0[i1] = f0[i1];
-      }
-      for (int k=1; k<=m; ++k) {
-        float[] bk = b[k];
-        float[] fkm = f[k-1];
-        float[] f2m = f2[k-1];
-        float[] b2m = b2[k-1];
-        float[] c1k = c1[k-1][i2];
-        float[] c2k = c2[k-1][i2];
-        int i1 = k-1;
-        bk[i1] = -c1k[i1]*f2m[i1];
-        for (i1=k; i1<n1; ++i1) {
-          bk[i1] = b2m[i1-1]-c1k[i1]*f2m[i1]-c2k[i1]*fkm[i1-1];
-        }
-      }
-      for (int k=0; k<=m; ++k) {
-        for (int i1=k; i1<n1; ++i1) {
-          f2[k][i1] = f[k][i1];
-          b2[k][i1] = b[k][i1];
-        }
-      }
-      for (int i1=0; i1<n1; ++i1) {
-        y[i2][i1] = f[0][i1];
       }
     }
   }

@@ -1,4 +1,5 @@
 import sys
+from math import *
 from java.lang import *
 from java.nio import *
 from javax.swing import *
@@ -23,7 +24,7 @@ pngDir = None
 
 n1 = 315
 n2 = 315
-order = 1
+order = 2
 sigma = 8
 
 #############################################################################
@@ -35,7 +36,10 @@ def main(args):
 
 def goBurg():
   x = doImage()
-  doBurg(x,order,sigma)
+  print "xrms =",rms(x)
+  for m in range(1,order+1):
+    print "m =",m
+    doForwardInverse(x,m,sigma)
 
 def doImage():
   x = readImage()
@@ -43,21 +47,43 @@ def doImage():
   plot(x,10.0,"x")
   return x
 
-def doBurg(x,order,sigma):
-  lbf = LocalBurgFilter(sigma)
-  c1 = Array.zerofloat(n1,n2,order)
-  c2 = Array.zerofloat(n1,n2,order)
+def doForwardInverse(x,order,sigma):
   y = Array.zerofloat(n1,n2)
-  lbf.applyQ1(order,x,y,c1,c2)
+  lbf = LocalBurgFilter(sigma)
+  cq1 = lbf.findQ1(order,x)
+  lbf.applyQ1Forward(cq1,x,y)
+  cq4 = lbf.findQ4(order,y)
+  lbf.applyQ4Forward(cq4,y,y)
+  print "yrms =",rms(y)
   plot(y,2.0,"y")
   z = Array.zerofloat(n1,n2)
-  lbf.applyForward(c1,c2,x,z)
-  plot(z,2.0,"z")
-  w = Array.zerofloat(n1,n2)
-  lbf.applyInverse(c1,c2,z,w)
-  plot(w,10.0,"w")
-  print "max diff =",Array.max(Array.sub(w,x))
-  plot(Array.sub(w,x),10.0,"w-x")
+  lbf.applyQ4Inverse(cq4,y,z)
+  lbf.applyQ1Inverse(cq1,z,z)
+  plot(z,10.0,"z")
+  print "max |z-x|:",Array.max(Array.abs(Array.sub(z,x)))
+  r = Array.sub(Array.randfloat(n1,n2),0.5)
+  s = Array.zerofloat(n1,n2)
+  lbf.applyQ4Inverse(cq4,r,s)
+  lbf.applyQ1Inverse(cq1,s,s)
+  plot(s,0.0,"s");
+
+def rms(x):
+  n1 = len(x[0])
+  n2 = len(x)
+  s = 1.0/(n1*n2)
+  return sqrt(s*Array.sum(Array.mul(x,x)))
+
+def plotc(c):
+  m = order
+  c1 = Array.zerofloat(n1,n2)
+  c2 = Array.zerofloat(n1,n2)
+  for k in range(m):
+    for i2 in range(n2):
+      for i1 in range(n1):
+        c1[i2][i1] = c[i2][i1*m*2+k*2  ]
+        c2[i2][i1] = c[i2][i1*m*2+k*2+1]
+    plot(c1,1.0,"c1")
+    plot(c2,1.0,"c2")
 
 def readImage():
   fileName = dataDir+"/seis/vg/junks.dat"
