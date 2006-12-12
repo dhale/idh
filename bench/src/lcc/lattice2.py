@@ -1,6 +1,7 @@
 import sys
 from math import *
 from java.lang import *
+from java.util import *
 from java.nio import *
 from javax.swing import *
 
@@ -25,20 +26,21 @@ pngDir = None
 n1 = 315
 n2 = 315
 order = 1
-sigma = 8
+sigma = 4
 
 #############################################################################
 # functions
 
 def main(args):
-  goBurg()
+  goLattice()
   return
 
-def goBurg():
+def goLattice():
   x = doImage()
   print "xrms =",rms(x)
-  doForwardInverse14(x,order,sigma)
-  doForwardInverse41(x,order,sigma)
+  #doForwardInverse14(x,order,sigma)
+  #doForwardInverse41(x,order,sigma)
+  doTexture(x,order,sigma)
 
 def doImage():
   x = readImage()
@@ -46,45 +48,74 @@ def doImage():
   plot(x,10.0,"x")
   return x
 
+def doTexture(x,order,sigma):
+  y = Array.zerofloat(n1,n2)
+  z13 = Array.zerofloat(n1,n2)
+  z24 = Array.zerofloat(n1,n2)
+  llf = LocalLatticeFilter(sigma)
+  cq1 = llf.findQ1(order,x)
+  cq2 = llf.findQ2(order,x)
+  cq3 = llf.findQ3(order,x)
+  cq4 = llf.findQ4(order,x)
+  r = Array.sub(Array.randfloat(n1,n2),0.5)
+  #r = Array.zerofloat(n1,n2)
+  #r[n2/2][n1/3] = 1.0
+  llf.applyQ1Inverse(cq1,r,z13)
+  llf.applyQ3Inverse(cq3,z13,z13)
+  plot(z13,0.0,None)
+  llf.applyQ2Inverse(cq2,r,z24)
+  llf.applyQ4Inverse(cq4,z24,z24)
+  plot(z24,0.0,None)
+  z = Array.add(z13,z24)
+  plot(z,0.0,None)
+  llf.applyQ3Inverse(cq3,r,z13)
+  llf.applyQ1Inverse(cq1,z13,z13)
+  plot(z13,0.0,None)
+  llf.applyQ4Inverse(cq4,r,z24)
+  llf.applyQ2Inverse(cq2,z24,z24)
+  plot(z24,0.0,None)
+  z = Array.add(z13,z24)
+  plot(z,0.0,None)
+
 def doForwardInverse14(x,order,sigma):
   y = Array.zerofloat(n1,n2)
-  lbf = LocalBurgFilter(sigma)
-  cq1 = lbf.findQ1(order,x)
-  lbf.applyQ1Forward(cq1,x,y)
-  cq4 = lbf.findQ4(order,y)
-  lbf.applyQ4Forward(cq4,y,y)
+  llf = LocalLatticeFilter(sigma)
+  cq1 = llf.findQ1(order,x)
+  llf.applyQ1Forward(cq1,x,y)
+  cq4 = llf.findQ4(order,y)
+  llf.applyQ4Forward(cq4,y,y)
   print "yrms =",rms(y)
   plot(y,2.0,"y")
   z = Array.zerofloat(n1,n2)
-  lbf.applyQ4Inverse(cq4,y,z)
-  lbf.applyQ1Inverse(cq1,z,z)
+  llf.applyQ4Inverse(cq4,y,z)
+  llf.applyQ1Inverse(cq1,z,z)
   #plot(z,10.0,"z")
   print "max |z-x|:",Array.max(Array.abs(Array.sub(z,x)))
   r = Array.sub(Array.randfloat(n1,n2),0.5)
   s = Array.zerofloat(n1,n2)
-  lbf.applyQ4Inverse(cq4,r,s)
-  lbf.applyQ1Inverse(cq1,s,s)
-  plot(s,0.0,"s");
+  llf.applyQ4Inverse(cq4,r,s)
+  llf.applyQ1Inverse(cq1,s,s)
+  plot(s,0.0,"s")
 
 def doForwardInverse41(x,order,sigma):
   y = Array.zerofloat(n1,n2)
-  lbf = LocalBurgFilter(sigma)
-  cq4 = lbf.findQ4(order,x)
-  lbf.applyQ4Forward(cq4,x,y)
-  cq1 = lbf.findQ1(order,y)
-  lbf.applyQ1Forward(cq1,y,y)
+  llf = LocalLatticeFilter(sigma)
+  cq4 = llf.findQ4(order,x)
+  llf.applyQ4Forward(cq4,x,y)
+  cq1 = llf.findQ1(order,y)
+  llf.applyQ1Forward(cq1,y,y)
   print "yrms =",rms(y)
   plot(y,2.0,"y")
   z = Array.zerofloat(n1,n2)
-  lbf.applyQ1Inverse(cq1,y,z)
-  lbf.applyQ4Inverse(cq4,z,z)
+  llf.applyQ1Inverse(cq1,y,z)
+  llf.applyQ4Inverse(cq4,z,z)
   #plot(z,10.0,"z")
   print "max |z-x|:",Array.max(Array.abs(Array.sub(z,x)))
   r = Array.sub(Array.randfloat(n1,n2),0.5)
   s = Array.zerofloat(n1,n2)
-  lbf.applyQ1Inverse(cq1,r,s)
-  lbf.applyQ4Inverse(cq4,s,s)
-  plot(s,0.0,"s");
+  llf.applyQ1Inverse(cq1,r,s)
+  llf.applyQ4Inverse(cq4,s,s)
+  plot(s,0.0,"s")
 
 def rms(x):
   n1 = len(x[0])
