@@ -18,9 +18,35 @@ import static edu.mines.jtk.util.MathPlus.*;
  */
 public class LocalPlaneFilter {
 
+  public enum Type {
+    QUAD,
+    HALE,
+    HALE0,
+    HALE1,
+    FOMEL,
+    FOMEL2,
+  };
+
   public LocalPlaneFilter(double sigma) {
+    this(sigma,Type.HALE);
+  }
+
+  public LocalPlaneFilter(double sigma, Type type) {
     _rgfGradient = new RecursiveGaussianFilter(1.0);
     _rgfSmoother = new RecursiveGaussianFilter(sigma);
+    if (type==Type.QUAD) {
+      _filter = new QuadFilter();
+    } else if (type==Type.HALE) {
+      _filter = new HaleFilter();
+    } else if (type==Type.HALE0) {
+      _filter = new Hale0Filter();
+    } else if (type==Type.HALE1) {
+      _filter = new Hale1Filter();
+    } else if (type==Type.FOMEL) {
+      _filter = new FomelFilter();
+    } else if (type==Type.FOMEL2) {
+      _filter = new Fomel2Filter();
+    }
   }
 
   public float[][][] find(float[][] x) {
@@ -92,54 +118,39 @@ public class LocalPlaneFilter {
     int n2 = x.length;
     float[][] p1 = p[1];
     float[][] p2 = p[2];
+    float[] c = new float[6];
 
-    // For i2=0, assume that x[i2-1][i1] = y[i2-1][i1] = 0.
+    // For i2=0, x[i2-1][i1] = y[i2-1][i1] = x[i2][-1] = x[i2][n1] = 0.
     int i2 = 0;
     float[] x2 = x[i2];
     float[] y2 = y[i2];
     int i1 = 0;
-    float q1 = p1[i2][i1];
-    float q2 = p2[i2][i1];
-    float qp = q1+q2;
-    float qm = q1-q2;
-    float qs = q1*q1;
-    y2[i1] = x2[i1]-P999*(0.5f*q2*qp*x2[i1+1]);
+    _filter.getCoefficients(p1[i2][i1],p2[i2][i1],c);
+    y2[i1] = c[0]*x2[i1+1]+c[1]*x2[i1];
     for (i1=1; i1<n1-1; ++i1) {
-      q1 = p1[i2][i1];
-      q2 = p2[i2][i1];
-      qp = q1+q2;
-      qm = q1-q2;
-      y2[i1] = x2[i1]-P999*(0.5f*q2*(qp*x2[i1+1]-qm*x2[i1-1]));
+      _filter.getCoefficients(p1[i2][i1],p2[i2][i1],c);
+      y2[i1] = c[0]*x2[i1+1]+c[1]*x2[i1]+c[2]*x2[i1-1];
     }
-    q1 = p1[i2][i1];
-    q2 = p2[i2][i1];
-    qm = q1-q2;
-    y2[i1] = x2[i1]-P999*(-0.5f*q2*qm*x2[i1-1]);
+    _filter.getCoefficients(p1[i2][i1],p2[i2][i1],c);
+    y2[i1] = c[1]*x2[i1]+c[2]*x2[i1-1];
 
-    // For all i2>0, ...
+    // For all i2>0, assume that x[i2][-1] = x[i2][n1] = 0.
     for (i2=1; i2<n2; ++i2) {
       float[] x2m = x[i2-1];
       x2 = x[i2];
       y2 = y[i2];
       i1 = 0;
-      q1 = p1[i2][i1];
-      q2 = p2[i2][i1];
-      qp = q1+q2;
-      qs = q1*q1;
-      y2[i1] = x2[i1]-P999*(0.5f*q2*qp*x2[i1+1]+qs*x2m[i1]);
+      _filter.getCoefficients(p1[i2][i1],p2[i2][i1],c);
+      y2[i1] = c[0]*x2 [i1+1]+c[1]*x2 [i1]
+             + c[3]*x2m[i1+1]+c[4]*x2m[i1];
       for (i1=1; i1<n1-1; ++i1) {
-        q1 = p1[i2][i1];
-        q2 = p2[i2][i1];
-        qp = q1+q2;
-        qm = q1-q2;
-        qs = q1*q1;
-        y2[i1] = x2[i1]-P999*(0.5f*q2*(qp*x2[i1+1]-qm*x2[i1-1])+qs*x2m[i1]);
+        _filter.getCoefficients(p1[i2][i1],p2[i2][i1],c);
+        y2[i1] = c[0]*x2 [i1+1]+c[1]*x2 [i1]+c[2]*x2 [i1-1]
+               + c[3]*x2m[i1+1]+c[4]*x2m[i1]+c[5]*x2m[i1-1];
       }
-      q1 = p1[i2][i1];
-      q2 = p2[i2][i1];
-      qm = q1-q2;
-      qs = q1*q1;
-      y2[i1] = x2[i1]-P999*(-0.5f*q2*qm*x2[i1-1]+qs*x2m[i1]);
+      _filter.getCoefficients(p1[i2][i1],p2[i2][i1],c);
+      y2[i1] = c[1]*x2 [i1]+c[2]*x2 [i1-1]
+             + c[4]*x2m[i1]+c[5]*x2m[i1-1];
     }
   }
 
@@ -153,416 +164,171 @@ public class LocalPlaneFilter {
     float[] tb = tm.b();
     float[] tc = tm.c();
     float[] r = new float[n1];
+    float[] c = new float[6];
 
-    // For i2=0, assume that x[i2-1][i1] = y[i2-1][i1] = 0.
+    // For i2=0, x[i2-1][i1] = y[i2-1][i1] = x[i2][-1] = x[i2][n1] = 0.
     int i2 = 0;
     float[] x2 = x[i2];
     float[] y2 = y[i2];
     for (int i1=0; i1<n1; ++i1) {
-      float q1 = p1[i2][i1];
-      float q2 = p2[i2][i1];
-      float qp = q1+q2;
-      float qm = q1-q2;
-      r[i1] = x2[i1];
-      ta[i1] =  P999*0.5f*q2*qm;
-      tb[i1] = 1.0f;
-      tc[i1] = -P999*0.5f*q2*qp;
+        _filter.getCoefficients(p1[i2][i1],p2[i2][i1],c);
+        r[i1] = x2[i1];
+        ta[i1] = c[2];
+        tb[i1] = c[1];
+        tc[i1] = c[0];
     }
     tm.solve(r,y2);
 
-    // For all i2>0, ...
+    // For all i2>0, assume that x[i2][-1] = x[i2][n1] = 0.
     for (i2=1; i2<n2; ++i2) {
       float[] y2m = y[i2-1];
       x2 = x[i2];
       y2 = y[i2];
-      for (int i1=0; i1<n1; ++i1) {
-        float q1 = p1[i2][i1];
-        float q2 = p2[i2][i1];
-        float qp = q1+q2;
-        float qm = q1-q2;
-        float qs = q1*q1;
-        r[i1] = x2[i1]+P999*qs*y2m[i1];
-        ta[i1] =  P999*0.5f*q2*qm;
-        tb[i1] = 1.0f;
-        tc[i1] = -P999*0.5f*q2*qp;
-      }
-      tm.solve(r,y2);
-    }
-  }
-
-  public void applyForwardX(float[][][] p, float[][] x, float[][] y) {
-    int n1 = x[0].length;
-    int n2 = x.length;
-    float[][] p1 = p[1];
-    float[][] p2 = p[2];
-
-    // For i2=0, assume that x[i2-1][i1] = y[i2-1][i1] = 0.
-    int i2 = 0;
-    float[] x2 = x[i2];
-    float[] y2 = y[i2];
-    int i1 = 0;
-    float q1 = p1[i2][i1];
-    float q2 = p2[i2][i1];
-    float qp = q1+q2;
-    float qm = q1-q2;
-    y2[i1] = x2[i1]+0.5f*P999*(qm*qp*(x2[i1+1]));
-    for (i1=1; i1<n1-1; ++i1) {
-      q1 = p1[i2][i1];
-      q2 = p2[i2][i1];
-      qp = q1+q2;
-      qm = q1-q2;
-      y2[i1] = x2[i1]+0.5f*P999*(qm*qp*(x2[i1+1]+x2[i1-1]));
-    }
-    q1 = p1[i2][i1];
-    q2 = p2[i2][i1];
-    qp = q1+q2;
-    qm = q1-q2;
-    y2[i1] = x2[i1]+0.5f*P999*(qm*qp*(x2[i1-1]));
-
-    // For all i2>0, ...
-    for (i2=1; i2<n2; ++i2) {
-      float[] x2m = x[i2-1];
-      x2 = x[i2];
-      y2 = y[i2];
-      i1 = 0;
-      q1 = p1[i2][i1];
-      q2 = p2[i2][i1];
-      qp = q1+q2;
-      qm = q1-q2;
-      y2[i1] = x2[i1]+0.5f*P999*(qm*qp*(x2[i1+1]-2.0f*x2m[i1]))
-                     -0.5f*P998*(qp*qp*x2m[i1+1]);
+      int i1 = 0;
+      _filter.getCoefficients(p1[i2][i1],p2[i2][i1],c);
+      tb[i1] = c[1];
+      tc[i1] = c[0];
+      r[i1] = x2[i1]-c[3]*y2m[i1+1]-c[4]*y2m[i1];
       for (i1=1; i1<n1-1; ++i1) {
-        q1 = p1[i2][i1];
-        q2 = p2[i2][i1];
-        qp = q1+q2;
-        qm = q1-q2;
-        y2[i1] = x2[i1]+0.5f*P999*(qm*qp*(x2[i1+1]+x2[i1-1]-2.0f*x2m[i1]))
-                       -0.5f*P998*(qp*qp*x2m[i1+1]+qm*qm*x2m[i1-1]);
+        _filter.getCoefficients(p1[i2][i1],p2[i2][i1],c);
+        r[i1] = x2[i1]-c[3]*y2m[i1+1]-c[4]*y2m[i1]-c[5]*y2m[i1-1];
+        ta[i1] = c[2];
+        tb[i1] = c[1];
+        tc[i1] = c[0];
       }
-      q1 = p1[i2][i1];
-      q2 = p2[i2][i1];
-      qp = q1+q2;
-      qm = q1-q2;
-      y2[i1] = x2[i1]+0.5f*P999*(qm*qp*(x2[i1-1]-2.0f*x2m[i1]))
-                     -0.5f*P998*(qm*qm*x2m[i1-1]);
-    }
-  }
-
-  public void applyInverseX(float[][][] p, float[][] x, float[][] y) {
-    int n1 = x[0].length;
-    int n2 = x.length;
-    float[][] p1 = p[1];
-    float[][] p2 = p[2];
-    TridiagonalFMatrix tm = new TridiagonalFMatrix(n1);
-    float[] ta = tm.a();
-    float[] tb = tm.b();
-    float[] tc = tm.c();
-    float[] r = new float[n1];
-
-    // For i2=0, assume that x[i2-1][i1] = y[i2-1][i1] = 0.
-    int i2 = 0;
-    float[] x2 = x[i2];
-    float[] y2 = y[i2];
-    for (int i1=0; i1<n1; ++i1) {
-      float q1 = p1[i2][i1];
-      float q2 = p2[i2][i1];
-      float qp = q1+q2;
-      float qm = q1-q2;
-      r[i1] = x2[i1];
-      ta[i1] = tc[i1] = 0.5f*P999*qm*qp;
-      tb[i1] = 1.0f;
-    }
-    tm.solve(r,y2);
-
-    // For all i2>0, ...
-    for (i2=1; i2<n2; ++i2) {
-      float[] y2m = y[i2-1];
-      x2 = x[i2];
-      y2 = y[i2];
-      for (int i1=0; i1<n1; ++i1) {
-        float q1 = p1[i2][i1];
-        float q2 = p2[i2][i1];
-        float qp = q1+q2;
-        float qm = q1-q2;
-        r[i1] = x2[i1]+P999*qm*qp*y2m[i1];
-        if (i1>0)
-          r[i1] += 0.5f*P998*qm*qm*y2m[i1-1];
-        if (i1<n1-1)
-          r[i1] += 0.5f*P998*qp*qp*y2m[i1+1];
-        ta[i1] = tc[i1] = 0.5f*P999*qm*qp;
-        tb[i1] = 1.0f;
-      }
+      _filter.getCoefficients(p1[i2][i1],p2[i2][i1],c);
+      ta[i1] = c[2];
+      tb[i1] = c[1];
+      r[i1] = x2[i1]-c[4]*y2m[i1]-c[5]*y2m[i1-1];
       tm.solve(r,y2);
     }
   }
 
-  public void applyForwardF(float[][][] p, float[][] x, float[][] y) {
+  public void smooth(float[][] x, float[][] y) {
     int n1 = x[0].length;
     int n2 = x.length;
-    float[][] p1 = p[1];
-    float[][] p2 = p[2];
-    float tiny = 1.0f-P999;
-
-    // For i2=0, assume that x[i2-1][i1] = y[i2-1][i1] = 0.
-    int i2 = 0;
-    float[] x2 = x[i2];
-    float[] y2 = y[i2];
-    int i1 = 0;
-    float q1 = max(p1[i2][i1],tiny);
-    float q2 = p2[i2][i1];
-    float s = -q2/q1;
-    float bm = (1.0f-s)*(2.0f-s)/12.0f;
-    float b0 = (2.0f-s)*(2.0f+s)/6.0f;
-    float bp = (1.0f+s)*(2.0f+s)/12.0f;
-    y2[i1] = b0*x2[i1]+bp*x2[i1+1];
-    for (i1=1; i1<n1-1; ++i1) {
-      q1 = max(p1[i2][i1],tiny);
-      q2 = p2[i2][i1];
-      s = -q2/q1;
-      bm = (1.0f-s)*(2.0f-s)/12.0f;
-      b0 = (2.0f-s)*(2.0f+s)/6.0f;
-      bp = (1.0f+s)*(2.0f+s)/12.0f;
-      y2[i1] = b0*x2[i1]+bm*x2[i1-1]+bp*x2[i1+1];
+    for (int i1=n1-2; i1>=0; --i1) {
+      y[n2-1][i1] = 0.0f;
     }
-    q1 = max(p1[i2][i1],tiny);
-    q2 = p2[i2][i1];
-    s = -q2/q1;
-    bm = (1.0f-s)*(2.0f-s)/12.0f;
-    b0 = (2.0f-s)*(2.0f+s)/6.0f;
-    bp = (1.0f+s)*(2.0f+s)/12.0f;
-    y2[i1] = b0*x2[i1]+bm*x2[i1-1];
-
-    // For all i2>0, ...
-    for (i2=1; i2<n2; ++i2) {
-      float[] x2m = x[i2-1];
-      x2 = x[i2];
-      y2 = y[i2];
-      i1 = 0;
-      q1 = max(p1[i2][i1],tiny);
-      q2 = p2[i2][i1];
-      s = -q2/q1;
-      bm = (1.0f-s)*(2.0f-s)/12.0f;
-      b0 = (2.0f-s)*(2.0f+s)/6.0f;
-      bp = (1.0f+s)*(2.0f+s)/12.0f;
-      y2[i1] = b0*(x2[i1]-x2m[i1])
-              +bm*(        -x2m[i1+1])
-              +bp*(x2[i1+1]          );
-      for (i1=1; i1<n1-1; ++i1) {
-        q1 = max(p1[i2][i1],tiny);
-        q2 = p2[i2][i1];
-        s = -q2/q1;
-        bm = (1.0f-s)*(2.0f-s)/12.0f;
-        b0 = (2.0f-s)*(2.0f+s)/6.0f;
-        bp = (1.0f+s)*(2.0f+s)/12.0f;
-        y2[i1] = b0*(x2[i1]-x2m[i1])
-                +bm*(x2[i1-1]-x2m[i1+1])
-                +bp*(x2[i1+1]-x2m[i1-1]);
-      }
-      q1 = max(p1[i2][i1],tiny);
-      q2 = p2[i2][i1];
-      s = -q2/q1;
-      bm = (1.0f-s)*(2.0f-s)/12.0f;
-      b0 = (2.0f-s)*(2.0f+s)/6.0f;
-      bp = (1.0f+s)*(2.0f+s)/12.0f;
-      y2[i1] = b0*(x2[i1]-x2m[i1])
-              +bm*(x2[i1-1]          )
-              +bp*(        -x2m[i1-1]);
-    }
-  }
-
-  public void applyInverseF(float[][][] p, float[][] x, float[][] y) {
-    int n1 = x[0].length;
-    int n2 = x.length;
-    float[][] p1 = p[1];
-    float[][] p2 = p[2];
-    TridiagonalFMatrix tm = new TridiagonalFMatrix(n1);
-    float[] ta = tm.a();
-    float[] tb = tm.b();
-    float[] tc = tm.c();
-    float[] r = new float[n1];
-
-    // For i2=0, assume that x[i2-1][i1] = y[i2-1][i1] = 0.
-    int i2 = 0;
-    float[] x2 = x[i2];
-    float[] y2 = y[i2];
-    for (int i1=0; i1<n1; ++i1) {
-      float q1 = p1[i2][i1];
-      float q2 = p2[i2][i1];
-      float qp = q1+q2;
-      float qm = q1-q2;
-      r[i1] = x2[i1];
-      ta[i1] = tc[i1] = 0.5f*P999*qm*qp;
-      tb[i1] = 1.0f;
-    }
-    tm.solve(r,y2);
-
-    // For all i2>0, ...
-    for (i2=1; i2<n2; ++i2) {
-      float[] y2m = y[i2-1];
-      x2 = x[i2];
-      y2 = y[i2];
-      for (int i1=0; i1<n1; ++i1) {
-        float q1 = p1[i2][i1];
-        float q2 = p2[i2][i1];
-        float qp = q1+q2;
-        float qm = q1-q2;
-        r[i1] = x2[i1]+P999*qm*qp*y2m[i1];
-        if (i1>0)
-          r[i1] += 0.5f*P998*qm*qm*y2m[i1-1];
-        if (i1<n1-1)
-          r[i1] += 0.5f*P998*qp*qp*y2m[i1+1];
-        ta[i1] = tc[i1] = 0.5f*P999*qm*qp;
-        tb[i1] = 1.0f;
-      }
-      tm.solve(r,y2);
-    }
-  }
-
-  public void applyForwardS(float[][][] p, float[][] x, float[][] y) {
-    int n1 = x[0].length;
-    int n2 = x.length;
-    float[][] p1 = p[1];
-    float[][] p2 = p[2];
-
-    // For i2=0, assume that x[i2-1][i1] = y[i2-1][i1] = 0.
-    int i2 = 0;
-    float[] x2 = x[i2];
-    float[] y2 = y[i2];
-    int i1 = 0;
-    float q1 = p1[i2][i1];
-    float q2 = p2[i2][i1];
-    y2[i1] = q1*x2[i1];
-    if (q2<0.0f) {
-      y2[i1] -= q2*x2[i1];
-    } else {
-      y2[i1] += q2*(x2[i1]-P999*x2[i1+1]);
-    }
-    for (i1=1; i1<n1-1; ++i1) {
-      q1 = p1[i2][i1];
-      q2 = p2[i2][i1];
-      y2[i1] = q1*x2[i1];
-      if (q2<0.0f) {
-        y2[i1] -= q2*(x2[i1]-P999*x2[i1-1]);
-      } else {
-        y2[i1] += q2*(x2[i1]-P999*x2[i1+1]);
-      }
-    }
-    q1 = p1[i2][i1];
-    q2 = p2[i2][i1];
-    y2[i1] = q1*x2[i1];
-    if (q2<0.0f) {
-      y2[i1] -= q2*(x2[i1]-P999*x2[i1-1]);
-    } else {
-      y2[i1] += q2*x2[i1];
-    }
-
-    // For all i2>0, ...
-    for (i2=1; i2<n2; ++i2) {
-      float[] x2m = x[i2-1];
-      x2 = x[i2];
-      y2 = y[i2];
-      i1 = 0;
-      q1 = p1[i2][i1];
-      q2 = p2[i2][i1];
-      y2[i1] = q1*(x2[i1]-P999*x2m[i1]);
-      if (q2<0.0f) {
-        y2[i1] -= q2*x2[i1];
-      } else {
-        y2[i1] += q2*(x2[i1]-P999*x2[i1+1]);
-      }
-      for (i1=1; i1<n1-1; ++i1) {
-        q1 = p1[i2][i1];
-        q2 = p2[i2][i1];
-        y2[i1] = q1*(x2[i1]-P999*x2m[i1]);
-        if (q2<0.0f) {
-          y2[i1] -= q2*(x2[i1]-P999*x2[i1-1]);
-        } else {
-          y2[i1] += q2*(x2[i1]-P999*x2[i1+1]);
-        }
-      }
-      q1 = p1[i2][i1];
-      q2 = p2[i2][i1];
-      y2[i1] = q1*(x2[i1]-P999*x2m[i1]);
-      if (q2<0.0f) {
-        y2[i1] -= q2*(x2[i1]-P999*x2[i1-1]);
-      } else {
-        y2[i1] += q2*x2[i1];
+    for (int i2=n2-2; i2>=0; --i2) {
+      y[i2][n1-1] = 0.0f;
+      for (int i1=n1-2; i1>=0; --i1) {
+        y[i2][i1] = 0.25f*(x[i2][i1]+x[i2][i1+1]+x[i2+1][i1]+x[i2+1][i1+1]);
       }
     }
   }
-
-  public void applyInverseS(float[][][] p, float[][] x, float[][] y) {
-    int n1 = x[0].length;
-    int n2 = x.length;
-    float[][] p1 = p[1];
-    float[][] p2 = p[2];
-    TridiagonalFMatrix tm = new TridiagonalFMatrix(n1);
-    float[] ta = tm.a();
-    float[] tb = tm.b();
-    float[] tc = tm.c();
-    float[] r = new float[n1];
-
-    // For i2=0, assume that x[i2-1][i1] = y[i2-1][i1] = 0.
-    int i2 = 0;
-    float[] x2 = x[i2];
-    float[] y2 = y[i2];
-    for (int i1=0; i1<n1; ++i1) {
-      float q1 = p1[i2][i1];
-      float q2 = p2[i2][i1];
-      r[i1] = x2[i1];
-      if (q2<0.0f) {
-        ta[i1] = P999*q2;
-        tb[i1] = q1-q2;
-        tc[i1] = 0.0f;
-      } else {
-        ta[i1] = 0.0f;
-        tb[i1] = q1+q2;
-        tc[i1] = -P999*q2;
-      }
-    }
-    tm.solve(r,y2);
-
-    // For all i2>0, ...
-    for (i2=1; i2<n2; ++i2) {
-      float[] y2m = y[i2-1];
-      x2 = x[i2];
-      y2 = y[i2];
-      for (int i1=0; i1<n1; ++i1) {
-        float q1 = p1[i2][i1];
-        float q2 = p2[i2][i1];
-        r[i1] = x2[i1]+P999*q1*y2m[i1];
-        if (q2<0.0f) {
-          ta[i1] = P999*q2;
-          tb[i1] = q1-q2;
-          tc[i1] = 0.0f;
-        } else {
-          ta[i1] = 0.0f;
-          tb[i1] = q1+q2;
-          tc[i1] = -P999*q2;
-        }
-      }
-      tm.solve(r,y2);
-    }
-  }
-  /*
-  q2 from - to + (unstable?)
-  0  -1   1   0   0   0   0   0
-  0   0  -1   1   0   0   0   0
-  0   0   0   0   1  -1   0   0
-  0   0   0   0   0   1  -1   0
-
-  q2 from + to - (stable?)
-  0   0   1  -1   0   0   0   0
-  0   0   0   1  -1   0   0   0
-  0   0   0  -1   1   0   0   0
-  0   0   0   0  -1   1   0   0
-  */
 
   ///////////////////////////////////////////////////////////////////////////
   // private
 
+  private static final float P99 = 0.999f;
+  private static final float P98 = P99*P99;
+  private static final float P49 = P99/2.0f;
+  private static final float P48 = P98/2.0f;
+
   private RecursiveGaussianFilter _rgfGradient;
   private RecursiveGaussianFilter _rgfSmoother;
-  private static final float P999 = 0.99999f;
-  private static final float P998 = P999*P999;
+  private Filter _filter;
+
+  /**
+   * Different plane filters have different coefficients.
+   * For forward filtering, the coefficients are used as follows:
+   * <pre><code>
+   * y[i2][i1] = c[0]*x[i2  ][i1+1]+c[1]*x[i2  ][i1]+c[2]*x[i2  ][i1-1]
+   *           + c[3]*x[i2-1][i1+1]+c[4]*x[i2-1][i1]+c[5]*x[i2-1][i1-1]
+   * </code></pre>
+   * For inverse filtering, a corresponding tridiagonal system of 
+   * equations is solved. Note that some filters may not be invertible. 
+   * The corresponding finite-difference stencil is
+   * <pre><code>
+   *        i2-1  i2
+   *   i1-1 c[5] c[2]
+   *   i1   c[4] c[1]
+   *   i1+1 c[3] c[0]
+   * </code></pre>
+   */
+  private interface Filter {
+    /**
+     * Gets coefficients for specified normal unit-vector.
+     * @param n1 component of normal for 1st dimension.
+     * @param n2 component of normal for 2nd dimension.
+     * @param c array of computed coefficients.
+     */
+    public void getCoefficients(float n1, float n2, float[] c);
+  }
+  private static class QuadFilter implements Filter {
+    public void getCoefficients(float n1, float n2, float[] c) {
+      float np = n1+n2;
+      float nm = n1-n2;
+      c[0] = 0.0f;
+      c[1] = nm;
+      c[2] = np;
+      c[3] = 0.0f;
+      c[4] = -np;
+      c[5] = -nm;
+    }
+  }
+  private static class Hale0Filter implements Filter {
+    public void getCoefficients(float n1, float n2, float[] c) {
+      if (n2<0.0f) {
+        c[0] = 0.0f;
+        c[1] = n1-n2;
+        c[2] = P99*n2;
+      } else {
+        c[0] = -P99*n2;
+        c[1] = n1+n2;
+        c[2] = 0.0f;
+      }
+      c[3] = 0.0f;
+      c[4] = -P99*n1;
+      c[5] = 0.0f;
+    }
+  }
+  private static class Hale1Filter implements Filter {
+    public void getCoefficients(float n1, float n2, float[] c) {
+      c[0] = -P49*n2*(n1+n2);
+      c[1] =  1.0f;
+      c[2] =  P49*n2*(n1-n2);
+      c[3] =  0.0f;
+      c[4] = -P99*n1*n1;
+      c[5] =  0.0f;
+    }
+  }
+  private static class HaleFilter implements Filter {
+    public void getCoefficients(float n1, float n2, float[] c) {
+      float np = n1+n2;
+      float nm = n1-n2;
+      c[0] = P49*nm*np;
+      c[1] = 1.0f;
+      c[2] = c[0];
+      c[3] = -P48*np*np;
+      c[4] = -P99*nm*np;
+      c[5] = -P48*nm*nm;
+    }
+  }
+  private static class FomelFilter implements Filter {
+    public void getCoefficients(float n1, float n2, float[] c) {
+      if (n1<N1MIN)
+        n1 = N1MIN;
+      float s = n2/n1;
+      c[0] = (1.0f-s)*(2.0f-s)/6.0f;
+      c[1] = (2.0f+s)*(2.0f-s)/3.0f;
+      c[2] = (1.0f+s)*(2.0f+s)/6.0f;
+      c[3] = -c[2];
+      c[4] = -c[1];
+      c[5] = -c[0];
+    }
+    private static final float N1MIN = 0.001f;
+  }
+  private static class Fomel2Filter implements Filter {
+    public void getCoefficients(float n1, float n2, float[] c) {
+      float t1 = 2.0f*n1;
+      c[0] = (n1-n2)*(t1-n2)/6.0f;
+      c[1] = (t1+n2)*(t1-n2)/3.0f;
+      c[2] = (n1+n2)*(t1+n2)/6.0f;
+      c[3] = -c[2];
+      c[4] = -c[1];
+      c[5] = -c[0];
+    }
+  }
 }

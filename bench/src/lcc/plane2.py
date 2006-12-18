@@ -26,6 +26,7 @@ pngDir = None
 n1 = 315
 n2 = 315
 sigma = 8
+type = LocalPlaneFilter.Type.HALE
 
 #############################################################################
 # functions
@@ -36,41 +37,39 @@ def main(args):
 
 def goPlane():
   x = doImage()
-  doPlane(x,sigma)
+  doPlane(x,sigma,type)
 
 def doImage():
   x = readImage()
-  x = Array.transpose(x)
-  #x = makeImage(45)
+  #x = Array.transpose(x)
+  #x = makePlaneImage(90)
+  #x = makeTargetImage()
   #x = flip2(x)
   plot(x,10.0,"x")
   return x
 
-def doPlane(x,sigma):
-  lpf = LocalPlaneFilter(sigma)
+def doPlane(x,sigma,type):
+  lpf = LocalPlaneFilter(sigma,type)
   p = lpf.find(x);
-  plot(p[0],0.0,None)
+  #plot(p[0],0.0,None)
   plot(p[1],0.0,None)
   plot(p[2],0.0,None)
   y = Array.zerofloat(n1,n2)
   lpf.applyForward(p,x,y);
-  #lpf.applyForwardX(p,x,y);
-  #y = Array.mul(0.25,y)
   plot(y,2.0,"y")
-  z = Array.zerofloat(n1,n2)
-  lpf.applyForwardF(p,x,z);
-  plot(z,2.0,"z")
-  plot(Array.sub(z,y),0.0,"z")
-  """
   z = Array.zerofloat(n1,n2)
   lpf.applyInverse(p,y,z);
   plot(z,10.0,"z")
   print "max |z-x| =",Array.max(Array.abs(Array.sub(z,x)))
+  plot(Array.sub(z,x))
   r = Array.sub(Array.randfloat(n1,n2),0.5)
+  s = Array.zerofloat(n1,n2)
+  lpf.applyInverse(p,r,s);
+  plot(s)
   t = Array.zerofloat(n1,n2)
-  lpf.applyInverse(p,r,t);
-  plot(t,0.0,"t")
-  """
+  lpf.smooth(s,t);
+  lpf.smooth(t,s);
+  plot(s)
 
 def doTransposeTest():
   lpf = LocalPlaneFilter(sigma)
@@ -104,7 +103,19 @@ def readImage():
   ais.close()
   return f
 
-def makeImage(angle):
+def makeTargetImage():
+  k = 0.2
+  c1 = n1/2
+  c2 = n2/2
+  f = Array.zerofloat(n1,n2);
+  for i2 in range(n2):
+    d2 = i2-c2
+    for i1 in range(n1):
+      d1 = i1-c1
+      f[i2][i1] = 10.0*sin(k*sqrt(d1*d1+d2*d2))
+  return f
+
+def makePlaneImage(angle):
   a = angle*pi/180.0
   k = 0.3
   c = k*cos(a)
@@ -135,7 +146,7 @@ def plot(f,clip=0.0,png=None):
   if clip!=0.0:
     pv.setClips(-clip,clip)
   else:
-    pv.setPercentiles(2.0,98.0)
+    pv.setPercentiles(0.0,100.0)
   pv.setInterpolation(PixelsView.Interpolation.NEAREST)
   frame(p,png)
 
