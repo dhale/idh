@@ -26,7 +26,7 @@ pngDir = None
 n1 = 315
 n2 = 315
 sigma = 8
-type = LocalPlaneFilter.Type.HALE
+type = LocalPlaneFilter.Type.HALE1
 
 #############################################################################
 # functions
@@ -39,19 +39,19 @@ def main(args):
 def goPlane():
   x = doImage()
   doPlane(x,sigma,LocalPlaneFilter.Type.HALE1)
-  doPlane(x,sigma,LocalPlaneFilter.Type.HALE)
-  #doPlane(x,sigma,LocalPlaneFilter.Type.FOMEL)
-  doPlane(x,sigma,LocalPlaneFilter.Type.FOMEL2)
+  #doPlane(x,sigma,LocalPlaneFilter.Type.HALE2)
+  doPlane(x,sigma,LocalPlaneFilter.Type.FOMEL1)
+  #doPlane(x,sigma,LocalPlaneFilter.Type.FOMEL2)
 
 def goPef():
   x = doImage()
   doPef(x,sigma,type)
 
 def doImage():
-  #x = readImage()
-  #x = Array.transpose(x)
-  #x = makePlaneImage(90)
-  x = makeTargetImage()
+  x = readImage()
+  x = Array.transpose(x)
+  #x = makePlaneImage(45)
+  #x = makeTargetImage()
   #x = flip2(x)
   plot(x,10.0,"x")
   return x
@@ -60,21 +60,25 @@ def doPlane(x,sigma,type):
   lpf = LocalPlaneFilter(sigma,type)
   p = lpf.find(x);
   #plot(p[0],0.0,None)
-  #plot(p[1],0.0,None)
-  #plot(p[2],0.0,None)
+  plot(p[1],0.0,None)
+  plot(p[2],0.0,None)
+  #p[1] = Array.fillfloat( 1/sqrt(2),n1,n2)
+  #p[2] = Array.fillfloat(-1/sqrt(2),n1,n2)
   y = Array.zerofloat(n1,n2)
   lpf.applyForward(p,x,y);
-  plot(y,1.0,"y")
+  plot(y,2.0,"y")
   z = Array.zerofloat(n1,n2)
   lpf.applyInverse(p,y,z);
   plot(z,10.0,"z")
   print "max |z-x| =",Array.max(Array.abs(Array.sub(z,x)))
-  #plot(Array.sub(z,x))
+  plot(Array.sub(z,x))
   r = Array.sub(Array.randfloat(n1,n2),0.5)
-  #r = smooth(r)
+  plot(r)
+  #lpf.smooth(r,r)
+  #lpf.smooth(r,r)
+  #plot(r)
   s = Array.zerofloat(n1,n2)
   lpf.applyInverse(p,r,s);
-  #s = smooth(s)
   plot(s)
 
 def doPef(x,sigma,type):
@@ -94,11 +98,16 @@ def smooth(x):
   n2 = len(x)
   t = Array.zerofloat(n1,n2)
   y = Array.zerofloat(n1,n2)
+  rgf = RecursiveGaussianFilter(2.0)
+  rgf.apply0X(x,t)
+  rgf.applyX0(t,y)
+  """
   bf = ButterworthFilter(0.25,2,ButterworthFilter.Type.LOW_PASS)
   bf.apply1Forward(x,t)
   bf.apply1Reverse(t,y)
   bf.apply2Forward(y,t)
   bf.apply2Reverse(t,y)
+  """
   return y
 
 def doTransposeTest():
