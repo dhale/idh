@@ -1,7 +1,5 @@
 package util;
 
-import java.io.*;
-
 import java.nio.ByteOrder;
 import edu.mines.jtk.io.*;
 import edu.mines.jtk.util.*;

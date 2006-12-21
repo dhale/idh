@@ -9,9 +9,7 @@ package sw;
 import java.io.*;
 import java.util.*;
 
-import edu.mines.jtk.dsp.*;
 import edu.mines.jtk.util.*;
-import static edu.mines.jtk.util.MathPlus.*;
 
 /**
  * Reads horizons for sw data.
@@ -45,6 +43,7 @@ public class HorizonReader {
     float tmax = Array.max(t);
     float bmin = Array.min(b);
     float bmax = Array.max(b);
+    System.out.println("tmin="+tmin+" tmax="+tmax+" bmin="+bmin+" bmax="+bmax);
   }
 
   public static float[] xyz(float[][] t) {

@@ -186,7 +186,6 @@ public class RecursiveRectangleFilterTest extends TestCase {
   private class SFilter implements Filter {
     public SFilter(int l, int m) {
       _l = l;
-      _m = m;
       _n = 1+m-l;
       float s = 1.0f/(float)(_n);
       _f = Array.fillfloat(s,_n);
@@ -228,7 +227,7 @@ public class RecursiveRectangleFilterTest extends TestCase {
       float[][][] f = Array.reshape(1,1,_n,_f);
       Conv.xcor(1,1,_n,0,0,_l,f,n1,n2,n3,0,0,0,x,n1,n2,n3,0,0,0,y);
     }
-    private int _l,_m,_n;
+    private int _l,_n;
     private float[] _f;
   }
 }
