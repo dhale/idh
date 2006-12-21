@@ -28,7 +28,6 @@ public class Warp3 {
   private float _d2max = 1.00f;
   private float _d3max = 1.00f;
   private int _lmax = 2;
-  private int _lmin = -_lmax;
   private float _sigma = 8.0f;
   private Displacement _disp = 
     new GaussianDisplacement(_d1max,_d2max,_d3max,_n1,_n2,_n3);

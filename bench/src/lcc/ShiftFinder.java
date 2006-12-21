@@ -88,12 +88,8 @@ public class ShiftFinder {
       LocalCorrelationFilter.Type.SYMMETRIC,
       LocalCorrelationFilter.Window.GAUSSIAN,
       sigma1,sigma2,sigma3);
-    _rgfSmooth = new RecursiveGaussianFilter(1.0);
     _si = new SincInterpolator();
     _si.setExtrapolation(SincInterpolator.Extrapolation.CONSTANT);
-    _sigma1 = sigma1;
-    _sigma2 = sigma2;
-    _sigma3 = sigma3;
   }
 
   /**
@@ -564,9 +560,7 @@ public class ShiftFinder {
 
   private LocalCorrelationFilter _lcfSimple;
   private LocalCorrelationFilter _lcfSymmetric;
-  private RecursiveGaussianFilter _rgfSmooth;
   private SincInterpolator _si;
-  private double _sigma1,_sigma2,_sigma3;
 
   private void findShifts(
     int dim, int min, int max, float[][] f, float[][] g, float[][] u) 

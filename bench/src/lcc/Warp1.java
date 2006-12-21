@@ -6,12 +6,9 @@ import javax.swing.*;
 
 import edu.mines.jtk.awt.*;
 import edu.mines.jtk.dsp.*;
-import edu.mines.jtk.io.*;
 import edu.mines.jtk.mosaic.*;
 import edu.mines.jtk.util.*;
 import static edu.mines.jtk.util.MathPlus.*;
-
-import util.*;
 
 public class Warp1 {
 
@@ -128,7 +125,6 @@ public class Warp1 {
     float[][] c, float[] u)
   {
     int n = f.length;
-    int nlag = 1+lmax-lmin;
     LocalCorrelationFilter.Type type = _type;
     LocalCorrelationFilter.Window window = _window;
     LocalCorrelationFilter lcf = 
@@ -150,8 +146,8 @@ public class Warp1 {
     int nlag = c.length;
     Sampling slag = new Sampling(nlag,1.0,-(nlag-1)/2);
     PlotPanel panel = new PlotPanel(3,1,PlotPanel.Orientation.X1RIGHT_X2UP);
-    SequenceView fv = panel.addSequence(0,0,s,f);
-    SequenceView gv = panel.addSequence(1,0,s,g);
+    panel.addSequence(0,0,s,f);
+    panel.addSequence(1,0,s,g);
     PixelsView cv = panel.addPixels(2,0,s,slag,c);
     cv.setClips(-1.0f,1.0f);
     cv.setColorModel(ColorMap.JET);

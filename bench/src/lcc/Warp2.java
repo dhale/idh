@@ -1,11 +1,9 @@
 package lcc;
 
-import java.awt.*;
 import javax.swing.*;
 
 import edu.mines.jtk.awt.*;
 import edu.mines.jtk.dsp.*;
-import edu.mines.jtk.io.*;
 import edu.mines.jtk.mosaic.*;
 import edu.mines.jtk.util.*;
 import static edu.mines.jtk.util.MathPlus.*;
@@ -24,14 +22,8 @@ public class Warp2 {
 
   private static final LocalCorrelationFilter.Type SIMPLE =
     LocalCorrelationFilter.Type.SIMPLE;
-  private static final LocalCorrelationFilter.Type SYMMETRIC =
-    LocalCorrelationFilter.Type.SYMMETRIC;
-
   private static final LocalCorrelationFilter.Window GAUSSIAN = 
     LocalCorrelationFilter.Window.GAUSSIAN;
-  private static final LocalCorrelationFilter.Window RECTANGLE = 
-    LocalCorrelationFilter.Window.RECTANGLE;
-
   private int _fontSize = 24;
   private int _width = 640;
   private int _height = 505;
@@ -219,7 +211,6 @@ public class Warp2 {
     float[][] u2 = new float[_n2][_n1];
     _lcf.findMaxLags(min1,max1,min2,max2,l1,l2);
 
-    float[][][] u = {u1,u2};
     float[][][] q = new float[4][_n2][_n1];
     _lcf.refineLags(l1,l2,u1,u2,q);
     plotu(u1,_d1max,"u1");

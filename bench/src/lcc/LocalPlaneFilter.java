@@ -8,7 +8,6 @@ package lcc;
 
 import edu.mines.jtk.dsp.*;
 import edu.mines.jtk.la.*;
-import edu.mines.jtk.util.*;
 import static edu.mines.jtk.util.MathPlus.*;
 
 /**
@@ -350,9 +349,9 @@ public class LocalPlaneFilter {
   // private
 
   private static final float P99 = 1.0000f;
-  private static final float P98 = P99*P99;
+  //private static final float P98 = P99*P99;
   private static final float P49 = P99/2.0f;
-  private static final float P48 = P98/2.0f;
+  //private static final float P48 = P98/2.0f;
 
   private RecursiveGaussianFilter _rgfGradient;
   private RecursiveGaussianFilter _rgfSmoother;
@@ -437,7 +436,6 @@ public class LocalPlaneFilter {
     public void getCoefficients(
       int i1, int i2, float[][] v1, float[][] v2, float[] c) {
       int n1 = v1[0].length;
-      int n2 = v1.length;
       int i1n = i1;
       int i2n = i2;
       int i1m = max(i1-1,0);

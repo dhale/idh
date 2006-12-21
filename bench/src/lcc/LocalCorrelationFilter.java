@@ -1183,6 +1183,7 @@ public class LocalCorrelationFilter {
     { C29,  C00,  C16,  C00, -C13,  C16}, // ( 0, 1)
     {-C19,  C16,  C16,  C14,  C16,  C16}, // ( 1, 1)
   };
+  /*
   private static final float[][] C2_FINITE_DIFFERENCE = {
     { C00,  C00,  C00,  C14,  C00,  C00}, // (-1,-1)
     { C00,  C00, -C12,  C00,  C00,  C12}, // ( 0,-1)
@@ -1205,6 +1206,7 @@ public class LocalCorrelationFilter {
     { C00,  C00,  C12,  C00,  C00,  C12}, // ( 0, 1)
     { C00,  C00,  C00,  C00,  C00,  C00}, // ( 1, 1)
   };
+  */
   private static final float[][] C2 = C2_LEAST_SQUARES;
   //private static final float[][] C2 = C2_FINITE_DIFFERENCE;
   //private static final float[][] C2 = C2_FD_WITHOUT_CROSS_DERIVATIVES;
@@ -1730,7 +1732,6 @@ public class LocalCorrelationFilter {
   private static void shift3(float[][][] f, float[][][] g) {
     int n3 = f.length;
     int n2 = f[0].length;
-    int n1 = f[0][0].length;
     float[][] f2 = new float[n3][];
     float[][] g2 = new float[n3][];
     for (int i2=0; i2<n2; ++i2) {
@@ -1954,233 +1955,6 @@ public class LocalCorrelationFilter {
     private RecursiveGaussianFilter _rgf;
   }
 
-  /**
-   * Like {@link #apply(int,int,int,int,float[],float[],float[][])}, but
-   * uses conventional windowing and FFTs to perform the cross-correlations.
-   * Best for small numbers of cross-correlation windows.
-   * The number of lags is nl1 = l1max-l1min+1.
-   * @param l1min the minimum lag in the 1st dimension.
-   * @param l1max the maximum lag in the 1st dimension.
-   * @param j1c the sample index of the first correlation.
-   * @param k1c the sample stride between correlations.
-   * @param f the 1st input array; can be the same as g.
-   * @param g the 2nd input array; can be the same as f.
-   * @param c the output array; cannot be the same as f or g.
-   */
-  // Not yet tested!
-  private void applyFft(
-    int l1min, int l1max, int j1c, int k1c,
-    float[] f, float[] g, float[][] c)
-  {
-    float[] w1 = makeGaussianWindow(_sigma1);
-    int n1f = f.length;
-    int n1c = c.length;
-    int n1w = w1.length;
-    int n1h = (n1w-1)/2;
-    int n1l = l1max-l1min+1;
-    int n1p = n1w+max(-l1min,n1l-1+l1min);
-    int n1fft = FftReal.nfftFast(n1p);
-    int n1pad = n1fft+2;
-    FftReal fft = new FftReal(n1fft);
-    float[] fpad = new float[n1pad];
-    float[] gpad = new float[n1pad];
-    int j1f = max(0, l1min);
-    int j1g = max(0,-l1min);
-    for (int i1c=0; i1c<n1c; ++i1c) {
-      int m1c = j1c+i1c*k1c;
-      Array.zero(fpad);
-      Array.zero(gpad);
-      applyWindow(w1,m1c,f,n1h+j1f,fpad);
-      applyWindow(w1,m1c,g,n1h+j1g,gpad);
-      fft.realToComplex(-1,fpad,fpad);
-      fft.realToComplex(-1,gpad,gpad);
-      for (int i1=0; i1<n1pad; i1+=2) {
-        float fr = fpad[i1  ];
-        float fi = fpad[i1+1];
-        float gr = gpad[i1  ];
-        float gi = gpad[i1+1];
-        gpad[i1  ] = fr*gr+fi*gi;
-        gpad[i1+1] = fr*gi-fi*gr;
-      }
-      fft.complexToReal(1,gpad,gpad);
-      float s = 1.0f/(float)n1fft;
-      float[] cc = c[i1c];
-      for (int i1=0; i1<n1l; ++i1)
-        cc[i1] = s*gpad[i1];
-    }
-  }
-
-  // Not yet tested!
-  private void applyFft(
-    int l1min, int l1max, int j1c, int k1c,
-    int l2min, int l2max, int j2c, int k2c,
-    float[][] f, float[][] g, float[][][] c)
-  {
-    float[] w1 = makeGaussianWindow(_sigma1);
-    float[] w2 = makeGaussianWindow(_sigma2);
-    int j1f = max(0, l1min);
-    int j1g = max(0,-l1min);
-    int n1f = f[0].length;
-    int n1g = g[0].length;
-    int n1c = c[0].length;
-    int n1w = w1.length;
-    int n1h = (n1w-1)/2;
-    int n1l = l1max-l1min+1;
-    int n1p = n1w+max(-l1min,n1l-1+l1min);
-    int n1fft = FftReal.nfftFast(n1p);
-    int n1pad = n1fft+2;
-    int j2f = max(0, l2min);
-    int j2g = max(0,-l2min);
-    int n2f = f.length;
-    int n2g = g.length;
-    int n2c = c.length;
-    int n2w = w2.length;
-    int n2h = (n2w-1)/2;
-    int n2l = l2max-l2min+1;
-    int n2p = n2w+max(-l2min,n2l-1+l2min);
-    int n2fft = FftComplex.nfftFast(n2p);
-    int n2pad = n2fft*2;
-    FftReal fft1 = new FftReal(n1fft);
-    FftComplex fft2 = new FftComplex(n2fft);
-    float[][] fpad = new float[n2pad][n1pad];
-    float[][] gpad = new float[n2pad][n1pad];
-    for (int i2c=0; i2c<n2c; ++i2c) {
-      int m2c = j2c+i2c*k2c;
-      for (int i1c=0; i1c<n1c; ++i1c) {
-        int m1c = j1c+i1c*k1c;
-        Array.zero(fpad);
-        Array.zero(gpad);
-        applyWindow(w1,w2,m1c,m2c,f,n1h+j1f,n2h+j2f,fpad);
-        applyWindow(w1,w2,m1c,m2c,g,n1h+j1g,n2h+j2g,gpad);
-        fft1.realToComplex1(-1,n2p,fpad,fpad);
-        fft1.realToComplex1(-1,n2p,gpad,gpad);
-        fft2.complexToComplex2(-1,n1fft/2+1,fpad,fpad);
-        fft2.complexToComplex2(-1,n1fft/2+1,gpad,gpad);
-        for (int i2=0; i2<n2fft; ++i2) {
-          float[] fpad2 = fpad[i2];
-          float[] gpad2 = gpad[i2];
-          for (int i1=0; i1<n1pad; i1+=2) {
-            float fr = fpad2[i1  ];
-            float fi = fpad2[i1+1];
-            float gr = gpad2[i1  ];
-            float gi = gpad2[i1+1];
-            gpad2[i1  ] = fr*gr+fi*gi;
-            gpad2[i1+1] = fr*gi-fi*gr;
-          }
-        }
-        fft2.complexToComplex2(1,n1fft/2+1,gpad,gpad);
-        fft1.realToComplex1(1,n2l,gpad,gpad);
-        float s = 1.0f/((float)n1fft*(float)n2fft);
-        float[] cc = c[i2c][i1c];
-        for (int i2=0,ic=0; i2<n2l; ++i2) {
-          float[] gpad2 = gpad[i2];
-          for (int i1=0; i1<n1l; ++i1,++ic) {
-            cc[ic] = s*gpad2[i1];
-          }
-        }
-      }
-    }
-  }
-
-  // Not yet tested!
-  private void applyFft(
-    int l1min, int l1max, int j1c, int k1c,
-    int l2min, int l2max, int j2c, int k2c,
-    int l3min, int l3max, int j3c, int k3c,
-    float[][][] f, float[][][] g, float[][][][] c)
-  {
-    float[] w1 = makeGaussianWindow(_sigma1);
-    float[] w2 = makeGaussianWindow(_sigma2);
-    float[] w3 = makeGaussianWindow(_sigma3);
-    int j1f = max(0, l1min);
-    int j1g = max(0,-l1min);
-    int n1f = f[0][0].length;
-    int n1g = g[0][0].length;
-    int n1c = c[0][0].length;
-    int n1w = w1.length;
-    int n1h = (n1w-1)/2;
-    int n1l = l1max-l1min+1;
-    int n1p = n1w+max(-l1min,n1l-1+l1min);
-    int n1fft = FftReal.nfftFast(n1p);
-    int n1pad = n1fft+2;
-    int j2f = max(0, l2min);
-    int j2g = max(0,-l2min);
-    int n2f = f[0].length;
-    int n2g = g[0].length;
-    int n2c = c[0].length;
-    int n2w = w2.length;
-    int n2h = (n2w-1)/2;
-    int n2l = l2max-l2min+1;
-    int n2p = n2w+max(-l2min,n2l-1+l2min);
-    int n2fft = FftComplex.nfftFast(n2p);
-    int n2pad = n2fft*2;
-    int j3f = max(0, l3min);
-    int j3g = max(0,-l3min);
-    int n3f = f.length;
-    int n3g = g.length;
-    int n3c = c.length;
-    int n3w = w3.length;
-    int n3h = (n3w-1)/2;
-    int n3l = l3max-l3min+1;
-    int n3p = n3w+max(-l3min,n3l-1+l3min);
-    int n3fft = FftComplex.nfftFast(n3p);
-    int n3pad = n3fft*2;
-    FftReal fft1 = new FftReal(n1fft);
-    FftComplex fft2 = new FftComplex(n2fft);
-    FftComplex fft3 = new FftComplex(n3fft);
-    float[][][] fpad = new float[n3pad][n2pad][n1pad];
-    float[][][] gpad = new float[n3pad][n2pad][n1pad];
-    for (int i3c=0; i3c<n3c; ++i3c) {
-      int m3c = j3c+i3c*k3c;
-      for (int i2c=0; i2c<n2c; ++i2c) {
-        int m2c = j2c+i2c*k2c;
-        for (int i1c=0; i1c<n1c; ++i1c) {
-          int m1c = j1c+i1c*k1c;
-          Array.zero(fpad);
-          Array.zero(gpad);
-          applyWindow(w1,w2,w3,m1c,m2c,m3c,f,n1h+j1f,n2h+j2f,j3f+n3h,fpad);
-          applyWindow(w1,w2,w3,m1c,m2c,m3c,g,n1h+j1g,n2h+j2g,j3g+n3h,gpad);
-          fft1.realToComplex1(-1,n2p,n3p,fpad,fpad);
-          fft1.realToComplex1(-1,n2p,n3p,gpad,gpad);
-          fft2.complexToComplex2(-1,n1fft/2+1,n3p,fpad,fpad);
-          fft2.complexToComplex2(-1,n1fft/2+1,n3p,gpad,gpad);
-          fft3.complexToComplex3(-1,n1fft/2+1,n2fft,fpad,fpad);
-          fft3.complexToComplex3(-1,n1fft/2+1,n2fft,gpad,gpad);
-          for (int i3=0; i3<n3fft; ++i3) {
-            float[][] fpad3 = fpad[i3];
-            float[][] gpad3 = gpad[i3];
-            for (int i2=0; i2<n2fft; ++i2) {
-              float[] fpad32 = fpad3[i2];
-              float[] gpad32 = gpad3[i2];
-              for (int i1=0; i1<n1pad; i1+=2) {
-                float fr = fpad32[i1  ];
-                float fi = fpad32[i1+1];
-                float gr = gpad32[i1  ];
-                float gi = gpad32[i1+1];
-                gpad32[i1  ] = fr*gr+fi*gi;
-                gpad32[i1+1] = fr*gi-fi*gr;
-              }
-            }
-          }
-          fft3.complexToComplex3(1,n1fft/2+1,n2fft,gpad,gpad);
-          fft2.complexToComplex2(1,n1fft/2+1,n3l,gpad,gpad);
-          fft1.realToComplex1(1,n2l,n3l,gpad,gpad);
-          float s = 1.0f/((float)n1fft*(float)n2fft*(float)n3fft);
-          float[] cc = c[i3c][i2c][i1c];
-          for (int i3=0,ic=0; i3<n3l; ++i3) {
-            float[][] gpad3 = gpad[i3];
-            for (int i2=0; i2<n2l; ++i2) {
-              float[] gpad32 = gpad3[i2];
-              for (int i1=0; i1<n1l; ++i1,++ic) {
-                cc[ic] = s*gpad32[i1];
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
   private static void testQ2() {
     float a0 = 0.0f;
     float a1 = 0.0f;
@@ -2195,9 +1969,9 @@ public class LocalCorrelationFilter {
       { 0.649260f,  0.788553f,  0.721605f}
     };
     for (int k2=-1; k2<=1; ++k2) {
-      float u2 = (float)k2;
+      //float u2 = (float)k2;
       for (int k1=-1; k1<=1; ++k1) {
-        float u1 = (float)k1;
+        //float u1 = (float)k1;
         //float c = q2(u1,u2);
         //ca[k2+1][k1+1] = c;
         float c = ca[k2+1][k1+1];
@@ -2231,7 +2005,6 @@ public class LocalCorrelationFilter {
 
     // Cholesky decomposition solves 2x2 system for refined lags.
     boolean pd = false;
-    double aa0 = a0;
     double aa1 = a1;
     double aa2 = a2;
     double aa3 = a3;
@@ -2264,6 +2037,7 @@ public class LocalCorrelationFilter {
     float u2 = (float)w2;
     System.out.println("pd="+pd+" u1="+u1+" u2="+u2);
   }
+  /*
   private static float q2(float u1, float u2) {
     // c00 + (u1-u1p)*c11*(u1-u1p) +
     //   2.0*(u1-u1p)*c12*(u2-u2p) +
@@ -2278,6 +2052,7 @@ public class LocalCorrelationFilter {
     float d2 = u2-u2p;
     return c00+d1*c11*d1+2.0f*d1*c12*d2+d2*c22*d2;
   }
+  */
   public static void main(String[] args) {
     testQ2();
   }

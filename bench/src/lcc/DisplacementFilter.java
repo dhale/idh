@@ -11,7 +11,6 @@ import java.util.logging.*;
 import edu.mines.jtk.dsp.*;
 import edu.mines.jtk.opt.*;
 import edu.mines.jtk.util.*;
-import static edu.mines.jtk.util.MathPlus.*;
 
 /**
  * Filters displacements to minimize strain.
