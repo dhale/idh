@@ -39,8 +39,9 @@ def main(args):
 def goPlane():
   x = doImage()
   doPlane(x,sigma,LocalPlaneFilter.Type.HALE1)
+  doPlane(x,sigma,LocalPlaneFilter.Type.QUAD)
   #doPlane(x,sigma,LocalPlaneFilter.Type.HALE2)
-  doPlane(x,sigma,LocalPlaneFilter.Type.FOMEL1)
+  #doPlane(x,sigma,LocalPlaneFilter.Type.FOMEL1)
   #doPlane(x,sigma,LocalPlaneFilter.Type.FOMEL2)
 
 def goPef():
@@ -48,10 +49,10 @@ def goPef():
   doPef(x,sigma,type)
 
 def doImage():
-  x = readImage()
-  x = Array.transpose(x)
+  #x = readImage()
+  #x = Array.transpose(x)
   #x = makePlaneImage(45)
-  #x = makeTargetImage()
+  x = makeTargetImage()
   #x = flip2(x)
   plot(x,10.0,"x")
   return x
