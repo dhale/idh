@@ -39,9 +39,11 @@ def main(args):
 def goPlane():
   x = doImage()
   doPlane(x,sigma,LocalPlaneFilter.Type.HALE1)
-  doPlane(x,sigma,LocalPlaneFilter.Type.QUAD)
-  #doPlane(x,sigma,LocalPlaneFilter.Type.HALE2)
   #doPlane(x,sigma,LocalPlaneFilter.Type.FOMEL1)
+  #doPlane(x,sigma,LocalPlaneFilter.Type.HALE2)
+  doPlaneX(x,sigma,LocalPlaneFilter.Type.HALE3)
+  #doPlane(x,sigma,LocalPlaneFilter.Type.QUAD)
+  doPlane(x,sigma,LocalPlaneFilter.Type.FOMEL1)
   #doPlane(x,sigma,LocalPlaneFilter.Type.FOMEL2)
 
 def goPef():
@@ -51,7 +53,8 @@ def goPef():
 def doImage():
   #x = readImage()
   #x = Array.transpose(x)
-  #x = makePlaneImage(45)
+  #x = makePlaneImage(63.435)
+  #x = makePlaneImage(30)
   x = makeTargetImage()
   #x = flip2(x)
   plot(x,10.0,"x")
@@ -61,10 +64,8 @@ def doPlane(x,sigma,type):
   lpf = LocalPlaneFilter(sigma,type)
   p = lpf.find(x);
   #plot(p[0],0.0,None)
-  plot(p[1],0.0,None)
-  plot(p[2],0.0,None)
-  #p[1] = Array.fillfloat( 1/sqrt(2),n1,n2)
-  #p[2] = Array.fillfloat(-1/sqrt(2),n1,n2)
+  #plot(p[1],0.0,None)
+  #plot(p[2],0.0,None)
   y = Array.zerofloat(n1,n2)
   lpf.applyForward(p,x,y);
   plot(y,2.0,"y")
@@ -72,14 +73,34 @@ def doPlane(x,sigma,type):
   lpf.applyInverse(p,y,z);
   plot(z,10.0,"z")
   print "max |z-x| =",Array.max(Array.abs(Array.sub(z,x)))
-  plot(Array.sub(z,x))
+  #plot(Array.sub(z,x))
   r = Array.sub(Array.randfloat(n1,n2),0.5)
-  plot(r)
-  #lpf.smooth(r,r)
-  #lpf.smooth(r,r)
+  r = smooth(r)
   #plot(r)
   s = Array.zerofloat(n1,n2)
   lpf.applyInverse(p,r,s);
+  plot(s)
+
+def doPlaneX(x,sigma,type):
+  lpf = LocalPlaneFilter(sigma,type)
+  p = lpf.find(x);
+  #plot(p[0],0.0,None)
+  #plot(p[1],0.0,None)
+  #plot(p[2],0.0,None)
+  y = Array.zerofloat(n1,n2)
+  #lpf.applyForwardF(p,x,y);
+  lpf.applyForwardX(p,x,y);
+  plot(y,2.0)
+  z = Array.zerofloat(n1,n2)
+  lpf.applyInverseX(p,y,z);
+  plot(z,10,0)
+  print "max |z-x| =",Array.max(Array.abs(Array.sub(z,x)))
+  #plot(Array.sub(z,x))
+  r = Array.sub(Array.randfloat(n1,n2),0.5)
+  r = smooth(r)
+  #plot(r)
+  s = Array.zerofloat(n1,n2)
+  lpf.applyInverseX(p,r,s);
   plot(s)
 
 def doPef(x,sigma,type):
@@ -99,7 +120,7 @@ def smooth(x):
   n2 = len(x)
   t = Array.zerofloat(n1,n2)
   y = Array.zerofloat(n1,n2)
-  rgf = RecursiveGaussianFilter(2.0)
+  rgf = RecursiveGaussianFilter(1.0)
   rgf.apply0X(x,t)
   rgf.applyX0(t,y)
   """
