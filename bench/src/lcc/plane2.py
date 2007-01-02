@@ -32,18 +32,19 @@ type = LocalPlaneFilter.Type.HALE1
 # functions
 
 def main(args):
-  goPlane()
+  doSym()
+  #goPlane()
   #goPef()
   return
 
 def goPlane():
   x = doImage()
-  doPlane(x,sigma,LocalPlaneFilter.Type.HALE1)
+  #doPlane(x,sigma,LocalPlaneFilter.Type.HALE1)
   #doPlane(x,sigma,LocalPlaneFilter.Type.FOMEL1)
   #doPlane(x,sigma,LocalPlaneFilter.Type.HALE2)
   doPlaneX(x,sigma,LocalPlaneFilter.Type.HALE3)
   #doPlane(x,sigma,LocalPlaneFilter.Type.QUAD)
-  doPlane(x,sigma,LocalPlaneFilter.Type.FOMEL1)
+  #doPlane(x,sigma,LocalPlaneFilter.Type.FOMEL1)
   #doPlane(x,sigma,LocalPlaneFilter.Type.FOMEL2)
 
 def goPef():
@@ -59,6 +60,28 @@ def doImage():
   #x = flip2(x)
   plot(x,10.0,"x")
   return x
+
+def doPlaneX(x,sigma,type):
+  lpf = LocalPlaneFilter(sigma,type)
+  p = lpf.find(x);
+  #plot(p[0],0.0,None)
+  #plot(p[1],0.0,None)
+  #plot(p[2],0.0,None)
+  y = Array.zerofloat(n1,n2)
+  #lpf.applyForwardF(p,x,y);
+  lpf.xapplyForwardX(p,x,y);
+  plot(y,2.0)
+  z = Array.zerofloat(n1,n2)
+  lpf.xapplyInverseX(p,y,z);
+  plot(z,10,0)
+  print "max |z-x| =",Array.max(Array.abs(Array.sub(z,x)))
+  plot(Array.sub(z,x))
+  r = Array.sub(Array.randfloat(n1,n2),0.5)
+  r = smooth(r)
+  #plot(r)
+  s = Array.zerofloat(n1,n2)
+  lpf.xapplyInverseX(p,r,s);
+  plot(s)
 
 def doPlane(x,sigma,type):
   lpf = LocalPlaneFilter(sigma,type)
@@ -81,28 +104,6 @@ def doPlane(x,sigma,type):
   lpf.applyInverse(p,r,s);
   plot(s)
 
-def doPlaneX(x,sigma,type):
-  lpf = LocalPlaneFilter(sigma,type)
-  p = lpf.find(x);
-  #plot(p[0],0.0,None)
-  #plot(p[1],0.0,None)
-  #plot(p[2],0.0,None)
-  y = Array.zerofloat(n1,n2)
-  #lpf.applyForwardF(p,x,y);
-  lpf.applyForwardX(p,x,y);
-  plot(y,2.0)
-  z = Array.zerofloat(n1,n2)
-  lpf.applyInverseX(p,y,z);
-  plot(z,10,0)
-  print "max |z-x| =",Array.max(Array.abs(Array.sub(z,x)))
-  #plot(Array.sub(z,x))
-  r = Array.sub(Array.randfloat(n1,n2),0.5)
-  r = smooth(r)
-  #plot(r)
-  s = Array.zerofloat(n1,n2)
-  lpf.applyInverseX(p,r,s);
-  plot(s)
-
 def doPef(x,sigma,type):
   lpf = LocalPlaneFilter(sigma,type)
   p = lpf.find(x);
@@ -114,6 +115,22 @@ def doPef(x,sigma,type):
   plot(y,1.0,"y")
   z = Array.sub(x,y)
   plot(z,10.0,"z")
+
+def doSym():
+  x = makeTargetImage()
+  lpf = LocalPlaneFilter(sigma,type)
+  p = lpf.find(x);
+  Array.rand(p[1]);
+  Array.rand(p[2]);
+  x = Array.sub(Array.randfloat(n1,n2),0.5)
+  y = Array.sub(Array.randfloat(n1,n2),0.5)
+  ax = Array.zerofloat(n1,n2)
+  ay = Array.zerofloat(n1,n2)
+  lpf.xapplyForwardX(p,x,ax)
+  lpf.xapplyForwardX(p,y,ay)
+  yax = Array.sum(Array.mul(y,ax))
+  xay = Array.sum(Array.mul(x,ay))
+  print "yax =",yax," xay=",xay
 
 def smooth(x):
   n1 = len(x[0])

@@ -360,63 +360,73 @@ public class LocalPlaneFilter {
   }
 
   public void xapplyForwardX(float[][][] p, float[][] x, float[][] y) {
-    Hale3Filter filter = new Hale3Filter();
     int n1 = x[0].length;
     int n2 = x.length;
     float[][] p1 = p[1];
     float[][] p2 = p[2];
-    float p1i,p2i,pm,pp;
-    int i2 = 0;
-    int i1 = 0;
-    float[] x2 = x[i2];
-    float[] y2 = y[i2];
+    float p1i,p2i,pm,pp,pmy,ppy;
+    Array.copy(x,y);
 
     // Apply plane filter.
-    p1i = p1[i2][i1]; p2i = p2[i2][i1]; pm = p1i-p2i; pp = p1i+p2i;
-    y2[i1] = pm*x2[i1];
-    for (i1=1; i1<n1; ++i1) {
-      p1i = p1[i2][i1]; p2i = p2[i2][i1]; pm = p1i-p2i; pp = p1i+p2i;
-      y2[i1] = pm*x2[i1]+pp*x2[i1-1];
-    }
-    for (i2=1; i2<n2; ++i2) {
-      float[] x2m = x[i2-1];
-      x2 = x[i2];
-      y2 = y[i2];
-      i1 = 0;
-      p1i = p1[i2][i1]; p2i = p2[i2][i1]; pm = p1i-p2i; pp = p1i+p2i;
-      y2[i1] = pm*x2[i1]-pp*x2m[i1];
-      for (i1=1; i1<n1; ++i1) {
-        p1i = p1[i2][i1]; p2i = p2[i2][i1]; pm = p1i-p2i; pp = p1i+p2i;
-        y2[i1] = pm*(x2[i1]-x2m[i1-1])+pp*(x2[i1-1]-x2m[i1]);
+    for (int i2=n2-1; i2>0; --i2) {
+      float[] y2 = y[i2];
+      float[] y2m = y[i2-1];
+      for (int i1=n1-1; i1>0; --i1) {
+        p1i = p1[i2][i1]; p2i = p2[i2][i1]; 
+        pm = 0.5f*(p1i-p2i); pp = 0.5f*(p1i+p2i);
+        y2[i1] = pm*(y2[i1]-y2m[i1-1])+pp*(y2[i1-1]-y2m[i1]);
       }
+      p1i = p1[i2][0]; p2i = p2[i2][0]; 
+      pm = 0.5f*(p1i-p2i); pp = 0.5f*(p1i+p2i);
+      y2[0] = pm*y2[0]-pp*y2m[0];
     }
+    for (int i1=n1-1; i1>0; --i1) {
+      p1i = p1[0][i1]; p2i = p2[0][i1]; 
+      pm = 0.5f*(p1i-p2i); pp = 0.5f*(p1i+p2i);
+      y[0][i1] = pm*y[0][i1]+pp*y[0][i1-1];
+    }
+    p1i = p1[0][0]; p2i = p2[0][0]; 
+    pm = 0.5f*(p1i-p2i); pp = 0.5f*(p1i+p2i);
+    y[0][0] = pm*y[0][0];
 
-    // Apply transpose of plane filter, in place.
-    for (i2=0; i2<n2-1; ++i2) {
-      float[] y2p = y[i2+1];
-      y2 = y[i2];
-      for (i1=0; i1<n1-1; ++i1) {
-        p1i = p1[i2][i1]; p2i = p2[i2][i1]; pm = p1i-p2i; pp = p1i+p2i;
-        y2[i1] = pm*(y2[i1]-y2p[i1+1])+pp*(y2[i1+1]-y2p[i1]);
+    // Apply transpose of plane filter (with care for variable coefficients).
+    p1i = p1[0][0]; p2i = p2[0][0]; 
+    pm = 0.5f*(p1i-p2i); pp = 0.5f*(p1i+p2i);
+    pmy = pm*y[0][0]; ppy = pp*y[0][0];
+    y[0][0] = pmy;
+    for (int i1=1; i1<n1; ++i1) {
+      p1i = p1[0][i1]; p2i = p2[0][i1]; 
+      pm = 0.5f*(p1i-p2i); pp = 0.5f*(p1i+p2i);
+      pmy = pm*y[0][i1]; ppy = pp*y[0][i1];
+      y[0][i1] = pmy;
+      y[0][i1-1] += ppy;
+    }
+    for (int i2=1; i2<n2; ++i2) {
+      float[] y2 = y[i2];
+      float[] y2m = y[i2-1];
+      p1i = p1[i2][0]; p2i = p2[i2][0]; 
+      pm = 0.5f*(p1i-p2i); pp = 0.5f*(p1i+p2i);
+      pmy = pm*y2[0]; ppy = pp*y2[0];
+      y2[0] = pmy;
+      y2m[0] -= ppy;
+      for (int i1=1; i1<n1; ++i1) {
+        p1i = p1[i2][i1]; p2i = p2[i2][i1]; 
+        pm = 0.5f*(p1i-p2i); pp = 0.5f*(p1i+p2i);
+        pmy = pm*y2[i1]; ppy = pp*y2[i1];
+        y2[i1] = pmy;
+        y2[i1-1] += ppy;
+        y2m[i1] -= ppy;
+        y2m[i1-1] -= pmy;
       }
-      p1i = p1[i2][i1]; p2i = p2[i2][i1]; pm = p1i-p2i; pp = p1i+p2i;
-      y2[i1] = pm*y2[i1]-pp*y2p[i1];
     }
-    y2 = y[i2];
-    for (i1=0; i1<n1-1; ++i1) {
-      p1i = p1[i2][i1]; p2i = p2[i2][i1]; pm = p1i-p2i; pp = p1i+p2i;
-      y2[i1] = pm*y2[i1]+pp*y2[i1+1];
-    }
-    p1i = p1[i2][i1]; p2i = p2[i2][i1]; pm = p1i-p2i; pp = p1i+p2i;
-    y2[i1] = pm*y2[i1];
 
     // Stability.
     float ax = 0.001f;
     float ay = 1.0f-ax;
-    for (i2=0; i2<n2; ++i2) {
-      x2 = x[i2];
-      y2 = y[i2];
-      for (i1=0; i1<n1; ++i1)
+    for (int i2=0; i2<n2; ++i2) {
+      float[] x2 = x[i2];
+      float[] y2 = y[i2];
+      for (int i1=0; i1<n1; ++i1)
         y2[i1] = ay*y2[i1]+ax*x2[i1];
     }
   }
@@ -431,11 +441,11 @@ public class LocalPlaneFilter {
     Array.copy(x,r);
     Array.copy(r,s);
     float rr = dot(r,r);
-    float small = rr*0.001f;
+    float small = rr*0.00001f;
     System.out.println("small="+small);
     for (int niter=0; niter<100 && rr>small; ++niter) {
       System.out.println("niter="+niter+" rr="+rr);
-      applyForwardX(p,s,t);
+      xapplyForwardX(p,s,t);
       float alpha = rr/dot(s,t);
       saxpy( alpha,s,y);
       saxpy(-alpha,t,r);
@@ -447,10 +457,6 @@ public class LocalPlaneFilter {
           s[i2][i1] = r[i2][i1]+beta*s[i2][i1];
     }
     System.out.println("final: rr="+rr);
-    applyForwardX(p,y,r);
-    Array.sub(x,r,r);
-    rr = dot(r,r);
-    System.out.println("check: rr="+rr);
   }
   private static float dot(float[][] x, float[][] y) {
     int n1 = x[0].length;
