@@ -434,17 +434,16 @@ public class LocalPlaneFilter {
   public void xapplyInverseX(float[][][] p, float[][] x, float[][] y) {
     int n1 = x[0].length;
     int n2 = x.length;
-    float[][] r = new float[n2][n1];
-    float[][] s = new float[n2][n1];
-    float[][] t = new float[n2][n1];
+    float[][] r = new float[n2][n1]; // r
+    float[][] s = new float[n2][n1]; // d
+    float[][] t = new float[n2][n1]; // q
     Array.zero(y);
     Array.copy(x,r);
     Array.copy(r,s);
     float rr = dot(r,r);
     float small = rr*0.00001f;
     System.out.println("small="+small);
-    for (int niter=0; niter<100 && rr>small; ++niter) {
-      System.out.println("niter="+niter+" rr="+rr);
+    for (int niter=0; niter<200 && rr>small; ++niter) {
       xapplyForwardX(p,s,t);
       float alpha = rr/dot(s,t);
       saxpy( alpha,s,y);
@@ -452,11 +451,13 @@ public class LocalPlaneFilter {
       float rrold = rr;
       rr = dot(r,r);
       float beta = rr/rrold;
-      for (int i2=0; i2<n2; ++i2)
+      for (int i2=0; i2<n2; ++i2) {
+        float[] r2 = r[i2];
+        float[] s2 = s[i2];
         for (int i1=0; i1<n1; ++i1)
-          s[i2][i1] = r[i2][i1]+beta*s[i2][i1];
+          s2[i1] = r2[i1]+beta*s2[i1];
+      }
     }
-    System.out.println("final: rr="+rr);
   }
   private static float dot(float[][] x, float[][] y) {
     int n1 = x[0].length;
