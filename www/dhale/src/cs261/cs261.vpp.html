@@ -1,0 +1,306 @@
+#header( ".." "MACS 261" "teaching" )
+
+<div id="title">
+  <div id="title-text">
+    <h1>MACS 261 &mdash; Programming Concepts in Java</h1>
+    <h2>
+      Object-oriented programming in Java,
+      especially for scientists and engineers
+    </h2>
+  </div>
+</div>
+
+#content()
+
+<h3>Summary</h3>
+<p>
+In science and engineering today, we implement, simulate, and
+test new ideas and designs with computer software.
+During their careers Mines graduates will use some of the world's 
+most powerful computing machines.
+This course is a first step towards using them well.
+</p>
+<p>
+We will begin by programming computers to respond to changing 
+parameters, to make decisions based on those parameters, and
+to print the results of our calculations.
+We will learn to use arrays to process sequences and images, to read 
+such data from files, and to process and display them graphically.
+As we learn, our programs will tend to become more complex.
+We will reduce this complexity with object-oriented programming,
+wrapping our data in <em>classes</em> with <em>methods</em> 
+that keep those data consistent and our programs simple and robust.
+</p>
+<p>
+Complexity in computer programs is bad, and
+object-oriented programming (OOP) reduces complexity. 
+The technique of OOP is what's important, 
+more than the language we do it in.
+But among languages that support object-oriented programming
+and meet other requirements of science and engineering today, 
+Java is simplest.
+Remember, simplicity is good, complexity is bad.
+</p>
+<!--
+<dl class="img">
+  <dt>
+    <img src="${base}/images/PolyPressure.png" width="200" height="200"
+     alt=""/>
+  </dt>
+  <dd>
+    This simulation of steady-state fluid flow was performed with
+    software written entirely in Java.
+    For details and more examples, see the 
+    <a href="${base}/research.html">research highlighted here</a>. 
+  </dd>
+</dl>
+-->
+
+<h3>Time and place</h3>
+<p>
+Mondays and Wednesdays, 10:00-10:50 am, BH 106 (lecture)
+<br>
+Fridays, 10:00-10:50 am, CTLM 129 (lab)
+</p>
+
+<h3>Text (required)</h3>
+<p>
+  <cite>Absolute Java, 2nd Edition</cite>, by Walter Savitch.
+  Available from the CSM bookstore and
+<a
+href="http://www.amazon.com/Absolute-Java-Student-Resource-Savitch/dp/0321330242/ref=pd_bxgy_b_text_b/002-0413842-4972014">online</a>.
+</p>
+
+<h3 class="newpage">Schedule</h3>
+<table class="course-schedule">
+<tr>
+  <th scope="col">Week</th>
+  <th scope="col">Dates</th>
+  <th scope="col">Subjects</th>
+</tr>
+<tr>
+  <td>0</td>
+  <td>01/10-01/12 (WF)</td>
+  <td>Chapter 1: getting started</td>
+</tr>
+<tr>
+  <td>1</td>
+  <td>01/15-01/19 (MWF)</td>
+  <td>Chapter 2: console input and output (scan and print)</td>
+</tr>
+<tr>
+  <td>2</td>
+  <td>01/22-01/26 (MWF)</td>
+  <td>Chapter 3: flow of control (boolean, branching, and loops)</td>
+</tr>
+<tr>
+  <td>3</td>
+  <td>01/29-02/02 (MWF)</td>
+  <td>Chapter 4: classes (fields and methods)</td>
+</tr>
+<tr>
+  <td>4</td>
+  <td>02/05-02/09 (MWF)</td>
+  <td>Chapter 5: classes (static, references, and packages)</td>
+</tr>
+<tr>
+  <td>5</td>
+  <td>02/12-02/16 (MWF)</td>
+  <td>Review and 1st exam (Friday, 02/16)</td>
+</tr>
+<tr>
+  <td>6</td>
+  <td>02/19-02/23 (MWF)</td>
+  <td>Chapter 6: arrays (one-dimensional, sequences)</td>
+</tr>
+<tr>
+  <td>7</td>
+  <td>02/26-03/02 (MWF)</td>
+  <td>Chapter 6: arrays (multi-dimensional, images)</td>
+</tr>
+<tr>
+  <td>8</td>
+  <td>03/05-03/09 (MWF)</td>
+  <td>Chapter 7: inheritance (this, super, protected, and equals)</td>
+</tr>
+<tr>
+  <td>9</td>
+  <td>03/12-03/16</td>
+  <td>Spring Break</td>
+</tr>
+<tr>
+  <td>10</td>
+  <td>03/19-03/23 (MWF)</td>
+  <td>Chapter 8: polymorphism and abstract classes (decoupling)</td>
+</tr>
+<tr>
+  <td>11</td>
+  <td>03/26-03/30 (MWF)</td>
+  <td>Chapter 9: exception handling (throw, try, and catch)</td>
+</tr>
+<tr>
+  <td>12</td>
+  <td>04/02-04/06 (MWF)</td>
+  <td>Chapter 10: file i/o (text and binary)</td>
+</tr>
+<tr>
+  <td>13</td>
+  <td>04/09-04/13 (MWF)</td>
+  <td>Review and 2nd exam (Friday, 04/13)</td>
+</tr>
+<tr>
+  <td>14</td>
+  <td>04/16-04/20 (MWF)</td>
+  <td>Chapter 13: interfaces and inner classes (listeners)</td>
+</tr>
+<tr>
+  <td>15</td>
+  <td>04/23-04/27 (MWF)</td>
+  <td>Chapter 14: generics and ArrayList (collections)</td>
+</tr>
+<tr>
+  <td>16</td>
+  <td>04/30-05/02 (MW)</td>
+  <td>Review for final exam</td>
+</tr>
+</table>
+
+<h3 class="newpage">Grading</h3>
+<p>
+Your grade is based on
+<ul>
+  <li>40%: programming assignments</li>
+  <li>30%: midterm exams (two)</li>
+  <li>30%: final exam</li>
+</ul>
+<em>To pass this course, you must pass the final exam.</em>
+</p>
+
+<h4>Programming</h4>
+<p>
+You will typically receive a programming assignment each Monday
+that is due before class begins the following Monday.
+(Exceptions are the weeks of Spring Break and exams.)
+Assignments will be posted on Blackboard.
+</p>
+<p>
+At the beginning of class on Mondays, we will discuss the solution 
+to the programming assignment due at that time.
+This discussion will provide quick feedback and help you prepare 
+for the next assignment.
+</p>
+<p>
+Grades for programming assignments will be determined as follows:
+<ul>
+<li>5: exceptional, exceeds requirements or is especially elegant.</li>
+<li>4: excellent, meets all requirements, well done.</li>
+<li>3: satisfactory, but with a few minor flaws.</li>
+<li>2: unsatisfactory, incomplete or with major flaws.</li>
+<li>1: poor, seriously flawed, but with some effort.</li>
+<li>0: failing, with little or no effort.</li>
+</ul>
+Grades 4 through 0 correspond roughly to the standard letter 
+grades A through F. A grade 5 will be rare, and can be earned
+only for the more difficult assignments.
+</p>
+
+<h4>Late work</h4>
+<p>
+<em>Late work will not be accepted.</em>
+If you submit work late, it will not be graded, and you will receive a 
+grade of zero for that assignment.
+</p>
+<p>
+Obviously, you cannot receive credit for work submitted after we have 
+discussed a solution in class on Monday.
+Moreover, each programming assignment builds upon previous assignments,
+so it is important that you not fall behind. 
+</p>
+<p>
+Students with excused absences (e.g., for athletics) will be permitted to 
+complete alternative programming assignments with different due dates.
+</p>
+
+<h3 class="newpage">Working with others</h3>
+<p>
+<cite>
+"Your code is like your boyfriend or girlfriend. It's okay to talk about
+it on an abstract, high level. But you don't want to go into the specific
+details, and you certainly don't want to share."
+</cite>
+- Professor Pascal Van Hentenryck, Brown University, 1997
+</p>
+<p>
+The following policy applies to all Computer Science courses at Mines:
+</p>
+<ol>
+  <li>
+  If the project is an individual effort, you are not allowed to give code 
+  you have developed to another student or use code provided by another 
+  student.  If the project is a group effort, you are allowed to share 
+  code only with members of your group. 
+  </li>
+  <li>
+  You are encouraged to discuss programming projects with other students in 
+  the class, provided that:
+  <ol>
+    <li>
+    You view another student's code only for the purpose of offering 
+    debugging assistance.  
+    Other students give advice only on what problems to look for; 
+    they do not debug your code for you. <em>You</em> make all 
+    changes to <em>your</em> code.
+    </li>
+    <li>
+    You follow the empty hands rule, which means that you leave the discussion 
+    without any (electronic, mechanical or other) record of it.
+    </li>
+  </ol>
+  </li>
+  <li>
+  Any materials from outside sources, such as books, projects, and,
+  especially, the Web, should be properly referenced and should be used 
+  only if specifically allowed for the assignment.
+  </li>
+  <li>
+  If you are aware of students violating this policy, you are encouraged to 
+  inform the course instructor.
+  Violations of this policy will be treated as academic misconduct by all 
+  students involved.
+  See the Undergraduate Bulletin for a description of the Student Honor Code.
+  </li>
+</ol>
+<p>
+<em>
+For MACS 261J, assume that all projects are individual efforts,
+unless stated otherwise.
+Materials from outside sources (listed above) should not be used 
+to complete assignments in this course.
+</em>
+</p>
+
+#sidebar()
+
+<h3>Resources</h3>
+<p>
+On your computer, download and install the
+<a href="http://java.sun.com/javase/downloads/index.jsp">
+Java Development Kit</a>.
+You should download both JDK 6 (or JDK 6 with NetBeans 5.5)
+and the Java SE 6 Documentation.
+</p>
+<p>
+Some assignments will require the
+<a href="http://www.mines.edu/~dhale/jtk/index.html">
+Mines Java Toolkit</a>.
+You will use it, but need not build it.
+</p>
+<h3>Happiness</h3>
+<p>
+  Some people have great ideas but are frustrated because they cannot 
+  implement them. Others know how to do things, but are unsatisfied
+  implementing someone else's great ideas. The happiest people I know
+  have the ability and responsibility to implement their own ideas.
+</p>
+
+#footer()
