@@ -52,11 +52,11 @@ def goPef():
   doPef(x,sigma,type)
 
 def doImage():
-  x = readImage()
+  #x = readImage()
   #x = Array.transpose(x)
   #x = makePlaneImage(63.435)
   #x = makePlaneImage(30)
-  #x = makeTargetImage()
+  x = makeTargetImage()
   #x = flip2(x)
   plot(x,10.0,"x")
   return x
@@ -69,18 +69,18 @@ def doPlaneX(x,sigma,type):
   #plot(p[2],0.0,None)
   y = Array.zerofloat(n1,n2)
   lpf.xapplyForwardX(p,x,y)
-  for i2 in range(n2):
-    y[i2][0] = 0.0
-  for i1 in range(n1):
-    y[0][i1] = 0.0
+  #for i2 in range(n2):
+  #  y[i2][0] = 0.0
+  #for i1 in range(n1):
+  #  y[0][i1] = 0.0
   plot(y,2.0)
-  df = DifferenceFilter()
-  t = Array.zerofloat(n1,n2)
-  df.applyInverse(y,t)
-  df.applyInverseTranspose(t,y)
-  plot(y,2.0)
-  df.applyTranspose(y,t)
-  df.apply(t,y)
+  #df = DifferenceFilter()
+  #t = Array.zerofloat(n1,n2)
+  #df.applyInverse(y,t)
+  #df.applyInverseTranspose(t,y)
+  #plot(y,2.0)
+  #df.applyTranspose(y,t)
+  #df.apply(t,y)
   z = Array.zerofloat(n1,n2)
   lpf.xapplyInverseX(p,y,z)
   plot(z,10,0)
@@ -96,9 +96,9 @@ def doPlaneX(x,sigma,type):
 def doPlane(x,sigma,type):
   lpf = LocalPlaneFilter(sigma,type)
   p = lpf.find(x)
-  #plot(p[0],0.0,None)
-  #plot(p[1],0.0,None)
-  #plot(p[2],0.0,None)
+  plot(p[0],0.0,None)
+  plot(p[1],0.0,None)
+  plot(p[2],0.0,None)
   y = Array.zerofloat(n1,n2)
   lpf.applyForward(p,x,y)
   plot(y,2.0,"y")

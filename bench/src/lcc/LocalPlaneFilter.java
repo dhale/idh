@@ -291,27 +291,25 @@ public class LocalPlaneFilter {
   }
 
   public void applyForwardX(float[][][] p, float[][] x, float[][] y) {
-    if (_mpf==null)
-      makeMinimumPhaseFilter();
-    int[][] i = index(p);
-    float[][] t = Array.copy(y);
-    _mpf.apply(i,x,t);
-    _mpf.applyTranspose(i,t,y);
+    if (_lcf==null)
+      makeLocalCausalFilter();
+    A2 a2 = new A2(index(p));
+    _lcf.apply(a2,x,y);
+    _lcf.applyTranspose(a2,y,y);
   }
   public void applyInverseX(float[][][] p, float[][] x, float[][] y) {
-    if (_mpf==null)
-      makeMinimumPhaseFilter();
-    int[][] i = index(p);
-    float[][] t = Array.copy(y);
-    _mpf.applyInverseTranspose(i,x,t);
-    _mpf.applyInverse(i,t,y);
+    if (_lcf==null)
+      makeLocalCausalFilter();
+    A2 a2 = new A2(index(p));
+    _lcf.applyInverseTranspose(a2,x,y);
+    _lcf.applyInverse(a2,y,y);
   }
-  private static int NTHETA = 33;
+  private static int NTHETA = 65;
   private static float FTHETA = -0.5f*FLT_PI;
   private static float DTHETA = FLT_PI/(float)(NTHETA-1);;
   private static float STHETA = 0.9999f/DTHETA;
-  private MinimumPhaseFilter _mpf;
-  private static int[][] index(float[][][] p) {
+  private LocalCausalFilter _lcf;
+  private static int[][] xindex(float[][][] p) {
     Random r = new Random(314159);
     int n1 = p[0][0].length;
     int n2 = p[0].length;
@@ -321,17 +319,45 @@ public class LocalPlaneFilter {
     for (int i2=0; i2<n2; ++i2) {
       for (int i1=0; i1<n1; ++i1) {
         float theta = asin(p2[i2][i1]);
-        //float thetai = (theta-FTHETA)*STHETA;
-        //int itheta = (int)(thetai);
-        //float dtheta = thetai-(float)itheta;
-        //if (r.nextFloat()<dtheta) ++itheta;
-        //i[i2][i1] = itheta;
         i[i2][i1] = (int)(0.5f+(theta-FTHETA)*STHETA);
+        /*
+        float thetai = (theta-FTHETA)*STHETA;
+        int itheta = (int)(thetai);
+        float dtheta = thetai-(float)itheta;
+        if (r.nextFloat()<dtheta) ++itheta;
+        i[i2][i1] = itheta;
+        */
       }
     }
     return i;
   }
-  private void makeMinimumPhaseFilter() {
+  private static int NP2 = 65;
+  private static float FP2 = -1.0f;
+  private static float DP2 = 2.0f/(float)(NP2-1);;
+  private static float SP2 = 0.9999f/DP2;
+  private static int[][] index(float[][][] p) {
+    Random r = new Random(314159);
+    int n1 = p[0][0].length;
+    int n2 = p[0].length;
+    int[][] i = new int[n2][n1];
+    float[][] p1 = p[1];
+    float[][] p2 = p[2];
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        float p2i = p2[i2][i1];
+        i[i2][i1] = (int)(0.5f+(p2i-FP2)*SP2);
+        /*
+        float thetai = (theta-FTHETA)*STHETA;
+        int itheta = (int)(thetai);
+        float dtheta = thetai-(float)itheta;
+        if (r.nextFloat()<dtheta) ++itheta;
+        i[i2][i1] = itheta;
+        */
+      }
+    }
+    return i;
+  }
+  private void xmakeLocalCausalFilter() {
     int maxlag = 6;
     int nlag = maxlag+2+maxlag;
     int[] lag1 = new int[nlag];
@@ -340,7 +366,6 @@ public class LocalPlaneFilter {
       lag1[ilag] = (ilag<=maxlag)?ilag:ilag-2*maxlag;
       lag2[ilag] = (ilag<=maxlag)?0:1;
     }
-    float[][] a = new float[NTHETA][];
     for (int itheta=0; itheta<NTHETA; ++itheta) {
       float theta = FTHETA+itheta*DTHETA;
       float c = cos(theta);
@@ -352,11 +377,47 @@ public class LocalPlaneFilter {
         {2.0f*m12*p12,          1.001f,  2.0f*m12*p12},
         {    -p12*p12,   -2.0f*m12*p12,      -m12*m12}
       };
-      MinimumPhaseFilter mpf = new MinimumPhaseFilter(lag1,lag2);
-      mpf.factorWilsonBurg(100,0.000001f,r);
-      a[itheta] = mpf.getA();
+      CausalFilter cf = new CausalFilter(lag1,lag2);
+      cf.factorWilsonBurg(100,0.000001f,r);
+      _aTable[itheta] = cf.getA();
     }
-    _mpf = new MinimumPhaseFilter(lag1,lag2,a);
+    _lcf = new LocalCausalFilter(lag1,lag2);
+  }
+  private void makeLocalCausalFilter() {
+    int maxlag = 6;
+    int nlag = maxlag+2+maxlag;
+    int[] lag1 = new int[nlag];
+    int[] lag2 = new int[nlag];
+    for (int ilag=0; ilag<nlag; ++ilag) {
+      lag1[ilag] = (ilag<=maxlag)?ilag:ilag-2*maxlag;
+      lag2[ilag] = (ilag<=maxlag)?0:1;
+    }
+    for (int ip2=0; ip2<NTHETA; ++ip2) {
+      float p2 = FP2+ip2*DP2;
+      float p1 = sqrt(1.0f-p2*p2);
+      float m12 = 0.5f*(p1-p2);
+      float p12 = 0.5f*(p1+p2);
+      float[][] r = {
+        {    -m12*m12,   -2.0f*m12*p12,      -p12*p12},
+        {2.0f*m12*p12,          1.001f,  2.0f*m12*p12},
+        {    -p12*p12,   -2.0f*m12*p12,      -m12*m12}
+      };
+      CausalFilter cf = new CausalFilter(lag1,lag2);
+      cf.factorWilsonBurg(100,0.000001f,r);
+      _aTable[ip2] = cf.getA();
+    }
+    _lcf = new LocalCausalFilter(lag1,lag2);
+  }
+  //private float[][] _aTable = new float[NTHETA][];
+  private float[][] _aTable = new float[NP2][];
+  private class A2 implements LocalCausalFilter.A2 {
+    A2(int[][] index) {
+      _index = index;
+    }
+    public void get(int i1, int i2, float[] a) {
+      Array.copy(_aTable[_index[i2][i1]],a);
+    }
+    private int[][] _index;
   }
 
   public void xapplyForwardX(float[][][] p, float[][] x, float[][] y) {
@@ -431,7 +492,8 @@ public class LocalPlaneFilter {
     }
   }
 
-  public void xapplyInverseX(float[][][] p, float[][] x, float[][] y) {
+  // Conjugate-gradients without pre-conditioning.
+  public void xxapplyInverseX(float[][][] p, float[][] x, float[][] y) {
     int n1 = x[0].length;
     int n2 = x.length;
     float[][] r = new float[n2][n1]; // r
@@ -443,7 +505,8 @@ public class LocalPlaneFilter {
     float rr = dot(r,r);
     float small = rr*0.00001f;
     System.out.println("small="+small);
-    for (int niter=0; niter<200 && rr>small; ++niter) {
+    int niter;
+    for (niter=0; niter<200 && rr>small; ++niter) {
       xapplyForwardX(p,s,t);
       float alpha = rr/dot(s,t);
       saxpy( alpha,s,y);
@@ -457,6 +520,40 @@ public class LocalPlaneFilter {
         for (int i1=0; i1<n1; ++i1)
           s2[i1] = r2[i1]+beta*s2[i1];
       }
+      System.out.println("niter="+niter+" rr="+rr);
+    }
+  }
+  // Conjugate-gradients with pre-conditioning.
+  public void xapplyInverseX(float[][][] p, float[][] x, float[][] y) {
+    int n1 = x[0].length;
+    int n2 = x.length;
+    float[][] r = new float[n2][n1]; // r
+    float[][] s = new float[n2][n1]; // d
+    float[][] t = new float[n2][n1]; // q
+    float[][] u = new float[n2][n1]; // s
+    Array.zero(y);
+    Array.copy(x,r);
+    applyInverseX(p,r,s);
+    float rr = dot(r,s);
+    float small = rr*0.00001f;
+    System.out.println("small="+small);
+    int niter;
+    for (niter=0; niter<200 && rr>small; ++niter) {
+      xapplyForwardX(p,s,t);
+      float alpha = rr/dot(s,t);
+      saxpy( alpha,s,y);
+      saxpy(-alpha,t,r);
+      applyInverseX(p,r,u);
+      float rrold = rr;
+      rr = dot(r,u);
+      float beta = rr/rrold;
+      for (int i2=0; i2<n2; ++i2) {
+        float[] u2 = u[i2];
+        float[] s2 = s[i2];
+        for (int i1=0; i1<n1; ++i1)
+          s2[i1] = u2[i1]+beta*s2[i1];
+      }
+      System.out.println("niter="+niter+" rr="+rr);
     }
   }
   private static float dot(float[][] x, float[][] y) {
