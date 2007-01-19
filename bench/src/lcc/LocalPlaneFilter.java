@@ -331,7 +331,7 @@ public class LocalPlaneFilter {
     }
     return i;
   }
-  private static int NP2 = 65;
+  private static int NP2 = 33;
   private static float FP2 = -1.0f;
   private static float DP2 = 2.0f/(float)(NP2-1);;
   private static float SP2 = 0.9999f/DP2;
@@ -392,7 +392,7 @@ public class LocalPlaneFilter {
       lag1[ilag] = (ilag<=maxlag)?ilag:ilag-2*maxlag;
       lag2[ilag] = (ilag<=maxlag)?0:1;
     }
-    for (int ip2=0; ip2<NTHETA; ++ip2) {
+    for (int ip2=0; ip2<NP2; ++ip2) {
       float p2 = FP2+ip2*DP2;
       float p1 = sqrt(1.0f-p2*p2);
       float m12 = 0.5f*(p1-p2);
@@ -538,7 +538,7 @@ public class LocalPlaneFilter {
     float small = rr*0.00001f;
     System.out.println("small="+small);
     int niter;
-    for (niter=0; niter<200 && rr>small; ++niter) {
+    for (niter=0; niter<10 && rr>small; ++niter) {
       xapplyForwardX(p,s,t);
       float alpha = rr/dot(s,t);
       saxpy( alpha,s,y);

@@ -27,6 +27,7 @@ public class SwView extends JFrame {
   private static final float FX = 0.0f;
   //private static final float DX = 1.0f;
   //private static final float FX = 1325.0f;
+  private static final Sampling SX = new Sampling(NX,DX,FX);
 
   // Crossline sampling
   private static final int NY = 623;
@@ -34,11 +35,13 @@ public class SwView extends JFrame {
   private static final float FY = 0.0f;
   //private static final float DY = 2.0f;
   //private static final float FY = 1316.0f;
+  private static final Sampling SY = new Sampling(NY,DY,FY);
 
   // Time sampling
   private static final int NZ = 301;
   private static final float DZ = 0.004f;
   private static final float FZ = 3.6f;
+  private static final Sampling SZ = new Sampling(NZ,DZ,FZ);
 
   private static final int SIZE = 600;
   private static final String DATA_DIR = "/data/seis/sw/";
@@ -150,34 +153,11 @@ public class SwView extends JFrame {
     World world, Float3 f, 
     float clip, IndexColorModel icm)
   {
-    int nx = f.getN3();
-    int ny = f.getN2();
-    int nz = f.getN1();
-    double dx = DX;
-    double dy = DY;
-    double dz = DZ;
-    double fx = FX;
-    double fy = FY;
-    double fz = FZ;
-    double lx = fx+(nx-1)*dx;
-    double ly = fy+(ny-1)*dy;
-    double lz = fz+(nz-1)*dz;
-    Sampling sx = new Sampling(nx,dx,fx);
-    Sampling sy = new Sampling(ny,dy,fy);
-    Sampling sz = new Sampling(nz,dz,fz);
-    Point3 qmin = new Point3(fx,fy,fz);
-    Point3 qmax = new Point3(lx,ly,lz);
-    Axis[] axes = new Axis[]{Axis.X,Axis.Y,Axis.Z};
-    for (int iaxis=0; iaxis<axes.length; ++iaxis) {
-      AxisAlignedQuad aaq = new AxisAlignedQuad(axes[iaxis],qmin,qmax);
-      AxisAlignedFrame aaf = aaq.getFrame();
-      ImagePanel ip = new ImagePanel(sx,sy,sz,f);
-      ip.setClips(-clip,clip);
-      ip.setColorModel(icm);
-      System.out.println("clip min="+ip.getClipMin()+" max="+ip.getClipMax());
-      aaf.addChild(ip);
-      world.addChild(aaq);
-    }
+    ImagePanelGroup ipg = new ImagePanelGroup(SX,SY,SZ,f);
+    ipg.setClips(-clip,clip);
+    ipg.setColorModel(icm);
+    System.out.println("clip min="+ipg.getClipMin()+" max="+ipg.getClipMax());
+    world.addChild(ipg);
   }
 
   public static void main(String[] args) {
@@ -189,8 +169,8 @@ public class SwView extends JFrame {
     //addSlices(world,loadData("sw04a13.dat"),5000.0f,ColorMap.GRAY);
     //addSlices(world,loadData("r1.dat"),5000.0f,ColorMap.GRAY);
     //addSlices(world,loadData("r13.dat"),5000.0f,ColorMap.GRAY);
-    addSlices(world,loadData("u1.dat"),1.0f,ColorMap.RED_WHITE_BLUE);
-    addSlices(world,loadData("u3.dat"),0.5f,ColorMap.RED_WHITE_BLUE);
+    //addSlices(world,loadData("u1.dat"),1.0f,ColorMap.RED_WHITE_BLUE);
+    //addSlices(world,loadData("u3.dat"),0.5f,ColorMap.RED_WHITE_BLUE);
     SwView swView = new SwView(world);
     swView.setVisible(true);
   }
