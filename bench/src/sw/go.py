@@ -1,5 +1,8 @@
+import sys
 from math import *
 from java.awt import *
+from java.lang import *
+from javax.swing import *
 from lcc import *
 from edu.mines.jtk.awt import *
 from edu.mines.jtk.dsp import *
@@ -87,7 +90,7 @@ def slice23(f,i1):
 ##############################################################################
 # Plot
 colorBarWidthMinimum = 100
-frameWidth=1060
+frameWidth=1030
 frameHeight=620
 
 def frame(panel,png):
@@ -96,8 +99,8 @@ def frame(panel,png):
   frame.setFontSize(30)
   frame.setSize(frameWidth,frameHeight)
   frame.setVisible(True)
-  #if png!=None:
-  #  frame.paintToPng(600,3,png)
+  if png!=None:
+    frame.paintToPng(600,3,png)
   return frame
 
 def plotSeis12(f,clip=0,png=None):
@@ -153,7 +156,7 @@ def plotLags13(f,clip=0,png=None):
   print "plotLags: min =",Array.min(f),"  max =",Array.max(f)
   panel = PlotPanel(PlotPanel.Orientation.X1DOWN_X2RIGHT)
   panel.setColorBarWidthMinimum(colorBarWidthMinimum)
-  panel.setHLabel("distance (km)")
+  panel.setHLabel("crossline (km)")
   panel.setVLabel("time (s)")
   cb = panel.addColorBar()
   pv = panel.addPixels(s1,s3,f)
@@ -487,62 +490,83 @@ def findShifts():
     writeFloats3("u2s"+str(i)+".dat",u2)
 #findShifts()
 
-def plot070119():
+def plotSlices():
   k1 = 201 # = (4.404-3.600)/0.004
   k2 = 293 # = (7.325-0.000)/0.025
+
   """
   sf = readFloats3("sw02a.dat")
-  sg = readFloats3("sw04a.dat")
   sf1 = slice23(sf,k1)
   sf2 = slice13(sf,k2)
-  sg1 = slice23(sg,k1)
-  sg2 = slice13(sg,k2)
+  sf = None
   plotSeis23(Array.mul(0.003,sf1),11,"sf1.png")
   plotSeis13(Array.mul(0.003,sf2),11,"sf2.png")
+  sg = readFloats3("sw04a.dat")
+  sg1 = slice23(sg,k1)
+  sg2 = slice13(sg,k2)
+  sg = None
   plotSeis23(Array.mul(0.003,sg1),11,"sg1.png")
   plotSeis13(Array.mul(0.003,sg2),11,"sg2.png")
+
   wf = readFloats3("w02.dat")
-  wg = readFloats3("w04.dat")
   wf1 = slice23(wf,k1)
   wf2 = slice13(wf,k2)
-  wg1 = slice23(wg,k1)
-  wg2 = slice13(wg,k2)
+  wf = None
   plotSeis23(Array.mul(0.003,wf1),1.1,"wf1.png")
   plotSeis13(Array.mul(0.003,wf2),1.1,"wf2.png")
+  wg = readFloats3("w04.dat")
+  wg1 = slice23(wg,k1)
+  wg2 = slice13(wg,k2)
+  wg = None
   plotSeis23(Array.mul(0.003,wg1),1.1,"wg1.png")
   plotSeis13(Array.mul(0.003,wg2),1.1,"wg2.png")
+  """
+
   u1s0 = readFloats3("u1s0.dat")
-  u2s0 = readFloats3("u2s0.dat")
-  u3s0 = readFloats3("u3s0.dat")
   u1s01 = slice23(u1s0,k1)
   u1s02 = slice13(u1s0,k2)
+  u1s0 = None
+  #plotLags23(Array.mul(4,u1s01),4.5,"u1s01.png")
+  plotLags13(Array.mul(4,u1s02),4.5,"u1s02.png")
+
+  u2s0 = readFloats3("u2s0.dat")
   u2s01 = slice23(u2s0,k1)
   u2s02 = slice13(u2s0,k2)
+  u2s0 = None
+  #plotLags23(Array.mul(25,u2s01),8.5,"u2s01.png")
+  plotLags13(Array.mul(25,u2s02),8.5,"u2s02.png")
+
+  u3s0 = readFloats3("u3s0.dat")
   u3s01 = slice23(u3s0,k1)
   u3s02 = slice13(u3s0,k2)
-  plotLags23(Array.mul(4,u1s01),5,"u1s01.png")
-  plotLags13(Array.mul(4,u1s02),5,"u1s02.png")
-  plotLags23(Array.mul(25,u2s01),11,"u2s01.png")
-  plotLags13(Array.mul(25,u2s02),11,"u2s02.png")
-  plotLags23(Array.mul(25,u3s01),11,"u3s01.png")
-  plotLags13(Array.mul(25,u3s02),11,"u3s02.png")
-  """
+  u3s0 = None
+  #plotLags23(Array.mul(25,u3s01),8.5,"u3s01.png")
+  plotLags13(Array.mul(25,u3s02),8.5,"u3s02.png")
+
   u1s1 = readFloats3("u1s1.dat")
-  u2s1 = readFloats3("u2s1.dat")
-  u3s1 = readFloats3("u3s1.dat")
   u1s11 = slice23(u1s1,k1)
   u1s12 = slice13(u1s1,k2)
+  u1s1 = None
+  #plotLags23(Array.mul(4,u1s11),4.5,"u1s11.png")
+  plotLags13(Array.mul(4,u1s12),4.5,"u1s12.png")
+
+  u2s1 = readFloats3("u2s1.dat")
   u2s11 = slice23(u2s1,k1)
   u2s12 = slice13(u2s1,k2)
+  u2s1 = None
+  #plotLags23(Array.mul(25,u2s11),8.5,"u2s11.png")
+  plotLags13(Array.mul(25,u2s12),8.5,"u2s12.png")
+
+  u3s1 = readFloats3("u3s1.dat")
   u3s11 = slice23(u3s1,k1)
   u3s12 = slice13(u3s1,k2)
-  plotLags23(Array.mul(4,u1s11),4.5,"u1s11.png")
-  plotLags13(Array.mul(4,u1s12),4.5,"u1s12.png")
-  plotLags23(Array.mul(25,u2s11),9.0,"u2s11.png")
-  plotLags13(Array.mul(25,u2s12),9.0,"u2s12.png")
-  plotLags23(Array.mul(25,u3s11),9.0,"u3s11.png")
-  plotLags13(Array.mul(25,u3s12),9.0,"u3s12.png")
-plot070119()
+  u3s1 = None
+  #plotLags23(Array.mul(25,u3s11),8.5,"u3s11.png")
+  plotLags13(Array.mul(25,u3s12),8.5,"u3s12.png")
+
+def main(args):
+  plotSlices()
+  return
 
 # i2=288 is bin 1892 (288 = (1892-1316)/2)
 # i2=267 is bin 1850 (267 = (1850-1316)/2)
@@ -583,3 +607,11 @@ plot070119()
 #i1b = 340
 #plotS23(i1b)
 #plotU23(i1b)
+
+#############################################################################
+# Do everything on Swing thread.
+
+class RunMain(Runnable):
+  def run(self):
+    main(sys.argv)
+SwingUtilities.invokeLater(RunMain())
