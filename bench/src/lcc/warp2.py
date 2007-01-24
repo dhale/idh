@@ -19,7 +19,8 @@ width = 640
 height = 505
 widthColorBar = 80
 dataDir = "/data"
-pngDir = "."
+#pngDir = "."
+pngDir = None
 
 n1 = 315
 n2 = 315
@@ -41,7 +42,7 @@ lcf = LocalCorrelationFilter(lcfType,lcfWindow,lcfSigma)
 
 def main(args):
   #goImages()
-  #goLcc()
+  goLcc()
   #goLagSearch()
   #goSequentialShifts()
   return
@@ -49,7 +50,7 @@ def main(args):
 def goLcc():
   f,g = doImages()
   doLcc(f,g,False,False)
-  doLcc(f,g,True,False)
+  #doLcc(f,g,True,False)
   doLcc(f,g,True,True)
 
 def goImages():
@@ -101,9 +102,21 @@ def doLcc(f,g,whiten,smooth):
       Array.copy(n1/m1,n2/m2,l1,l2,m1,m2,t,l1+lag1,l2+lag2,m1,m2,c)
       for k in range(nk):
         ck[k][l2+lag2][l1+lag1] = t[k2[k]][k1[k]]
+  """
+  for i1 in range(n1):
+    for i2 in range(0,n2,m2):
+      c[i2][i1] = -1.0
+    for i2 in range(n2-1,n2,m2):
+      c[i2][i1] = -1.0
+  for i2 in range(n2):
+    for i1 in range(0,n1,m1):
+      c[i2][i1] = -1.0
+    for i1 in range(n1-1,n1,m1):
+      c[i2][i1] = -1.0
+  """
   plot(c,1.0,"lcc"+suffix)
-  for k in range(nk):
-    plot(ck[k],0.0,"lcc"+suffix+"_"+str(k1[k])+"_"+str(k2[k]))
+  #for k in range(nk):
+  #  plot(ck[k],0.0,"lcc"+suffix+"_"+str(k1[k])+"_"+str(k2[k]))
 
 def doLagSearch(f,g,whiten,smooth):
   f,g,suffix = preprocess(f,g,whiten,smooth)

@@ -25,6 +25,7 @@ public class LocalPlaneFilter {
     HALE0,
     HALE1,
     HALE2,
+    HALE2X,
     HALE3,
     FOMEL1,
     FOMEL2,
@@ -45,6 +46,8 @@ public class LocalPlaneFilter {
       _filter = new Hale1Filter();
     } else if (type==Type.HALE2) {
       _filter = new Hale2Filter();
+    } else if (type==Type.HALE2X) {
+      _filter = new Hale2XFilter();
     } else if (type==Type.FOMEL1) {
       _filter = new Fomel1Filter();
     } else if (type==Type.FOMEL2) {
@@ -88,10 +91,10 @@ public class LocalPlaneFilter {
     // For each sample, the eigenvector corresponding to the largest
     // eigenvalue is normal to the plane. The size of that eigenvalue
     // is a measure of planarity in the interval [0,1].
-    float[][][] p = new float[3][][];
-    p[0] = g11;
-    p[1] = g12;
-    p[2] = g22;
+    float[][][] u = new float[3][][];
+    u[0] = g11;
+    u[1] = g12;
+    u[2] = g22;
     float[][] a = new float[2][2];
     float[][] v = new float[2][2];
     float[] d = new float[2];
@@ -102,25 +105,23 @@ public class LocalPlaneFilter {
         a[1][0] = g12[i2][i1];
         a[1][1] = g22[i2][i1];
         Eigen.solveSymmetric22(a,v,d);
-        p[0][i2][i1] = d[0]/sqrt(d[0]*d[0]+d[1]*d[1]);
+        u[0][i2][i1] = d[0]/sqrt(d[0]*d[0]+d[1]*d[1]);
         float v1 = v[0][0];
         float v2 = v[0][1];
         if (v1<0.0f) {
           v1 = -v1;
           v2 = -v2;
         }
-        p[1][i2][i1] = v1;
-        p[2][i2][i1] = v2;
+        u[1][i2][i1] = v1;
+        u[2][i2][i1] = v2;
       }
     }
-    return p;
+    return u;
   }
 
-  public void applyForward(float[][][] p, float[][] x, float[][] y) {
+  public void applyForward(float[][][] u, float[][] x, float[][] y) {
     int n1 = x[0].length;
     int n2 = x.length;
-    float[][] p1 = p[1];
-    float[][] p2 = p[2];
     float[] c = new float[6];
 
     // For i2=0, x[i2-1][i1] = y[i2-1][i1] = x[i2][-1] = x[i2][n1] = 0.
@@ -128,13 +129,13 @@ public class LocalPlaneFilter {
     float[] x2 = x[i2];
     float[] y2 = y[i2];
     int i1 = 0;
-    _filter.getCoefficients(p1[i2][i1],p2[i2][i1],c);
+    _filter.getCoefficients(i1,i2,u,c);
     y2[i1] = c[0]*x2[i1+1]+c[1]*x2[i1];
     for (i1=1; i1<n1-1; ++i1) {
-      _filter.getCoefficients(p1[i2][i1],p2[i2][i1],c);
+      _filter.getCoefficients(i1,i2,u,c);
       y2[i1] = c[0]*x2[i1+1]+c[1]*x2[i1]+c[2]*x2[i1-1];
     }
-    _filter.getCoefficients(p1[i2][i1],p2[i2][i1],c);
+    _filter.getCoefficients(i1,i2,u,c);
     y2[i1] = c[1]*x2[i1]+c[2]*x2[i1-1];
 
     // For all i2>0, assume that x[i2][-1] = x[i2][n1] = 0.
@@ -143,25 +144,23 @@ public class LocalPlaneFilter {
       x2 = x[i2];
       y2 = y[i2];
       i1 = 0;
-      _filter.getCoefficients(p1[i2][i1],p2[i2][i1],c);
+      _filter.getCoefficients(i1,i2,u,c);
       y2[i1] = c[0]*x2 [i1+1]+c[1]*x2 [i1]
              + c[3]*x2m[i1+1]+c[4]*x2m[i1];
       for (i1=1; i1<n1-1; ++i1) {
-        _filter.getCoefficients(p1[i2][i1],p2[i2][i1],c);
+        _filter.getCoefficients(i1,i2,u,c);
         y2[i1] = c[0]*x2 [i1+1]+c[1]*x2 [i1]+c[2]*x2 [i1-1]
                + c[3]*x2m[i1+1]+c[4]*x2m[i1]+c[5]*x2m[i1-1];
       }
-      _filter.getCoefficients(p1[i2][i1],p2[i2][i1],c);
+      _filter.getCoefficients(i1,i2,u,c);
       y2[i1] = c[1]*x2 [i1]+c[2]*x2 [i1-1]
              + c[4]*x2m[i1]+c[5]*x2m[i1-1];
     }
   }
 
-  public void applyInverse(float[][][] p, float[][] x, float[][] y) {
+  public void applyInverse(float[][][] u, float[][] x, float[][] y) {
     int n1 = x[0].length;
     int n2 = x.length;
-    float[][] p1 = p[1];
-    float[][] p2 = p[2];
     TridiagonalFMatrix tm = new TridiagonalFMatrix(n1);
     float[] ta = tm.a();
     float[] tb = tm.b();
@@ -174,7 +173,7 @@ public class LocalPlaneFilter {
     float[] x2 = x[i2];
     float[] y2 = y[i2];
     for (int i1=0; i1<n1; ++i1) {
-      _filter.getCoefficients(p1[i2][i1],p2[i2][i1],c);
+      _filter.getCoefficients(i1,i2,u,c);
       r[i1] = x2[i1];
       ta[i1] = c[2];
       tb[i1] = c[1];
@@ -188,18 +187,18 @@ public class LocalPlaneFilter {
       x2 = x[i2];
       y2 = y[i2];
       int i1 = 0;
-      _filter.getCoefficients(p1[i2][i1],p2[i2][i1],c);
+      _filter.getCoefficients(i1,i2,u,c);
       tb[i1] = c[1];
       tc[i1] = c[0];
       r[i1] = x2[i1]-c[3]*y2m[i1+1]-c[4]*y2m[i1];
       for (i1=1; i1<n1-1; ++i1) {
-        _filter.getCoefficients(p1[i2][i1],p2[i2][i1],c);
+        _filter.getCoefficients(i1,i2,u,c);
         ta[i1] = c[2];
         tb[i1] = c[1];
         tc[i1] = c[0];
         r[i1] = x2[i1]-c[3]*y2m[i1+1]-c[4]*y2m[i1]-c[5]*y2m[i1-1];
       }
-      _filter.getCoefficients(p1[i2][i1],p2[i2][i1],c);
+      _filter.getCoefficients(i1,i2,u,c);
       ta[i1] = c[2];
       tb[i1] = c[1];
       r[i1] = x2[i1]-c[4]*y2m[i1]-c[5]*y2m[i1-1];
@@ -207,12 +206,10 @@ public class LocalPlaneFilter {
     }
   }
 
-  public void applyForwardF(float[][][] p, float[][] x, float[][] y) {
+  public void applyForwardF(float[][][] u, float[][] x, float[][] y) {
     Hale3Filter filter = new Hale3Filter();
     int n1 = x[0].length;
     int n2 = x.length;
-    float[][] p1 = p[1];
-    float[][] p2 = p[2];
     float[] c = new float[9];
 
     // For i2=0, x[i2-1][i1] = y[i2-1][i1] = x[i2][-1] = x[i2][n1] = 0.
@@ -223,15 +220,15 @@ public class LocalPlaneFilter {
     float[] y2 = y[i2];
     int i1 = 0;
     /*
-    filter.getCoefficients(p1[i2][i1],p2[i2][i1],c);
+    filter.getCoefficients(i1,i2,u,c);
     y2[i1] = c[0]*x2p[i1+1]+c[1]*x2p[i1]
            + c[3]* x2[i1+1]+c[4]* x2[i1];
     for (i1=1; i1<n1-1; ++i1) {
-      filter.getCoefficients(p1[i2][i1],p2[i2][i1],c);
+      filter.getCoefficients(i1,i2,u,c);
       y2[i1] = c[0]*x2p[i1+1]+c[1]*x2p[i1]+c[2]*x2p[i1-1]
              + c[3]* x2[i1+1]+c[4]* x2[i1]+c[5]* x2[i1-1];
     }
-    filter.getCoefficients(p1[i2][i1],p2[i2][i1],c);
+    filter.getCoefficients(i1,i2,u,c);
     y2[i1] = c[1]*x2p[i1]+c[2]*x2p[i1-1]
            + c[4]* x2[i1]+c[5]* x2[i1-1];
     */
@@ -246,20 +243,20 @@ public class LocalPlaneFilter {
       y2 = y[i2];
       i1 = 0;
       /*
-      filter.getCoefficients(p1[i2][i1],p2[i2][i1],c);
+      filter.getCoefficients(i1,i2,u,c);
       y2[i1] = c[0]*x2p[i1+1]+c[1]*x2p[i1]
              + c[3]* x2[i1+1]+c[4]* x2[i1]
              + c[6]*x2m[i1+1]+c[7]*x2m[i1];
       */
       y2[0] = 0.0f;
       for (i1=1; i1<n1-1; ++i1) {
-        filter.getCoefficients(p1[i2][i1],p2[i2][i1],c);
+        filter.getCoefficients(i1,i2,u,c);
         y2[i1] = c[0]*x2p[i1+1]+c[1]*x2p[i1]+c[2]*x2p[i1-1]
                + c[3]* x2[i1+1]+c[4]* x2[i1]+c[5]* x2[i1-1]
                + c[6]*x2m[i1+1]+c[7]*x2m[i1]+c[8]*x2m[i1-1];
       }
       /*
-      filter.getCoefficients(p1[i2][i1],p2[i2][i1],c);
+      filter.getCoefficients(i1,i2,u,c);
       y2[i1] = c[1]*x2p[i1]+c[2]*x2p[i1-1]
              + c[4]* x2[i1]+c[5]* x2[i1-1]
              + c[7]*x2m[i1]+c[8]*x2m[i1-1];
@@ -274,15 +271,15 @@ public class LocalPlaneFilter {
     y2 = y[i2];
     /*
     i1 = 0;
-    filter.getCoefficients(p1[i2][i1],p2[i2][i1],c);
+    filter.getCoefficients(i1,i2,u,c);
     y2[i1] = c[3]* x2[i1+1]+c[4]* x2[i1]
            + c[6]*x2m[i1+1]+c[7]*x2m[i1];
     for (i1=1; i1<n1-1; ++i1) {
-      filter.getCoefficients(p1[i2][i1],p2[i2][i1],c);
+      filter.getCoefficients(i1,i2,u,c);
       y2[i1] = c[3]* x2[i1+1]+c[4]* x2[i1]+c[5]* x2[i1-1]
              + c[6]*x2m[i1+1]+c[7]*x2m[i1]+c[8]*x2m[i1-1];
     }
-    filter.getCoefficients(p1[i2][i1],p2[i2][i1],c);
+    filter.getCoefficients(i1,i2,u,c);
     y2[i1] = c[4]* x2[i1]+c[5]* x2[i1-1]
            + c[7]*x2m[i1]+c[8]*x2m[i1-1];
     */
@@ -290,35 +287,35 @@ public class LocalPlaneFilter {
       y2[i1] = 0.0f;
   }
 
-  public void applyForwardX(float[][][] p, float[][] x, float[][] y) {
+  public void applyForwardX(float[][][] u, float[][] x, float[][] y) {
     if (_lcf==null)
       makeLocalCausalFilter();
-    A2 a2 = new A2(index(p));
+    A2 a2 = new A2(index(u));
     _lcf.apply(a2,x,y);
     _lcf.applyTranspose(a2,y,y);
   }
-  public void applyInverseX(float[][][] p, float[][] x, float[][] y) {
+  public void applyInverseX(float[][][] u, float[][] x, float[][] y) {
     if (_lcf==null)
       makeLocalCausalFilter();
-    A2 a2 = new A2(index(p));
+    A2 a2 = new A2(index(u));
     _lcf.applyInverseTranspose(a2,x,y);
     _lcf.applyInverse(a2,y,y);
   }
-  private static int NTHETA = 65;
+  private static int NTHETA = 33;
   private static float FTHETA = -0.5f*FLT_PI;
   private static float DTHETA = FLT_PI/(float)(NTHETA-1);;
   private static float STHETA = 0.9999f/DTHETA;
   private LocalCausalFilter _lcf;
-  private static int[][] xindex(float[][][] p) {
+  private static int[][] xindex(float[][][] u) {
     Random r = new Random(314159);
-    int n1 = p[0][0].length;
-    int n2 = p[0].length;
+    int n1 = u[0][0].length;
+    int n2 = u[0].length;
     int[][] i = new int[n2][n1];
-    float[][] p1 = p[1];
-    float[][] p2 = p[2];
+    float[][] u1 = u[1];
+    float[][] u2 = u[2];
     for (int i2=0; i2<n2; ++i2) {
       for (int i1=0; i1<n1; ++i1) {
-        float theta = asin(p2[i2][i1]);
+        float theta = asin(u2[i2][i1]);
         i[i2][i1] = (int)(0.5f+(theta-FTHETA)*STHETA);
         /*
         float thetai = (theta-FTHETA)*STHETA;
@@ -331,21 +328,21 @@ public class LocalPlaneFilter {
     }
     return i;
   }
-  private static int NP2 = 33;
-  private static float FP2 = -1.0f;
-  private static float DP2 = 2.0f/(float)(NP2-1);;
-  private static float SP2 = 0.9999f/DP2;
-  private static int[][] index(float[][][] p) {
+  private static int NU2 = 33;
+  private static float FU2 = -1.0f;
+  private static float DU2 = 2.0f/(float)(NU2-1);;
+  private static float SU2 = 0.9999f/DU2;
+  private static int[][] index(float[][][] u) {
     Random r = new Random(314159);
-    int n1 = p[0][0].length;
-    int n2 = p[0].length;
+    int n1 = u[0][0].length;
+    int n2 = u[0].length;
     int[][] i = new int[n2][n1];
-    float[][] p1 = p[1];
-    float[][] p2 = p[2];
+    float[][] u1 = u[1];
+    float[][] u2 = u[2];
     for (int i2=0; i2<n2; ++i2) {
       for (int i1=0; i1<n1; ++i1) {
-        float p2i = p2[i2][i1];
-        i[i2][i1] = (int)(0.5f+(p2i-FP2)*SP2);
+        float u2i = u2[i2][i1];
+        i[i2][i1] = (int)(0.5f+(u2i-FU2)*SU2);
         /*
         float thetai = (theta-FTHETA)*STHETA;
         int itheta = (int)(thetai);
@@ -392,11 +389,11 @@ public class LocalPlaneFilter {
       lag1[ilag] = (ilag<=maxlag)?ilag:ilag-2*maxlag;
       lag2[ilag] = (ilag<=maxlag)?0:1;
     }
-    for (int ip2=0; ip2<NP2; ++ip2) {
-      float p2 = FP2+ip2*DP2;
-      float p1 = sqrt(1.0f-p2*p2);
-      float m12 = 0.5f*(p1-p2);
-      float p12 = 0.5f*(p1+p2);
+    for (int iu2=0; iu2<NU2; ++iu2) {
+      float u2 = FU2+iu2*DU2;
+      float u1 = sqrt(1.0f-u2*u2);
+      float m12 = 0.5f*(u1-u2);
+      float p12 = 0.5f*(u1+u2);
       float[][] r = {
         {    -m12*m12,   -2.0f*m12*p12,      -p12*p12},
         {2.0f*m12*p12,          1.001f,  2.0f*m12*p12},
@@ -404,12 +401,12 @@ public class LocalPlaneFilter {
       };
       CausalFilter cf = new CausalFilter(lag1,lag2);
       cf.factorWilsonBurg(100,0.000001f,r);
-      _aTable[ip2] = cf.getA();
+      _aTable[iu2] = cf.getA();
     }
     _lcf = new LocalCausalFilter(lag1,lag2);
   }
   //private float[][] _aTable = new float[NTHETA][];
-  private float[][] _aTable = new float[NP2][];
+  private float[][] _aTable = new float[NU2][];
   private class A2 implements LocalCausalFilter.A2 {
     A2(int[][] index) {
       _index = index;
@@ -420,12 +417,12 @@ public class LocalPlaneFilter {
     private int[][] _index;
   }
 
-  public void xapplyForwardX(float[][][] p, float[][] x, float[][] y) {
+  public void xapplyForwardX(float[][][] u, float[][] x, float[][] y) {
     int n1 = x[0].length;
     int n2 = x.length;
-    float[][] p1 = p[1];
-    float[][] p2 = p[2];
-    float p1i,p2i,pm,pp,pmy,ppy;
+    float[][] u1 = u[1];
+    float[][] u2 = u[2];
+    float u1i,u2i,um,up,umy,upy;
     Array.copy(x,y);
 
     // Apply plane filter.
@@ -433,51 +430,51 @@ public class LocalPlaneFilter {
       float[] y2 = y[i2];
       float[] y2m = y[i2-1];
       for (int i1=n1-1; i1>0; --i1) {
-        p1i = p1[i2][i1]; p2i = p2[i2][i1]; 
-        pm = 0.5f*(p1i-p2i); pp = 0.5f*(p1i+p2i);
-        y2[i1] = pm*(y2[i1]-y2m[i1-1])+pp*(y2[i1-1]-y2m[i1]);
+        u1i = u1[i2][i1]; u2i = u2[i2][i1]; 
+        um = 0.5f*(u1i-u2i); up = 0.5f*(u1i+u2i);
+        y2[i1] = um*(y2[i1]-y2m[i1-1])+up*(y2[i1-1]-y2m[i1]);
       }
-      p1i = p1[i2][0]; p2i = p2[i2][0]; 
-      pm = 0.5f*(p1i-p2i); pp = 0.5f*(p1i+p2i);
-      y2[0] = pm*y2[0]-pp*y2m[0];
+      u1i = u1[i2][0]; u2i = u2[i2][0]; 
+      um = 0.5f*(u1i-u2i); up = 0.5f*(u1i+u2i);
+      y2[0] = um*y2[0]-up*y2m[0];
     }
     for (int i1=n1-1; i1>0; --i1) {
-      p1i = p1[0][i1]; p2i = p2[0][i1]; 
-      pm = 0.5f*(p1i-p2i); pp = 0.5f*(p1i+p2i);
-      y[0][i1] = pm*y[0][i1]+pp*y[0][i1-1];
+      u1i = u1[0][i1]; u2i = u2[0][i1]; 
+      um = 0.5f*(u1i-u2i); up = 0.5f*(u1i+u2i);
+      y[0][i1] = um*y[0][i1]+up*y[0][i1-1];
     }
-    p1i = p1[0][0]; p2i = p2[0][0]; 
-    pm = 0.5f*(p1i-p2i); pp = 0.5f*(p1i+p2i);
-    y[0][0] = pm*y[0][0];
+    u1i = u1[0][0]; u2i = u2[0][0]; 
+    um = 0.5f*(u1i-u2i); up = 0.5f*(u1i+u2i);
+    y[0][0] = um*y[0][0];
 
     // Apply transpose of plane filter (with care for variable coefficients).
-    p1i = p1[0][0]; p2i = p2[0][0]; 
-    pm = 0.5f*(p1i-p2i); pp = 0.5f*(p1i+p2i);
-    pmy = pm*y[0][0]; ppy = pp*y[0][0];
-    y[0][0] = pmy;
+    u1i = u1[0][0]; u2i = u2[0][0]; 
+    um = 0.5f*(u1i-u2i); up = 0.5f*(u1i+u2i);
+    umy = um*y[0][0]; upy = up*y[0][0];
+    y[0][0] = umy;
     for (int i1=1; i1<n1; ++i1) {
-      p1i = p1[0][i1]; p2i = p2[0][i1]; 
-      pm = 0.5f*(p1i-p2i); pp = 0.5f*(p1i+p2i);
-      pmy = pm*y[0][i1]; ppy = pp*y[0][i1];
-      y[0][i1] = pmy;
-      y[0][i1-1] += ppy;
+      u1i = u1[0][i1]; u2i = u2[0][i1]; 
+      um = 0.5f*(u1i-u2i); up = 0.5f*(u1i+u2i);
+      umy = um*y[0][i1]; upy = up*y[0][i1];
+      y[0][i1] = umy;
+      y[0][i1-1] += upy;
     }
     for (int i2=1; i2<n2; ++i2) {
       float[] y2 = y[i2];
       float[] y2m = y[i2-1];
-      p1i = p1[i2][0]; p2i = p2[i2][0]; 
-      pm = 0.5f*(p1i-p2i); pp = 0.5f*(p1i+p2i);
-      pmy = pm*y2[0]; ppy = pp*y2[0];
-      y2[0] = pmy;
-      y2m[0] -= ppy;
+      u1i = u1[i2][0]; u2i = u2[i2][0]; 
+      um = 0.5f*(u1i-u2i); up = 0.5f*(u1i+u2i);
+      umy = um*y2[0]; upy = up*y2[0];
+      y2[0] = umy;
+      y2m[0] -= upy;
       for (int i1=1; i1<n1; ++i1) {
-        p1i = p1[i2][i1]; p2i = p2[i2][i1]; 
-        pm = 0.5f*(p1i-p2i); pp = 0.5f*(p1i+p2i);
-        pmy = pm*y2[i1]; ppy = pp*y2[i1];
-        y2[i1] = pmy;
-        y2[i1-1] += ppy;
-        y2m[i1] -= ppy;
-        y2m[i1-1] -= pmy;
+        u1i = u1[i2][i1]; u2i = u2[i2][i1]; 
+        um = 0.5f*(u1i-u2i); up = 0.5f*(u1i+u2i);
+        umy = um*y2[i1]; upy = up*y2[i1];
+        y2[i1] = umy;
+        y2[i1-1] += upy;
+        y2m[i1] -= upy;
+        y2m[i1-1] -= umy;
       }
     }
 
@@ -631,8 +628,8 @@ public class LocalPlaneFilter {
   ///////////////////////////////////////////////////////////////////////////
   // private
 
-  private static final float P99 = 1.0000f;
-  //private static final float P98 = P99*P99;
+  private static final float P99 = 0.99f;
+  private static final float P98 = P99*P99;
   private static final float P49 = P99/2.0f;
   //private static final float P48 = P98/2.0f;
 
@@ -660,70 +657,113 @@ public class LocalPlaneFilter {
   private interface Filter {
     /**
      * Gets coefficients for specified normal unit-vector.
-     * @param n1 component of normal for 1st dimension.
-     * @param n2 component of normal for 2nd dimension.
+     * @param i1 sample index in 1st dimension.
+     * @param i2 sample index in 2nd dimension.
+     * @param u planarity and normal vector.
      * @param c array of computed coefficients.
      */
-    public void getCoefficients(float n1, float n2, float[] c);
+    public void getCoefficients(int i1, int i2, float[][][] u, float[] c);
   }
   private static class QuadFilter implements Filter {
-    public void getCoefficients(float n1, float n2, float[] c) {
-      float np = n1+n2;
-      float nm = n1-n2;
+    public void getCoefficients(int i1, int i2, float[][][] u, float[] c) {
+      float u1 = u[1][i2][i1];
+      float u2 = u[2][i2][i1];
+      float up = u1+u2;
+      float um = u1-u2;
       c[0] = 0.0f;
-      c[1] = nm;
-      c[2] = np;
+      c[1] = um;
+      c[2] = up;
       c[3] = 0.0f;
-      c[4] = -np;
-      c[5] = -nm;
+      c[4] = -up;
+      c[5] = -um;
     }
   }
   private static class Hale0Filter implements Filter {
-    public void getCoefficients(float n1, float n2, float[] c) {
-      if (n2<0.0f) {
+    public void getCoefficients(int i1, int i2, float[][][] u, float[] c) {
+      float u1 = u[1][i2][i1];
+      float u2 = u[2][i2][i1];
+      if (u2<0.0f) {
         c[0] = 0.0f;
-        c[1] = n1-n2;
-        c[2] = P99*n2;
+        c[1] = u1-u2;
+        c[2] = P99*u2;
       } else {
-        c[0] = -P99*n2;
-        c[1] = n1+n2;
+        c[0] = -P99*u2;
+        c[1] = u1+u2;
         c[2] = 0.0f;
       }
       c[3] = 0.0f;
-      c[4] = -P99*n1;
+      c[4] = -P99*u1;
       c[5] = 0.0f;
     }
   }
   private static class Hale1Filter implements Filter {
-    public void getCoefficients(float n1, float n2, float[] c) {
-      c[0] = -P49*n2*(n1+n2);
+    public void getCoefficients(int i1, int i2, float[][][] u, float[] c) {
+      float u1 = u[1][i2][i1];
+      float u2 = u[2][i2][i1];
+      c[0] = -P49*u2*(u1+u2);
       c[1] =  1.0f;
-      c[2] =  P49*n2*(n1-n2);
+      c[2] =  P49*u2*(u1-u2);
       c[3] =  0.0f;
-      c[4] = -P99*n1*n1;
+      c[4] = -P99*u1*u1;
       c[5] =  0.0f;
     }
   }
   private static class Hale2Filter implements Filter {
-    public void getCoefficients(float n1, float n2, float[] c) {
-      float np = n1+n2;
-      float nm = n1-n2;
-      c[0] = 0.25f*nm*np;
+    public void getCoefficients(int i1, int i2, float[][][] u, float[] c) {
+      float u1 = u[1][i2][i1];
+      float u2 = u[2][i2][i1];
+      float up = u1+u2;
+      float um = u1-u2;
+      c[0] = 0.25f*P99*um*up;
       c[1] = 0.50f;
       c[2] = c[0];
-      c[3] = -0.25f*np*np;
-      c[4] = -0.50f*nm*np;
-      c[5] = -0.25f*nm*nm;
+      c[3] = -0.25f*P98*up*up;
+      c[4] = -0.50f*P99*um*up;
+      c[5] = -0.25f*P98*um*um;
+    }
+  }
+  private static class Hale2XFilter implements Filter {
+    public void getCoefficients(int i1, int i2, float[][][] u, float[] c) {
+      float[][] u1 = u[1];
+      float[][] u2 = u[2];
+      int n1 = u1[0].length;
+      int n2 = u1.length;
+      int j1 = min(i1+1,n1-1);
+      int j2 = min(i2+1,n2-1);
+      float u1ii = u1[i2][i1];
+      float u1ij = u1[i2][j1];
+      float u1ji = u1[j2][i1];
+      float u1jj = u1[j2][j1];
+      float u2ii = u2[i2][i1];
+      float u2ij = u2[i2][j1];
+      float u2ji = u2[j2][i1];
+      float u2jj = u2[j2][j1];
+      float umii = 0.5f*(u1ii-u2ii);
+      float umij = 0.5f*(u1ij-u2ij);
+      float umji = 0.5f*(u1ji-u2ji);
+      float umjj = 0.5f*(u1jj-u2jj);
+      float upii = 0.5f*(u1ii+u2ii);
+      float upij = 0.5f*(u1ij+u2ij);
+      float upji = 0.5f*(u1ji+u2ji);
+      float upjj = 0.5f*(u1jj+u2jj);
+      c[0] = 0.5f*P99*(umii*upii+umji*upji);
+      c[1] = 0.5f*(umii*umii+umjj*umjj+upij*upij+upji*upji);
+      c[2] = 0.5f*P99*(umij*upij+umjj*upjj);
+      c[3] = -0.5f*P98*(upij*upij+upji*upji);
+      c[4] = -0.5f*P99*(umii*upii+umij*upij+umji*upji+umjj*upjj);
+      c[5] = -0.5f*P98*(umii*umii+umjj*umjj);
     }
   }
   private static class Hale3Filter implements Filter {
-    public void getCoefficients(float n1, float n2, float[] c) {
-      float np = 0.5f*(n1+n2);
-      float nm = 0.5f*(n1-n2);
-      c[0] =      -nm*nm;
-      c[1] = -2.0f*nm*np;
-      c[2] =      -np*np;
-      c[3] =  2.0f*nm*np;
+    public void getCoefficients(int i1, int i2, float[][][] u, float[] c) {
+      float u1 = u[1][i2][i1];
+      float u2 = u[2][i2][i1];
+      float up = 0.5f*(u1+u2);
+      float um = 0.5f*(u1-u2);
+      c[0] =      -um*um;
+      c[1] = -2.0f*um*up;
+      c[2] =      -up*up;
+      c[3] =  2.0f*um*up;
       c[4] = 1.001f;
       c[5] = c[3];
       c[6] = c[2];
@@ -732,10 +772,12 @@ public class LocalPlaneFilter {
     }
   }
   private static class Fomel1Filter implements Filter {
-    public void getCoefficients(float n1, float n2, float[] c) {
-      if (n1<N1MIN)
-        n1 = N1MIN;
-      float s = n2/n1;
+    public void getCoefficients(int i1, int i2, float[][][] u, float[] c) {
+      float u1 = u[1][i2][i1];
+      float u2 = u[2][i2][i1];
+      if (u1<U1MIN)
+        u1 = U1MIN;
+      float s = u2/u1;
       c[0] = (1.0f-s)*(2.0f-s)/12.0f;
       c[1] = (2.0f+s)*(2.0f-s)/6.0f;
       c[2] = (1.0f+s)*(2.0f+s)/12.0f;
@@ -743,14 +785,16 @@ public class LocalPlaneFilter {
       c[4] = -c[1];
       c[5] = -c[0];
     }
-    private static final float N1MIN = 0.001f;
+    private static final float U1MIN = 0.001f;
   }
   private static class Fomel2Filter implements Filter {
-    public void getCoefficients(float n1, float n2, float[] c) {
-      float t1 = 2.0f*n1;
-      c[0] = (n1-n2)*(t1-n2)/12.0f;
-      c[1] = (t1+n2)*(t1-n2)/6.0f;
-      c[2] = (n1+n2)*(t1+n2)/12.0f;
+    public void getCoefficients(int i1, int i2, float[][][] u, float[] c) {
+      float u1 = u[1][i2][i1];
+      float u2 = u[2][i2][i1];
+      float t1 = 2.0f*u1;
+      c[0] = (u1-u2)*(t1-u2)/12.0f;
+      c[1] = (t1+u2)*(t1-u2)/6.0f;
+      c[2] = (u1+u2)*(t1+u2)/12.0f;
       c[3] = -c[2];
       c[4] = -c[1];
       c[5] = -c[0];
