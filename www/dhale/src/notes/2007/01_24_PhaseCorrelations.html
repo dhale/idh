@@ -1,0 +1,113 @@
+<h3>Tiny displacements in time-lapse seismic images</h3>
+<p>January 24, 2007</p>
+<p>
+In time-lapse seismic imaging, we often observe displacements 
+of features in images recorded at different times.
+After accounting for changes in data acquisition, these displacements can be 
+related to compaction of reservoir rocks as fluids are produced from them.
+We call these displacements <em>apparent shifts</em> because they may be
+more directly related to changes in seismic wave velocity outside the 
+reservoir than to physical movements of reservoir boundaries.
+</p>
+<dl class="img first">
+  <dt><img src="images/PhaseCorrelationImage.png" 
+       width="412" height="401" alt=""/>
+  </dt>
+  <dd>
+  <em>
+    One of the two seismic images we cross-correlated to detect 
+    tiny displacement vectors, one for each image sample.
+  </em>
+  </dd>
+</dl>
+<p>
+Today, we typically measure only vertical apparent shifts, for two reasons.
+First, the force of gravity leads us to expect vertical shifts to be 
+larger than horizontal shifts.
+Second, it is easier to measure shifts perpendicular to image features
+than to measure shifts parallel to those features.
+</p>
+<p>
+The second problem is illustrated in the figure below, which shows
+2-D cross-correlations of local Gaussian windows of two seismic images.
+The correlation peaks are well resolved vertically, but poorly resolved 
+horizontally.
+Because the locations of the peaks correspond to the apparent shifts we seek 
+to estimate, horizontal components of those shifts are poorly resolved.
+</p>
+<dl class="img first">
+  <dt><img src="images/PhaseCorrelationLcc.png" 
+       width="411" height="401" alt=""/>
+  </dt>
+  <dd>
+  <em>
+    Local cross-correlations (normalized).
+    This is is a small subset of the correlations that
+    we compute for every image sample. 
+    Note the small vertical shifts of some correlation peaks.
+    Horizontal shifts are more difficult to see.
+  </em>
+  </dd>
+</dl>
+<p>
+We say "vertical" and "horizontal", when what we really mean is 
+"perpendicular" and "parallel" to features in our images.
+If those features were dipping at an angle of 45 degrees, then resolution
+would be equally poor in both horizontal and vertical directions.
+</p>
+<p>
+Ideally the peaks of our cross-correlations would be isotropic, with
+roughly the same resolution in all directions, as in the figure below.
+The processing used here is an example of adapting techniques from
+general image processing to solve specific problems in seismic imaging.
+Here we computed so-called <em>phase correlations</em>, and our adaptation 
+is to do this in a seamless way for every sample in our images.
+</p>
+<dl class="img first">
+  <dt><img src="images/PhaseCorrelationLpc.png" 
+       width="411" height="401" alt=""/>
+  </dt>
+  <dd>
+  <em>
+    Local phase correlations (normalized). 
+    Again, a small subset of the correlations that
+    we compute for every image sample. 
+    Both vertical and horizontal components of shifts can be accurately
+    estimated from the locations of peaks of these phase correlations.
+  </em>
+  </dd>
+</dl>
+<p>
+Using phase correlations, we can reliably estimate both vertical and 
+horizontal shifts in time-lapse seismic images with sub-pixel precision.
+In one example, we have used phase correlations to observe horizontal
+apparent shifts of about five meters in 3-D images sampled with twenty-five 
+meter trace spacings; and these small sub-sample shifts are correlated with 
+the geometry of the target reservoir.
+</p>
+<p>
+Our problem now is to analyze these apparent shift vectors, to better
+understand how they are related to changes within and above producing 
+reservoirs.
+</p>
+
+<!--
+captions
+banner: local correlations of two seismic images
+  left: one of the two images
+middle: local cross-correlations
+ right: local phase correlations
+
+unused
+
+Phase correlations are typically used to measure displacements between
+images with high (sub-pixel) resolution.
+To obtain cross-correlations shown in Figure 3, we first computed and 
+applied local prediction error filters to our images.
+These filters tend to whiten the local 2-D power spectra of the images.
+They also increase high-frequency noise, so we then applied an isotropic
+Gaussian filter to the images.
+In effect, we attempted to shape each of the cross-correlations
+shown in Figure B into a smooth isotropic Gaussian peak located 
+at the lag (shift) that we wish to estimate.
+-->
