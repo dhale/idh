@@ -306,7 +306,7 @@ public class LocalPlaneFilter {
   private static float DTHETA = FLT_PI/(float)(NTHETA-1);;
   private static float STHETA = 0.9999f/DTHETA;
   private LocalCausalFilter _lcf;
-  private static int[][] xindex(float[][][] u) {
+  private static int[][] index(float[][][] u) {
     Random r = new Random(314159);
     int n1 = u[0][0].length;
     int n2 = u[0].length;
@@ -332,7 +332,7 @@ public class LocalPlaneFilter {
   private static float FU2 = -1.0f;
   private static float DU2 = 2.0f/(float)(NU2-1);;
   private static float SU2 = 0.9999f/DU2;
-  private static int[][] index(float[][][] u) {
+  private static int[][] xindex(float[][][] u) {
     Random r = new Random(314159);
     int n1 = u[0][0].length;
     int n2 = u[0].length;
@@ -354,7 +354,7 @@ public class LocalPlaneFilter {
     }
     return i;
   }
-  private void xmakeLocalCausalFilter() {
+  private void makeLocalCausalFilter() {
     int maxlag = 6;
     int nlag = maxlag+2+maxlag;
     int[] lag1 = new int[nlag];
@@ -371,7 +371,7 @@ public class LocalPlaneFilter {
       float p12 = 0.5f*(c+s);
       float[][] r = {
         {    -m12*m12,   -2.0f*m12*p12,      -p12*p12},
-        {2.0f*m12*p12,          1.001f,  2.0f*m12*p12},
+        {2.0f*m12*p12,           1.01f,  2.0f*m12*p12},
         {    -p12*p12,   -2.0f*m12*p12,      -m12*m12}
       };
       CausalFilter cf = new CausalFilter(lag1,lag2);
@@ -380,7 +380,7 @@ public class LocalPlaneFilter {
     }
     _lcf = new LocalCausalFilter(lag1,lag2);
   }
-  private void makeLocalCausalFilter() {
+  private void xmakeLocalCausalFilter() {
     int maxlag = 6;
     int nlag = maxlag+2+maxlag;
     int[] lag1 = new int[nlag];
@@ -396,7 +396,7 @@ public class LocalPlaneFilter {
       float p12 = 0.5f*(u1+u2);
       float[][] r = {
         {    -m12*m12,   -2.0f*m12*p12,      -p12*p12},
-        {2.0f*m12*p12,          1.001f,  2.0f*m12*p12},
+        {2.0f*m12*p12,           1.01f,  2.0f*m12*p12},
         {    -p12*p12,   -2.0f*m12*p12,      -m12*m12}
       };
       CausalFilter cf = new CausalFilter(lag1,lag2);
@@ -712,14 +712,26 @@ public class LocalPlaneFilter {
     public void getCoefficients(int i1, int i2, float[][][] u, float[] c) {
       float u1 = u[1][i2][i1];
       float u2 = u[2][i2][i1];
-      float up = u1+u2;
-      float um = u1-u2;
-      c[0] = 0.25f*P99*um*up;
-      c[1] = 0.50f;
+      float um = 0.5f*(u1-u2);
+      float up = 0.5f*(u1+u2);
+      c[0] = 2.0f*um*up;
+      c[1] = 1.000f;
       c[2] = c[0];
-      c[3] = -0.25f*P98*up*up;
-      c[4] = -0.50f*P99*um*up;
-      c[5] = -0.25f*P98*um*um;
+      c[3] = -2.0f*up*up;
+      c[4] = -4.0f*um*up;
+      c[5] = -2.0f*um*um;
+      /*
+      float a1 = 0.90f;
+      float a2 = a1*a1;
+      float a3 = a1*a2;
+      float a4 = a2*a2;
+      c[0] = (a1+a3)*um*up;
+      c[1] = (1.0f+a4)*um*um+2.0f*a2*up*up;
+      c[2] = c[0];
+      c[3] = -2.0f*a2*up*up;
+      c[4] = -2.0f*(a1+a3)*um*up;
+      c[5] = -2.0f*a2*um*um;
+      */
     }
   }
   private static class Hale2XFilter implements Filter {
@@ -746,12 +758,24 @@ public class LocalPlaneFilter {
       float upij = 0.5f*(u1ij+u2ij);
       float upji = 0.5f*(u1ji+u2ji);
       float upjj = 0.5f*(u1jj+u2jj);
-      c[0] = 0.5f*P99*(umii*upii+umji*upji);
-      c[1] = 0.5f*(umii*umii+umjj*umjj+upij*upij+upji*upji);
-      c[2] = 0.5f*P99*(umij*upij+umjj*upjj);
-      c[3] = -0.5f*P98*(upij*upij+upji*upji);
-      c[4] = -0.5f*P99*(umii*upii+umij*upij+umji*upji+umjj*upjj);
-      c[5] = -0.5f*P98*(umii*umii+umjj*umjj);
+      c[0] = umii*upii+umji*upji;
+      c[1] = 1.000f*(umii*umii+upij*upij+upji*upji+umjj*umjj);
+      c[2] = umij*upij+umjj*upjj;
+      c[3] = -upij*upij-upji*upji;
+      c[4] = -umii*upii-umji*upji-umij*upij-umjj*upjj;
+      c[5] = -umii*umii-umjj*umjj;
+      /*
+      float a1 = 0.90f;
+      float a2 = a1*a1;
+      float a3 = a1*a2;
+      float a4 = a2*a2;
+      c[0] = a1*umii*upii+a3*umji*upji;
+      c[1] = umii*umii+a2*(upij*upij+upji*upji)+a4*umjj*umjj;
+      c[2] = a1*umij*upij+a3*umjj*upjj;
+      c[3] = -a2*(upij*upij+upji*upji);
+      c[4] = -a1*(umii*upii+umji*upji)-a3*(umij*upij+umjj*upjj);
+      c[5] = -a2*(umii*umii+umjj*umjj);
+      */
     }
   }
   private static class Hale3Filter implements Filter {
@@ -764,7 +788,7 @@ public class LocalPlaneFilter {
       c[1] = -2.0f*um*up;
       c[2] =      -up*up;
       c[3] =  2.0f*um*up;
-      c[4] = 1.001f;
+      c[4] = 1.01f;
       c[5] = c[3];
       c[6] = c[2];
       c[7] = c[1];

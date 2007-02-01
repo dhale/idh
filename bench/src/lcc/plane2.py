@@ -41,16 +41,12 @@ def goPlane():
   x = doImage()
   #doPlane(x,sigma,LocalPlaneFilter.Type.HALE1)
   #doPlane(x,sigma,LocalPlaneFilter.Type.FOMEL1)
-  #doPlane(x,sigma,LocalPlaneFilter.Type.HALE2)
+  doPlane(x,sigma,LocalPlaneFilter.Type.HALE2)
   doPlane(x,sigma,LocalPlaneFilter.Type.HALE2X)
-  doPlaneX(x,sigma,LocalPlaneFilter.Type.HALE3)
+  #doPlaneX(x,sigma,LocalPlaneFilter.Type.HALE3)
   #doPlane(x,sigma,LocalPlaneFilter.Type.QUAD)
   #doPlane(x,sigma,LocalPlaneFilter.Type.FOMEL1)
   #doPlane(x,sigma,LocalPlaneFilter.Type.FOMEL2)
-
-def goPef():
-  x = doImage()
-  doPef(x,sigma,type)
 
 def doImage():
   #x = readImage()
@@ -65,15 +61,8 @@ def doImage():
 def doPlaneX(x,sigma,type):
   lpf = LocalPlaneFilter(sigma,type)
   p = lpf.find(x)
-  #plot(p[0],0.0,None)
-  #plot(p[1],0.0,None)
-  #plot(p[2],0.0,None)
   y = Array.zerofloat(n1,n2)
   lpf.applyForwardX(p,x,y)
-  #for i2 in range(n2):
-  #  y[i2][0] = 0.0
-  #for i1 in range(n1):
-  #  y[0][i1] = 0.0
   plot(y,10.0)
   #df = DifferenceFilter()
   #t = Array.zerofloat(n1,n2)
@@ -86,10 +75,8 @@ def doPlaneX(x,sigma,type):
   lpf.applyInverseX(p,y,z)
   plot(z,10,0)
   print "max |z-x| =",Array.max(Array.abs(Array.sub(z,x)))
-  #plot(Array.sub(z,x))
   r = Array.sub(Array.randfloat(n1,n2),0.5)
   r = smooth(r)
-  #plot(r)
   s = Array.zerofloat(n1,n2)
   lpf.applyInverseX(p,r,s)
   plot(s)
@@ -97,9 +84,6 @@ def doPlaneX(x,sigma,type):
 def doPlane(x,sigma,type):
   lpf = LocalPlaneFilter(sigma,type)
   p = lpf.find(x)
-  #plot(p[0],0.0,None)
-  #plot(p[1],0.0,None)
-  #plot(p[2],0.0,None)
   y = Array.zerofloat(n1,n2)
   lpf.applyForward(p,x,y)
   plot(y,10.0,"y")
@@ -107,13 +91,15 @@ def doPlane(x,sigma,type):
   lpf.applyInverse(p,y,z)
   plot(z,10.0,"z")
   print "max |z-x| =",Array.max(Array.abs(Array.sub(z,x)))
-  #plot(Array.sub(z,x))
   r = Array.sub(Array.randfloat(n1,n2),0.5)
   r = smooth(r)
-  #plot(r)
   s = Array.zerofloat(n1,n2)
   lpf.applyInverse(p,r,s)
   plot(s)
+
+def goPef():
+  x = doImage()
+  doPef(x,sigma,type)
 
 def doPef(x,sigma,type):
   lpf = LocalPlaneFilter(sigma,type)
