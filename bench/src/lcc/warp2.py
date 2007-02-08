@@ -1,4 +1,5 @@
 import sys
+from java.awt import *
 from java.lang import *
 from java.nio import *
 from javax.swing import *
@@ -42,9 +43,9 @@ lcf = LocalCorrelationFilter(lcfType,lcfWindow,lcfSigma)
 
 def main(args):
   #goImages()
-  goLcc()
-  #goLagSearch()
-  #goSequentialShifts()
+  #goLcc()
+  goLagSearch()
+  goSequentialShifts()
   return
 
 def goLcc():
@@ -60,7 +61,8 @@ def goImages():
 
 def goSequentialShifts():
   f,g = doImages()
-  doSequentialShifts(f,g,True,True)
+  doSequentialShifts(f,g,True,True,True)
+  #doSequentialShifts(f,g,True,True,False)
 
 def goLagSearch():
   f,g = doImages()
@@ -119,6 +121,7 @@ def doLcc(f,g,whiten,smooth):
   #  plot(ck[k],0.0,"lcc"+suffix+"_"+str(k1[k])+"_"+str(k2[k]))
 
 def doLagSearch(f,g,whiten,smooth):
+  fsave = Array.copy(f)
   f,g,suffix = preprocess(f,g,whiten,smooth)
   lcf.setInputs(f,g)
   l1 = Array.zerobyte(n1,n2)
@@ -129,31 +132,33 @@ def doLagSearch(f,g,whiten,smooth):
   lcf.refineLags(l1,l2,u1,u2)
   plotu(u1,d1max,"u1"+suffix+"ls")
   plotu(u2,d2max,"u2"+suffix+"ls")
+  plotfv(fsave,u1,u2,10,d1max,15)
   return u1,u2
  
-def doSequentialShifts(f,g,whiten,smooth):
+def doSequentialShifts(f,g,whiten,smooth,interp=True):
+  fsave = Array.copy(f)
   f,g,suffix = preprocess(f,g,whiten,smooth)
   u1 = Array.zerofloat(n1,n2)
   u2 = Array.zerofloat(n1,n2)
   du = Array.zerofloat(n1,n2)
-  ha = Array.copy(g)
-  hb = Array.copy(g)
+  h = Array.copy(g)
   sf = ShiftFinder(lcfSigma)
+  sf.setInterpolateDisplacements(interp)
   for iter in range(4):
-    sf.find1(lmin,lmax,f,ha,du)
+    sf.find1(lmin,lmax,f,h,du)
     print "1: du min =",Array.min(du),"max =",Array.max(du)
-    sf.shift1(du,ha,hb,u1,u2)
+    sf.shift1(du,u1,u2,h)
     print "1: u1 min =",Array.min(u1),"max =",Array.max(u1)
-    ht = ha; ha = hb; hb = ht
-    sf.find2(lmin,lmax,f,ha,du)
+    sf.find2(lmin,lmax,f,h,du)
     print "2: du min =",Array.min(du),"max =",Array.max(du)
-    sf.shift2(du,ha,hb,u1,u2)
+    sf.shift2(du,u1,u2,h)
     print "2: u2 min =",Array.min(u2),"max =",Array.max(u2)
-    ht = ha; ha = hb; hb = ht
-    plotu(u1,d1max,"u1"+suffix+"ss"+str(iter))
-    plotu(u2,d2max,"u2"+suffix+"ss"+str(iter))
-  plotu(u1,d1max,"u1"+suffix+"ss")
-  plotu(u2,d2max,"u2"+suffix+"ss")
+    #plotu(u1,d1max,"u1"+suffix+"ss"+str(iter))
+    #plotu(u2,d2max,"u2"+suffix+"ss"+str(iter))
+    #plotfv(fsave,u1,u2)
+  #plotu(u1,d1max,"u1"+suffix+"ss")
+  #plotu(u2,d2max,"u2"+suffix+"ss")
+  plotfv(fsave,u1,u2,10,d1max,15)
   return u1,u2
 
 def readImage():
@@ -205,17 +210,72 @@ def plot(f,clip=0.0,png=None):
   frame(p,png)
 
 def plotu(u,clip=0.0,png=None):
-    p = panel()
-    pv = p.addPixels(u)
-    pv.setColorModel(ColorMap.JET)
-    if clip!=0.0:
-      pv.setClips(-clip,clip)
-    else:
-      pv.setPercentiles(1.0,99.0)
-    frame(p,png)
+  p = panel()
+  pv = p.addPixels(u)
+  pv.setColorModel(ColorMap.JET)
+  if clip!=0.0:
+    pv.setClips(-clip,clip)
+  else:
+    pv.setPercentiles(1.0,99.0)
+  frame(p,png)
+
+def makev(u1,u2,clipv=0.0,lvec=0):
+  n1 = len(u1[0])
+  n2 = len(u1)
+  if lvec==0:
+    lvec = min(n1,n2)/21-2
+  lvec = 1+(lvec/2)*2
+  if clipv==0.0:
+    clipv = max(Array.max(u1),Array.max(u2))
+  scale = lvec/clipv
+  print "scale =",scale
+  nv1 = n1/lvec
+  nv2 = n2/lvec
+  kv1 = int(float(n1-1)/float(nv1-1))
+  kv2 = int(float(n2-1)/float(nv2-1))
+  jv1 = (n1-1-(nv1-1)*kv1)/2
+  jv2 = (n2-1-(nv2-1)*kv2)/2
+  v1 = Array.zerofloat(2,nv1*nv2)
+  v2 = Array.zerofloat(2,nv1*nv2)
+  iv = 0
+  for iv2 in range(nv2):
+    i2 = jv2+iv2*kv2
+    for iv1 in range(nv1):
+      i1 = jv1+iv1*kv1
+      v1[iv][0] = i1
+      v1[iv][1] = i1+u1[i2][i1]*scale
+      v2[iv][0] = i2
+      v2[iv][1] = i2+u2[i2][i1]*scale
+      iv = iv+1
+  return v1,v2
+
+def plotfv(f,u1,u2,clipf=0.0,clipv=0.0,lvec=0,png=None):
+  n1 = len(f[0])
+  n2 = len(f)
+  p = panel()
+  s1 = Sampling(n1,1.0,0.0)
+  s2 = Sampling(n2,1.0,0.0)
+  if n1<50 and n2<50:
+    s1 = Sampling(n1,1,-(n1-1)/2)
+    s2 = Sampling(n2,1,-(n2-1)/2)
+  pv = p.addPixels(s1,s2,f)
+  if clipf!=0.0:
+    pv.setClips(-clipf,clipf)
+  else:
+    pv.setPercentiles(0.0,100.0)
+  pv.setInterpolation(PixelsView.Interpolation.NEAREST)
+  v1,v2 = makev(disp.u1x(),disp.u2x(),clipv,lvec)
+  pv = p.addPoints(v1,v2)
+  pv.setLineColor(Color.WHITE)
+  pv.setLineWidth(4)
+  v1,v2 = makev(u1,u2,clipv,lvec)
+  pv = p.addPoints(v1,v2)
+  pv.setLineColor(Color.RED)
+  pv.setLineWidth(2)
+  frame(p,png)
 
 def panel():
-  p = PlotPanel(PlotPanel.Orientation.X1DOWN_X2RIGHT)
+  p = PlotPanel(1,1,PlotPanel.Orientation.X1DOWN_X2RIGHT)
   p.addColorBar()
   p.setColorBarWidthMinimum(widthColorBar)
   return p

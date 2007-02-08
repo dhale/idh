@@ -83,30 +83,26 @@ public class Warp3 {
     float[][][] u2 = new float[n3][n2][n1];
     float[][][] u3 = new float[n3][n2][n1];
     float[][][] du = new float[n3][n2][n1];
-    float[][][] ha = Array.copy(g);
-    float[][][] hb = Array.copy(g);
+    float[][][] h = Array.copy(g);
 
     for (int iter=0; iter<4; ++iter) {
       float[][][] ht;
-      _sf.find1(-l1,l1,f,ha,du);
+      _sf.find1(-l1,l1,f,h,du);
       System.out.println("1: du min="+Array.min(du)+" max="+Array.max(du));
-      _sf.shift1(du,ha,hb,u1,u2,u3);
+      _sf.shift1(du,u1,u2,u3,h);
       System.out.println("1: u1 min="+Array.min(u1)+" max="+Array.max(u1));
-      ht = ha; ha = hb; hb = ht;
-      _sf.find2(-l2,l2,f,ha,du);
+      _sf.find2(-l2,l2,f,h,du);
       System.out.println("2: du min="+Array.min(du)+" max="+Array.max(du));
-      _sf.shift2(du,ha,hb,u1,u2,u3);
+      _sf.shift2(du,u1,u2,u3,h);
       System.out.println("2: u2 min="+Array.min(u2)+" max="+Array.max(u2));
-      ht = ha; ha = hb; hb = ht;
-      _sf.find3(-l3,l3,f,ha,du);
+      _sf.find3(-l3,l3,f,h,du);
       System.out.println("3: du min="+Array.min(du)+" max="+Array.max(du));
-      _sf.shift3(du,ha,hb,u1,u2,u3);
+      _sf.shift3(du,u1,u2,u3,h);
       System.out.println("3: u3 min="+Array.min(u3)+" max="+Array.max(u3));
-      ht = ha; ha = hb; hb = ht;
       World world = new World();
-      addSlices(world,u1,_d1max,ColorMap.JET);
-      addSlices(world,u2,_d2max,ColorMap.JET);
-      addSlices(world,u3,_d3max,ColorMap.JET);
+      addSlices(world,Array.copy(u1),_d1max,ColorMap.JET);
+      addSlices(world,Array.copy(u2),_d2max,ColorMap.JET);
+      addSlices(world,Array.copy(u3),_d3max,ColorMap.JET);
       frame(world);
     }
   }

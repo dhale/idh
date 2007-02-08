@@ -93,6 +93,16 @@ public class ShiftFinder {
   }
 
   /**
+   * Enables or disables interpolation of displacements when shifting.
+   * The default is to interpolate displacements. This is the most
+   * accurate method when sequentially applying non-constant shifts.
+   * @param enable true, to enable interpolation; false, to disable.
+   */
+  public void setInterpolateDisplacements(boolean enable) {
+    _interpolateDisplacements = enable;
+  }
+
+  /**
    * Finds shifts in the 1st dimension.
    * @param min1 the minimum shift.
    * @param max1 the maximum shift.
@@ -164,167 +174,202 @@ public class ShiftFinder {
 
   /**
    * Applies specified shift in the 1st dimension.
-   * @param du array of changes to shifts in 1st dimension.
-   * @param g input array.
-   * @param h output array.
-   * @param u1 updated array of shifts in 1st dimension.
-   * @param u2 updated array of shifts in 2nd dimension.
+   * @param du input array of changes to displacements in 1st dimension.
+   * @param u1 input/output array of displacements in 1st dimension.
+   * @param u2 input/output array of displacements in 2nd dimension.
+   * @param h input/output array of image samples.
    */
-  public void shift1(
-    float[][] du, float[][] g, float[][] h, float[][] u1, float[][] u2) 
-  {
-    int n1 = g[0].length;
-    int n2 = g.length;
-    float[] u = new float[n1];
-    float[] x = new float[n1];
-    float[] y = new float[n1];
-    for (int i1=0; i1<n1; ++i1)
-      x[i1] = (float)(i1);
+  public void shift1(float[][] du, float[][] u1, float[][] u2, float[][] h) {
+    int n1 = h[0].length;
+    int n2 = h.length;
+    float[] xu1 = new float[n1];
+    float[] u1b = new float[n1];
+    float[] u2b = new float[n1];
+    float[] hb = new float[n1];
     _si.setUniformSampling(n1,1.0,0.0);
     for (int i2=0; i2<n2; ++i2) {
+      float[] ha = h[i2];
+      float[] u1a = u1[i2];
+      float[] u2a = u2[i2];
+      float[] du1 = du[i2];
       for (int i1=0; i1<n1; ++i1) {
-        u[i1] = u2[i2][i1];
-        float d = du[i2][i1];
-        y[i1] = x[i1]+d;
-        u1[i2][i1] += d;
+        xu1[i1] = (float)(i1)+du1[i1];
       }
-      _si.setUniformSamples(g[i2]);
-      _si.interpolate(n1,y,h[i2]);
-      _si.setUniformSamples(u);
-      _si.interpolate(n1,y,u2[i2]);
+      _si.setUniformSamples(ha);
+      _si.interpolate(n1,xu1,hb);
+      if (_interpolateDisplacements) {
+        _si.setUniformSamples(u1a);
+        _si.interpolate(n1,xu1,u1b);
+        _si.setUniformSamples(u2a);
+        _si.interpolate(n1,xu1,u2b);
+      } else {
+        Array.copy(u1a,u1b);
+        Array.copy(u2a,u2b);
+      }
+      for (int i1=0; i1<n1; ++i1) {
+        h[i2][i1] = hb[i1];
+        u1[i2][i1] = u1b[i1]+du1[i1];
+        u2[i2][i1] = u2b[i1];
+      }
     }
   }
 
   /**
    * Applies specified shift in the 2nd dimension.
-   * @param du array of changes to shifts in 2nd dimension.
-   * @param g input array.
-   * @param h output array.
-   * @param u1 updated array of shifts in 1st dimension.
-   * @param u2 updated array of shifts in 2nd dimension.
+   * @param du input array of changes to displacements in 2nd dimension.
+   * @param u1 input/output array of displacements in 1st dimension.
+   * @param u2 input/output array of displacements in 2nd dimension.
+   * @param h input/output array of image samples.
    */
-  public void shift2(
-    float[][] du, float[][] g, float[][] h, float[][] u1, float[][] u2) 
-  {
-    int n1 = g[0].length;
-    int n2 = g.length;
-    float[] u = new float[n2];
-    float[] x = new float[n2];
-    float[] y = new float[n2];
-    float[] gt = new float[n2];
-    float[] ht = new float[n2];
-    float[] ut = new float[n2];
-    for (int i2=0; i2<n2; ++i2)
-      x[i2] = (float)(i2);
+  public void shift2(float[][] du, float[][] u1, float[][] u2, float[][] h) {
+    int n1 = h[0].length;
+    int n2 = h.length;
+    float[] du2 = new float[n2];
+    float[] xu2 = new float[n2];
+    float[] u1a = new float[n2];
+    float[] u1b = new float[n2];
+    float[] u2a = new float[n2];
+    float[] u2b = new float[n2];
+    float[] ha = new float[n2];
+    float[] hb = new float[n2];
     _si.setUniformSampling(n2,1.0,0.0);
     for (int i1=0; i1<n1; ++i1) {
       for (int i2=0; i2<n2; ++i2) {
-        gt[i2] = g[i2][i1];
-        u[i2] = u1[i2][i1];
-        float d = du[i2][i1];
-        y[i2] = x[i2]+d;
-        u2[i2][i1] += d;
+        ha[i2] = h[i2][i1];
+        u1a[i2] = u1[i2][i1];
+        u2a[i2] = u2[i2][i1];
+        du2[i2] = du[i2][i1];
+        xu2[i2] = (float)(i2)+du2[i2];
       }
-      _si.setUniformSamples(gt);
-      _si.interpolate(n2,y,ht);
-      _si.setUniformSamples(u);
-      _si.interpolate(n2,y,ut);
+      _si.setUniformSamples(ha);
+      _si.interpolate(n2,xu2,hb);
+      if (_interpolateDisplacements) {
+        _si.setUniformSamples(u1a);
+        _si.interpolate(n2,xu2,u1b);
+        _si.setUniformSamples(u2a);
+        _si.interpolate(n2,xu2,u2b);
+      } else {
+        Array.copy(u1a,u1b);
+        Array.copy(u2a,u2b);
+      }
       for (int i2=0; i2<n2; ++i2) {
-        h[i2][i1] = ht[i2];
-        u1[i2][i1] = ut[i2];
+        h[i2][i1] = hb[i2];
+        u1[i2][i1] = u1b[i2];
+        u2[i2][i1] = u2b[i2]+du2[i2];
       }
     }
   }
 
   /**
    * Applies specified shift in the 1st dimension.
-   * @param du array of changes to shifts in 1st dimension.
-   * @param g input array.
-   * @param h output array.
-   * @param u1 updated array of shifts in 1st dimension.
-   * @param u2 updated array of shifts in 2nd dimension.
-   * @param u3 updated array of shifts in 3rd dimension.
+   * @param du input array of changes to displacements in 1st dimension.
+   * @param u1 input/output array of displacements in 1st dimension.
+   * @param u2 input/output array of displacements in 2nd dimension.
+   * @param u3 input/output array of displacements in 3rd dimension.
+   * @param h input/output array of image samples.
    */
   public void shift1(
-    float[][][] du, float[][][] g, float[][][] h, 
-    float[][][] u1, float [][][] u2, float[][][] u3) 
+    float[][][] du, float[][][] u1, float[][][] u2, float[][][] u3,
+    float[][][] h) 
   {
-    int n1 = g[0][0].length;
-    int n2 = g[0].length;
-    int n3 = g.length;
-    float[] u = new float[n1];
-    float[] v = new float[n1];
-    float[] x = new float[n1];
-    float[] y = new float[n1];
-    for (int i1=0; i1<n1; ++i1)
-      x[i1] = (float)(i1);
+    int n1 = h[0][0].length;
+    int n2 = h[0].length;
+    int n3 = h.length;
+    float[] xu1 = new float[n1];
+    float[] u1b = new float[n1];
+    float[] u2b = new float[n1];
+    float[] u3b = new float[n1];
+    float[] hb = new float[n1];
     _si.setUniformSampling(n1,1.0,0.0);
     for (int i3=0; i3<n3; ++i3) {
       for (int i2=0; i2<n2; ++i2) {
+        float[] ha = h[i3][i2];
+        float[] u1a = u1[i3][i2];
+        float[] u2a = u2[i3][i2];
+        float[] u3a = u3[i3][i2];
+        float[] du1 = du[i3][i2];
         for (int i1=0; i1<n1; ++i1) {
-          u[i1] = u2[i3][i2][i1];
-          v[i1] = u3[i3][i2][i1];
-          float d = du[i3][i2][i1];
-          y[i1] = x[i1]+d;
-          u1[i3][i2][i1] += d;
+          xu1[i1] = (float)(i1)+du1[i1];
         }
-        _si.setUniformSamples(g[i3][i2]);
-        _si.interpolate(n1,y,h[i3][i2]);
-        _si.setUniformSamples(u);
-        _si.interpolate(n1,y,u2[i3][i2]);
-        _si.setUniformSamples(v);
-        _si.interpolate(n1,y,u3[i3][i2]);
+        _si.setUniformSamples(ha);
+        _si.interpolate(n1,xu1,hb);
+        if (_interpolateDisplacements) {
+          _si.setUniformSamples(u1a);
+          _si.interpolate(n1,xu1,u1b);
+          _si.setUniformSamples(u2a);
+          _si.interpolate(n1,xu1,u2b);
+          _si.setUniformSamples(u3a);
+          _si.interpolate(n1,xu1,u3b);
+        } else {
+          Array.copy(u1a,u1b);
+          Array.copy(u2a,u2b);
+          Array.copy(u3a,u3b);
+        }
+        for (int i1=0; i1<n1; ++i1) {
+          h[i3][i2][i1] = hb[i1];
+          u1[i3][i2][i1] = u1b[i1]+du1[i1];
+          u2[i3][i2][i1] = u2b[i1];
+          u3[i3][i2][i1] = u3b[i1];
+        }
       }
     }
   }
 
   /**
    * Applies specified shift in the 2nd dimension.
-   * @param du array of changes to shifts in 2nd dimension.
-   * @param g input array.
-   * @param h output array.
-   * @param u1 updated array of shifts in 1st dimension.
-   * @param u2 updated array of shifts in 2nd dimension.
-   * @param u3 updated array of shifts in 3rd dimension.
+   * @param du input array of changes to displacements in 2nd dimension.
+   * @param u1 input/output array of displacements in 1st dimension.
+   * @param u2 input/output array of displacements in 2nd dimension.
+   * @param u3 input/output array of displacements in 3rd dimension.
+   * @param h input/output array of image samples.
    */
   public void shift2(
-    float[][][] du, float[][][] g, float[][][] h, 
-    float[][][] u1, float[][][] u2, float[][][] u3) 
+    float[][][] du, float[][][] u1, float[][][] u2, float[][][] u3,
+    float[][][] h) 
   {
-    int n1 = g[0][0].length;
-    int n2 = g[0].length;
-    int n3 = g.length;
-    float[] u = new float[n2];
-    float[] v = new float[n2];
-    float[] x = new float[n2];
-    float[] y = new float[n2];
-    float[] gt = new float[n2];
-    float[] ht = new float[n2];
-    float[] ut = new float[n2];
-    float[] vt = new float[n2];
-    for (int i2=0; i2<n2; ++i2)
-      x[i2] = (float)(i2);
+    int n1 = h[0][0].length;
+    int n2 = h[0].length;
+    int n3 = h.length;
+    float[] du2 = new float[n2];
+    float[] xu2 = new float[n2];
+    float[] u1a = new float[n2];
+    float[] u1b = new float[n2];
+    float[] u2a = new float[n2];
+    float[] u2b = new float[n2];
+    float[] u3a = new float[n2];
+    float[] u3b = new float[n2];
+    float[] ha = new float[n2];
+    float[] hb = new float[n2];
     _si.setUniformSampling(n2,1.0,0.0);
     for (int i3=0; i3<n3; ++i3) {
       for (int i1=0; i1<n1; ++i1) {
         for (int i2=0; i2<n2; ++i2) {
-          gt[i2] = g[i3][i2][i1];
-          u[i2] = u1[i3][i2][i1];
-          v[i2] = u3[i3][i2][i1];
-          float d = du[i3][i2][i1];
-          y[i2] = x[i2]+d;
-          u2[i3][i2][i1] += d;
+          ha[i2] = h[i3][i2][i1];
+          u1a[i2] = u1[i3][i2][i1];
+          u2a[i2] = u2[i3][i2][i1];
+          u3a[i2] = u3[i3][i2][i1];
+          du2[i2] = du[i3][i2][i1];
+          xu2[i2] = (float)(i2)+du2[i2];
         }
-        _si.setUniformSamples(gt);
-        _si.interpolate(n2,y,ht);
-        _si.setUniformSamples(u);
-        _si.interpolate(n2,y,ut);
-        _si.setUniformSamples(v);
-        _si.interpolate(n2,y,vt);
+        _si.setUniformSamples(ha);
+        _si.interpolate(n2,xu2,hb);
+        if (_interpolateDisplacements) {
+          _si.setUniformSamples(u1a);
+          _si.interpolate(n2,xu2,u1b);
+          _si.setUniformSamples(u2a);
+          _si.interpolate(n2,xu2,u2b);
+          _si.setUniformSamples(u3a);
+          _si.interpolate(n2,xu2,u3b);
+        } else {
+          Array.copy(u1a,u1b);
+          Array.copy(u2a,u2b);
+          Array.copy(u3a,u3b);
+        }
         for (int i2=0; i2<n2; ++i2) {
-          h[i3][i2][i1] = ht[i2];
-          u1[i3][i2][i1] = ut[i2];
-          u3[i3][i2][i1] = vt[i2];
+          h[i3][i2][i1] = hb[i2];
+          u1[i3][i2][i1] = u1b[i2];
+          u2[i3][i2][i1] = u2b[i2]+du2[i2];
+          u3[i3][i2][i1] = u3b[i2];
         }
       }
     }
@@ -332,51 +377,59 @@ public class ShiftFinder {
 
   /**
    * Applies specified shift in the 3rd dimension.
-   * @param du array of changes to shifts in 3rd dimension.
-   * @param g input array.
-   * @param h output array.
-   * @param u1 updated array of shifts in 1st dimension.
-   * @param u2 updated array of shifts in 2nd dimension.
-   * @param u3 updated array of shifts in 3rd dimension.
+   * @param du input array of changes to displacements in 3rd dimension.
+   * @param u1 input/output array of displacements in 1st dimension.
+   * @param u2 input/output array of displacements in 2nd dimension.
+   * @param u3 input/output array of displacements in 3rd dimension.
+   * @param h input/output array of image samples.
    */
   public void shift3(
-    float[][][] du, float[][][] g, float[][][] h, 
-    float[][][] u1, float[][][] u2, float[][][] u3) 
+    float[][][] du, float[][][] u1, float[][][] u2, float[][][] u3,
+    float[][][] h) 
   {
-    int n1 = g[0][0].length;
-    int n2 = g[0].length;
-    int n3 = g.length;
-    float[] u = new float[n3];
-    float[] v = new float[n3];
-    float[] x = new float[n3];
-    float[] y = new float[n3];
-    float[] gt = new float[n3];
-    float[] ht = new float[n3];
-    float[] ut = new float[n3];
-    float[] vt = new float[n3];
-    for (int i3=0; i3<n3; ++i3)
-      x[i3] = (float)(i3);
+    int n1 = h[0][0].length;
+    int n2 = h[0].length;
+    int n3 = h.length;
+    float[] du3 = new float[n3];
+    float[] xu3 = new float[n3];
+    float[] u1a = new float[n3];
+    float[] u1b = new float[n3];
+    float[] u2a = new float[n3];
+    float[] u2b = new float[n3];
+    float[] u3a = new float[n3];
+    float[] u3b = new float[n3];
+    float[] ha = new float[n3];
+    float[] hb = new float[n3];
     _si.setUniformSampling(n3,1.0,0.0);
     for (int i2=0; i2<n2; ++i2) {
       for (int i1=0; i1<n1; ++i1) {
         for (int i3=0; i3<n3; ++i3) {
-          gt[i3] = g[i3][i2][i1];
-          u[i3] = u1[i3][i2][i1];
-          v[i3] = u2[i3][i2][i1];
-          float d = du[i3][i2][i1];
-          y[i3] = x[i3]+d;
-          u3[i3][i2][i1] += d;
+          ha[i3] = h[i3][i2][i1];
+          u1a[i3] = u1[i3][i2][i1];
+          u2a[i3] = u2[i3][i2][i1];
+          u3a[i3] = u3[i3][i2][i1];
+          du3[i3] = du[i3][i2][i1];
+          xu3[i3] = (float)(i3)+du3[i3];
         }
-        _si.setUniformSamples(gt);
-        _si.interpolate(n3,y,ht);
-        _si.setUniformSamples(u);
-        _si.interpolate(n3,y,ut);
-        _si.setUniformSamples(v);
-        _si.interpolate(n3,y,vt);
+        _si.setUniformSamples(ha);
+        _si.interpolate(n3,xu3,hb);
+        if (_interpolateDisplacements) {
+          _si.setUniformSamples(u1a);
+          _si.interpolate(n3,xu3,u1b);
+          _si.setUniformSamples(u2a);
+          _si.interpolate(n3,xu3,u2b);
+          _si.setUniformSamples(u3a);
+          _si.interpolate(n3,xu3,u3b);
+        } else {
+          Array.copy(u1a,u1b);
+          Array.copy(u2a,u2b);
+          Array.copy(u3a,u3b);
+        }
         for (int i3=0; i3<n3; ++i3) {
-          h[i3][i2][i1] = ht[i3];
-          u1[i3][i2][i1] = ut[i3];
-          u2[i3][i2][i1] = vt[i3];
+          h[i3][i2][i1] = hb[i3];
+          u1[i3][i2][i1] = u1b[i3];
+          u2[i3][i2][i1] = u2b[i3];
+          u3[i3][i2][i1] = u3b[i3]+du3[i3];
         }
       }
     }
@@ -561,6 +614,7 @@ public class ShiftFinder {
   private LocalCorrelationFilter _lcfSimple;
   private LocalCorrelationFilter _lcfSymmetric;
   private SincInterpolator _si;
+  private boolean _interpolateDisplacements = true;
 
   private void findShifts(
     int dim, int min, int max, float[][] f, float[][] g, float[][] u) 
