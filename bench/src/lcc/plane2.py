@@ -21,7 +21,7 @@ width = 640
 height = 505
 widthColorBar = 80
 dataDir = "/data"
-pngDir = None
+pngDir = "."
 
 n1 = 315
 n2 = 315
@@ -33,9 +33,91 @@ type = LocalPlaneFilter.Type.HALE1
 
 def main(args):
   #doSym()
-  goPlane()
+  #goPlane()
   #goPef()
+  goNotch()
   return
+
+def goNotch():
+  lpf1 = LocalPlaneFilter(8,0.00,LocalPlaneFilter.Type.HALE4)
+  lpf2 = LocalPlaneFilter(8,0.01,LocalPlaneFilter.Type.HALE4)
+  x,u = makeImpulse(30)
+  y = applyLpfForward(lpf1,u,x)
+  #plot(y)
+  z = applyLpfInverse(lpf2,u,y)
+  #plot(z)
+  ay = frequencyResponse(y)
+  plot(ay)
+  w = inverseLaplacian(y)
+  aw = frequencyResponse(w)
+  plot(aw)
+  az = frequencyResponse(z)
+  plot(az)
+  x = readImage()
+  plot(x,10.0,"x")
+  u = lpf1.find(x)
+  y = applyLpfForward(lpf1,u,x)
+  plot(y,2.0,"y")
+  w = inverseLaplacian(y)
+  plot(w,1.0,"w")
+  z = applyLpfInverse(lpf2,u,y)
+  plot(z,2.0,"z")
+
+def inverseLaplacian(x):
+  n1 = len(x[0])
+  n2 = len(x)
+  df = DifferenceFilter()
+  t = Array.zerofloat(n1,n2)
+  y = Array.zerofloat(n1,n2)
+  df.applyInverse(x,t)
+  df.applyInverseTranspose(t,y)
+  return y
+
+def makeImpulse(angle):
+  n1 = 105
+  n2 = 105
+  a = angle*pi/180.0
+  c = cos(a)
+  s = sin(a)
+  x = Array.zerofloat(n1,n2)
+  x[(n2-1)/2][(n1-1)/2] = 1.0
+  u0 = Array.fillfloat(1.0,n1,n2)
+  u1 = Array.fillfloat(c,n1,n2)
+  u2 = Array.fillfloat(s,n1,n2)
+  u = (u0,u1,u2)
+  return x,u
+
+def applyLpfForward(lpf,u,x):
+  y = Array.copy(x)
+  lpf.applyForward(u,x,y)
+  return y
+
+def applyLpfInverse(lpf,u,x):
+  y = Array.copy(x)
+  lpf.applyInverse(u,x,y)
+  return y
+
+def frequencyResponse(x):
+  n1 = len(x[0])
+  n2 = len(x)
+  n1 = FftComplex.nfftSmall(n1)
+  n2 = FftComplex.nfftSmall(n2)
+  xr = Array.copy(n1,n2,x)
+  xi = Array.zerofloat(n1,n2)
+  cx = Array.cmplx(xr,xi)
+  fft1 = FftComplex(n1)
+  fft2 = FftComplex(n2)
+  fft1.complexToComplex1(1,n2,cx,cx)
+  fft2.complexToComplex2(1,n1,cx,cx)
+  ax = Array.cabs(cx)
+  a = Array.zerofloat(n1,n2)
+  j1 = n1/2
+  j2 = n2/2
+  Array.copy(n1-j1,n2-j2,0,0,ax,j1,j2,a)
+  Array.copy(j1,j2,n1-j1,n2-j2,ax,0,0,a)
+  Array.copy(n1-j1,j2,0,n2-j2,ax,j1,0,a)
+  Array.copy(j1,n2-j2,n1-j1,0,ax,0,j2,a)
+  return a
 
 def goPlane():
   x = doImage()
@@ -49,7 +131,7 @@ def goPlane():
   #doPlane(x,sigma,LocalPlaneFilter.Type.FOMEL2)
 
 def doImage():
-  #x = readImage()
+  x = readImage()
   #x = Array.transpose(x)
   #x = makePlaneImage(63.435)
   #x = makePlaneImage(30)
@@ -58,12 +140,12 @@ def doImage():
   plot(x,10.0,"x")
   return x
 
-def doPlaneX(x,sigma,type):
+def doPlane(x,sigma,type):
   lpf = LocalPlaneFilter(sigma,type)
   p = lpf.find(x)
   y = Array.zerofloat(n1,n2)
-  lpf.applyForwardX(p,x,y)
-  plot(y,10.0)
+  lpf.applyForward(p,x,y)
+  plot(y,10.0,"y")
   #df = DifferenceFilter()
   #t = Array.zerofloat(n1,n2)
   #df.applyInverse(y,t)
@@ -71,22 +153,6 @@ def doPlaneX(x,sigma,type):
   #plot(y,2.0)
   #df.applyTranspose(y,t)
   #df.apply(t,y)
-  z = Array.zerofloat(n1,n2)
-  lpf.applyInverseX(p,y,z)
-  plot(z,10,0)
-  print "max |z-x| =",Array.max(Array.abs(Array.sub(z,x)))
-  r = Array.sub(Array.randfloat(n1,n2),0.5)
-  r = smooth(r)
-  s = Array.zerofloat(n1,n2)
-  lpf.applyInverseX(p,r,s)
-  plot(s)
-
-def doPlane(x,sigma,type):
-  lpf = LocalPlaneFilter(sigma,type)
-  p = lpf.find(x)
-  y = Array.zerofloat(n1,n2)
-  lpf.applyForward(p,x,y)
-  plot(y,10.0,"y")
   z = Array.zerofloat(n1,n2)
   lpf.applyInverse(p,y,z)
   plot(z,10.0,"z")
@@ -205,6 +271,7 @@ def flip2(f):
     Array.copy(f[n2-1-i2],g[i2])
   return g
 
+
 #############################################################################
 # plot
 
@@ -218,6 +285,7 @@ def plot(f,clip=0.0,png=None):
     s1 = Sampling(n1,1,-(n1-1)/2)
     s2 = Sampling(n2,1,-(n2-1)/2)
   pv = p.addPixels(s1,s2,f)
+  #pv.setColorModel(ColorMap.JET)
   if clip!=0.0:
     pv.setClips(-clip,clip)
   else:

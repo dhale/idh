@@ -16,9 +16,12 @@ from lcc import *
 # parameters
 
 fontSize = 24
-width = 640
-height = 505
-widthColorBar = 80
+#width = 640
+#height = 505
+#widthColorBar = 80
+width = 600
+height = 625
+widthColorBar = 0
 dataDir = "/data"
 #pngDir = "."
 pngDir = None
@@ -43,16 +46,16 @@ lcf = LocalCorrelationFilter(lcfType,lcfWindow,lcfSigma)
 
 def main(args):
   #goImages()
-  #goLcc()
-  goLagSearch()
-  goSequentialShifts()
+  goLcc()
+  #goLagSearch()
+  #goSequentialShifts()
   return
 
 def goLcc():
   f,g = doImages()
   doLcc(f,g,False,False)
   #doLcc(f,g,True,False)
-  doLcc(f,g,True,True)
+  #doLcc(f,g,True,True)
 
 def goImages():
   f,g = doImages()
@@ -116,7 +119,9 @@ def doLcc(f,g,whiten,smooth):
     for i1 in range(n1-1,n1,m1):
       c[i2][i1] = -1.0
   """
-  plot(c,1.0,"lcc"+suffix)
+  #c = Array.copy(10*m1,10*m2,m1,m2,c)
+  c = Array.copy(m1,m2,m1,m2,c)
+  plotc(c,"lcc"+suffix)
   #for k in range(nk):
   #  plot(ck[k],0.0,"lcc"+suffix+"_"+str(k1[k])+"_"+str(k2[k]))
 
@@ -209,6 +214,42 @@ def plot(f,clip=0.0,png=None):
   pv.setInterpolation(PixelsView.Interpolation.NEAREST)
   frame(p,png)
 
+def plotc(c,png=None):
+  p = panel()
+  pv = p.addPixels(c)
+  pv.setClips(-1.0,1.0)
+  pv.setInterpolation(PixelsView.Interpolation.NEAREST)
+  n1 = len(c[0])
+  n2 = len(c)
+  l1 = lmax
+  l2 = lmax
+  k1 = 1+2*l1
+  k2 = 1+2*l2
+  m1 = 1+n1/k1
+  m2 = 1+n2/k2
+  if n1==k1 and n2==k2:
+    m1 += 1
+    m2 += 1
+    k1 = k1/2.0
+    k2 = k2/2.0
+  x1 = Array.zerofloat(2,m2)
+  x2 = Array.zerofloat(2,m2)
+  for i2 in range(m2):
+    x1[i2][0] = -0.5
+    x1[i2][1] = n1-0.5
+    x2[i2][0] = i2*k2-0.5
+    x2[i2][1] = x2[i2][0]
+  p.addPoints(x1,x2)
+  x1 = Array.zerofloat(2,m1)
+  x2 = Array.zerofloat(2,m1)
+  for i1 in range(m1):
+    x1[i1][0] = i1*k1-0.5
+    x1[i1][1] = x1[i1][0]
+    x2[i1][0] = -0.5
+    x2[i1][1] = n2-0.5
+  p.addPoints(x1,x2)
+  frame(p,png)
+
 def plotu(u,clip=0.0,png=None):
   p = panel()
   pv = p.addPixels(u)
@@ -218,6 +259,7 @@ def plotu(u,clip=0.0,png=None):
   else:
     pv.setPercentiles(1.0,99.0)
   frame(p,png)
+
 
 def makev(u1,u2,clipv=0.0,lvec=0):
   n1 = len(u1[0])
@@ -275,9 +317,12 @@ def plotfv(f,u1,u2,clipf=0.0,clipv=0.0,lvec=0,png=None):
   frame(p,png)
 
 def panel():
-  p = PlotPanel(1,1,PlotPanel.Orientation.X1DOWN_X2RIGHT)
-  p.addColorBar()
-  p.setColorBarWidthMinimum(widthColorBar)
+  p = PlotPanel(1,1,
+    PlotPanel.Orientation.X1DOWN_X2RIGHT,
+    PlotPanel.AxesPlacement.LEFT_TOP)
+  if widthColorBar>0:
+    p.addColorBar()
+    p.setColorBarWidthMinimum(widthColorBar)
   return p
 
 def frame(panel,png=None):
