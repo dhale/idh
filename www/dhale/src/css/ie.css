@@ -12,14 +12,41 @@ html>body { /* be nice to Opera */
 }
 
 /* self-clearing floats */
+/*
 * html #nav, 
 * html #title, 
 * html #guts, 
 * html dl.img {
   height: 1%;
 }
+*/
 
 /* fixes weird IE body padding issue */
+/*
 * html #wrap { 
   height: 1%; 
 }
+*/
+
+/* trigger hasLayout and target ie5+6/win only */
+* html #nav ul, 
+* html #main-body,
+* html #flickr,
+* html #extra,
+* html #port,
+* html .prod-feature,
+* html dl.teaser {
+  height: 1%;
+}
+/* trigger hasLayout and target ie7/win only */
+*:first-child+html #nav ul, 
+*:first-child+html #title, 
+*:first-child+html #main-body, 
+*:first-child+html #flickr, 
+*:first-child+html #extra,
+*:first-child+html #port,
+*:first-child+html .prod-feature,
+*:first-child+html dl.teaser {
+  min-height: 1px;
+}
+
