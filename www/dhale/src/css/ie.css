@@ -29,6 +29,14 @@ html>body { /* be nice to Opera */
 */
 
 /* trigger hasLayout and target ie5+6/win only */
+* html #nav, 
+* html #title, 
+* html #guts, 
+* html #wrap, 
+* html dl.img {
+  height: 1%;
+}
+/*
 * html #nav ul, 
 * html #main-body,
 * html #flickr,
@@ -38,7 +46,17 @@ html>body { /* be nice to Opera */
 * html dl.teaser {
   height: 1%;
 }
+*/
+
 /* trigger hasLayout and target ie7/win only */
+*:first-child+html #nav,
+*:first-child+html #title,
+*:first-child+html #guts,
+*:first-child+html #wrap,
+*:first-child+html dl.img {
+  min-height: 1px;
+}
+/*
 *:first-child+html #nav ul, 
 *:first-child+html #title, 
 *:first-child+html #main-body, 
@@ -49,4 +67,5 @@ html>body { /* be nice to Opera */
 *:first-child+html dl.teaser {
   min-height: 1px;
 }
+*/
 
