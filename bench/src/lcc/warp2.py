@@ -20,11 +20,11 @@ fontSize = 24
 #height = 505
 #widthColorBar = 80
 width = 600
-height = 625
+height = 622
 widthColorBar = 0
 dataDir = "/data"
-#pngDir = "."
-pngDir = None
+pngDir = "."
+#pngDir = None
 
 n1 = 315
 n2 = 315
@@ -46,16 +46,17 @@ lcf = LocalCorrelationFilter(lcfType,lcfWindow,lcfSigma)
 
 def main(args):
   #goImages()
-  goLcc()
+  #goLcc()
   #goLagSearch()
   #goSequentialShifts()
+  doExact()
   return
 
 def goLcc():
   f,g = doImages()
   doLcc(f,g,False,False)
-  #doLcc(f,g,True,False)
-  #doLcc(f,g,True,True)
+  doLcc(f,g,True,False)
+  doLcc(f,g,True,True)
 
 def goImages():
   f,g = doImages()
@@ -87,7 +88,6 @@ def doImages():
   return f,g
 
 def doLcc(f,g,whiten,smooth):
-  f,g = doImages()
   f,g,suffix = preprocess(f,g,whiten,smooth)
   l1 = lmax
   l2 = lmax
@@ -96,32 +96,21 @@ def doLcc(f,g,whiten,smooth):
   lcf.setInputs(f,g)
   c = Array.zerofloat(n1,n2)
   t = Array.zerofloat(n1,n2)
-  k1 = ( 38, 98,113,150, 98,172)
-  k2 = (172,216,230,105,132,227)
-  nk = len(k1)
-  ck = Array.zerofloat(m1,m2,nk)
+  #k1 = ( 38, 98,113,150, 98,172)
+  #k2 = (172,216,230,105,132,227)
+  #nk = len(k1)
+  #ck = Array.zerofloat(m1,m2,nk)
   for lag2 in range(-l2,l2+1):
     for lag1 in range(-l1,l1+1):
       lcf.correlate(lag1,lag2,t)
       lcf.normalize(lag1,lag2,t)
       Array.copy(n1/m1,n2/m2,l1,l2,m1,m2,t,l1+lag1,l2+lag2,m1,m2,c)
-      for k in range(nk):
-        ck[k][l2+lag2][l1+lag1] = t[k2[k]][k1[k]]
-  """
-  for i1 in range(n1):
-    for i2 in range(0,n2,m2):
-      c[i2][i1] = -1.0
-    for i2 in range(n2-1,n2,m2):
-      c[i2][i1] = -1.0
-  for i2 in range(n2):
-    for i1 in range(0,n1,m1):
-      c[i2][i1] = -1.0
-    for i1 in range(n1-1,n1,m1):
-      c[i2][i1] = -1.0
-  """
-  #c = Array.copy(10*m1,10*m2,m1,m2,c)
-  c = Array.copy(m1,m2,m1,m2,c)
-  plotc(c,"lcc"+suffix)
+      #for k in range(nk):
+      #  ck[k][l2+lag2][l1+lag1] = t[k2[k]][k1[k]]
+  c = Array.copy(10*m1,10*m2,m1,m2,c)
+  plotLccAllTiles(c,"lcca"+suffix)
+  c = Array.copy(m1,m2,6*m1,7*m2,c)
+  plotLccOneTile(c,"lcc1"+suffix)
   #for k in range(nk):
   #  plot(ck[k],0.0,"lcc"+suffix+"_"+str(k1[k])+"_"+str(k2[k]))
 
@@ -137,7 +126,6 @@ def doLagSearch(f,g,whiten,smooth):
   lcf.refineLags(l1,l2,u1,u2)
   plotu(u1,d1max,"u1"+suffix+"ls")
   plotu(u2,d2max,"u2"+suffix+"ls")
-  plotfv(fsave,u1,u2,10,d1max,15)
   return u1,u2
  
 def doSequentialShifts(f,g,whiten,smooth,interp=True):
@@ -158,12 +146,10 @@ def doSequentialShifts(f,g,whiten,smooth,interp=True):
     print "2: du min =",Array.min(du),"max =",Array.max(du)
     sf.shift2(du,u1,u2,h)
     print "2: u2 min =",Array.min(u2),"max =",Array.max(u2)
-    #plotu(u1,d1max,"u1"+suffix+"ss"+str(iter))
-    #plotu(u2,d2max,"u2"+suffix+"ss"+str(iter))
-    #plotfv(fsave,u1,u2)
+    plotu(u1,d1max,"u1"+suffix+"ss"+str(iter))
+    plotu(u2,d2max,"u2"+suffix+"ss"+str(iter))
   #plotu(u1,d1max,"u1"+suffix+"ss")
   #plotu(u2,d2max,"u2"+suffix+"ss")
-  plotfv(fsave,u1,u2,10,d1max,15)
   return u1,u2
 
 def readImage():
@@ -214,24 +200,15 @@ def plot(f,clip=0.0,png=None):
   pv.setInterpolation(PixelsView.Interpolation.NEAREST)
   frame(p,png)
 
-def plotc(c,png=None):
+def plotLccAllTiles(c,png=None):
   p = panel()
   pv = p.addPixels(c)
   pv.setClips(-1.0,1.0)
   pv.setInterpolation(PixelsView.Interpolation.NEAREST)
-  n1 = len(c[0])
-  n2 = len(c)
-  l1 = lmax
-  l2 = lmax
-  k1 = 1+2*l1
-  k2 = 1+2*l2
-  m1 = 1+n1/k1
-  m2 = 1+n2/k2
-  if n1==k1 and n2==k2:
-    m1 += 1
-    m2 += 1
-    k1 = k1/2.0
-    k2 = k2/2.0
+  n1,n2 = len(c[0]),len(c)
+  l1,l2 = lmax,lmax
+  k1,k2 = 1+2*l1,1+2*l2
+  m1,m2 = 1+n1/k1,1+n2/k2
   x1 = Array.zerofloat(2,m2)
   x2 = Array.zerofloat(2,m2)
   for i2 in range(m2):
@@ -239,7 +216,7 @@ def plotc(c,png=None):
     x1[i2][1] = n1-0.5
     x2[i2][0] = i2*k2-0.5
     x2[i2][1] = x2[i2][0]
-  p.addPoints(x1,x2)
+  p.addPoints(x1,x2).setLineWidth(2)
   x1 = Array.zerofloat(2,m1)
   x2 = Array.zerofloat(2,m1)
   for i1 in range(m1):
@@ -247,7 +224,28 @@ def plotc(c,png=None):
     x1[i1][1] = x1[i1][0]
     x2[i1][0] = -0.5
     x2[i1][1] = n2-0.5
-  p.addPoints(x1,x2)
+  p.addPoints(x1,x2).setLineWidth(2)
+  frame(p,png)
+
+def plotLccOneTile(c,png=None):
+  p = panel()
+  pv = p.addPixels(c)
+  pv.setClips(-1.0,1.0)
+  pv.setInterpolation(PixelsView.Interpolation.NEAREST)
+  n1,n2 = len(c[0]),len(c)
+  l1,l2 = lmax,lmax
+  k1,k2 = 1+2*l1,1+2*l2
+  m1,m2 = 1+n1/k1,1+n2/k2
+  x1 = (-0.5,n1-0.5)
+  x2 = (float(lmax),float(lmax))
+  pv = p.addPoints(x1,x2)
+  pv.setLineColor(Color.BLUE)
+  pv.setLineWidth(3)
+  x1 = (float(lmax),float(lmax))
+  x2 = (-0.5,n2-0.5)
+  pv = p.addPoints(x1,x2)
+  pv.setLineColor(Color.BLUE)
+  pv.setLineWidth(3)
   frame(p,png)
 
 def plotu(u,clip=0.0,png=None):
@@ -291,35 +289,10 @@ def makev(u1,u2,clipv=0.0,lvec=0):
       iv = iv+1
   return v1,v2
 
-def plotfv(f,u1,u2,clipf=0.0,clipv=0.0,lvec=0,png=None):
-  n1 = len(f[0])
-  n2 = len(f)
-  p = panel()
-  s1 = Sampling(n1,1.0,0.0)
-  s2 = Sampling(n2,1.0,0.0)
-  if n1<50 and n2<50:
-    s1 = Sampling(n1,1,-(n1-1)/2)
-    s2 = Sampling(n2,1,-(n2-1)/2)
-  pv = p.addPixels(s1,s2,f)
-  if clipf!=0.0:
-    pv.setClips(-clipf,clipf)
-  else:
-    pv.setPercentiles(0.0,100.0)
-  pv.setInterpolation(PixelsView.Interpolation.NEAREST)
-  v1,v2 = makev(disp.u1x(),disp.u2x(),clipv,lvec)
-  pv = p.addPoints(v1,v2)
-  pv.setLineColor(Color.WHITE)
-  pv.setLineWidth(4)
-  v1,v2 = makev(u1,u2,clipv,lvec)
-  pv = p.addPoints(v1,v2)
-  pv.setLineColor(Color.RED)
-  pv.setLineWidth(2)
-  frame(p,png)
-
 def panel():
   p = PlotPanel(1,1,
     PlotPanel.Orientation.X1DOWN_X2RIGHT,
-    PlotPanel.AxesPlacement.LEFT_TOP)
+    PlotPanel.AxesPlacement.NONE)
   if widthColorBar>0:
     p.addColorBar()
     p.setColorBarWidthMinimum(widthColorBar)
@@ -332,7 +305,7 @@ def frame(panel,png=None):
   frame.setSize(width,height)
   frame.setVisible(True)
   if png and pngDir:
-    frame.paintToPng(200,6,pngDir+"/"+png+".png")
+    frame.paintToPng(100,6,pngDir+"/"+png+".png")
   return frame
 
 #############################################################################
