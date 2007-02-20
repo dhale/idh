@@ -89,9 +89,12 @@ def slice23(f,i1):
 
 ##############################################################################
 # Plot
-colorBarWidthMinimum = 100
-frameWidth=1030
-frameHeight=620
+#colorBarWidthMinimum = 100
+#frameWidth=1030
+#frameHeight=620
+colorBarWidthMinimum = 80
+frameWidth=1160
+frameHeight=768
 
 def frame(panel,png):
   frame = PlotFrame(panel)
@@ -100,8 +103,80 @@ def frame(panel,png):
   frame.setSize(frameWidth,frameHeight)
   frame.setVisible(True)
   if png!=None:
-    frame.paintToPng(600,3,png)
+    frame.paintToPng(300,6,png)
   return frame
+
+def plot3d(k1,k2,k3,file,scale,clip,cmod=ColorMap.GRAY,png=None):
+  f12 = Array.mul(scale,readFloats12(file,k3))
+  f13 = Array.mul(scale,readFloats13(file,k2))
+  f23 = Array.mul(scale,readFloats23(file,k1))
+  print "plot3d: f12 min =",Array.min(f12),"  max =",Array.max(f12)
+  print "plot3d: f13 min =",Array.min(f13),"  max =",Array.max(f13)
+  print "plot3d: f23 min =",Array.min(f23),"  max =",Array.max(f23)
+  panel = PlotPanel(2,2,
+    PlotPanel.Orientation.X1DOWN_X2RIGHT,
+    PlotPanel.AxesPlacement.LEFT_BOTTOM)
+  mosaic = panel.getMosaic()
+  mosaic.setWidthElastic(0,100*n2/n3)
+  mosaic.getTileAxisBottom(0).setInterval(2.0)
+  mosaic.getTileAxisBottom(1).setInterval(2.0)
+  mosaic.getTileAxisLeft(0).setInterval(2.0)
+  mosaic.getTileAxisLeft(1).setInterval(0.5)
+  panel.setColorBarWidthMinimum(colorBarWidthMinimum)
+  panel.getMosaic().setWidthElastic(0,100*n2/n3)
+  panel.setHLabel(0,"inline (km)")
+  panel.setHLabel(1,"crossline (km)")
+  panel.setVLabel(0,"crossline (km)")
+  panel.setVLabel(1,"time (s)")
+  cb = panel.addColorBar()
+  p12 = panel.addPixels(1,0,s1,s2,f12)
+  p13 = panel.addPixels(1,1,s1,s3,f13)
+  p23 = panel.addPixels(0,0,s2,s3,f23)
+  p23.setOrientation(PixelsView.Orientation.X1RIGHT_X2UP)
+  p12.setClips(-clip,clip)
+  p13.setClips(-clip,clip)
+  p23.setClips(-clip,clip)
+  p12.setColorModel(cmod)
+  p13.setColorModel(cmod)
+  p23.setColorModel(cmod)
+  xa1,xa2,xa3 = s1.getValue(0),s2.getValue(0),s3.getValue(0)
+  xk1,xk2,xk3 = s1.getValue(k1),s2.getValue(k2),s3.getValue(k3)
+  xb1,xb2,xb3 = s1.getValue(n1-1),s2.getValue(n2-1),s3.getValue(n3-1)
+  p12 = panel.addPoints(1,0,((xa1,xb1),(xk1,xk1)),((xk2,xk2),(xa2,xb2)))
+  p13 = panel.addPoints(1,1,((xa1,xb1),(xk1,xk1)),((xk3,xk3),(xa3,xb3)))
+  p23 = panel.addPoints(0,0,((xa2,xb2),(xk2,xk2)),((xk3,xk3),(xa3,xb3)))
+  p23.setOrientation(PointsView.Orientation.X1RIGHT_X2UP)
+  if isGray(cmod):
+    p12.setLineColor(Color.YELLOW)
+    p13.setLineColor(Color.YELLOW)
+    p23.setLineColor(Color.YELLOW)
+  return frame(panel,png)
+
+def isGray(icm):
+  for p in range(256):
+    r = icm.getRed(p)
+    g = icm.getGreen(p)
+    b = icm.getBlue(p)
+    if r!=g or r!=b:
+      return False
+  return True
+
+def plot3dAll():
+  k1 = 201 # = (4.404-3.600)/0.004
+  k2 = 293 # = (7.325-0.000)/0.025
+  k3 = 170 # = (4.250-0.000)/0.025
+  gray = ColorMap.GRAY
+  flag = ColorMap.RED_WHITE_BLUE
+  #plot3d(k1,k2,k3,"sw02a.dat",0.001,5.0,gray,"sws02.png")
+  #plot3d(k1,k2,k3,"sw04a.dat",0.001,5.0,gray,"sws04.png")
+  #plot3d(k1,k2,k3,"w02.dat",0.001,0.5,gray,"sww02.png")
+  #plot3d(k1,k2,k3,"w04.dat",0.001,0.5,gray,"sww04.png")
+  plot3d(k1,k2,k3,"u1s0.dat",1000*d1,4.5,flag,"swu1s0.png")
+  plot3d(k1,k2,k3,"u2s0.dat",1000*d2,6.5,flag,"swu2s0.png")
+  plot3d(k1,k2,k3,"u3s0.dat",1000*d3,6.5,flag,"swu3s0.png")
+  #plot3d(k1,k2,k3,"u1s1.dat",1000*d1,4.5,flag,"swu1s1.png")
+  #plot3d(k1,k2,k3,"u2s1.dat",1000*d2,6.5,flag,"swu2s1.png")
+  #plot3d(k1,k2,k3,"u3s1.dat",1000*d3,6.5,flag,"swu3s1.png")
 
 def plotSeis12(f,clip=0,png=None):
   print "plotSeis: min =",Array.min(f),"  max =",Array.max(f)
@@ -565,7 +640,8 @@ def plotSlices():
   plotLags13(Array.mul(25,u3s12),8.5,"u3s12.png")
 
 def main(args):
-  plotSlices()
+  plot3dAll()
+  #plotSlices()
   return
 
 # i2=288 is bin 1892 (288 = (1892-1316)/2)
