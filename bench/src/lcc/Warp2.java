@@ -112,25 +112,21 @@ public class Warp2 {
     float[][] u1 = new float[n2][n1];
     float[][] u2 = new float[n2][n1];
     float[][] du = new float[n2][n1];
-    float[][] ha = Array.copy(g);
-    float[][] hb = Array.copy(g);
+    float[][] h = Array.copy(g);
 
     plot(f,0.0f,null);
     plot(g,0.0f,null);
     plot(Array.sub(g,f),0.0f,null);
 
     for (int iter=0; iter<4; ++iter) {
-      float[][] ht;
-      _sf.find1(-l1,l1,f,ha,du);
+      _sf.find1(-l1,l1,f,h,du);
       System.out.println("1: du min="+Array.min(du)+" max="+Array.max(du));
-      _sf.shift1(du,ha,hb,u1,u2);
+      _sf.shift1(du,u1,u2,h);
       System.out.println("1: u1 min="+Array.min(u1)+" max="+Array.max(u1));
-      ht = ha; ha = hb; hb = ht;
-      _sf.find2(-l2,l2,f,ha,du);
+      _sf.find2(-l2,l2,f,h,du);
       System.out.println("2: du min="+Array.min(du)+" max="+Array.max(du));
-      _sf.shift2(du,ha,hb,u1,u2);
+      _sf.shift2(du,u1,u2,h);
       System.out.println("2: u2 min="+Array.min(u2)+" max="+Array.max(u2));
-      ht = ha; ha = hb; hb = ht;
       plotu(u1,_d1max,"u1");
       plotu(u2,_d2max,"u2");
     }
@@ -139,7 +135,7 @@ public class Warp2 {
     float[][] e2 = _disp.u2x();
     plotu(e1,_d1max,"e1");
     plotu(e2,_d2max,"e2");
-    plot(Array.sub(ha,f),0.0f,null);
+    plot(Array.sub(h,f),0.0f,null);
   }
 
   private void doLcc() {

@@ -264,7 +264,7 @@ public class LocalPlaneFilter {
       float u2 = u[2][i2][i1];
       c[0] = -0.5f*u2*(u1+u2);
       c[1] =  1.0f;
-      c[2] =  0.5f*u2*(u1-u2);
+      c[2] = -0.5f*u2*(u1-u2);
       c[3] =  0.0f;
       c[4] = -0.5f*u1*u1;
       c[5] =  0.0f;

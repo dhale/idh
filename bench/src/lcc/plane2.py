@@ -26,16 +26,16 @@ pngDir = "."
 n1 = 315
 n2 = 315
 sigma = 8
-type = LocalPlaneFilter.Type.HALE1
+type = LocalPlaneFilter.Type.HALE2
 
 #############################################################################
 # functions
 
 def main(args):
   #doSym()
-  #goPlane()
+  goPlane()
   #goPef()
-  goNotch()
+  #goNotch()
   return
 
 def goNotch():
@@ -122,16 +122,15 @@ def frequencyResponse(x):
 def goPlane():
   x = doImage()
   #doPlane(x,sigma,LocalPlaneFilter.Type.HALE1)
-  #doPlane(x,sigma,LocalPlaneFilter.Type.FOMEL1)
-  doPlane(x,sigma,LocalPlaneFilter.Type.HALE2)
-  doPlane(x,sigma,LocalPlaneFilter.Type.HALE2X)
-  #doPlaneX(x,sigma,LocalPlaneFilter.Type.HALE3)
-  #doPlane(x,sigma,LocalPlaneFilter.Type.QUAD)
+  #doPlane(x,sigma,LocalPlaneFilter.Type.HALE2)
+  #doPlane(x,sigma,LocalPlaneFilter.Type.HALE3)
+  doPlane(x,sigma,LocalPlaneFilter.Type.HALE4)
+  doPlane(x,sigma,LocalPlaneFilter.Type.HALE5)
   #doPlane(x,sigma,LocalPlaneFilter.Type.FOMEL1)
   #doPlane(x,sigma,LocalPlaneFilter.Type.FOMEL2)
 
 def doImage():
-  x = readImage()
+  #x = readImage()
   #x = Array.transpose(x)
   #x = makePlaneImage(63.435)
   #x = makePlaneImage(30)
@@ -141,7 +140,7 @@ def doImage():
   return x
 
 def doPlane(x,sigma,type):
-  lpf = LocalPlaneFilter(sigma,type)
+  lpf = LocalPlaneFilter(sigma,0.001,type)
   p = lpf.find(x)
   y = Array.zerofloat(n1,n2)
   lpf.applyForward(p,x,y)
@@ -189,8 +188,8 @@ def doSym():
   y = Array.sub(Array.randfloat(n1,n2),0.5)
   ax = Array.zerofloat(n1,n2)
   ay = Array.zerofloat(n1,n2)
-  lpf.xapplyForwardX(p,x,ax)
-  lpf.xapplyForwardX(p,y,ay)
+  lpf.applyForward(p,x,ax)
+  lpf.applyForward(p,y,ay)
   yax = Array.sum(Array.mul(y,ax))
   xay = Array.sum(Array.mul(x,ay))
   print "yax =",yax," xay=",xay
