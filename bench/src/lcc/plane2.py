@@ -17,51 +17,65 @@ from lcc import *
 # parameters
 
 fontSize = 24
-width = 640
-height = 505
+width = 500
+height = 520
 widthColorBar = 80
 dataDir = "/data"
-pngDir = "."
+pngDir = "./png"
+#pngDir = None
 
 n1 = 315
 n2 = 315
-sigma = 8
-type = LocalPlaneFilter.Type.HALE2
+small = 0.01
+lof = LocalOrientFilter(8)
 
 #############################################################################
 # functions
 
 def main(args):
+  #goLinear()
   #doSym()
-  goPlane()
-  #goPef()
-  #goNotch()
+  #goPlane()
+  #goAmp()
+  goNotch()
   return
 
-def goNotch():
-  lpf1 = LocalPlaneFilter(8,0.00,LocalPlaneFilter.Type.HALE4)
-  lpf2 = LocalPlaneFilter(8,0.01,LocalPlaneFilter.Type.HALE4)
-  x,u = makeImpulse(30)
-  y = applyLpfForward(lpf1,u,x)
-  #plot(y)
-  z = applyLpfInverse(lpf2,u,y)
-  #plot(z)
-  ay = frequencyResponse(y)
-  plot(ay)
-  w = inverseLaplacian(y)
-  aw = frequencyResponse(w)
-  plot(aw)
-  az = frequencyResponse(z)
-  plot(az)
+def goLinear():
   x = readImage()
-  plot(x,10.0,"x")
-  u = lpf1.find(x)
-  y = applyLpfForward(lpf1,u,x)
-  plot(y,2.0,"y")
+  plot(x,10.0)
+  u1 = Array.zerofloat(n1,n2)
+  u2 = Array.zerofloat(n1,n2)
+  el = Array.zerofloat(n1,n2)
+  lof.applyForNormalLinear(x,u1,u2,el)
+  plot(el)
+  xl = Array.mul(x,el)
+  xi = Array.sub(x,xl)
+  plot(xl,10.0)
+  plot(xi,10.0)
+
+def goNotch():
+  lpf1 = LocalPlaneFilter(LocalPlaneFilter.Type.HALE3,0.00)
+  lpf2 = LocalPlaneFilter(LocalPlaneFilter.Type.HALE3,0.01)
+  for dip in [20,40,60,80]:
+    suffix = str(dip)
+    x,u1,u2 = makeImpulse(dip)
+    y = applyLpfForward(lpf1,u1,u2,x)
+    z = applyLpfInverse(lpf2,u1,u2,y)
+    w = inverseLaplacian(y)
+    ay = frequencyResponse(y)
+    az = frequencyResponse(z)
+    aw = frequencyResponse(w)
+    plotf(ay,"ayhn"+suffix)
+    plotf(az,"azhn"+suffix)
+    plotf(aw,"awhn"+suffix)
+  x = readImage()
+  u1,u2 = getU(x)
+  y = applyLpfForward(lpf1,u1,u2,x)
+  z = applyLpfInverse(lpf2,u1,u2,y)
   w = inverseLaplacian(y)
-  plot(w,1.0,"w")
-  z = applyLpfInverse(lpf2,u,y)
-  plot(z,2.0,"z")
+  plot(y,2.0,"yhn")
+  plot(z,2.0,"zhn")
+  plot(w,1.0,"whn")
 
 def inverseLaplacian(x):
   n1 = len(x[0])
@@ -81,20 +95,85 @@ def makeImpulse(angle):
   s = sin(a)
   x = Array.zerofloat(n1,n2)
   x[(n2-1)/2][(n1-1)/2] = 1.0
-  u0 = Array.fillfloat(1.0,n1,n2)
   u1 = Array.fillfloat(c,n1,n2)
   u2 = Array.fillfloat(s,n1,n2)
-  u = (u0,u1,u2)
-  return x,u
+  return x,u1,u2
 
-def applyLpfForward(lpf,u,x):
+def doImage():
+  #x = readImage()
+  #x = Array.transpose(x)
+  #x = makePlaneImage(63.435)
+  #x = makePlaneImage(30)
+  x = makeTargetImage()
+  #x = flip2(x)
+  plot(x,10.0,"x")
+  return x
+
+def goAmp():
+  for dip in [20,40,60,80]:
+    suffix = str(dip)
+    doAmp(dip,LocalPlaneFilter.Type.FOMEL1,"af1"+suffix)
+    doAmp(dip,LocalPlaneFilter.Type.CLAERBOUT1,"ac1"+suffix)
+    doAmp(dip,LocalPlaneFilter.Type.HALE2,"ah2"+suffix)
+    doAmp(dip,LocalPlaneFilter.Type.HALE3,"ah3"+suffix)
+
+def goPlane():
+  x1 = readImage()
+  x2 = Array.transpose(x1)
+  x3 = makeTargetImage()
+  for x,s in [(x1,"_1"),(x2,"_2"),(x3,"_3")]:
+    plot(x,10.0,"x"+s)
+    doPlane(x,LocalPlaneFilter.Type.FOMEL1,"f1"+s)
+    doPlane(x,LocalPlaneFilter.Type.CLAERBOUT1,"c1"+s)
+    doPlane(x,LocalPlaneFilter.Type.HALE2,"h2"+s)
+    doPlane(x,LocalPlaneFilter.Type.HALE3,"h3"+s)
+
+def doPlane(x,type,png):
+  u1,u2 = getU(x)
+  lpf = LocalPlaneFilter(type,small)
+  y = Array.zerofloat(n1,n2)
+  z = Array.zerofloat(n1,n2)
+  r = Array.sub(Array.randfloat(n1,n2),0.5)
+  r = smooth(r)
+  s = Array.zerofloat(n1,n2)
+  lpf.applyForward(u1,u2,x,y)
+  lpf.applyInverse(u1,u2,y,z)
+  lpf.applyInverse(u1,u2,r,s)
+  print "max |z-x| =",Array.max(Array.abs(Array.sub(z,x)))
+  plot(y,5.0,"y"+png)
+  plot(z,10.0,"z"+png)
+  plot(s,0.0,"s"+png)
+
+def doAmp(dip,type,png=None):
+  lpf = LocalPlaneFilter(type)
+  x,u1,u2 = makeImpulse(dip)
+  h = applyLpfForward(lpf,u1,u2,x)
+  ah = frequencyResponse(h)
+  plotf(ah,png)
+
+def doSym():
+  x = makeTargetImage()
+  lpf = LocalPlaneFilter(LocalPlaneFilter.Type.HALE3)
+  u1 = Array.randfloat(n1,n2)
+  u2 = Array.randfloat(n1,n2)
+  x = Array.sub(Array.randfloat(n1,n2),0.5)
+  y = Array.sub(Array.randfloat(n1,n2),0.5)
+  ax = Array.zerofloat(n1,n2)
+  ay = Array.zerofloat(n1,n2)
+  lpf.applyForward(u1,u2,x,ax)
+  lpf.applyForward(u1,u2,y,ay)
+  yax = Array.sum(Array.mul(y,ax))
+  xay = Array.sum(Array.mul(x,ay))
+  print "yax =",yax," xay=",xay
+
+def applyLpfForward(lpf,u1,u2,x):
   y = Array.copy(x)
-  lpf.applyForward(u,x,y)
+  lpf.applyForward(u1,u2,x,y)
   return y
 
-def applyLpfInverse(lpf,u,x):
+def applyLpfInverse(lpf,u1,u2,x):
   y = Array.copy(x)
-  lpf.applyInverse(u,x,y)
+  lpf.applyInverse(u1,u2,x,y)
   return y
 
 def frequencyResponse(x):
@@ -119,81 +198,6 @@ def frequencyResponse(x):
   Array.copy(j1,n2-j2,n1-j1,0,ax,0,j2,a)
   return a
 
-def goPlane():
-  x = doImage()
-  #doPlane(x,sigma,LocalPlaneFilter.Type.HALE1)
-  #doPlane(x,sigma,LocalPlaneFilter.Type.HALE2)
-  #doPlane(x,sigma,LocalPlaneFilter.Type.HALE3)
-  doPlane(x,sigma,LocalPlaneFilter.Type.HALE4)
-  doPlane(x,sigma,LocalPlaneFilter.Type.HALE5)
-  #doPlane(x,sigma,LocalPlaneFilter.Type.FOMEL1)
-  #doPlane(x,sigma,LocalPlaneFilter.Type.FOMEL2)
-
-def doImage():
-  #x = readImage()
-  #x = Array.transpose(x)
-  #x = makePlaneImage(63.435)
-  #x = makePlaneImage(30)
-  x = makeTargetImage()
-  #x = flip2(x)
-  plot(x,10.0,"x")
-  return x
-
-def doPlane(x,sigma,type):
-  lpf = LocalPlaneFilter(sigma,0.001,type)
-  p = lpf.find(x)
-  y = Array.zerofloat(n1,n2)
-  lpf.applyForward(p,x,y)
-  plot(y,10.0,"y")
-  #df = DifferenceFilter()
-  #t = Array.zerofloat(n1,n2)
-  #df.applyInverse(y,t)
-  #df.applyInverseTranspose(t,y)
-  #plot(y,2.0)
-  #df.applyTranspose(y,t)
-  #df.apply(t,y)
-  z = Array.zerofloat(n1,n2)
-  lpf.applyInverse(p,y,z)
-  plot(z,10.0,"z")
-  print "max |z-x| =",Array.max(Array.abs(Array.sub(z,x)))
-  r = Array.sub(Array.randfloat(n1,n2),0.5)
-  r = smooth(r)
-  s = Array.zerofloat(n1,n2)
-  lpf.applyInverse(p,r,s)
-  plot(s)
-
-def goPef():
-  x = doImage()
-  doPef(x,sigma,type)
-
-def doPef(x,sigma,type):
-  lpf = LocalPlaneFilter(sigma,type)
-  p = lpf.find(x)
-  #plot(p[0],0.0,None)
-  #plot(p[1],0.0,None)
-  #plot(p[2],0.0,None)
-  y = Array.zerofloat(n1,n2)
-  lpf.applyForward(p,x,y)
-  plot(y,1.0,"y")
-  z = Array.sub(x,y)
-  plot(z,10.0,"z")
-
-def doSym():
-  x = makeTargetImage()
-  lpf = LocalPlaneFilter(sigma,type)
-  p = lpf.find(x)
-  Array.rand(p[1])
-  Array.rand(p[2])
-  x = Array.sub(Array.randfloat(n1,n2),0.5)
-  y = Array.sub(Array.randfloat(n1,n2),0.5)
-  ax = Array.zerofloat(n1,n2)
-  ay = Array.zerofloat(n1,n2)
-  lpf.applyForward(p,x,ax)
-  lpf.applyForward(p,y,ay)
-  yax = Array.sum(Array.mul(y,ax))
-  xay = Array.sum(Array.mul(x,ay))
-  print "yax =",yax," xay=",xay
-
 def smooth(x):
   n1 = len(x[0])
   n2 = len(x)
@@ -210,30 +214,6 @@ def smooth(x):
   bf.apply2Reverse(t,y)
   """
   return y
-
-def doTransposeTest():
-  lpf = LocalPlaneFilter(sigma)
-  xa = readImage()
-  pa = lpf.find(xa)
-  xb = Array.transpose(xa)
-  pb = lpf.find(xb)
-  pb[0] = Array.transpose(pb[0])
-  pb[1] = Array.transpose(pb[1])
-  pb[2] = Array.transpose(pb[2])
-  print "p0 error =",Array.max(Array.sub(pa[0],pb[0]))
-  n1 = len(xa[0])
-  n2 = len(xa)
-  for i2 in range(n2):
-    for i1 in range(n1):
-      p1 = pb[2][i2][i1]
-      p2 = pb[1][i2][i1]
-      if p1<0.0:
-        p1 = -p1
-        p2 = -p2
-      pb[1][i2][i1] = p1
-      pb[2][i2][i1] = p2
-  print "p1 error =",Array.max(Array.sub(pa[1],pb[1]))
-  print "p2 error =",Array.max(Array.sub(pa[2],pb[2]))
 
 def readImage():
   fileName = dataDir+"/seis/vg/junks.dat"
@@ -270,6 +250,13 @@ def flip2(f):
     Array.copy(f[n2-1-i2],g[i2])
   return g
 
+def getU(x):
+  n1 = len(x[0])
+  n2 = len(x)
+  u1 = Array.zerofloat(n1,n2)
+  u2 = Array.zerofloat(n1,n2)
+  lof.applyForNormal(x,u1,u2)
+  return u1,u2
 
 #############################################################################
 # plot
@@ -284,7 +271,6 @@ def plot(f,clip=0.0,png=None):
     s1 = Sampling(n1,1,-(n1-1)/2)
     s2 = Sampling(n2,1,-(n2-1)/2)
   pv = p.addPixels(s1,s2,f)
-  #pv.setColorModel(ColorMap.JET)
   if clip!=0.0:
     pv.setClips(-clip,clip)
   else:
@@ -292,10 +278,21 @@ def plot(f,clip=0.0,png=None):
   pv.setInterpolation(PixelsView.Interpolation.NEAREST)
   frame(p,png)
 
+def plotf(f,png=None):
+  n1 = len(f[0])
+  n2 = len(f)
+  p = panel()
+  pv = p.addPixels(f)
+  pv.setColorModel(ColorMap.JET)
+  pv.setInterpolation(PixelsView.Interpolation.LINEAR)
+  frame(p,png)
+
 def panel():
-  p = PlotPanel(PlotPanel.Orientation.X1DOWN_X2RIGHT)
-  p.addColorBar()
-  p.setColorBarWidthMinimum(widthColorBar)
+  p = PlotPanel(1,1,
+    PlotPanel.Orientation.X1DOWN_X2RIGHT,
+    PlotPanel.AxesPlacement.NONE)
+  #p.addColorBar()
+  #p.setColorBarWidthMinimum(widthColorBar)
   return p
 
 def frame(panel,png=None):
@@ -305,7 +302,7 @@ def frame(panel,png=None):
   frame.setSize(width,height)
   frame.setVisible(True)
   if png and pngDir:
-    frame.paintToPng(200,6,pngDir+"/"+png+".png")
+    frame.paintToPng(100,6,pngDir+"/"+png+".png")
   return frame
 
 #############################################################################

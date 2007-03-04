@@ -27,22 +27,16 @@ public class LocalPlaneFilter {
     FOMEL2, // Fomel's filter modified with coefficients a function of angle
     HALE1, // simplest finite-difference operators
     HALE2, // average of finite-difference operators
-    HALE3, // like HALE2 but with more care for variable coefficients
-    HALE4, // Claerbout's wavekill filter cascaded with transpose (SPD)
-    HALE5, // minimum-phase wavekill filter cascaded with transpose (SPD)
+    HALE2B, // like HALE2 but with more care for variable coefficients
+    HALE3, // Claerbout's wavekill filter cascaded with transpose (SPD)
+    HALE4, // minimum-phase wavekill filter cascaded with transpose (SPD)
   };
 
-  public LocalPlaneFilter(double sigma) {
-    this(sigma,Type.HALE1);
+  public LocalPlaneFilter(Type type) {
+    this(type,0.0);
   }
 
-  public LocalPlaneFilter(double sigma, Type type) {
-    this(sigma,0.0,type);
-  }
-
-  public LocalPlaneFilter(double sigma, double small, Type type) {
-    _rgfGradient = new RecursiveGaussianFilter(1.0);
-    _rgfSmoother = new RecursiveGaussianFilter(sigma);
+  public LocalPlaneFilter(Type type, double small) {
     _stability = (float)(1.0+small);
     _type = type;
     if (type==Type.CLAERBOUT1) {
@@ -55,120 +49,55 @@ public class LocalPlaneFilter {
       _filter6 = new Hale1Filter();
     } else if (type==Type.HALE2) {
       _filter6 = new Hale2Filter();
-    } else if (type==Type.HALE3) {
-      _filter6 = new Hale3Filter();
+    } else if (type==Type.HALE2B) {
+      _filter6 = new Hale2bFilter();
     }
-  }
-
-  /**
-   * Finds best-fitting local plane with estimate of planarity.
-   * @param x array with image in which to find planar features.
-   * @return array u of plane estimates. u[0] is planarity and
-   *  u[1] and u[2] are the components of the unit normal vector
-   *  in the 1st and 2nd dimensions.
-   */
-  public float[][][] find(float[][] x) {
-    int n1 = x[0].length;
-    int n2 = x.length;
-
-    // Gradient.
-    float[][] g1 = new float[n2][n1];
-    float[][] g2 = new float[n2][n1];
-    _rgfGradient.apply1X(x,g1);
-    _rgfGradient.applyX1(x,g2);
-
-    // Gradient products.
-    float[][] g11 = new float[n2][n1];
-    float[][] g12 = g1;
-    float[][] g22 = g2;
-    for (int i2=0; i2<n2; ++i2) {
-      for (int i1=0; i1<n1; ++i1) {
-        float g1i = g1[i2][i1];
-        float g2i = g2[i2][i1];
-        g11[i2][i1] = g1i*g1i;
-        g12[i2][i1] = g1i*g2i;
-        g22[i2][i1] = g2i*g2i;
-      }
-    }
-    
-    // Smoothed gradient products comprise the structure tensor.
-    float[][] gtt = new float[n2][n1];
-    _rgfSmoother.apply0X(g11,gtt);
-    _rgfSmoother.applyX0(gtt,g11);
-    _rgfSmoother.apply0X(g12,gtt);
-    _rgfSmoother.applyX0(gtt,g12);
-    _rgfSmoother.apply0X(g22,gtt);
-    _rgfSmoother.applyX0(gtt,g22);
-
-    // For each sample, the eigenvector corresponding to the largest
-    // eigenvalue is normal to the plane. The size of that eigenvalue
-    // is a measure of planarity in the interval [0,1].
-    float[][][] u = new float[3][][];
-    u[0] = g11;
-    u[1] = g12;
-    u[2] = g22;
-    float[][] a = new float[2][2];
-    float[][] v = new float[2][2];
-    float[] d = new float[2];
-    for (int i2=0; i2<n2; ++i2) {
-      for (int i1=0; i1<n1; ++i1) {
-        a[0][0] = g11[i2][i1];
-        a[0][1] = g12[i2][i1];
-        a[1][0] = g12[i2][i1];
-        a[1][1] = g22[i2][i1];
-        Eigen.solveSymmetric22(a,v,d);
-        u[0][i2][i1] = (d[0]-d[1])/(d[0]+d[1]);
-        float v1 = v[0][0];
-        float v2 = v[0][1];
-        if (v1<0.0f) {
-          v1 = -v1;
-          v2 = -v2;
-        }
-        u[1][i2][i1] = v1;
-        u[2][i2][i1] = v2;
-      }
-    }
-    return u;
   }
 
   /**
    * Applies this local plane filter.
    * Input and output arrays must be distinct.
-   * @param u array of plane estimates.
+   * @param u1 array of 1st components of normal vectors.
+   * @param u2 array of 2nd components of normal vectors.
    * @param x array with input image.
    * @param y array with output image.
    */
-  public void applyForward(float[][][] u, float[][] x, float[][] y) {
+  public void applyForward(
+    float[][] u1, float[][] u2, 
+    float[][] x, float[][] y) 
+  {
     if (_filter6!=null) {
-      applyForward(_filter6,u,x,y);
+      applyForward(_filter6,u1,u2,x,y);
+    } else if (_type==Type.HALE3) {
+      applyForwardSpd(u1,u2,x,y);
     } else if (_type==Type.HALE4) {
-      applyForwardSpd(u,x,y);
-    } else if (_type==Type.HALE5) {
-      SpdMpFilter.applyForward(_stability,u,x,y);
+      SpdMpFilter.applyForward(_stability,u1,u2,x,y);
     }
   }
 
   /**
    * Applies the inverse of this local plane filter.
-   * @param u array of plane estimates.
+   * @param u1 array of 1st components of normal vectors.
+   * @param u2 array of 2nd components of normal vectors.
    * @param x array with input image
    * @param y array with output image
    */
-  public void applyInverse(float[][][] u, float[][] x, float[][] y) {
+  public void applyInverse(
+    float[][] u1, float[][] u2, 
+    float[][] x, float[][] y) 
+  {
     if (_filter6!=null) {
-      applyInverse(_filter6,u,x,y);
+      applyInverse(_filter6,u1,u2,x,y);
+    } else if (_type==Type.HALE3) {
+      applyInverseSpdPc(u1,u2,x,y);
     } else if (_type==Type.HALE4) {
-      applyInverseSpdPc(u,x,y);
-    } else if (_type==Type.HALE5) {
-      SpdMpFilter.applyInverse(_stability,u,x,y);
+      SpdMpFilter.applyInverse(_stability,u1,u2,x,y);
     }
   }
 
   ///////////////////////////////////////////////////////////////////////////
   // private
 
-  private RecursiveGaussianFilter _rgfGradient; // used to find planes
-  private RecursiveGaussianFilter _rgfSmoother; // used to find planes
   private float _stability; // 1 plus a small number
   private Type _type; // filter type
   private Filter6 _filter6; // for 6-coefficient filters
@@ -196,20 +125,24 @@ public class LocalPlaneFilter {
      * Gets coefficients for specified normal unit-vector.
      * @param i1 sample index in 1st dimension.
      * @param i2 sample index in 2nd dimension.
-     * @param u planarity and normal vector.
+     * @param u1 array of 1st components of normal vectors.
+     * @param u2 array of 2nd components of normal vectors.
      * @param c array of computed coefficients.
      */
-    public void getCoefficients(int i1, int i2, float[][][] u, float[] c);
+    public void getCoefficients(int i1, int i2, 
+      float[][] u1, float[][] u2, float[] c);
   }
 
   // Simple Claerbout-Nichols wavekill filter (only 4 non-zero coefficients)
   // This quarter-plane filter is not zero-phase and not invertible.
   private static class Claerbout1Filter implements Filter6 {
-    public void getCoefficients(int i1, int i2, float[][][] u, float[] c) {
-      float u1 = u[1][i2][i1];
-      float u2 = u[2][i2][i1];
-      float um = 0.5f*(u1-u2);
-      float up = 0.5f*(u1+u2);
+    public void getCoefficients(int i1, int i2, 
+      float[][] u1, float[][] u2, float[] c) 
+    {
+      float u1i = u1[i2][i1];
+      float u2i = u2[i2][i1];
+      float um = 0.5f*(u1i-u2i);
+      float up = 0.5f*(u1i+u2i);
       c[0] = 0.0f;
       c[1] = um;
       c[2] = up;
@@ -223,12 +156,14 @@ public class LocalPlaneFilter {
   // Coefficients are multipled by 2 for consistency with other filters. 
   // Not invertible for steeper planes.
   private static class Fomel1Filter implements Filter6 {
-    public void getCoefficients(int i1, int i2, float[][][] u, float[] c) {
-      float u1 = u[1][i2][i1];
-      float u2 = u[2][i2][i1];
-      if (u1<U1MIN)
-        u1 = U1MIN;
-      float s = u2/u1;
+    public void getCoefficients(int i1, int i2, 
+      float[][] u1, float[][] u2, float[] c) 
+    {
+      float u1i = u1[i2][i1];
+      float u2i = u2[i2][i1];
+      if (u1i<U1MIN)
+        u1i = U1MIN;
+      float s = u2i/u1i;
       c[0] = 2.0f*(1.0f-s)*(2.0f-s)/12.0f;
       c[1] = 2.0f*(2.0f+s)*(2.0f-s)/6.0f;
       c[2] = 2.0f*(1.0f+s)*(2.0f+s)/12.0f;
@@ -244,13 +179,15 @@ public class LocalPlaneFilter {
   // Coefficients are multipled by 2 for consistency with other filters. 
   // Not invertible for steeper planes.
   private static class Fomel2Filter implements Filter6 {
-    public void getCoefficients(int i1, int i2, float[][][] u, float[] c) {
-      float u1 = u[1][i2][i1];
-      float u2 = u[2][i2][i1];
-      float t1 = 2.0f*u1;
-      c[0] = 2.0f*(u1-u2)*(t1-u2)/12.0f;
-      c[1] = 2.0f*(t1+u2)*(t1-u2)/6.0f;
-      c[2] = 2.0f*(u1+u2)*(t1+u2)/12.0f;
+    public void getCoefficients(int i1, int i2, 
+      float[][] u1, float[][] u2, float[] c) 
+    {
+      float u1i = u1[i2][i1];
+      float u2i = u2[i2][i1];
+      float t1i = 2.0f*u1i;
+      c[0] = 2.0f*(u1i-u2i)*(t1i-u2i)/12.0f;
+      c[1] = 2.0f*(t1i+u2i)*(t1i-u2i)/6.0f;
+      c[2] = 2.0f*(u1i+u2i)*(t1i+u2i)/12.0f;
       c[3] = -c[2];
       c[4] = -c[1];
       c[5] = -c[0];
@@ -259,14 +196,16 @@ public class LocalPlaneFilter {
 
   // Simple half-plane four-coefficient filter with stable inverse.
   private static class Hale1Filter implements Filter6 {
-    public void getCoefficients(int i1, int i2, float[][][] u, float[] c) {
-      float u1 = u[1][i2][i1];
-      float u2 = u[2][i2][i1];
-      c[0] = -0.5f*u2*(u1+u2);
+    public void getCoefficients(int i1, int i2, 
+      float[][] u1, float[][] u2, float[] c) 
+    {
+      float u1i = u1[i2][i1];
+      float u2i = u2[i2][i1];
+      c[0] = -0.5f*u2i*(u1i+u2i);
       c[1] =  1.0f;
-      c[2] = -0.5f*u2*(u1-u2);
+      c[2] =  0.5f*u2i*(u1i-u2i);
       c[3] =  0.0f;
-      c[4] = -0.5f*u1*u1;
+      c[4] = -u1i*u1i;
       c[5] =  0.0f;
     }
   }
@@ -275,11 +214,13 @@ public class LocalPlaneFilter {
   // Coefficients are simply computed for each sample.
   // Inverse is barely stable for constant coefficients.
   private static class Hale2Filter implements Filter6 {
-    public void getCoefficients(int i1, int i2, float[][][] u, float[] c) {
-      float u1 = u[1][i2][i1];
-      float u2 = u[2][i2][i1];
-      float um = 0.5f*(u1-u2);
-      float up = 0.5f*(u1+u2);
+    public void getCoefficients(int i1, int i2, 
+      float[][] u1, float[][] u2, float[] c) 
+    {
+      float u1i = u1[i2][i1];
+      float u2i = u2[i2][i1];
+      float um = 0.5f*(u1i-u2i);
+      float up = 0.5f*(u1i+u2i);
       c[0] = 2.0f*um*up;
       c[1] = 1.0f;
       c[2] = c[0];
@@ -305,10 +246,10 @@ public class LocalPlaneFilter {
   // response of the cascade of a quarter-plane wavekill filter and 
   // its transpose. Coefficients are tricky and costly to compute.
   // The inverse is barely stable for constant-coefficients.
-  private static class Hale3Filter implements Filter6 {
-    public void getCoefficients(int i1, int i2, float[][][] u, float[] c) {
-      float[][] u1 = u[1];
-      float[][] u2 = u[2];
+  private static class Hale2bFilter implements Filter6 {
+    public void getCoefficients(int i1, int i2, 
+      float[][] u1, float[][] u2, float[] c) 
+    {
       int n1 = u1[0].length;
       int n2 = u1.length;
       int j1 = min(i1+1,n1-1);
@@ -351,8 +292,8 @@ public class LocalPlaneFilter {
   }
 
   // Applys a 6-coefficient filter.
-  private void applyForward(
-    Filter6 filter, float[][][] u, float[][] x, float[][] y) 
+  private void applyForward(Filter6 filter, 
+    float[][] u1, float[][] u2, float[][] x, float[][] y) 
   {
     int n1 = x[0].length;
     int n2 = x.length;
@@ -363,15 +304,15 @@ public class LocalPlaneFilter {
     float[] x2 = x[i2];
     float[] y2 = y[i2];
     int i1 = 0;
-    filter.getCoefficients(i1,i2,u,c);
+    filter.getCoefficients(i1,i2,u1,u2,c);
     c[1] *= _stability;
     y2[i1] = c[0]*x2[i1+1]+c[1]*x2[i1];
     for (i1=1; i1<n1-1; ++i1) {
-      filter.getCoefficients(i1,i2,u,c);
+      filter.getCoefficients(i1,i2,u1,u2,c);
       c[1] *= _stability;
       y2[i1] = c[0]*x2[i1+1]+c[1]*x2[i1]+c[2]*x2[i1-1];
     }
-    filter.getCoefficients(i1,i2,u,c);
+    filter.getCoefficients(i1,i2,u1,u2,c);
     c[1] *= _stability;
     y2[i1] = c[1]*x2[i1]+c[2]*x2[i1-1];
 
@@ -381,17 +322,17 @@ public class LocalPlaneFilter {
       x2 = x[i2];
       y2 = y[i2];
       i1 = 0;
-      filter.getCoefficients(i1,i2,u,c);
+      filter.getCoefficients(i1,i2,u1,u2,c);
       c[1] *= _stability;
       y2[i1] = c[0]*x2 [i1+1]+c[1]*x2 [i1]
              + c[3]*x2m[i1+1]+c[4]*x2m[i1];
       for (i1=1; i1<n1-1; ++i1) {
-        filter.getCoefficients(i1,i2,u,c);
+        filter.getCoefficients(i1,i2,u1,u2,c);
         c[1] *= _stability;
         y2[i1] = c[0]*x2 [i1+1]+c[1]*x2 [i1]+c[2]*x2 [i1-1]
                + c[3]*x2m[i1+1]+c[4]*x2m[i1]+c[5]*x2m[i1-1];
       }
-      filter.getCoefficients(i1,i2,u,c);
+      filter.getCoefficients(i1,i2,u1,u2,c);
       c[1] *= _stability;
       y2[i1] = c[1]*x2 [i1]+c[2]*x2 [i1-1]
              + c[4]*x2m[i1]+c[5]*x2m[i1-1];
@@ -399,8 +340,8 @@ public class LocalPlaneFilter {
   }
 
   // Applys inverse of a 6-coefficient filter.
-  private void applyInverse(
-    Filter6 filter, float[][][] u, float[][] x, float[][] y) 
+  private void applyInverse(Filter6 filter,
+    float[][] u1, float[][] u2, float[][] x, float[][] y) 
   {
     int n1 = x[0].length;
     int n2 = x.length;
@@ -416,7 +357,7 @@ public class LocalPlaneFilter {
     float[] x2 = x[i2];
     float[] y2 = y[i2];
     for (int i1=0; i1<n1; ++i1) {
-      filter.getCoefficients(i1,i2,u,c);
+      filter.getCoefficients(i1,i2,u1,u2,c);
       c[1] *= _stability;
       r[i1] = x2[i1];
       ta[i1] = c[2];
@@ -431,20 +372,20 @@ public class LocalPlaneFilter {
       x2 = x[i2];
       y2 = y[i2];
       int i1 = 0;
-      filter.getCoefficients(i1,i2,u,c);
+      filter.getCoefficients(i1,i2,u1,u2,c);
       c[1] *= _stability;
       tb[i1] = c[1];
       tc[i1] = c[0];
       r[i1] = x2[i1]-c[3]*y2m[i1+1]-c[4]*y2m[i1];
       for (i1=1; i1<n1-1; ++i1) {
-        filter.getCoefficients(i1,i2,u,c);
+        filter.getCoefficients(i1,i2,u1,u2,c);
         c[1] *= _stability;
         ta[i1] = c[2];
         tb[i1] = c[1];
         tc[i1] = c[0];
         r[i1] = x2[i1]-c[3]*y2m[i1+1]-c[4]*y2m[i1]-c[5]*y2m[i1-1];
       }
-      filter.getCoefficients(i1,i2,u,c);
+      filter.getCoefficients(i1,i2,u1,u2,c);
       c[1] *= _stability;
       ta[i1] = c[2];
       tb[i1] = c[1];
@@ -456,11 +397,11 @@ public class LocalPlaneFilter {
   // Symmetric-positive definite filter. Applies the quarter-plane
   // wavekill filter followed by the transpose of that filter. Care
   // is taken to get the transpose correct for variable coefficients.
-  private void applyForwardSpd(float[][][] u, float[][] x, float[][] y) {
+  private void applyForwardSpd(
+    float[][] u1, float[][] u2, float[][] x, float[][] y) 
+  {
     int n1 = x[0].length;
     int n2 = x.length;
-    float[][] u1 = u[1];
-    float[][] u2 = u[2];
     float u1i,u2i,um,up,umy,upy;
     Array.copy(x,y);
 
@@ -528,7 +469,9 @@ public class LocalPlaneFilter {
   }
 
   // Inverse of symmetric positive-definite filter without pre-conditioning.
-  private void applyInverseSpd(float[][][] u, float[][] x, float[][] y) {
+  private void applyInverseSpd(
+    float[][] u1, float[][] u2, float[][] x, float[][] y) 
+  {
     int n1 = x[0].length;
     int n2 = x.length;
     float[][] r = new float[n2][n1]; // r
@@ -542,7 +485,7 @@ public class LocalPlaneFilter {
     //System.out.println("small="+small);
     int niter;
     for (niter=0; niter<200 && rr>small; ++niter) {
-      applyForwardSpd(u,s,t);
+      applyForwardSpd(u1,u2,s,t);
       float alpha = rr/dot(s,t);
       saxpy( alpha,s,y);
       saxpy(-alpha,t,r);
@@ -560,8 +503,10 @@ public class LocalPlaneFilter {
   }
 
   // Inverse of symmetric positive-definite filter with pre-conditioning.
-  private void applyInverseSpdPc(float[][][] u, float[][] x, float[][] y) {
-    SpdMpFilter smf = new SpdMpFilter(_stability,u);
+  private void applyInverseSpdPc(
+    float[][] u1, float[][] u2, float[][] x, float[][] y) 
+  {
+    SpdMpFilter smf = new SpdMpFilter(_stability,u1,u2);
     int n1 = x[0].length;
     int n2 = x.length;
     float[][] r = new float[n2][n1]; // r
@@ -575,8 +520,8 @@ public class LocalPlaneFilter {
     float small = rr*0.00001f;
     //System.out.println("small="+small);
     int niter;
-    for (niter=0; niter<10 && rr>small; ++niter) {
-      applyForwardSpd(u,s,t);
+    for (niter=0; niter<100 && rr>small; ++niter) {
+      applyForwardSpd(u1,u2,s,t);
       float alpha = rr/dot(s,t);
       saxpy( alpha,s,y);
       saxpy(-alpha,t,r);
@@ -618,8 +563,8 @@ public class LocalPlaneFilter {
 
   // Symmetric positive-definite minimum-phase filter.
   private static class SpdMpFilter {
-    SpdMpFilter(float stability, float[][][] u) {
-      _a2 = new A2(stability,u);
+    SpdMpFilter(float stability, float[][] u1, float[][] u2) {
+      _a2 = new A2(stability,u1,u2);
     }
     void applyForward(float[][] x, float[][] y) {
       _lcf.apply(_a2,x,y);
@@ -630,25 +575,25 @@ public class LocalPlaneFilter {
       _lcf.applyInverse(_a2,y,y);
     }
     static void applyForward(
-      float stability, float[][][] u, float[][] x, float[][] y) 
+      float stability, float[][] u1, float[][] u2, float[][] x, float[][] y) 
     {
-      A2 a2 = new A2(stability,u);
+      A2 a2 = new A2(stability,u1,u2);
       _lcf.apply(a2,x,y);
       _lcf.applyTranspose(a2,y,y);
     }
     static void applyInverse(
-      float stability, float[][][] u, float[][] x, float[][] y) 
+      float stability, float[][] u1, float[][] u2, float[][] x, float[][] y) 
     {
-      A2 a2 = new A2(stability,u);
+      A2 a2 = new A2(stability,u1,u2);
       _lcf.applyInverseTranspose(a2,x,y);
       _lcf.applyInverse(a2,y,y);
     }
     private static class A2 implements LocalCausalFilter.A2 {
-      A2(float stability, float[][][] u) {
+      A2(float stability, float[][] u1, float[][] u2) {
         if (SAMPLE_THETA) {
-          _index = indexTheta(u);
+          _index = indexTheta(u1,u2);
         } else {
-          _index = indexU2(u);
+          _index = indexU2(u1,u2);
         }
         _istab = 0;
         for (int istab=1; istab<NSTAB; ++istab) {
@@ -683,12 +628,10 @@ public class LocalPlaneFilter {
         makeLcfU2();
       }
     }
-    private static int[][] indexTheta(float[][][] u) {
-      int n1 = u[0][0].length;
-      int n2 = u[0].length;
+    private static int[][] indexTheta(float[][] u1, float[][] u2) {
+      int n1 = u1[0].length;
+      int n2 = u1.length;
       int[][] i = new int[n2][n1];
-      float[][] u1 = u[1];
-      float[][] u2 = u[2];
       for (int i2=0; i2<n2; ++i2) {
         for (int i1=0; i1<n1; ++i1) {
           float theta = asin(u2[i2][i1]);
@@ -726,12 +669,10 @@ public class LocalPlaneFilter {
       }
       _lcf = new LocalCausalFilter(lag1,lag2);
     }
-    private static int[][] indexU2(float[][][] u) {
-      int n1 = u[0][0].length;
-      int n2 = u[0].length;
+    private static int[][] indexU2(float[][] u1, float[][] u2) {
+      int n1 = u1[0].length;
+      int n2 = u1.length;
       int[][] i = new int[n2][n1];
-      float[][] u1 = u[1];
-      float[][] u2 = u[2];
       for (int i2=0; i2<n2; ++i2) {
         for (int i1=0; i1<n1; ++i1) {
           float u2i = u2[i2][i1];
