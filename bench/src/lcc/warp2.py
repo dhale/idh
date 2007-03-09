@@ -23,8 +23,8 @@ width = 600
 height = 622
 widthColorBar = 0
 dataDir = "/data"
-pngDir = "."
-#pngDir = None
+#pngDir = "."
+pngDir = None
 
 n1 = 315
 n2 = 315
@@ -48,8 +48,8 @@ def main(args):
   #goImages()
   #goLcc()
   #goLagSearch()
-  #goSequentialShifts()
-  doExact()
+  goSequentialShifts()
+  #doExact()
   return
 
 def goLcc():

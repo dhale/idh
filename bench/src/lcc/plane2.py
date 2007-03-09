@@ -21,8 +21,8 @@ width = 500
 height = 520
 widthColorBar = 80
 dataDir = "/data"
-pngDir = "./png"
-#pngDir = None
+#pngDir = "./png"
+pngDir = None
 
 n1 = 315
 n2 = 315
@@ -38,7 +38,14 @@ def main(args):
   #goPlane()
   #goAmp()
   goNotch()
+  #goIdeal()
   return
+
+def goIdeal():
+  for dip in [20,40,60,80]:
+    suffix = str(dip)
+    ai = makeIdeal(dip)
+    plotf(ai,"ai"+suffix)
 
 def goLinear():
   x = readImage()
@@ -98,6 +105,26 @@ def makeImpulse(angle):
   u1 = Array.fillfloat(c,n1,n2)
   u2 = Array.fillfloat(s,n1,n2)
   return x,u1,u2
+
+def makeIdeal(angle):
+  n1 = 105
+  n2 = 105
+  j1 = (n1-1)/2
+  j2 = (n2-1)/2
+  s1 = 1.0/(n1-1)
+  s2 = 1.0/(n2-1)
+  a = angle*pi/180.0
+  ai = Array.zerofloat(n1,n2)
+  for i2 in range(n2):
+    k2 = (i2-j2)*s2
+    for i1 in range(n1):
+      k1 = (i1-j1)*s1
+      if k1==0.0 and k2==0.0:
+        ai[i2][i1] = 0.0
+      else:
+        t = atan2(k2,k1)
+        ai[i2][i1] = pow(abs(sin(t-a)),1.0)
+  return ai
 
 def doImage():
   #x = readImage()
