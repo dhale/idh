@@ -77,6 +77,7 @@ public class LocalPlaneFilter {
 
   /**
    * Applies the inverse of this local plane filter.
+   * Input and output arrays must be distinct.
    * @param u1 array of 1st components of normal vectors.
    * @param u2 array of 2nd components of normal vectors.
    * @param x array with input image
@@ -141,8 +142,8 @@ public class LocalPlaneFilter {
     {
       float u1i = u1[i2][i1];
       float u2i = u2[i2][i1];
-      float um = 0.5f*(u1i-u2i);
-      float up = 0.5f*(u1i+u2i);
+      float um = (u1i-u2i);
+      float up = (u1i+u2i);
       c[0] = 0.0f;
       c[1] = um;
       c[2] = up;
@@ -394,77 +395,72 @@ public class LocalPlaneFilter {
     }
   }
 
-  // Symmetric-positive definite filter. Applies the quarter-plane
-  // wavekill filter followed by the transpose of that filter. Care
-  // is taken to get the transpose correct for variable coefficients.
+  // Directional Laplacian filter.
   private void applyForwardSpd(
     float[][] u1, float[][] u2, float[][] x, float[][] y) 
   {
     int n1 = x[0].length;
     int n2 = x.length;
-    float u1i,u2i,um,up,umy,upy;
-    Array.copy(x,y);
-
-    // Apply plane filter.
-    for (int i2=n2-1; i2>0; --i2) {
-      float[] y2 = y[i2];
-      float[] y2m = y[i2-1];
-      for (int i1=n1-1; i1>0; --i1) {
-        u1i = u1[i2][i1]; u2i = u2[i2][i1]; 
-        um = 0.5f*(u1i-u2i); up = 0.5f*(u1i+u2i);
-        y2[i1] = um*(y2[i1]-y2m[i1-1])+up*(y2[i1-1]-y2m[i1]);
-      }
-      u1i = u1[i2][0]; u2i = u2[i2][0]; 
-      um = 0.5f*(u1i-u2i); up = 0.5f*(u1i+u2i);
-      y2[0] = um*y2[0]-up*y2m[0];
-    }
-    for (int i1=n1-1; i1>0; --i1) {
-      u1i = u1[0][i1]; u2i = u2[0][i1]; 
-      um = 0.5f*(u1i-u2i); up = 0.5f*(u1i+u2i);
-      y[0][i1] = um*y[0][i1]+up*y[0][i1-1];
-    }
-    u1i = u1[0][0]; u2i = u2[0][0]; 
-    um = 0.5f*(u1i-u2i); up = 0.5f*(u1i+u2i);
-    y[0][0] = um*y[0][0];
-
-    // Apply transpose of plane filter (with care for variable coefficients).
-    u1i = u1[0][0]; u2i = u2[0][0]; 
-    um = 0.5f*(u1i-u2i); up = 0.5f*(u1i+u2i);
-    umy = um*y[0][0]; upy = up*y[0][0];
-    y[0][0] = umy;
-    for (int i1=1; i1<n1; ++i1) {
-      u1i = u1[0][i1]; u2i = u2[0][i1]; 
-      um = 0.5f*(u1i-u2i); up = 0.5f*(u1i+u2i);
-      umy = um*y[0][i1]; upy = up*y[0][i1];
-      y[0][i1] = umy;
-      y[0][i1-1] += upy;
-    }
-    for (int i2=1; i2<n2; ++i2) {
-      float[] y2 = y[i2];
-      float[] y2m = y[i2-1];
-      u1i = u1[i2][0]; u2i = u2[i2][0]; 
-      um = 0.5f*(u1i-u2i); up = 0.5f*(u1i+u2i);
-      umy = um*y2[0]; upy = up*y2[0];
-      y2[0] = umy;
-      y2m[0] -= upy;
-      for (int i1=1; i1<n1; ++i1) {
-        u1i = u1[i2][i1]; u2i = u2[i2][i1]; 
-        um = 0.5f*(u1i-u2i); up = 0.5f*(u1i+u2i);
-        umy = um*y2[i1]; upy = up*y2[i1];
-        y2[i1] = umy;
-        y2[i1-1] += upy;
-        y2m[i1] -= upy;
-        y2m[i1-1] -= umy;
-      }
-    }
-
-    // Stability.
-    float small = _stability-1.0f;
+    float epsilon = _stability-1.0f;
     for (int i2=0; i2<n2; ++i2) {
-      float[] x2 = x[i2];
-      float[] y2 = y[i2];
-      for (int i1=0; i1<n1; ++i1)
-        y2[i1] += small*x2[i1];
+      for (int i1=0; i1<n1; ++i1) {
+        float u1i = u1[i2][i1];
+        float u2i = u2[i2][i1];
+        float a11 = 1.0f-u1i*u1i;
+        float a12 =     -u1i*u2i;
+        float a22 = 1.0f-u2i*u2i;
+        float x00 = x[i2][i1];
+        float x01 = (i1>0)?x[i2][i1-1]:0.0f;
+        float x10 = (i2>0)?x[i2-1][i1]:0.0f;
+        float x11 = (i2>0 && i1>0)?x[i2-1][i1-1]:0.0f;
+        float xa = x00-x11;
+        float xb = x01-x10;
+        float x1 = 0.5f*(xa-xb);
+        float x2 = 0.5f*(xa+xb);
+        float y1 = a11*x1+a12*x2;
+        float y2 = a12*x1+a22*x2;
+        float ya = 0.5f*(y1+y2);
+        float yb = 0.5f*(y1-y2);
+        y[i2][i1] = ya + epsilon*x[i2][i1];
+        if (i1>0) y[i2][i1-1] -= yb;
+        if (i2>0) y[i2-1][i1] += yb;
+        if (i2>0 && i1>0) y[i2-1][i1-1] -= ya;
+      }
+    }
+  }
+
+  // Directional isotropic Laplacian filter.
+  // The first-derivative approximation used here is consistent
+  // with an O(h^2) isotropic approximation to the Laplacian.
+  // NOTE: if we use this, must also change preconditioner.
+  private void applyForwardSpdIsotropic(
+    float[][] u1, float[][] u2, float[][] x, float[][] y) 
+  {
+    float r = 0.5f*(1.0f+sqrt(2.0f/3.0f));
+    float s = 0.5f*(1.0f-sqrt(2.0f/3.0f));
+    int n1 = x[0].length;
+    int n2 = x.length;
+    float epsilon = _stability-1.0f;
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        float u1i = u1[i2][i1];
+        float u2i = u2[i2][i1];
+        float a11 = 1.0f-u1i*u1i;
+        float a12 =     -u1i*u2i;
+        float a22 = 1.0f-u2i*u2i;
+        float x00 = x[i2][i1];
+        float x01 = (i1>0)?x[i2][i1-1]:0.0f;
+        float x10 = (i2>0)?x[i2-1][i1]:0.0f;
+        float x11 = (i2>0 && i1>0)?x[i2-1][i1-1]:0.0f;
+        float x1 = r*(x00-x01)+s*(x10-x11);
+        float x2 = r*(x00-x10)+s*(x01-x11);
+        float y1 = a11*x1+a12*x2;
+        float y2 = a12*x1+a22*x2;
+        y[i2][i1] = r*y1+r*y2 + epsilon*x[i2][i1];
+        if (i1>0) y[i2][i1-1] -= r*y1-s*y2;
+        if (i2>0) y[i2-1][i1  ] += s*y1-r*y2;
+        if (i2>0 && i1>0) y[i2-1][i1-1] -= s*y1+s*y2;
+      }
     }
   }
 
@@ -558,6 +554,80 @@ public class LocalPlaneFilter {
       float[] y2 = y[i2];
       for (int i1=0; i1<n1; ++i1)
         y2[i1] += a*x2[i1];
+    }
+  }
+
+  // Symmetric-positive definite filter. Applies the quarter-plane
+  // wavekill filter followed by the transpose of that filter. Care
+  // is taken to get the transpose correct for variable coefficients.
+  private void applyForwardSpdOld(
+    float[][] u1, float[][] u2, float[][] x, float[][] y) 
+  {
+    int n1 = x[0].length;
+    int n2 = x.length;
+    float u1i,u2i,um,up,umy,upy;
+    Array.copy(x,y);
+
+    // Apply plane filter.
+    for (int i2=n2-1; i2>0; --i2) {
+      float[] y2 = y[i2];
+      float[] y2m = y[i2-1];
+      for (int i1=n1-1; i1>0; --i1) {
+        u1i = u1[i2][i1]; u2i = u2[i2][i1]; 
+        um = 0.5f*(u1i-u2i); up = 0.5f*(u1i+u2i);
+        y2[i1] = um*(y2[i1]-y2m[i1-1])+up*(y2[i1-1]-y2m[i1]);
+      }
+      u1i = u1[i2][0]; u2i = u2[i2][0]; 
+      um = 0.5f*(u1i-u2i); up = 0.5f*(u1i+u2i);
+      y2[0] = um*y2[0]-up*y2m[0];
+    }
+    for (int i1=n1-1; i1>0; --i1) {
+      u1i = u1[0][i1]; u2i = u2[0][i1]; 
+      um = 0.5f*(u1i-u2i); up = 0.5f*(u1i+u2i);
+      y[0][i1] = um*y[0][i1]+up*y[0][i1-1];
+    }
+    u1i = u1[0][0]; u2i = u2[0][0]; 
+    um = 0.5f*(u1i-u2i); up = 0.5f*(u1i+u2i);
+    y[0][0] = um*y[0][0];
+
+    // Apply transpose of plane filter (with care for variable coefficients).
+    u1i = u1[0][0]; u2i = u2[0][0]; 
+    um = 0.5f*(u1i-u2i); up = 0.5f*(u1i+u2i);
+    umy = um*y[0][0]; upy = up*y[0][0];
+    y[0][0] = umy;
+    for (int i1=1; i1<n1; ++i1) {
+      u1i = u1[0][i1]; u2i = u2[0][i1]; 
+      um = 0.5f*(u1i-u2i); up = 0.5f*(u1i+u2i);
+      umy = um*y[0][i1]; upy = up*y[0][i1];
+      y[0][i1] = umy;
+      y[0][i1-1] += upy;
+    }
+    for (int i2=1; i2<n2; ++i2) {
+      float[] y2 = y[i2];
+      float[] y2m = y[i2-1];
+      u1i = u1[i2][0]; u2i = u2[i2][0]; 
+      um = 0.5f*(u1i-u2i); up = 0.5f*(u1i+u2i);
+      umy = um*y2[0]; upy = up*y2[0];
+      y2[0] = umy;
+      y2m[0] -= upy;
+      for (int i1=1; i1<n1; ++i1) {
+        u1i = u1[i2][i1]; u2i = u2[i2][i1]; 
+        um = 0.5f*(u1i-u2i); up = 0.5f*(u1i+u2i);
+        umy = um*y2[i1]; upy = up*y2[i1];
+        y2[i1] = umy;
+        y2[i1-1] += upy;
+        y2m[i1] -= upy;
+        y2m[i1-1] -= umy;
+      }
+    }
+
+    // Stability.
+    float small = _stability-1.0f;
+    for (int i2=0; i2<n2; ++i2) {
+      float[] x2 = x[i2];
+      float[] y2 = y[i2];
+      for (int i1=0; i1<n1; ++i1)
+        y2[i1] += small*x2[i1];
     }
   }
 

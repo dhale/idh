@@ -33,8 +33,8 @@ lof = LocalOrientFilter(8)
 # functions
 
 def main(args):
+  #doSymTest()
   #goLinear()
-  #doSym()
   #goPlane()
   #goAmp()
   goNotch()
@@ -103,7 +103,7 @@ def makeImpulse(angle):
   x = Array.zerofloat(n1,n2)
   x[(n2-1)/2][(n1-1)/2] = 1.0
   u1 = Array.fillfloat(c,n1,n2)
-  u2 = Array.fillfloat(s,n1,n2)
+  u2 = Array.fillfloat(-s,n1,n2)
   return x,u1,u2
 
 def makeIdeal(angle):
@@ -122,7 +122,7 @@ def makeIdeal(angle):
       if k1==0.0 and k2==0.0:
         ai[i2][i1] = 0.0
       else:
-        t = atan2(k2,k1)
+        t = atan2(-k2,k1)
         ai[i2][i1] = pow(abs(sin(t-a)),1.0)
   return ai
 
@@ -155,12 +155,17 @@ def goPlane():
     doPlane(x,LocalPlaneFilter.Type.HALE2,"h2"+s)
     doPlane(x,LocalPlaneFilter.Type.HALE3,"h3"+s)
 
+def makeRandom():
+  r = Random(314159)
+  return Array.sub(Array.randfloat(r,n1,n2),0.5)
+
 def doPlane(x,type,png):
   u1,u2 = getU(x)
   lpf = LocalPlaneFilter(type,small)
   y = Array.zerofloat(n1,n2)
   z = Array.zerofloat(n1,n2)
-  r = Array.sub(Array.randfloat(n1,n2),0.5)
+  #r = Array.sub(Array.randfloat(n1,n2),0.5)
+  r = makeRandom()
   r = smooth(r)
   s = Array.zerofloat(n1,n2)
   lpf.applyForward(u1,u2,x,y)
@@ -178,7 +183,7 @@ def doAmp(dip,type,png=None):
   ah = frequencyResponse(h)
   plotf(ah,png)
 
-def doSym():
+def doSymTest():
   x = makeTargetImage()
   lpf = LocalPlaneFilter(LocalPlaneFilter.Type.HALE3)
   u1 = Array.randfloat(n1,n2)
