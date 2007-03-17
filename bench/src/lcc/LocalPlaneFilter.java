@@ -557,6 +557,137 @@ public class LocalPlaneFilter {
     }
   }
 
+  // Directional Laplacian filter.
+  private void applyForwardSpd(
+    float[][][] u1, float[][][] u2, float[][][] u3,
+    float[][][] x, float[][][] y) 
+  {
+    int n1 = x[0][0].length;
+    int n2 = x[0].length;
+    int n3 = x.length;
+    float epsilon = _stability-1.0f;
+    for (int i3=0; i3<n3; ++i3) {
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          float u1i = u1[i3][i2][i1];
+          float u2i = u2[i3][i2][i1];
+          float u3i = u3[i3][i2][i1];
+          float a11 = 1.0f-u1i*u1i;
+          float a22 = 1.0f-u2i*u2i;
+          float a33 = 1.0f-u3i*u3i;
+          float a12 =     -u1i*u2i;
+          float a13 =     -u1i*u3i;
+          float a23 =     -u2i*u3i;
+          float x000 = x[i3][i2][i1];
+          float x001 = (i1>0)?x[i3][i2][i1-1]:0.0f;
+          float x010 = (i2>0)?x[i3][i2-1][i1]:0.0f;
+          float x100 = (i3>0)?x[i3-1][i2][i1]:0.0f;
+          float x011 = (i2>0 && i1>0)?x[i3][i2-1][i1-1]:0.0f;
+          float x101 = (i3>0 && i1>0)?x[i3-1][i2][i1-1]:0.0f;
+          float x110 = (i3>0 && i2>0)?x[i3-1][i2-1][i1]:0.0f;
+          float x111 = (i3>0 && i2>0 && i1>0)?x[i3-1][i2-1][i1-1]:0.0f;
+          //float x1 = 0.25f*(x000+x010+x100+x110-x001-x011-x101-x111);
+          //float x2 = 0.25f*(x000+x001+x100+x101-x010-x011-x110-x111);
+          //float x3 = 0.25f*(x000+x001+x010+x011-x100-x101-x110-x111);
+          float xa = x000-x111;
+          float xb = x001-x110;
+          float xc = x010-x101;
+          float xd = x100-x011;
+          float x1 = 0.25f*(xa-xb+xc+xd);
+          float x2 = 0.25f*(xa+xb-xc+xd);
+          float x3 = 0.25f*(xa+xb+xc-xd);
+          float y1 = a11*x1+a12*x2+a13*x3;
+          float y2 = a12*x1+a22*x2+a23*x3;
+          float y3 = a13*x1+a23*x2+a33*x3;
+          float ya = 0.25f*(y1+y2+y3);
+          float yb = 0.25f*(y1-y2+y3);
+          float yc = 0.25f*(y1+y2-y3);
+          float yd = 0.25f*(y1-y2-y3);
+          y[i3][i2][i1] = ya + epsilon*x[i3][i2][i1];
+          if (i1>0) y[i3][i2][i1-1] -= yd;
+          if (i2>0) y[i3][i2-1][i1] += yb;
+          if (i3>0) y[i3-1][i2][i1] += yc;
+          if (i2>0 && i1>0) y[i3][i2-1][i1-1] -= yc;
+          if (i3>0 && i1>0) y[i3-1][i2][i1-1] -= yb;
+          if (i3>0 && i2>0) y[i3-1][i2-1][i1] += yd;
+          if (i3>0 && i2>0 && i1>0) y[i3-1][i2-1][i1-1] -= ya;
+        }
+      }
+    }
+  }
+
+  // Inverse of symmetric positive-definite filter without pre-conditioning.
+  private void applyInverseSpd(
+    float[][][] u1, float[][][] u2, float[][][] u3,
+    float[][][] x, float[][][] y) 
+  {
+    int n1 = x[0][0].length;
+    int n2 = x[0].length;
+    int n3 = x.length;
+    float[][][] r = new float[n3][n2][n1]; // r
+    float[][][] s = new float[n3][n2][n1]; // d
+    float[][][] t = new float[n3][n2][n1]; // q
+    Array.zero(y);
+    Array.copy(x,r);
+    Array.copy(r,s);
+    float rr = dot(r,r);
+    float small = rr*0.00001f;
+    System.out.println("small="+small);
+    int niter;
+    for (niter=0; niter<200 && rr>small; ++niter) {
+      applyForwardSpd(u1,u2,u3,s,t);
+      float alpha = rr/dot(s,t);
+      saxpy( alpha,s,y);
+      saxpy(-alpha,t,r);
+      float rrold = rr;
+      rr = dot(r,r);
+      float beta = rr/rrold;
+      for (int i3=0; i3<n3; ++i3) {
+        float[][] r3 = r[i3];
+        float[][] s3 = s[i3];
+        for (int i2=0; i2<n2; ++i2) {
+          float[] r32 = r3[i2];
+          float[] s32 = s3[i2];
+          for (int i1=0; i1<n1; ++i1)
+            s32[i1] = r32[i1]+beta*s32[i1];
+        }
+      }
+      System.out.println("niter="+niter+" rr="+rr);
+    }
+  }
+  private static float dot(float[][][] x, float[][][] y) {
+    int n1 = x[0][0].length;
+    int n2 = x[0].length;
+    int n3 = x.length;
+    double s = 0.0;
+    for (int i3=0; i3<n3; ++i3) {
+      float[][] x3 = x[i3];
+      float[][] y3 = y[i3];
+      for (int i2=0; i2<n2; ++i2) {
+        float[] x32 = x3[i2];
+        float[] y32 = y3[i2];
+        for (int i1=0; i1<n1; ++i1)
+          s += x32[i1]*y32[i1];
+      }
+    }
+    return (float)s;
+  }
+  private static void saxpy(float a, float[][][] x, float[][][] y) {
+    int n1 = x[0][0].length;
+    int n2 = x[0].length;
+    int n3 = x.length;
+    for (int i3=0; i3<n3; ++i3) {
+      float[][] x3 = x[i3];
+      float[][] y3 = y[i3];
+      for (int i2=0; i2<n2; ++i2) {
+        float[] x32 = x3[i2];
+        float[] y32 = y3[i2];
+        for (int i1=0; i1<n1; ++i1)
+          y32[i1] += a*x32[i1];
+      }
+    }
+  }
+
   // Symmetric-positive definite filter. Applies the quarter-plane
   // wavekill filter followed by the transpose of that filter. Care
   // is taken to get the transpose correct for variable coefficients.
