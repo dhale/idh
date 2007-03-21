@@ -42,6 +42,7 @@ public class LocalDipFilter {
 
   /**
    * Use of minimum-phase filter factorization.
+   * <em>Factorization is not yet implemented for 3-D filters.</em>
    * <dl>
    * <dt>NOT<dd>
    * not used
@@ -149,6 +150,86 @@ public class LocalDipFilter {
     applyInverse(0.0f,sn,u2,t,y);
   }
 
+  /**
+   * Applies this local dip filter.
+   * Input and output arrays must be distinct.
+   * @param sd small parameter that controls width of dip filter.
+   * @param sn small parameter that controls width of notch filter.
+   * @param u2 array of 2nd components of normal vectors.
+   * @param u3 array of 3rd components of normal vectors.
+   * @param x array with input image.
+   * @param y array with output image.
+   */
+  public void applyForward(
+    float sd, float sn, 
+    float[][][] u2, float[][][] u3, float[][][] x, float[][][] y) 
+  {
+    if (_factor!=Factor.ALL) {
+      applyForwardNot(sd,sn,u2,u3,x,y);
+    } else {
+      applyForwardNot(sd,sn,u2,u3,x,y);
+    }
+  }
+
+  /**
+   * Applies the inverse of this local dip filter.
+   * Input and output arrays must be distinct.
+   * @param sd small parameter that controls width of dip filter.
+   * @param sn small parameter that controls width of notch filter.
+   * @param u2 array of 2nd components of normal vectors.
+   * @param u3 array of 3rd components of normal vectors.
+   * @param x array with input image
+   * @param y array with output image
+   */
+  public void applyInverse(
+    float sd, float sn, 
+    float[][][] u2, float[][][] u3, float[][][] x, float[][][] y) 
+  {
+    if (_factor==Factor.NOT) {
+      applyInverseNot(sd,sn,u2,u3,x,y);
+    } else if (_factor==Factor.PCG) {
+      applyInverseNot(sd,sn,u2,u3,x,y);
+    } else {
+      applyInverseNot(sd,sn,u2,u3,x,y);
+    }
+  }
+
+  /**
+   * Applies a dip filter comprised of forward and inverse filters.
+   * Input and output arrays must be distinct.
+   * @param sd small parameter that controls width of dip filter.
+   *  This parameter is used for the inverse filter only.
+   * @param u2 array of 2nd components of normal vectors.
+   * @param u3 array of 3rd components of normal vectors.
+   * @param x array with input image.
+   * @param y array with output image.
+   */
+  public void applyDip(
+    float sd, float[][][] u2, float[][][] u3, float[][][] x, float[][][] y) 
+  {
+    float[][][] t = new float[x.length][x[0].length][x[0][0].length];
+    applyForward(0.0f,0.0f,u2,u3,x,t);
+    applyInverse(sd,0.0f,u2,u3,t,y);
+  }
+
+  /**
+   * Applies a notch filter comprised of forward and inverse filters.
+   * Input and output arrays must be distinct.
+   * @param sn small parameter that controls width of notch filter.
+   *  This parameter is used for the inverse filter only.
+   * @param u2 array of 2nd components of normal vectors.
+   * @param u3 array of 3rd components of normal vectors.
+   * @param x array with input image.
+   * @param y array with output image.
+   */
+  public void applyNotch(
+    float sn, float[][][] u2, float[][][] u3, float[][][] x, float[][][] y) 
+  {
+    float[][][] t = new float[x.length][x[0].length][x[0][0].length];
+    applyForward(0.0f,0.0f,u2,u3,x,t);
+    applyInverse(0.0f,sn,u2,u3,t,y);
+  }
+
   ///////////////////////////////////////////////////////////////////////////
   // private
 
@@ -223,6 +304,42 @@ public class LocalDipFilter {
         if (i1>0) y[i2][i1-1] -= yb;
         if (i2>0) y[i2-1][i1] += yb;
         if (i2>0 && i1>0) y[i2-1][i1-1] -= ya;
+      }
+    }
+  }
+
+  // Directional isotropic Laplacian filter.
+  // The first-derivative approximation used here is consistent
+  // with an O(h^2) isotropic approximation to the Laplacian.
+  // NOTE: if we use this, must also change preconditioner.
+  private void applyForwardIso(
+    float sd, float sn, float[][] u2, float[][] x, float[][] y) 
+  {
+    float aone = 1.0f+sd;
+    float aeps = sn;
+    float r = 0.5f*(1.0f+sqrt(2.0f/3.0f));
+    float s = 0.5f*(1.0f-sqrt(2.0f/3.0f));
+    int n1 = x[0].length;
+    int n2 = x.length;
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        float u2i = u2[i2][i1];
+        float u1i = sqrt(1.0f-u2i*u2i);
+        float a11 = aone-u1i*u1i;
+        float a12 =     -u1i*u2i;
+        float a22 = aone-u2i*u2i;
+        float x00 = x[i2][i1];
+        float x01 = (i1>0)?x[i2][i1-1]:0.0f;
+        float x10 = (i2>0)?x[i2-1][i1]:0.0f;
+        float x11 = (i2>0 && i1>0)?x[i2-1][i1-1]:0.0f;
+        float x1 = r*(x00-x01)+s*(x10-x11);
+        float x2 = r*(x00-x10)+s*(x01-x11);
+        float y1 = a11*x1+a12*x2;
+        float y2 = a12*x1+a22*x2;
+        y[i2][i1] = r*(y1+y2)+aeps*x[i2][i1];
+        if (i1>0) y[i2][i1-1] -= r*y1-s*y2;
+        if (i2>0) y[i2-1][i1  ] += s*y1-r*y2;
+        if (i2>0 && i1>0) y[i2-1][i1-1] -= s*(y1+y2);
       }
     }
   }
@@ -479,42 +596,6 @@ public class LocalDipFilter {
     private float[][] _atable = new float[NTHETA][];
   }
 
-  // Directional isotropic Laplacian filter.
-  // The first-derivative approximation used here is consistent
-  // with an O(h^2) isotropic approximation to the Laplacian.
-  // NOTE: if we use this, must also change preconditioner.
-  private void applyForwardIsotropic(
-    float sd, float sn, float[][] u2, float[][] x, float[][] y) 
-  {
-    float aone = 1.0f+sd;
-    float aeps = sn;
-    float r = 0.5f*(1.0f+sqrt(2.0f/3.0f));
-    float s = 0.5f*(1.0f-sqrt(2.0f/3.0f));
-    int n1 = x[0].length;
-    int n2 = x.length;
-    for (int i2=0; i2<n2; ++i2) {
-      for (int i1=0; i1<n1; ++i1) {
-        float u2i = u2[i2][i1];
-        float u1i = sqrt(1.0f-u2i*u2i);
-        float a11 = aone-u1i*u1i;
-        float a12 =     -u1i*u2i;
-        float a22 = aone-u2i*u2i;
-        float x00 = x[i2][i1];
-        float x01 = (i1>0)?x[i2][i1-1]:0.0f;
-        float x10 = (i2>0)?x[i2-1][i1]:0.0f;
-        float x11 = (i2>0 && i1>0)?x[i2-1][i1-1]:0.0f;
-        float x1 = r*(x00-x01)+s*(x10-x11);
-        float x2 = r*(x00-x10)+s*(x01-x11);
-        float y1 = a11*x1+a12*x2;
-        float y2 = a12*x1+a22*x2;
-        y[i2][i1] = r*(y1+y2)+aeps*x[i2][i1];
-        if (i1>0) y[i2][i1-1] -= r*y1-s*y2;
-        if (i2>0) y[i2-1][i1  ] += s*y1-r*y2;
-        if (i2>0 && i1>0) y[i2-1][i1-1] -= s*(y1+y2);
-      }
-    }
-  }
-
   private static float dot(float[][] x, float[][] y) {
     int n1 = x[0].length;
     int n2 = x.length;
@@ -526,16 +607,6 @@ public class LocalDipFilter {
         s += x2[i1]*y2[i1];
     }
     return (float)s;
-  }
-  private static void saxpy(float a, float[][] x, float[][] y) {
-    int n1 = x[0].length;
-    int n2 = x.length;
-    for (int i2=0; i2<n2; ++i2) {
-      float[] x2 = x[i2];
-      float[] y2 = y[i2];
-      for (int i1=0; i1<n1; ++i1)
-        y2[i1] += a*x2[i1];
-    }
   }
   private static float dot(float[][][] x, float[][][] y) {
     int n1 = x[0][0].length;
@@ -553,6 +624,17 @@ public class LocalDipFilter {
       }
     }
     return (float)s;
+  }
+
+  private static void saxpy(float a, float[][] x, float[][] y) {
+    int n1 = x[0].length;
+    int n2 = x.length;
+    for (int i2=0; i2<n2; ++i2) {
+      float[] x2 = x[i2];
+      float[] y2 = y[i2];
+      for (int i1=0; i1<n1; ++i1)
+        y2[i1] += a*x2[i1];
+    }
   }
   private static void saxpy(float a, float[][][] x, float[][][] y) {
     int n1 = x[0][0].length;
