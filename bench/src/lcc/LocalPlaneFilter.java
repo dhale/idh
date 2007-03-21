@@ -103,6 +103,12 @@ public class LocalPlaneFilter {
   private Type _type; // filter type
   private Filter6 _filter6; // for 6-coefficient filters
 
+  private static final boolean TRACE = false;
+  private static void trace(String s) {
+    if (TRACE)
+      System.out.println(s);
+  }
+
   /**
    * Filters defined by six coefficients for each image sample.
    * Different plane filters have different coefficients.
@@ -401,14 +407,14 @@ public class LocalPlaneFilter {
   {
     int n1 = x[0].length;
     int n2 = x.length;
-    float epsilon = _stability-1.0f;
+    //float epsilon = _stability-1.0f;
     for (int i2=0; i2<n2; ++i2) {
       for (int i1=0; i1<n1; ++i1) {
         float u1i = u1[i2][i1];
         float u2i = u2[i2][i1];
-        float a11 = 1.0f-u1i*u1i;
-        float a12 =     -u1i*u2i;
-        float a22 = 1.0f-u2i*u2i;
+        float a11 = _stability-u1i*u1i; // 1.0f-u1i*u1i;
+        float a12 =           -u1i*u2i;
+        float a22 = _stability-u2i*u2i; // 1.0f-u2i*u2i;
         float x00 = x[i2][i1];
         float x01 = (i1>0)?x[i2][i1-1]:0.0f;
         float x10 = (i2>0)?x[i2-1][i1]:0.0f;
@@ -421,7 +427,7 @@ public class LocalPlaneFilter {
         float y2 = a12*x1+a22*x2;
         float ya = 0.5f*(y1+y2);
         float yb = 0.5f*(y1-y2);
-        y[i2][i1] = ya + epsilon*x[i2][i1];
+        y[i2][i1] = ya;
         if (i1>0) y[i2][i1-1] -= yb;
         if (i2>0) y[i2-1][i1] += yb;
         if (i2>0 && i1>0) y[i2-1][i1-1] -= ya;
@@ -478,7 +484,7 @@ public class LocalPlaneFilter {
     Array.copy(r,s);
     float rr = dot(r,r);
     float small = rr*0.00001f;
-    //System.out.println("small="+small);
+    trace("small="+small);
     int niter;
     for (niter=0; niter<200 && rr>small; ++niter) {
       applyForwardSpd(u1,u2,s,t);
@@ -494,7 +500,7 @@ public class LocalPlaneFilter {
         for (int i1=0; i1<n1; ++i1)
           s2[i1] = r2[i1]+beta*s2[i1];
       }
-      //System.out.println("niter="+niter+" rr="+rr);
+      trace("niter="+niter+" rr="+rr);
     }
   }
 
@@ -514,7 +520,7 @@ public class LocalPlaneFilter {
     smf.applyInverse(r,s);
     float rr = dot(r,s);
     float small = rr*0.00001f;
-    //System.out.println("small="+small);
+    trace("small="+small);
     int niter;
     for (niter=0; niter<100 && rr>small; ++niter) {
       applyForwardSpd(u1,u2,s,t);
@@ -531,7 +537,7 @@ public class LocalPlaneFilter {
         for (int i1=0; i1<n1; ++i1)
           s2[i1] = w2[i1]+beta*s2[i1];
       }
-      //System.out.println("niter="+niter+" rr="+rr);
+      trace("niter="+niter+" rr="+rr);
     }
   }
   private static float dot(float[][] x, float[][] y) {
@@ -559,7 +565,7 @@ public class LocalPlaneFilter {
 
   // Directional Laplacian filter.
   private void applyForwardSpd(
-    float[][][] u1, float[][][] u2, float[][][] u3,
+    float[][][] u2, float[][][] u3,
     float[][][] x, float[][][] y) 
   {
     int n1 = x[0][0].length;
@@ -569,9 +575,9 @@ public class LocalPlaneFilter {
     for (int i3=0; i3<n3; ++i3) {
       for (int i2=0; i2<n2; ++i2) {
         for (int i1=0; i1<n1; ++i1) {
-          float u1i = u1[i3][i2][i1];
-          float u2i = u2[i3][i2][i1];
           float u3i = u3[i3][i2][i1];
+          float u2i = u2[i3][i2][i1];
+          float u1i = sqrt(1.0f-u2i*u2i+u3i*u3i);
           float a11 = 1.0f-u1i*u1i;
           float a22 = 1.0f-u2i*u2i;
           float a33 = 1.0f-u3i*u3i;
@@ -618,7 +624,7 @@ public class LocalPlaneFilter {
 
   // Inverse of symmetric positive-definite filter without pre-conditioning.
   private void applyInverseSpd(
-    float[][][] u1, float[][][] u2, float[][][] u3,
+    float[][][] u2, float[][][] u3,
     float[][][] x, float[][][] y) 
   {
     int n1 = x[0][0].length;
@@ -632,10 +638,10 @@ public class LocalPlaneFilter {
     Array.copy(r,s);
     float rr = dot(r,r);
     float small = rr*0.00001f;
-    System.out.println("small="+small);
+    trace("small="+small);
     int niter;
     for (niter=0; niter<200 && rr>small; ++niter) {
-      applyForwardSpd(u1,u2,u3,s,t);
+      applyForwardSpd(u2,u3,s,t);
       float alpha = rr/dot(s,t);
       saxpy( alpha,s,y);
       saxpy(-alpha,t,r);
@@ -652,7 +658,7 @@ public class LocalPlaneFilter {
             s32[i1] = r32[i1]+beta*s32[i1];
         }
       }
-      System.out.println("niter="+niter+" rr="+rr);
+      trace("niter="+niter+" rr="+rr);
     }
   }
   private static float dot(float[][][] x, float[][][] y) {

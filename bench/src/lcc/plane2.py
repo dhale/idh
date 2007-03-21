@@ -33,11 +33,13 @@ lof = LocalOrientFilter(8)
 # functions
 
 def main(args):
+  doImage();
   #doSymTest()
+  #doSymDipTest()
   #goLinear()
   #goPlane()
   #goAmp()
-  goNotch()
+  goDip()
   #goIdeal()
   return
 
@@ -60,9 +62,37 @@ def goLinear():
   plot(xl,10.0)
   plot(xi,10.0)
 
-def goNotch():
+def goDip():
+  sd = 0.05
+  sn = 0.00
+  doDip(LocalDipFilter.Factor.NOT,sd,sn)
+  doDip(LocalDipFilter.Factor.PCG,sd,sn)
+  #doDip(LocalDipFilter.Factor.INV,sd,sn)
+  #doDip(LocalDipFilter.Factor.ALL,sd,sn)
+
+def doDip(factor,sd,sn):
+  ldf = LocalDipFilter(factor)
+  for dip in [20,40,60,80]:
+    x,u1,u2 = makeImpulse(dip)
+    if sn>0.0:
+      suffix = "hn"+str(dip)
+    elif sd>0.0:
+      suffix = "hd"+str(dip)
+    else:
+      suffix = "hb"+str(dip)
+    y = applyLdfForward(ldf,sd,sn,u2,x)
+    a = frequencyResponse(y)
+    plotf(a,"a"+suffix)
+  x = readImage()
+  u1,u2 = getU(x)
+  y = applyLdfForward(ldf,sd,sn,u2,x)
+  z = Array.sub(x,y)
+  plot(y,2.0,"yhd")
+  plot(z,10.0,"zhd"+suffix)
+
+def goNotchOld():
   lpf1 = LocalPlaneFilter(LocalPlaneFilter.Type.HALE3,0.00)
-  lpf2 = LocalPlaneFilter(LocalPlaneFilter.Type.HALE3,0.01)
+  lpf2 = LocalPlaneFilter(LocalPlaneFilter.Type.HALE3,0.05)
   for dip in [20,40,60,80]:
     suffix = str(dip)
     x,u1,u2 = makeImpulse(dip)
@@ -127,11 +157,11 @@ def makeIdeal(angle):
   return ai
 
 def doImage():
-  #x = readImage()
+  x = readImage()
   #x = Array.transpose(x)
   #x = makePlaneImage(63.435)
   #x = makePlaneImage(30)
-  x = makeTargetImage()
+  #x = makeTargetImage()
   #x = flip2(x)
   plot(x,10.0,"x")
   return x
@@ -197,6 +227,40 @@ def doSymTest():
   yax = Array.sum(Array.mul(y,ax))
   xay = Array.sum(Array.mul(x,ay))
   print "yax =",yax," xay=",xay
+
+def doSymDipTest():
+  x = makeTargetImage()
+  ldf = LocalDipFilter(LocalDipFilter.Type.SIMPLE)
+  u2 = Array.randfloat(n1,n2)
+  x = Array.sub(Array.randfloat(n1,n2),0.5)
+  y = Array.sub(Array.randfloat(n1,n2),0.5)
+  ax = Array.zerofloat(n1,n2)
+  ay = Array.zerofloat(n1,n2)
+  ldf.applyForward(u2,x,ax)
+  ldf.applyForward(u2,y,ay)
+  yax = Array.sum(Array.mul(y,ax))
+  xay = Array.sum(Array.mul(x,ay))
+  print "yax =",yax," xay=",xay
+
+def applyLdfForward(ldf,sd,sn,u2,x):
+  y = Array.copy(x)
+  if sd>0 and sn==0.0:
+    ldf.applyDip(sd,u2,x,y)
+  elif sd==0.0 and sn>0:
+    ldf.applyNotch(sn,u2,x,y)
+  else:
+    ldf.applyForward(sd,sn,u2,x,y)
+  return y
+
+def applyLdfInverse(ldf,sd,sn,u2,x):
+  y = Array.copy(x)
+  ldf.applyInverse(sd,sn,u2,x,y)
+  return y
+
+def applyLpfInverse(lpf,u1,u2,x):
+  y = Array.copy(x)
+  lpf.applyInverse(u1,u2,x,y)
+  return y
 
 def applyLpfForward(lpf,u1,u2,x):
   y = Array.copy(x)
