@@ -28,8 +28,8 @@ import static edu.mines.jtk.util.MathPlus.*;
  * <p>
  * More useful dip and notch filters use this basic filter in combinations
  * with its inverse to limit attenuation primarily to the specified dips.
- * A small parameter may be specified to control the range of dips 
- * attenuated.
+ * Small parameters may be specified to control the range of dips attenuated
+ * by dip or notch combination filters.
  * <p>
  * Contours of constant amplitude for notch filters are parallel lines
  * near the origin in the wavenumber domain. For dip filters, these

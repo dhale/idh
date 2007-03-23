@@ -169,7 +169,7 @@ public class SwView extends JFrame {
     //addSlices(world,loadData("sw04a13.dat"),5000.0f,ColorMap.GRAY);
     //addSlices(world,loadData("r1.dat"),5000.0f,ColorMap.GRAY);
     //addSlices(world,loadData("r13.dat"),5000.0f,ColorMap.GRAY);
-    //addSlices(world,loadData("u1.dat"),1.0f,ColorMap.RED_WHITE_BLUE);
+    addSlices(world,loadData("u1s1.dat"),1.0f,ColorMap.RED_WHITE_BLUE);
     //addSlices(world,loadData("u3.dat"),0.5f,ColorMap.RED_WHITE_BLUE);
     SwView swView = new SwView(world);
     swView.setVisible(true);
