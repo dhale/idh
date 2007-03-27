@@ -94,6 +94,11 @@ public class LocalDipFilter {
       applyForwardFac(sd,sn,u2,x,y);
     }
   }
+  public void applyForward(
+    float sd, float sn, float[][] e1, float[][] u2, float[][] x, float[][] y) 
+  {
+    applyForwardNot(sd,sn,e1,u2,x,y);
+  }
 
   /**
    * Applies the inverse of this local dip filter.
@@ -288,6 +293,42 @@ public class LocalDipFilter {
         float a11 = aone-u1i*u1i;
         float a12 =     -u1i*u2i;
         float a22 = aone-u2i*u2i;
+        float x00 = x[i2][i1];
+        float x01 = (i1>0)?x[i2][i1-1]:0.0f;
+        float x10 = (i2>0)?x[i2-1][i1]:0.0f;
+        float x11 = (i2>0 && i1>0)?x[i2-1][i1-1]:0.0f;
+        float xa = x00-x11;
+        float xb = x01-x10;
+        float x1 = 0.5f*(xa-xb);
+        float x2 = 0.5f*(xa+xb);
+        float y1 = a11*x1+a12*x2;
+        float y2 = a12*x1+a22*x2;
+        float ya = 0.5f*(y1+y2);
+        float yb = 0.5f*(y1-y2);
+        y[i2][i1] = ya+aeps*x[i2][i1];
+        if (i1>0) y[i2][i1-1] -= yb;
+        if (i2>0) y[i2-1][i1] += yb;
+        if (i2>0 && i1>0) y[i2-1][i1-1] -= ya;
+      }
+    }
+  }
+
+  // Forward (not factored) filter with linearity.
+  private void applyForwardNot(
+    float sd, float sn, float[][] e1, float[][] u2, float[][] x, float[][] y) 
+  {
+    float aone = 1.0f+sd;
+    float aeps = sn;
+    int n1 = x[0].length;
+    int n2 = x.length;
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        float u2i = u2[i2][i1];
+        float u1i = sqrt(1.0f-u2i*u2i);
+        float a00 = 1.0f+sd*(1.0f-e1[i2][i1]);
+        float a11 = a00-u1i*u1i;
+        float a12 =    -u1i*u2i;
+        float a22 = a00-u2i*u2i;
         float x00 = x[i2][i1];
         float x01 = (i1>0)?x[i2][i1-1]:0.0f;
         float x10 = (i2>0)?x[i2-1][i1]:0.0f;
