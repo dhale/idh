@@ -75,6 +75,13 @@ public class LocalLineFilter {
   {
     applyForwardNot(sl,sn,w1,w2,w3,x,y);
   }
+  public void applyForward(
+    float sl, float sn, float[][][] e1,
+    float[][][] w1, float[][][] w2, float[][][] w3, 
+    float[][][] x, float[][][] y) 
+  {
+    applyForwardNot(sl,sn,e1,w1,w2,w3,x,y);
+  }
 
   /**
    * Applies the inverse of this local line filter.
@@ -93,6 +100,13 @@ public class LocalLineFilter {
     float[][][] x, float[][][] y) 
   {
     applyInverseNot(sl,sn,w1,w2,w3,x,y);
+  }
+  public void applyInverse(
+    float sl, float sn, float[][][] e1,
+    float[][][] w1, float[][][] w2, float[][][] w3, 
+    float[][][] x, float[][][] y) 
+  {
+    applyInverseNot(sl,sn,e1,w1,w2,w3,x,y);
   }
 
   /**
@@ -114,6 +128,15 @@ public class LocalLineFilter {
     float[][][] t = new float[x.length][x[0].length][x[0][0].length];
     applyForward(0.0f,0.0f,w1,w2,w3,x,t);
     applyInverse(  sl,0.0f,w1,w2,w3,t,y);
+  }
+  public void applyLine(
+    float sl, float[][][] e1,
+    float[][][] w1, float[][][] w2, float[][][] w3, 
+    float[][][] x, float[][][] y) 
+  {
+    float[][][] t = new float[x.length][x[0].length][x[0][0].length];
+    applyForward(0.0f,0.0f,e1,w1,w2,w3,x,t);
+    applyInverse(  sl,0.0f,e1,w1,w2,w3,t,y);
   }
 
   /**
@@ -203,6 +226,62 @@ public class LocalLineFilter {
       }
     }
   }
+  private void applyForwardNot(
+    float sl, float sn, float[][][] e1,
+    float[][][] w1, float[][][] w2, float[][][] w3, 
+    float[][][] x, float[][][] y) 
+  {
+    int n1 = x[0][0].length;
+    int n2 = x[0].length;
+    int n3 = x.length;
+    for (int i3=0; i3<n3; ++i3) {
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          float w1i = w1[i3][i2][i1];
+          float w2i = w2[i3][i2][i1];
+          float w3i = w3[i3][i2][i1];
+          float e1i = e1[i3][i2][i1];
+          float sw  = e1i*e1i*e1i;
+          float a11 = sl+sw*w1i*w1i;
+          float a22 = sl+sw*w2i*w2i;
+          float a33 = sl+sw*w3i*w3i;
+          float a12 =    sw*w1i*w2i;
+          float a13 =    sw*w1i*w3i;
+          float a23 =    sw*w2i*w3i;
+          float x000 = x[i3][i2][i1];
+          float x001 = (i1>0)?x[i3][i2][i1-1]:0.0f;
+          float x010 = (i2>0)?x[i3][i2-1][i1]:0.0f;
+          float x100 = (i3>0)?x[i3-1][i2][i1]:0.0f;
+          float x011 = (i2>0 && i1>0)?x[i3][i2-1][i1-1]:0.0f;
+          float x101 = (i3>0 && i1>0)?x[i3-1][i2][i1-1]:0.0f;
+          float x110 = (i3>0 && i2>0)?x[i3-1][i2-1][i1]:0.0f;
+          float x111 = (i3>0 && i2>0 && i1>0)?x[i3-1][i2-1][i1-1]:0.0f;
+          float xa = x000-x111;
+          float xb = x001-x110;
+          float xc = x010-x101;
+          float xd = x100-x011;
+          float x1 = 0.25f*(xa-xb+xc+xd);
+          float x2 = 0.25f*(xa+xb-xc+xd);
+          float x3 = 0.25f*(xa+xb+xc-xd);
+          float y1 = a11*x1+a12*x2+a13*x3;
+          float y2 = a12*x1+a22*x2+a23*x3;
+          float y3 = a13*x1+a23*x2+a33*x3;
+          float ya = 0.25f*(y1+y2+y3);
+          float yb = 0.25f*(y1-y2+y3);
+          float yc = 0.25f*(y1+y2-y3);
+          float yd = 0.25f*(y1-y2-y3);
+          y[i3][i2][i1] = ya + sn*x[i3][i2][i1];
+          if (i1>0) y[i3][i2][i1-1] -= yd;
+          if (i2>0) y[i3][i2-1][i1] += yb;
+          if (i3>0) y[i3-1][i2][i1] += yc;
+          if (i2>0 && i1>0) y[i3][i2-1][i1-1] -= yc;
+          if (i3>0 && i1>0) y[i3-1][i2][i1-1] -= yb;
+          if (i3>0 && i2>0) y[i3-1][i2-1][i1] += yd;
+          if (i3>0 && i2>0 && i1>0) y[i3-1][i2-1][i1-1] -= ya;
+        }
+      }
+    }
+  }
 
   // Inverse filter via conjugate gradients without preconditioning.
   private void applyInverseNot(
@@ -225,6 +304,45 @@ public class LocalLineFilter {
     int niter;
     for (niter=0; niter<200 && rr>stop; ++niter) {
       applyForwardNot(sl,sn,w1,w2,w3,s,t);
+      float alpha = rr/dot(s,t);
+      saxpy( alpha,s,y);
+      saxpy(-alpha,t,r);
+      float rrold = rr;
+      rr = dot(r,r);
+      float beta = rr/rrold;
+      for (int i3=0; i3<n3; ++i3) {
+        float[][] r3 = r[i3];
+        float[][] s3 = s[i3];
+        for (int i2=0; i2<n2; ++i2) {
+          float[] r32 = r3[i2];
+          float[] s32 = s3[i2];
+          for (int i1=0; i1<n1; ++i1)
+            s32[i1] = r32[i1]+beta*s32[i1];
+        }
+      }
+      trace("niter="+niter+" rr="+rr);
+    }
+  }
+  private void applyInverseNot(
+    float sl, float sn, float[][][] e1,
+    float[][][] w1, float[][][] w2, float[][][] w3, 
+    float[][][] x, float[][][] y) 
+  {
+    int n1 = x[0][0].length;
+    int n2 = x[0].length;
+    int n3 = x.length;
+    float[][][] r = new float[n3][n2][n1]; // r
+    float[][][] s = new float[n3][n2][n1]; // d
+    float[][][] t = new float[n3][n2][n1]; // q
+    Array.zero(y);
+    Array.copy(x,r);
+    Array.copy(r,s);
+    float rr = dot(r,r);
+    float stop = rr*CG_SMALL;
+    trace("stop="+stop);
+    int niter;
+    for (niter=0; niter<200 && rr>stop; ++niter) {
+      applyForwardNot(sl,sn,e1,w1,w2,w3,s,t);
       float alpha = rr/dot(s,t);
       saxpy( alpha,s,y);
       saxpy(-alpha,t,r);

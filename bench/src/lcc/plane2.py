@@ -45,7 +45,7 @@ def main(args):
   return
 
 def doDipE1():
-  sd = 0.05
+  sd = 0.01
   x = readImage()
   n1,n2 = len(x[0]),len(x)
   u2 = Array.zerofloat(n1,n2)
@@ -61,8 +61,8 @@ def doDipE1():
   z = Array.sub(x,y)
   plot(y,2.0,"yhd")
   plot(z,10.0,"zhd")
-  ldf.applyForward(sd,0.00,e1,u2,x,t)
-  ldf.applyInverse(sd,0.00,u2,t,y)
+  ldf.applyForward(0.00,0.00,e1,u2,x,t)
+  ldf.applyInverse(  sd,0.00,e1,u2,t,y)
   z = Array.sub(x,y)
   plot(y,2.0,"yhde1")
   plot(z,10.0,"zhde1")
