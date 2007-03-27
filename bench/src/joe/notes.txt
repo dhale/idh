@@ -1,0 +1,8 @@
+------------------------------
+Received data from Joe Stefani
+June, 2006
+
+SEGY IEEE floating point
+n1=1051 d1=0.004 f1=0.0
+n2=501 d2=??? f2=??? (cdpt)
+n3=???
