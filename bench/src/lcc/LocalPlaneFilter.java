@@ -22,14 +22,15 @@ public class LocalPlaneFilter {
    * Filter type.
    */
   public enum Type {
-    CLAERBOUT1, // Jon Claerbout's "wavekill" filter
+    CLAERBOUT1, // Jon Claerbout's "wavekill" filter A
     FOMEL1, // Fomel's 2002 filter with coefficients a function of slope
     FOMEL2, // Fomel's filter modified with coefficients a function of angle
     HALE1, // simplest finite-difference operators
-    HALE2, // average of finite-difference operators
-    HALE2B, // like HALE2 but with more care for variable coefficients
-    HALE3, // Claerbout's wavekill filter cascaded with transpose (SPD)
-    HALE4, // minimum-phase wavekill filter cascaded with transpose (SPD)
+    HALE2, // average of finite-difference operators B
+    HALE3, // SPD A'A with no preconditioner
+    HALE4, // SPD A'A with minimum-phase factors
+    HALE5, // SPD A'A with SSOR preconditioner
+    HALE6, // SPD SSOR A'A
   };
 
   public LocalPlaneFilter(Type type) {
@@ -49,8 +50,6 @@ public class LocalPlaneFilter {
       _filter6 = new Hale1Filter();
     } else if (type==Type.HALE2) {
       _filter6 = new Hale2Filter();
-    } else if (type==Type.HALE2B) {
-      _filter6 = new Hale2bFilter();
     }
   }
 
@@ -72,6 +71,10 @@ public class LocalPlaneFilter {
       applyForwardSpd(u1,u2,x,y);
     } else if (_type==Type.HALE4) {
       SpdMpFilter.applyForward(_stability,u1,u2,x,y);
+    } else if (_type==Type.HALE5) {
+      applyForwardSpd(u1,u2,x,y);
+    } else if (_type==Type.HALE6) {
+      applyForwardSsor(u1,u2,x,y);
     }
   }
 
@@ -90,20 +93,24 @@ public class LocalPlaneFilter {
     if (_filter6!=null) {
       applyInverse(_filter6,u1,u2,x,y);
     } else if (_type==Type.HALE3) {
-      applyInverseSpdPc(u1,u2,x,y);
+      applyInverseSpd(u1,u2,x,y);
     } else if (_type==Type.HALE4) {
       SpdMpFilter.applyInverse(_stability,u1,u2,x,y);
+    } else if (_type==Type.HALE5) {
+      applyInverseSpdSsor(u1,u2,x,y);
+    } else if (_type==Type.HALE6) {
+      applyInverseSsor(u1,u2,x,y);
     }
   }
 
   ///////////////////////////////////////////////////////////////////////////
   // private
 
-  private float _stability; // 1 plus a small number
   private Type _type; // filter type
+  private float _stability; // 1 plus a small number
   private Filter6 _filter6; // for 6-coefficient filters
 
-  private static final boolean TRACE = false;
+  private static final boolean TRACE = true;
   private static void trace(String s) {
     if (TRACE)
       System.out.println(s);
@@ -234,18 +241,6 @@ public class LocalPlaneFilter {
       c[3] = -2.0f*up*up;
       c[4] = -4.0f*um*up;
       c[5] = -2.0f*um*um;
-      /* Experimental coefficients derived for leaky finite-differences.
-      float a1 = 0.90f;
-      float a2 = a1*a1;
-      float a3 = a1*a2;
-      float a4 = a2*a2;
-      c[0] = (a1+a3)*um*up;
-      c[1] = (1.0f+a4)*um*um+2.0f*a2*up*up;
-      c[2] = c[0];
-      c[3] = -2.0f*a2*up*up;
-      c[4] = -2.0f*(a1+a3)*um*up;
-      c[5] = -2.0f*a2*um*um;
-      */
     }
   }
 
@@ -283,18 +278,6 @@ public class LocalPlaneFilter {
       c[3] = -upij*upij-upji*upji;
       c[4] = -umii*upii-umji*upji-umij*upij-umjj*upjj;
       c[5] = -umii*umii-umjj*umjj;
-      /* Experimental coefficients derived for leaky finite-differences.
-      float a1 = 0.90f;
-      float a2 = a1*a1;
-      float a3 = a1*a2;
-      float a4 = a2*a2;
-      c[0] = a1*umii*upii+a3*umji*upji;
-      c[1] = umii*umii+a2*(upij*upij+upji*upji)+a4*umjj*umjj;
-      c[2] = a1*umij*upij+a3*umjj*upjj;
-      c[3] = -a2*(upij*upij+upji*upji);
-      c[4] = -a1*(umii*upii+umji*upji)-a3*(umij*upij+umjj*upjj);
-      c[5] = -a2*(umii*umii+umjj*umjj);
-      */
     }
   }
 
@@ -407,14 +390,14 @@ public class LocalPlaneFilter {
   {
     int n1 = x[0].length;
     int n2 = x.length;
-    //float epsilon = _stability-1.0f;
+    float epsilon = _stability-1.0f;
     for (int i2=0; i2<n2; ++i2) {
       for (int i1=0; i1<n1; ++i1) {
         float u1i = u1[i2][i1];
         float u2i = u2[i2][i1];
-        float a11 = _stability-u1i*u1i; // 1.0f-u1i*u1i;
-        float a12 =           -u1i*u2i;
-        float a22 = _stability-u2i*u2i; // 1.0f-u2i*u2i;
+        float a11 = 1.0f-u1i*u1i;
+        float a12 =     -u1i*u2i;
+        float a22 = 1.0f-u2i*u2i;
         float x00 = x[i2][i1];
         float x01 = (i1>0)?x[i2][i1-1]:0.0f;
         float x10 = (i2>0)?x[i2-1][i1]:0.0f;
@@ -427,7 +410,7 @@ public class LocalPlaneFilter {
         float y2 = a12*x1+a22*x2;
         float ya = 0.5f*(y1+y2);
         float yb = 0.5f*(y1-y2);
-        y[i2][i1] = ya;
+        y[i2][i1] = ya+epsilon*x00;
         if (i1>0) y[i2][i1-1] -= yb;
         if (i2>0) y[i2-1][i1] += yb;
         if (i2>0 && i1>0) y[i2-1][i1-1] -= ya;
@@ -462,7 +445,7 @@ public class LocalPlaneFilter {
         float x2 = r*(x00-x10)+s*(x01-x11);
         float y1 = a11*x1+a12*x2;
         float y2 = a12*x1+a22*x2;
-        y[i2][i1] = r*y1+r*y2 + epsilon*x[i2][i1];
+        y[i2][i1] = r*y1+r*y2+epsilon*x00;
         if (i1>0) y[i2][i1-1] -= r*y1-s*y2;
         if (i2>0) y[i2-1][i1  ] += s*y1-r*y2;
         if (i2>0 && i1>0) y[i2-1][i1-1] -= s*y1+s*y2;
@@ -539,6 +522,85 @@ public class LocalPlaneFilter {
       }
       trace("niter="+niter+" rr="+rr);
     }
+  }
+  // Inverse of symmetric positive-definite filter with SSOR pre-conditioning.
+  private void applyInverseSpdSsor(
+    float[][] u1, float[][] u2, float[][] x, float[][] y) 
+  {
+    int n1 = x[0].length;
+    int n2 = x.length;
+    float[][] r = new float[n2][n1]; // r
+    float[][] s = new float[n2][n1]; // d
+    float[][] t = new float[n2][n1]; // q
+    float[][] w = new float[n2][n1]; // s
+    Array.zero(y);
+    Array.copy(x,r);
+    applyInverseSsor(u1,u2,r,s);
+    float rr = dot(r,s);
+    float small = rr*0.00001f;
+    trace("small="+small);
+    int niter;
+    for (niter=0; niter<100 && rr>small; ++niter) {
+      applyForwardSpd(u1,u2,s,t);
+      float alpha = rr/dot(s,t);
+      saxpy( alpha,s,y);
+      saxpy(-alpha,t,r);
+      applyInverseSsor(u1,u2,r,w);
+      float rrold = rr;
+      rr = dot(r,w);
+      float beta = rr/rrold;
+      for (int i2=0; i2<n2; ++i2) {
+        float[] w2 = w[i2];
+        float[] s2 = s[i2];
+        for (int i1=0; i1<n1; ++i1)
+          s2[i1] = w2[i1]+beta*s2[i1];
+      }
+      trace("niter="+niter+" rr="+rr);
+    }
+  }
+  private void applyForwardSsor(
+    final float[][] u1, final float[][] u2, float[][] x, float[][] y) 
+  {
+    int[] lag1 = {0, 1,-1, 0, 1};
+    int[] lag2 = {0, 0, 1, 1, 1};
+    LocalCausalFilter lcf = new LocalCausalFilter(lag1,lag2);
+    LocalCausalFilter.A2 a2 = new LocalCausalFilter.A2() {
+      public void get(int i1, int i2, float[] a) {
+        float u1i = u1[i2][i1];
+        float u2i = u2[i2][i1];
+        float um = 0.5f*(u1i-u2i);
+        float up = 0.5f*(u1i+u2i);
+        a[0] = _stability;
+        a[1] = 2.0f*um*up;
+        a[2] = -up*up;
+        a[3] = -a[1];
+        a[4] = -um*um;
+      }
+    };
+    lcf.apply(a2,x,y);
+    lcf.applyTranspose(a2,y,y);
+  }
+  private void applyInverseSsor(
+    final float[][] u1, final float[][] u2, float[][] x, float[][] y) 
+  {
+    int[] lag1 = {0, 1,-1, 0, 1};
+    int[] lag2 = {0, 0, 1, 1, 1};
+    LocalCausalFilter lcf = new LocalCausalFilter(lag1,lag2);
+    LocalCausalFilter.A2 a2 = new LocalCausalFilter.A2() {
+      public void get(int i1, int i2, float[] a) {
+        float u1i = u1[i2][i1];
+        float u2i = u2[i2][i1];
+        float um = 0.5f*(u1i-u2i);
+        float up = 0.5f*(u1i+u2i);
+        a[0] = _stability;
+        a[1] = 2.0f*um*up;
+        a[2] = -up*up;
+        a[3] = -a[1];
+        a[4] = -um*um;
+      }
+    };
+    lcf.applyInverseTranspose(a2,x,y);
+    lcf.applyInverse(a2,y,y);
   }
   private static float dot(float[][] x, float[][] y) {
     int n1 = x[0].length;

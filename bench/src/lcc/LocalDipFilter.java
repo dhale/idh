@@ -94,11 +94,6 @@ public class LocalDipFilter {
       applyForwardFac(sd,sn,u2,x,y);
     }
   }
-  public void applyForward(
-    float sd, float sn, float[][] e1, float[][] u2, float[][] x, float[][] y) 
-  {
-    applyForwardNot(sd,sn,e1,u2,x,y);
-  }
 
   /**
    * Applies the inverse of this local dip filter.
@@ -119,11 +114,6 @@ public class LocalDipFilter {
     } else {
       applyInverseFac(sd,sn,u2,x,y);
     }
-  }
-  public void applyInverse(
-    float sd, float sn, float[][] e1, float[][] u2, float[][] x, float[][] y) 
-  {
-    applyInverseNot(sd,sn,e1,u2,x,y);
   }
 
   /**
@@ -318,50 +308,6 @@ public class LocalDipFilter {
     }
   }
 
-  // Forward (not factored) filter with linearity.
-  private void applyForwardNot(
-    float sd, float sn, float[][] e1, float[][] u2, float[][] x, float[][] y) 
-  {
-    float aone = 1.0f+sd;
-    float aeps = sn;
-    int n1 = x[0].length;
-    int n2 = x.length;
-    for (int i2=0; i2<n2; ++i2) {
-      for (int i1=0; i1<n1; ++i1) {
-        float u2i = u2[i2][i1];
-        float u1i = sqrt(1.0f-u2i*u2i);
-        float e1i = e1[i2][i1];
-        /*
-        float c = 1.0f-e1i;
-        float b = 1.0f-c*c;
-        float a11 = aone-b*u1i*u1i;
-        float a12 =     -b*u1i*u2i;
-        float a22 = aone-b*u2i*u2i;
-        */
-        float c = e1i*e1i*e1i;
-        float a11 = c+sd-c*u1i*u1i;
-        float a12 =     -c*u1i*u2i;
-        float a22 = c+sd-c*u2i*u2i;
-        float x00 = x[i2][i1];
-        float x01 = (i1>0)?x[i2][i1-1]:0.0f;
-        float x10 = (i2>0)?x[i2-1][i1]:0.0f;
-        float x11 = (i2>0 && i1>0)?x[i2-1][i1-1]:0.0f;
-        float xa = x00-x11;
-        float xb = x01-x10;
-        float x1 = 0.5f*(xa-xb);
-        float x2 = 0.5f*(xa+xb);
-        float y1 = a11*x1+a12*x2;
-        float y2 = a12*x1+a22*x2;
-        float ya = 0.5f*(y1+y2);
-        float yb = 0.5f*(y1-y2);
-        y[i2][i1] = ya+aeps*x[i2][i1];
-        if (i1>0) y[i2][i1-1] -= yb;
-        if (i2>0) y[i2-1][i1] += yb;
-        if (i2>0 && i1>0) y[i2-1][i1-1] -= ya;
-      }
-    }
-  }
-
   // Directional isotropic Laplacian filter.
   // The first-derivative approximation used here is consistent
   // with an O(h^2) isotropic approximation to the Laplacian.
@@ -425,40 +371,6 @@ public class LocalDipFilter {
     int niter;
     for (niter=0; niter<200 && rr>stop; ++niter) {
       applyForwardNot(sd,sn,u2,s,t);
-      float alpha = rr/dot(s,t);
-      saxpy( alpha,s,y);
-      saxpy(-alpha,t,r);
-      float rrold = rr;
-      rr = dot(r,r);
-      float beta = rr/rrold;
-      for (int i2=0; i2<n2; ++i2) {
-        float[] r2 = r[i2];
-        float[] s2 = s[i2];
-        for (int i1=0; i1<n1; ++i1)
-          s2[i1] = r2[i1]+beta*s2[i1];
-      }
-      //trace("niter="+niter+" rr="+rr);
-    }
-    trace("niter="+niter+" rr="+rr);
-  }
-  private void applyInverseNot(
-    float sd, float sn, float[][] e1, float[][] u2, float[][] x, float[][] y) 
-  {
-    trace("applyInverseNot: sd="+sd+" sn="+sn);
-    int n1 = x[0].length;
-    int n2 = x.length;
-    float[][] r = new float[n2][n1]; // r
-    float[][] s = new float[n2][n1]; // d
-    float[][] t = new float[n2][n1]; // q
-    Array.zero(y);
-    Array.copy(x,r);
-    Array.copy(r,s);
-    float rr = dot(r,r);
-    float stop = rr*CG_SMALL;
-    trace("stop="+stop);
-    int niter;
-    for (niter=0; niter<200 && rr>stop; ++niter) {
-      applyForwardNot(sd,sn,e1,u2,s,t);
       float alpha = rr/dot(s,t);
       saxpy( alpha,s,y);
       saxpy(-alpha,t,r);

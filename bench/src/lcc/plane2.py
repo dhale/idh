@@ -33,39 +33,18 @@ lof = LocalOrientFilter(8)
 # functions
 
 def main(args):
-  doImage();
+  #doImage();
   #doSymTest()
   #doSymDipTest()
   #goLinear()
-  #goPlane()
+  goPlane()
+  #goNotchOld()
   #goAmp()
   #goDip()
   #goIdeal()
-  doDipE1()
+  #goDiff()
+  #goAmpDiff()
   return
-
-def doDipE1():
-  sd = 0.01
-  x = readImage()
-  n1,n2 = len(x[0]),len(x)
-  u2 = Array.zerofloat(n1,n2)
-  e1 = Array.zerofloat(n1,n2)
-  lof.apply(x,None,None,u2,None,None,None,None,e1)
-  plot(e1)
-  print "e1 min/max =",Array.min(e1),Array.max(e1)
-  ldf = LocalDipFilter()
-  y = Array.zerofloat(n1,n2)
-  t = Array.zerofloat(n1,n2)
-  ldf.applyForward(0.00,0.00,u2,x,t)
-  ldf.applyInverse(  sd,0.00,u2,t,y)
-  z = Array.sub(x,y)
-  plot(y,2.0,"yhd")
-  plot(z,10.0,"zhd")
-  ldf.applyForward(0.00,0.00,e1,u2,x,t)
-  ldf.applyInverse(  sd,0.00,e1,u2,t,y)
-  z = Array.sub(x,y)
-  plot(y,2.0,"yhde1")
-  plot(z,10.0,"zhde1")
 
 def goIdeal():
   for dip in [20,40,60,80]:
@@ -116,27 +95,27 @@ def doDip(factor,sd,sn):
 
 def goNotchOld():
   lpf1 = LocalPlaneFilter(LocalPlaneFilter.Type.HALE3,0.00)
-  lpf2 = LocalPlaneFilter(LocalPlaneFilter.Type.HALE3,0.05)
+  lpf2 = LocalPlaneFilter(LocalPlaneFilter.Type.HALE3,0.01)
   for dip in [20,40,60,80]:
     suffix = str(dip)
     x,u1,u2 = makeImpulse(dip)
     y = applyLpfForward(lpf1,u1,u2,x)
     z = applyLpfInverse(lpf2,u1,u2,y)
-    w = inverseLaplacian(y)
+    #w = inverseLaplacian(y)
     ay = frequencyResponse(y)
     az = frequencyResponse(z)
-    aw = frequencyResponse(w)
+    #aw = frequencyResponse(w)
     plotf(ay,"ayhn"+suffix)
     plotf(az,"azhn"+suffix)
-    plotf(aw,"awhn"+suffix)
+    #plotf(aw,"awhn"+suffix)
   x = readImage()
   u1,u2 = getU(x)
   y = applyLpfForward(lpf1,u1,u2,x)
   z = applyLpfInverse(lpf2,u1,u2,y)
-  w = inverseLaplacian(y)
+  #w = inverseLaplacian(y)
   plot(y,2.0,"yhn")
   plot(z,2.0,"zhn")
-  plot(w,1.0,"whn")
+  #plot(w,1.0,"whn")
 
 def inverseLaplacian(x):
   n1 = len(x[0])
@@ -193,10 +172,16 @@ def doImage():
 def goAmp():
   for dip in [20,40,60,80]:
     suffix = str(dip)
-    doAmp(dip,LocalPlaneFilter.Type.FOMEL1,"af1"+suffix)
-    doAmp(dip,LocalPlaneFilter.Type.CLAERBOUT1,"ac1"+suffix)
-    doAmp(dip,LocalPlaneFilter.Type.HALE2,"ah2"+suffix)
+    #doAmp(dip,LocalPlaneFilter.Type.FOMEL1,"af1"+suffix)
+    #doAmp(dip,LocalPlaneFilter.Type.CLAERBOUT1,"ac1"+suffix)
+    #doAmp(dip,LocalPlaneFilter.Type.HALE2,"ah2"+suffix)
     doAmp(dip,LocalPlaneFilter.Type.HALE3,"ah3"+suffix)
+    #doAmp(dip,LocalPlaneFilter.Type.HALE5,"ah5"+suffix)
+
+def goAmpDiff():
+  for dip in [20,40,60,80]:
+    suffix = str(dip)
+    doAmpDiff(dip,"ahs"+suffix)
 
 def goPlane():
   x1 = readImage()
@@ -204,10 +189,20 @@ def goPlane():
   x3 = makeTargetImage()
   for x,s in [(x1,"_1"),(x2,"_2"),(x3,"_3")]:
     plot(x,10.0,"x"+s)
-    doPlane(x,LocalPlaneFilter.Type.FOMEL1,"f1"+s)
-    doPlane(x,LocalPlaneFilter.Type.CLAERBOUT1,"c1"+s)
+    #doPlane(x,LocalPlaneFilter.Type.FOMEL1,"f1"+s)
+    #doPlane(x,LocalPlaneFilter.Type.CLAERBOUT1,"c1"+s)
     doPlane(x,LocalPlaneFilter.Type.HALE2,"h2"+s)
-    doPlane(x,LocalPlaneFilter.Type.HALE3,"h3"+s)
+    #doPlane(x,LocalPlaneFilter.Type.HALE3,"h3"+s)
+    #doPlane(x,LocalPlaneFilter.Type.HALE5,"h5"+s)
+    #doPlane(x,LocalPlaneFilter.Type.HALE6,"h6"+s)
+
+def goDiff():
+  x1 = readImage()
+  x2 = Array.transpose(x1)
+  x3 = makeTargetImage()
+  for x,s in [(x1,"_1"),(x2,"_2"),(x3,"_3")]:
+    plot(x,10.0,"x"+s)
+    doDiff(x,"h3"+s)
 
 def makeRandom():
   r = Random(314159)
@@ -218,7 +213,6 @@ def doPlane(x,type,png):
   lpf = LocalPlaneFilter(type,small)
   y = Array.zerofloat(n1,n2)
   z = Array.zerofloat(n1,n2)
-  #r = Array.sub(Array.randfloat(n1,n2),0.5)
   r = makeRandom()
   r = smooth(r)
   s = Array.zerofloat(n1,n2)
@@ -230,6 +224,37 @@ def doPlane(x,type,png):
   plot(z,10.0,"z"+png)
   plot(s,0.0,"s"+png)
 
+def doDiff(x,png):
+  u1,u2 = getU(x)
+  su = Array.fillfloat(0.0,n1,n2)
+  sv = Array.fillfloat(1.0,n1,n2)
+  sigma = sqrt(2.0/3.0)*sqrt(2.0/small)
+  ldf = LocalDiffusionFilter(sigma)
+  y = Array.zerofloat(n1,n2)
+  z = Array.zerofloat(n1,n2)
+  r = makeRandom()
+  r = smooth(r)
+  s = Array.zerofloat(n1,n2)
+  ldf.apply(su,sv,u2,x,y)
+  y = Array.sub(x,y)
+  ldf.apply(su,sv,u2,r,s)
+  plot(y,5.0,"ys"+png)
+  plot(s,0.0,"ss"+png)
+
+def doAmpDiff(dip,png=None):
+  x,u1,u2 = makeImpulse(dip)
+  h = Array.copy(x)
+  su = Array.copy(x)
+  sv = Array.copy(x)
+  Array.fill(0.0,su)
+  Array.fill(1.0,sv)
+  sigma = sqrt(2.0/3.0)*sqrt(2.0/small)
+  ldf = LocalDiffusionFilter(sigma)
+  ldf.apply(su,sv,u2,x,h)
+  h = Array.sub(x,h)
+  ah = frequencyResponse(h)
+  plotf(ah,png)
+
 def doAmp(dip,type,png=None):
   lpf = LocalPlaneFilter(type)
   x,u1,u2 = makeImpulse(dip)
@@ -239,7 +264,7 @@ def doAmp(dip,type,png=None):
 
 def doSymTest():
   x = makeTargetImage()
-  lpf = LocalPlaneFilter(LocalPlaneFilter.Type.HALE3)
+  lpf = LocalPlaneFilter(LocalPlaneFilter.Type.HALE5)
   u1 = Array.randfloat(n1,n2)
   u2 = Array.randfloat(n1,n2)
   x = Array.sub(Array.randfloat(n1,n2),0.5)
