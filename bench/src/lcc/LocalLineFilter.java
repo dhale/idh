@@ -241,7 +241,7 @@ public class LocalLineFilter {
           float w2i = w2[i3][i2][i1];
           float w3i = w3[i3][i2][i1];
           float e1i = e1[i3][i2][i1];
-          float sw  = e1i*e1i*e1i;
+          float sw  = e1i;
           float a11 = sl+sw*w1i*w1i;
           float a22 = sl+sw*w2i*w2i;
           float a33 = sl+sw*w3i*w3i;

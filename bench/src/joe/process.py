@@ -4,6 +4,7 @@ from java.lang import *
 from java.nio import *
 from javax.swing import *
 
+from edu.mines.jtk.awt import *
 from edu.mines.jtk.dsp import *
 from edu.mines.jtk.io import *
 from edu.mines.jtk.mosaic import *
@@ -50,18 +51,35 @@ def main(args):
   #window()
   #x = readFile("x.dat",n1,n2,n3)
   #plot3d(x)
-  #u2,u3,ep = planes()
+  #planes()
   #x = readFile("x.dat",n1,n2,n3)
-  #u2 = readFile("u2.dat",n1,n2,n3)
-  #ep = readFile("ep.dat",n1,n2,n3)
-  #plot3ds((x,u2))
-  #plot3ds((x,ep))
+  el = readFile("xel.dat",n1,n2,n3)
+  ep = readFile("xep.dat",n1,n2,n3)
+  #plot3ds((x,el,ep))
+  ehistogram(el,ep)
   #ldf()
   #y = readFile("y.dat",n1,n2,n3)
   #w1,w2,w3,el = lines()
   #plot3ds((y,el))
-  llf()
+  #llf()
   return
+
+def ehistogram(el,ep):
+  nl = 101
+  np = 101
+  h = Array.zerofloat(nl,np)
+  for i3 in range(n3):
+    for i2 in range(n2):
+      for i1 in range(n1):
+        il = int(el[i3][i2][i1]*(nl-1)+0.5)
+        ip = int(ep[i3][i2][i1]*(np-1)+0.5)
+        h[ip][il] += 1.0
+  sp = SimplePlot()
+  sp.setHLabel("linearity")
+  sp.setVLabel("planarity")
+  pv = sp.addPixels(Sampling(nl,1.0/nl,0.0),Sampling(np,1.0/np,0.0),h)
+  pv.setColorModel(ColorMap.JET)
+  pv.setClips(0,1)
 
 def ldf():
   x = readFile("x.dat",n1,n2,n3)
@@ -84,11 +102,11 @@ def llf():
   print "w1 min/max =",Array.min(w1),Array.max(w1)
   print "w2 min/max =",Array.min(w2),Array.max(w2)
   print "w3 min/max =",Array.min(w3),Array.max(w3)
+  print "el min/max =",Array.min(el),Array.max(el)
   llf = LocalLineFilter()
   z = Array.zerofloat(n1,n2,n3)
-  llf.applyLine(0.1,w1,w2,w3,y,z)
-  #llf.applyNotch(0.01,w1,w2,w3,y,z)
-  z = Array.mul(el,Array.sub(y,z))
+  llf.applyLine(0.02,el,w1,w2,w3,x,z)
+  z = Array.sub(x,z)
   writeFile("z.dat",z)
   plot3ds((x,z))
 
@@ -103,21 +121,22 @@ def window():
 
 def planes():
   x = readFile("x.dat",n1,n2,n3)
-  lof = LocalOrientFilter(12.0)
+  lof = LocalOrientFilter(6.0)
   u2 = Array.zerofloat(n1,n2,n3)
   u3 = Array.zerofloat(n1,n2,n3)
   ep = Array.zerofloat(n1,n2,n3)
+  el = Array.zerofloat(n1,n2,n3)
   lof.apply(x,
     None,None,
     None,u2,u3,
     None,None,None,
     None,None,None,
     None,None,None,
-    ep,None)
+    ep,el)
   writeFile("xu2.dat",u2)
   writeFile("xu3.dat",u3)
   writeFile("xep.dat",ep)
-  return u2,u3,ep
+  writeFile("xel.dat",el)
 
 def lines():
   x = readFile("y.dat",n1,n2,n3)

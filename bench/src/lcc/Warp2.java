@@ -101,6 +101,7 @@ public class Warp2 {
     int l1 = _lmax;
     int l2 = _lmax;
     ShiftFinder _sf = new ShiftFinder(_sigma);
+
     float[][] f = Array.copy(_f);
     float[][] g = Array.copy(_g);
     /*
@@ -109,13 +110,14 @@ public class Warp2 {
       _sf.whiten(_g,g);
     }
     */
+    plot(f,0.0f,null);
+    plot(g,0.0f,null);
+
     float[][] u1 = new float[n2][n1];
     float[][] u2 = new float[n2][n1];
     float[][] du = new float[n2][n1];
     float[][] h = Array.copy(g);
 
-    plot(f,0.0f,null);
-    plot(g,0.0f,null);
     plot(Array.sub(g,f),0.0f,null);
 
     for (int iter=0; iter<4; ++iter) {
