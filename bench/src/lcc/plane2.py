@@ -37,8 +37,8 @@ def main(args):
   #doSymTest()
   #doSymDipTest()
   #goLinear()
-  goPlane()
-  #goNotchOld()
+  #goPlane()
+  goNotch()
   #goAmp()
   #goDip()
   #goIdeal()
@@ -93,9 +93,11 @@ def doDip(factor,sd,sn):
   plot(y,2.0,"yhd")
   plot(z,10.0,"zhd"+suffix)
 
-def goNotchOld():
-  lpf1 = LocalPlaneFilter(LocalPlaneFilter.Type.HALE3,0.00)
-  lpf2 = LocalPlaneFilter(LocalPlaneFilter.Type.HALE3,0.01)
+def goNotch():
+  #lpf1 = LocalPlaneFilter(LocalPlaneFilter.Type.HALE3,0.00)
+  #lpf2 = LocalPlaneFilter(LocalPlaneFilter.Type.HALE3,0.01)
+  lpf1 = LocalPlaneFilter(LocalPlaneFilter.Type.HALE7,0.00)
+  lpf2 = LocalPlaneFilter(LocalPlaneFilter.Type.HALE7,0.05)
   for dip in [20,40,60,80]:
     suffix = str(dip)
     x,u1,u2 = makeImpulse(dip)
@@ -109,12 +111,15 @@ def goNotchOld():
     plotf(az,"azhn"+suffix)
     #plotf(aw,"awhn"+suffix)
   x = readImage()
+  x = Array.transpose(x)
+  plot(x,10.0,"xhn")
   u1,u2 = getU(x)
   y = applyLpfForward(lpf1,u1,u2,x)
   z = applyLpfInverse(lpf2,u1,u2,y)
   #w = inverseLaplacian(y)
   plot(y,2.0,"yhn")
   plot(z,2.0,"zhn")
+  plot(Array.sub(x,z),10.0,None)
   #plot(w,1.0,"whn")
 
 def inverseLaplacian(x):
@@ -174,9 +179,10 @@ def goAmp():
     suffix = str(dip)
     #doAmp(dip,LocalPlaneFilter.Type.FOMEL1,"af1"+suffix)
     #doAmp(dip,LocalPlaneFilter.Type.CLAERBOUT1,"ac1"+suffix)
-    #doAmp(dip,LocalPlaneFilter.Type.HALE2,"ah2"+suffix)
-    doAmp(dip,LocalPlaneFilter.Type.HALE3,"ah3"+suffix)
+    doAmp(dip,LocalPlaneFilter.Type.HALE2,"ah2"+suffix)
+    #doAmp(dip,LocalPlaneFilter.Type.HALE3,"ah3"+suffix)
     #doAmp(dip,LocalPlaneFilter.Type.HALE5,"ah5"+suffix)
+    doAmp(dip,LocalPlaneFilter.Type.HALE7,"ah7"+suffix)
 
 def goAmpDiff():
   for dip in [20,40,60,80]:
@@ -188,13 +194,15 @@ def goPlane():
   x2 = Array.transpose(x1)
   x3 = makeTargetImage()
   for x,s in [(x1,"_1"),(x2,"_2"),(x3,"_3")]:
+  #for x,s in [(x2,"_2")]:
     plot(x,10.0,"x"+s)
     #doPlane(x,LocalPlaneFilter.Type.FOMEL1,"f1"+s)
     #doPlane(x,LocalPlaneFilter.Type.CLAERBOUT1,"c1"+s)
-    doPlane(x,LocalPlaneFilter.Type.HALE2,"h2"+s)
+    #doPlane(x,LocalPlaneFilter.Type.HALE2,"h2"+s)
     #doPlane(x,LocalPlaneFilter.Type.HALE3,"h3"+s)
     #doPlane(x,LocalPlaneFilter.Type.HALE5,"h5"+s)
     #doPlane(x,LocalPlaneFilter.Type.HALE6,"h6"+s)
+    doPlane(x,LocalPlaneFilter.Type.HALE7,"h7"+s)
 
 def goDiff():
   x1 = readImage()
@@ -223,6 +231,7 @@ def doPlane(x,type,png):
   plot(y,5.0,"y"+png)
   plot(z,10.0,"z"+png)
   plot(s,0.0,"s"+png)
+  plot(Array.sub(z,x),0.0,None)
 
 def doDiff(x,png):
   u1,u2 = getU(x)

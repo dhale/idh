@@ -26,11 +26,12 @@ public class LocalPlaneFilter {
     FOMEL1, // Fomel's 2002 filter with coefficients a function of slope
     FOMEL2, // Fomel's filter modified with coefficients a function of angle
     HALE1, // simplest finite-difference operators
-    HALE2, // average of finite-difference operators B
+    HALE2, // folded filter B
     HALE3, // SPD A'A with no preconditioner
     HALE4, // SPD A'A with minimum-phase factors
     HALE5, // SPD A'A with SSOR preconditioner
     HALE6, // SPD SSOR A'A
+    HALE7, // folded filter B with conjugate gradients
   };
 
   public LocalPlaneFilter(Type type) {
@@ -75,6 +76,8 @@ public class LocalPlaneFilter {
       applyForwardSpd(u1,u2,x,y);
     } else if (_type==Type.HALE6) {
       applyForwardSsor(u1,u2,x,y);
+    } else if (_type==Type.HALE7) {
+      applyForwardFolded(u1,u2,x,y);
     }
   }
 
@@ -100,6 +103,8 @@ public class LocalPlaneFilter {
       applyInverseSpdSsor(u1,u2,x,y);
     } else if (_type==Type.HALE6) {
       applyInverseSsor(u1,u2,x,y);
+    } else if (_type==Type.HALE7) {
+      applyInverseFolded(u1,u2,x,y);
     }
   }
 
@@ -416,6 +421,178 @@ public class LocalPlaneFilter {
         if (i2>0 && i1>0) y[i2-1][i1-1] -= ya;
       }
     }
+  }
+
+  // Folded directional Laplacian filter.
+  private void applyForwardFolded(
+    float[][] u1, float[][] u2, float[][] x, float[][] y) 
+  {
+    int n1 = x[0].length;
+    int n2 = x.length;
+    float epsilon = _stability-1.0f;
+    float[] xi20 = new float[n1];
+    float[] xi21 = new float[n1];
+    for (int i2=0; i2<n2; ++i2) {
+      float[] xtmp = xi20;  xi20 = xi21;  xi21 = xtmp;
+      float[] yi2 = y[i2];
+      Array.copy(x[i2],xi20);
+      float u1i = u1[i2][0];
+      float u2i = u2[i2][0];
+      float v11 = 1.0f-u1i*u1i;
+      float v12 =     -u1i*u2i;
+      float v22 = 1.0f-u2i*u2i;
+      float x00 = xi20[0];
+      float x10 = xi21[0];
+      float x01 = 0.0f;
+      float x11 = 0.0f;
+      float xa = x00-x11;
+      float xb = x01-x10;
+      float x1 = 0.5f*(xa-xb);
+      float x2 = 0.5f*(xa+xb);
+      float y1 = v11*x1+v12*x2;
+      float y2 = v12*x1+v22*x2;
+      float ya = y1+y2;
+      float yb = 0.0f;
+      yi2[0] = ya+epsilon*x00;
+      for (int i1=1; i1<n1; ++i1) {
+        u1i = u1[i2][i1];
+        u2i = u2[i2][i1];
+        v11 = 1.0f-u1i*u1i;
+        v12 =     -u1i*u2i;
+        v22 = 1.0f-u2i*u2i;
+        x00 = xi20[i1];
+        x10 = xi21[i1];
+        x01 = xi20[i1-1];
+        x11 = xi21[i1-1];
+        xa = x00-x11;
+        xb = x01-x10;
+        x1 = 0.5f*(xa-xb);
+        x2 = 0.5f*(xa+xb);
+        y1 = v11*x1+v12*x2;
+        y2 = v12*x1+v22*x2;
+        yi2[i1 ]   = y1+y2+epsilon*x00;
+        yi2[i1-1] -= y1-y2;
+      }
+    }
+  }
+  private void applyForwardFoldedB0(
+    float[] u1, float[] u2, float[] x, float[] y) 
+  {
+    int n1 = x.length;
+    float epsilon = _stability-1.0f;
+    float u1i = u1[0];
+    float u2i = u2[0];
+    float v11 = 1.0f-u1i*u1i;
+    float v12 =     -u1i*u2i;
+    float v22 = 1.0f-u2i*u2i;
+    float x00 = x[0];
+    float x01 = 0.0f;
+    float x1 = 0.5f*(x00-x01);
+    float x2 = 0.5f*(x00+x01);
+    float y1 = v11*x1+v12*x2;
+    float y2 = v12*x1+v22*x2;
+    y[0]  = y1+y2+epsilon*x00;
+    for (int i1=1; i1<n1; ++i1) {
+      u1i = u1[i1];
+      u2i = u2[i1];
+      v11 = 1.0f-u1i*u1i;
+      v12 =     -u1i*u2i;
+      v22 = 1.0f-u2i*u2i;
+      x00 = x[i1];
+      x01 = x[i1-1];
+      x1 = 0.5f*(x00-x01);
+      x2 = 0.5f*(x00+x01);
+      y1 = v11*x1+v12*x2;
+      y2 = v12*x1+v22*x2;
+      y[i1  ]  = y1+y2+epsilon*x00;
+      y[i1-1] -= y1-y2;
+    }
+  }
+  private void applyForwardFoldedB1(
+    float[] u1, float[] u2, float[] x, float[] y) 
+  {
+    int n1 = x.length;
+    float u1i = u1[0];
+    float u2i = u2[0];
+    float v11 = 1.0f-u1i*u1i;
+    float v12 =     -u1i*u2i;
+    float v22 = 1.0f-u2i*u2i;
+    float x10 = x[0];
+    float x11 = 0.0f;
+    float x1 = 0.5f*(x10-x11);
+    float x2 = 0.5f*(x10+x11);
+    float y1 = v11*x1-v12*x2;
+    float y2 = v12*x1-v22*x2;
+    y[0]  = y1+y2;
+    for (int i1=1; i1<n1; ++i1) {
+      u1i = u1[i1];
+      u2i = u2[i1];
+      v11 = 1.0f-u1i*u1i;
+      v12 =     -u1i*u2i;
+      v22 = 1.0f-u2i*u2i;
+      x10 = x[i1];
+      x11 = x[i1-1];
+      x1 = 0.5f*(x10-x11);
+      x2 = 0.5f*(x10+x11);
+      y1 = v11*x1-v12*x2;
+      y2 = v12*x1-v22*x2;
+      y[i1  ]  = y1+y2;
+      y[i1-1] -= y1-y2;
+    }
+  }
+  private void applyInverseFolded(
+    float[][] u1, float[][] u2, float[][] x, float[][] y) 
+  {
+    int n1 = x[0].length;
+    int n2 = x.length;
+    float[] r = new float[n1];
+    applyInverseFoldedB0(u1[0],u2[0],x[0],y[0]);
+    for (int i2=1; i2<n2; ++i2) {
+      applyForwardFoldedB1(u1[i2],u2[i2],y[i2-1],r);
+      Array.sub(x[i2],r,r);
+      Array.copy(y[i2-1],y[i2]);
+      applyInverseFoldedB0(u1[i2],u2[i2],r,y[i2]);
+    }
+  }
+  private void applyInverseFoldedB0(
+    float[] u1, float[] u2, float[] x, float[] y) 
+  {
+    int n1 = x.length;
+    float[] r = new float[n1]; // r
+    float[] s = new float[n1]; // d
+    float[] t = new float[n1]; // q
+    //Array.zero(y);
+    //Array.copy(x,r);
+    applyForwardFoldedB0(u1,u2,y,t);
+    Array.sub(x,t,r);
+    Array.copy(r,s);
+    float rr = dot(r,r);
+    float small = rr*1.0e-12f;
+    int niter;
+    for (niter=0; niter<200 && rr>small; ++niter) {
+      applyForwardFoldedB0(u1,u2,s,t);
+      float alpha = rr/dot(s,t);
+      saxpy( alpha,s,y);
+      saxpy(-alpha,t,r);
+      float rrold = rr;
+      rr = dot(r,r);
+      float beta = rr/rrold;
+      for (int i1=0; i1<n1; ++i1)
+        s[i1] = r[i1]+beta*s[i1];
+    }
+    trace("small="+small+" rr="+rr+" niter="+niter);
+  }
+  private static float dot(float[] x, float[] y) {
+    int n1 = x.length;
+    double s = 0.0;
+    for (int i1=0; i1<n1; ++i1)
+      s += x[i1]*y[i1];
+    return (float)s;
+  }
+  private static void saxpy(float a, float[] x, float[] y) {
+    int n1 = x.length;
+    for (int i1=0; i1<n1; ++i1)
+      y[i1] += a*x[i1];
   }
 
   // Directional isotropic Laplacian filter.
