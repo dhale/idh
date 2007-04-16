@@ -21,8 +21,8 @@ width = 500
 height = 520
 widthColorBar = 80
 dataDir = "/data"
-#pngDir = "./png"
-pngDir = None
+pngDir = "./png"
+#pngDir = None
 
 n1 = 315
 n2 = 315
@@ -38,10 +38,10 @@ def main(args):
   #doSymDipTest()
   #goLinear()
   #goPlane()
-  goNotch()
+  #goNotch()
   #goAmp()
   #goDip()
-  #goIdeal()
+  goIdeal()
   #goDiff()
   #goAmpDiff()
   return
@@ -152,6 +152,8 @@ def makeIdeal(angle):
   s1 = 1.0/(n1-1)
   s2 = 1.0/(n2-1)
   a = angle*pi/180.0
+  v1 = sin(a)
+  v2 = cos(a)
   ai = Array.zerofloat(n1,n2)
   for i2 in range(n2):
     k2 = (i2-j2)*s2
@@ -160,8 +162,9 @@ def makeIdeal(angle):
       if k1==0.0 and k2==0.0:
         ai[i2][i1] = 0.0
       else:
-        t = atan2(-k2,k1)
-        ai[i2][i1] = pow(abs(sin(t-a)),1.0)
+        s = v1*k1+v2*k2
+        t = 0.001+k1*k1+k2*k2
+        ai[i2][i1] = 1.0-0.05/(0.05+s*s/t)
   return ai
 
 def doImage():
