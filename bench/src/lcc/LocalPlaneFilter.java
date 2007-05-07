@@ -1087,6 +1087,9 @@ public class LocalPlaneFilter {
       return i;
     }
     private static void makeLcfTheta() {
+      // Stencil lag1:
+      // lag2 = 0: 6  5  4  3  2  1  0
+      // lag2 = 1:                1  0 -1 -2 -3 -4 -5
       int maxlag = 6;
       int nlag = maxlag+2+maxlag;
       int[] lag1 = new int[nlag];

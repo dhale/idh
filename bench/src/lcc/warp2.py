@@ -23,8 +23,8 @@ width = 600
 height = 622
 widthColorBar = 0
 dataDir = "/data"
-#pngDir = "."
-pngDir = None
+pngDir = "."
+#pngDir = None
 
 n1 = 315
 n2 = 315
@@ -46,9 +46,9 @@ lcf = LocalCorrelationFilter(lcfType,lcfWindow,lcfSigma)
 
 def main(args):
   #goImages()
-  #goLcc()
+  goLcc()
   #goLagSearch()
-  goSequentialShifts()
+  #goSequentialShifts()
   #doExact()
   return
 
@@ -87,14 +87,20 @@ def doImages():
   plot(g,0.0,"g")
   return f,g
 
-def doLcc(f,g,whiten,smooth):
+"""
+3*3*5*7
+15*21
+0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20
+  1   3   5   7   9    11    13    15    17    19
+"""
+def doLcc(f,g,whiten,smooth,tail=""):
   f,g,suffix = preprocess(f,g,whiten,smooth)
   l1 = lmax
   l2 = lmax
   m1 = 1+2*l1
   m2 = 1+2*l2
   lcf.setInputs(f,g)
-  c = Array.zerofloat(n1,n2)
+  c = Array.zerofloat(10*m1,10*m2)
   t = Array.zerofloat(n1,n2)
   #k1 = ( 38, 98,113,150, 98,172)
   #k2 = (172,216,230,105,132,227)
@@ -104,13 +110,14 @@ def doLcc(f,g,whiten,smooth):
     for lag1 in range(-l1,l1+1):
       lcf.correlate(lag1,lag2,t)
       lcf.normalize(lag1,lag2,t)
-      Array.copy(n1/m1,n2/m2,l1,l2,m1,m2,t,l1+lag1,l2+lag2,m1,m2,c)
+      #Array.copy(n1/m1,n2/m2,l1,l2,m1,m2,t,l1+lag1,l2+lag2,m1,m2,c)
+      Array.copy(10,10,m1,m2,2*m1,2*m2,t,l1+lag1,l2+lag2,m1,m2,c)
       #for k in range(nk):
       #  ck[k][l2+lag2][l1+lag1] = t[k2[k]][k1[k]]
-  c = Array.copy(10*m1,10*m2,m1,m2,c)
-  plotLccAllTiles(c,"lcca"+suffix)
-  c = Array.copy(m1,m2,6*m1,7*m2,c)
-  plotLccOneTile(c,"lcc1"+suffix)
+  #c = Array.copy(10*m1,10*m2,m1,m2,c)
+  plotLccAllTiles(c,"lcca"+suffix+tail)
+  c = Array.copy(m1,m2,3*m1,3*m2,c)
+  plotLccOneTile(c,"lcc1"+suffix+tail)
   #for k in range(nk):
   #  plot(ck[k],0.0,"lcc"+suffix+"_"+str(k1[k])+"_"+str(k2[k]))
 
@@ -142,9 +149,11 @@ def doSequentialShifts(f,g,whiten,smooth,interp=True):
     print "1: du min =",Array.min(du),"max =",Array.max(du)
     sf.shift1(du,u1,u2,h)
     print "1: u1 min =",Array.min(u1),"max =",Array.max(u1)
+    doLcc(f,h,False,False,"_1"+str(iter))
     sf.find2(lmin,lmax,f,h,du)
     print "2: du min =",Array.min(du),"max =",Array.max(du)
     sf.shift2(du,u1,u2,h)
+    doLcc(f,h,False,False,"_2"+str(iter))
     print "2: u2 min =",Array.min(u2),"max =",Array.max(u2)
     plotu(u1,d1max,"u1"+suffix+"ss"+str(iter))
     plotu(u2,d2max,"u2"+suffix+"ss"+str(iter))
@@ -216,7 +225,7 @@ def plotLccAllTiles(c,png=None):
     x1[i2][1] = n1-0.5
     x2[i2][0] = i2*k2-0.5
     x2[i2][1] = x2[i2][0]
-  p.addPoints(x1,x2).setLineWidth(2)
+  p.addPoints(x1,x2).setLineWidth(1)
   x1 = Array.zerofloat(2,m1)
   x2 = Array.zerofloat(2,m1)
   for i1 in range(m1):
@@ -224,7 +233,7 @@ def plotLccAllTiles(c,png=None):
     x1[i1][1] = x1[i1][0]
     x2[i1][0] = -0.5
     x2[i1][1] = n2-0.5
-  p.addPoints(x1,x2).setLineWidth(2)
+  p.addPoints(x1,x2).setLineWidth(1)
   frame(p,png)
 
 def plotLccOneTile(c,png=None):
@@ -232,20 +241,20 @@ def plotLccOneTile(c,png=None):
   pv = p.addPixels(c)
   pv.setClips(-1.0,1.0)
   pv.setInterpolation(PixelsView.Interpolation.NEAREST)
-  n1,n2 = len(c[0]),len(c)
-  l1,l2 = lmax,lmax
-  k1,k2 = 1+2*l1,1+2*l2
-  m1,m2 = 1+n1/k1,1+n2/k2
-  x1 = (-0.5,n1-0.5)
-  x2 = (float(lmax),float(lmax))
-  pv = p.addPoints(x1,x2)
-  pv.setLineColor(Color.BLUE)
-  pv.setLineWidth(3)
-  x1 = (float(lmax),float(lmax))
-  x2 = (-0.5,n2-0.5)
-  pv = p.addPoints(x1,x2)
-  pv.setLineColor(Color.BLUE)
-  pv.setLineWidth(3)
+  #n1,n2 = len(c[0]),len(c)
+  #l1,l2 = lmax,lmax
+  #k1,k2 = 1+2*l1,1+2*l2
+  #m1,m2 = 1+n1/k1,1+n2/k2
+  #x1 = (-0.5,n1-0.5)
+  #x2 = (float(lmax),float(lmax))
+  #pv = p.addPoints(x1,x2)
+  #pv.setLineColor(Color.BLUE)
+  #pv.setLineWidth(3)
+  #x1 = (float(lmax),float(lmax))
+  #x2 = (-0.5,n2-0.5)
+  #pv = p.addPoints(x1,x2)
+  #pv.setLineColor(Color.BLUE)
+  #pv.setLineWidth(3)
   frame(p,png)
 
 def plotu(u,clip=0.0,png=None):
