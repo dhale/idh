@@ -1,4 +1,4 @@
-import sys 
+import sys
 from math import *
 from java.awt import *
 from java.lang import *
