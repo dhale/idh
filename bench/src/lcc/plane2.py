@@ -21,8 +21,8 @@ width = 500
 height = 520
 widthColorBar = 80
 dataDir = "/data"
-pngDir = "./png"
-#pngDir = None
+#pngDir = "./png"
+pngDir = None
 
 n1 = 315
 n2 = 315
@@ -40,8 +40,8 @@ def main(args):
   #goPlane()
   #goNotch()
   #goAmp()
-  #goDip()
-  goIdeal()
+  goDip()
+  #goIdeal()
   #goDiff()
   #goAmpDiff()
   return
@@ -66,11 +66,11 @@ def goLinear():
   plot(xi,10.0)
 
 def goDip():
-  sd = 0.05
-  sn = 0.00
+  sd = 0.00
+  sn = 0.01
   doDip(LocalDipFilter.Factor.NOT,sd,sn)
-  doDip(LocalDipFilter.Factor.PCG,sd,sn)
-  #doDip(LocalDipFilter.Factor.INV,sd,sn)
+  #doDip(LocalDipFilter.Factor.PCG,sd,sn)
+  doDip(LocalDipFilter.Factor.INV,sd,sn)
   #doDip(LocalDipFilter.Factor.ALL,sd,sn)
 
 def doDip(factor,sd,sn):
@@ -87,6 +87,7 @@ def doDip(factor,sd,sn):
     a = frequencyResponse(y)
     plotf(a,"a"+suffix)
   x = readImage()
+  #x = makeTargetImage()
   u1,u2 = getU(x)
   y = applyLdfForward(ldf,sd,sn,u2,x)
   z = Array.sub(x,y)
@@ -291,14 +292,14 @@ def doSymTest():
 
 def doSymDipTest():
   x = makeTargetImage()
-  ldf = LocalDipFilter(LocalDipFilter.Type.SIMPLE)
+  ldf = LocalDipFilter(LocalDipFilter.Factor.ALL)
   u2 = Array.randfloat(n1,n2)
   x = Array.sub(Array.randfloat(n1,n2),0.5)
   y = Array.sub(Array.randfloat(n1,n2),0.5)
   ax = Array.zerofloat(n1,n2)
   ay = Array.zerofloat(n1,n2)
-  ldf.applyForward(u2,x,ax)
-  ldf.applyForward(u2,y,ay)
+  ldf.applyForward(0.01,0.01,u2,x,ax)
+  ldf.applyForward(0.01,0.01,u2,y,ay)
   yax = Array.sum(Array.mul(y,ax))
   xay = Array.sum(Array.mul(x,ay))
   print "yax =",yax," xay=",xay
