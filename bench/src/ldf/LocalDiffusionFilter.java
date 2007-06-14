@@ -78,43 +78,50 @@ public class LocalDiffusionFilter {
   ///////////////////////////////////////////////////////////////////////////
   // private
 
-  private static final float CG_SMALL = 0.000001f;
+  private static final float CG_SMALL = 0.0001f;
 
   private float _sigma;
 
 
   // Test code for multigrid.
   public static void main(String[] args) {
-    testMg(1,1001);
-    testMg(4,1001);
+    testMg(1,200,1000);
+    testMg(4,4,1000);
   }
-  private static void testMg(int nlevel, int n1) {
+  private static void testMg(int nlevel, int niter, int n1) {
     float[] d = new float[n1];
     float[] x = new float[n1];
     float[] y = new float[n1];
     for (int i1=0; i1<n1; ++i1) {
-      d[i1] = 1.0f+64.0f*(float)i1/(float)(n1-1);
-      if (i1%(n1/10)==1)
+      d[i1] = 1.0f+144.0f*sin(FLT_PI*(float)i1/(float)(n1-1));
+      if (i1>0 && i1%100==0)
         x[i1] = 1.0f;
     }
     LocalDiffusionFilter ldf = new LocalDiffusionFilter(1.0);
-    ldf.applyMg(nlevel,d,x,y);
-    //edu.mines.jtk.mosaic.SimplePlot.asSequence(x);
+    ldf.applyMg(nlevel,niter,d,x,y);
     edu.mines.jtk.mosaic.SimplePlot.asSequence(y);
   }
-  private void applyMg(int nlevel, float[] d, float[] x, float[] y) {
-    float[][] dd = makeGaussianPyramid(nlevel,d);
-    float[][] xx = makeGaussianPyramid(nlevel,x);
+  private void applyMg(
+    int nlevel, int nsmooth, 
+    float[] d, float[] x, float[] y) 
+  {
+    float[][] dd = makePyramid(nlevel,d);
+    float[][] xx = makePyramid(nlevel,x);
+    float scale = 1.0f;
+    for (int ilevel=1; ilevel<nlevel; ++ilevel) {
+      scale *= 0.25f;
+      Array.mul(scale,dd[ilevel],dd[ilevel]);
+    }
     float[] yi = new float[xx[nlevel-1].length];
     for (int ilevel=nlevel-1; ilevel>=0; --ilevel) {
       float[] di = dd[ilevel];
       float[] xi = xx[ilevel];
-      if (ilevel>0)
-        solveCg(di,xi,yi);
+      solveCg(nsmooth,di,xi,yi);
       if (ilevel>0) {
         int m1 = xx[ilevel-1].length;
         float[] yt = new float[m1];
         upsample(yi,yt);
+        edu.mines.jtk.mosaic.SimplePlot.asSequence(yt);
         yi = yt;
       } else {
         Array.copy(yi,y);
@@ -123,21 +130,36 @@ public class LocalDiffusionFilter {
   }
 
   private float[][] makeGaussianPyramid(int nlevel, float[] x) {
-    RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(2.0);
+    //RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(2.0);
     int n1 = x.length;
     float[][] y = new float[nlevel][];
     y[0] = x;
     for (int ilevel=1; ilevel<nlevel; ++ilevel) {
-      float[] t = new float[n1];
-      rgf.apply0(y[ilevel-1],t);
+      //float[] t = new float[n1];
+      //rgf.apply0(y[ilevel-1],t);
+      //n1 = (n1+1)/2;
+      //y[ilevel] = Array.copy(n1,0,2,t);
       n1 = (n1+1)/2;
-      y[ilevel] = Array.copy(n1,0,2,t);
+      y[ilevel] = new float[n1];
+      downsample(y[ilevel-1],y[ilevel]);
+    }
+    return y;
+  }
+
+  private float[][] makePyramid(int nlevel, float[] x) {
+    float[][] y = new float[nlevel][];
+    y[0] = x;
+    int n1 = x.length;
+    for (int ilevel=1; ilevel<nlevel; ++ilevel) {
+      n1 = (n1+1)/2;
+      y[ilevel] = new float[n1];
+      downsample(y[ilevel-1],y[ilevel]);
     }
     return y;
   }
 
   // Solve via conjugate gradient iterations.
-  private void solveCg(float[] d, float[] x, float[] y) {
+  private void solveCg(int niter, float[] d, float[] x, float[] y) {
     int n1 = x.length;
     float[] r = new float[n1];
     float[] s = new float[n1];
@@ -149,19 +171,22 @@ public class LocalDiffusionFilter {
     float rr = dot(r,r);
     float stop = rr*CG_SMALL;
     trace("solveCg: n1="+n1+" stop="+stop+" rr="+rr);
-    int niter;
-    for (niter=0; niter<200 && rr>stop; ++niter) {
+    //edu.mines.jtk.mosaic.SimplePlot plot = 
+    //  new edu.mines.jtk.mosaic.SimplePlot();
+    int miter;
+    for (miter=0; miter<niter && rr>stop; ++miter) {
       applyForward(d,s,t);
       float alpha = rr/dot(s,t);
       saxpy( alpha,s,y);
       saxpy(-alpha,t,r);
+      //plot.addPoints(r);
       float rrold = rr;
       rr = dot(r,r);
       float beta = rr/rrold;
       for (int i1=0; i1<n1; ++i1)
         s[i1] = r[i1]+beta*s[i1];
     }
-    trace("  niter="+niter+" rr="+rr);
+    trace("  miter="+miter+" rr="+rr);
   }
 
   // Apply diffusion operator.
