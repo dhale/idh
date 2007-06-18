@@ -476,15 +476,15 @@ public class MultigridSolver {
 
   // Test code for multigrid.
   public static void main(String[] args) {
-    testSolve(33);
+    testSolve(16);
   }
   private static void testSolve(int n) {
     int n1 = n;
     int n2 = n;
-    float d1 = 1.0f/(n1-1);
-    float d2 = 1.0f/(n2-1);
-    float f1 = 0.0f;
-    float f2 = 0.0f;
+    float d1 = 1.0f/(n1+1);
+    float d2 = 1.0f/(n2+1);
+    float f1 = d1;
+    float f2 = d2;
     float[] ai = { 0.0f,   -1.0f/d2,          0.0f,
                   -1.0f/d1, 2.0f/d1+2.0f/d2, -1.0f/d1,
                    0.0f,   -1.0f/d2,          0.0f};
@@ -500,14 +500,8 @@ public class MultigridSolver {
       for (int i1=0; i1<n1; ++i1) {
         float x1 = f1+i1*d1;
         float x1s = x1*x1;
-        if (0<i1 && i1<n1-1 && 0<i2 && i2<n2-1) {
-          for (int k=0; k<9; ++k)
-            a[i2][i1][k] = ai[k];
-        } else {
-          for (int k=0; k<9; ++k)
-            a[i2][i1][k] = 0.0f;
-          a[i2][i1][4] = 1.0f;
-        }
+        for (int k=0; k<9; ++k)
+          a[i2][i1][k] = ai[k];
         b[i2][i1] = 2.0f*((1.0f-6.0f*x1s)*x2s*(1.0f-x2s) +
                           (1.0f-6.0f*x2s)*x1s*(1.0f-x1s));
         y[i2][i1] = (x1s-x1s*x1s)*(x2s*x2s-x2s);
