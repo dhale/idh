@@ -70,13 +70,13 @@ public class MultigridSolver {
       _n1 = a[0].length;
       _n2 = a.length;
       _a = a;
-      _i = new int[]{EMPTY,EMPTY,EMPTY};
+      _i = new int[]{-2,-2,-2};
       _b = new float[3][1+_n1+1];
     }
     float[] get(int i2) {
       Check.argument(-1<=i2 && i2<=_n2,"index i2 is in bounds");
       int j2 = (i2+1)%3;
-      if (_i[j2]==EMPTY) {
+      if (_i[j2]!=i2) {
         if (0<=i2 && i2<_n2) {
           Array.copy(_n1,0,_a[i2],1,_b[j2]);
         } else {
@@ -86,7 +86,6 @@ public class MultigridSolver {
       }
       return _b[j2];
     }
-    private static final int EMPTY = -2;
     private int _n1,_n2;
     private float[][] _a;
     private int[] _i;
@@ -188,7 +187,7 @@ public class MultigridSolver {
     }
   }
 
-  private void apply(A33 a33, float[][] x, float[][] y) {
+  private static void apply(A33 a33, float[][] x, float[][] y) {
     int n1 = a33.getN1();
     int n2 = a33.getN2();
     float[] a = new float[9];
@@ -202,6 +201,30 @@ public class MultigridSolver {
         y[i2][i1] = a[0]*xi2m[j1-1] + a[3]*xi20[j1-1] + a[6]*xi2p[j1-1] +
                     a[1]*xi2m[j1  ] + a[4]*xi20[j1  ] + a[7]*xi2p[j1  ] +
                     a[2]*xi2m[j1+1] + a[5]*xi20[j1+1] + a[8]*xi2p[j1+1];
+      }
+    }
+  }
+
+  private static void xapply(A33 a33, float[][] x, float[][] y) {
+    int n1 = a33.getN1();
+    int n2 = a33.getN2();
+    int n1m = n1-1;
+    int n2m = n2-1;
+    float[] a = new float[9];
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        a33.getA(i1,i2,a);
+        float yi = 0.0f;
+        if (0<i1   && 0<i2  ) yi += a[0]*x[i2-1][i1-1];
+        if (          0<i2  ) yi += a[1]*x[i2-1][i1  ];
+        if (i1<n1m && 0<i2  ) yi += a[2]*x[i2-1][i1+1];
+        if (0<i1            ) yi += a[3]*x[i2  ][i1-1];
+                              yi += a[4]*x[i2  ][i1  ];
+        if (i1<n1m          ) yi += a[5]*x[i2  ][i1+1];
+        if (0<i1   && i2<n2m) yi += a[6]*x[i2+1][i1-1];
+        if (          i2<n2m) yi += a[7]*x[i2+1][i1  ];
+        if (i1<n1m && i2<n2m) yi += a[8]*x[i2+1][i1+1];
+        y[i2][i1] = yi;
       }
     }
   }
@@ -453,24 +476,53 @@ public class MultigridSolver {
 
   // Test code for multigrid.
   public static void main(String[] args) {
-    testMg(200,1,1000);
-    testMg(16,1,1000);
-    testMg(5,4,1000);
+    testSolve(33);
   }
-  private static void testMg(int niter, int nlevel, int n1) {
-    float[] d = new float[n1];
-    float[] x = new float[n1];
-    float[] y = new float[n1];
-    for (int i1=0; i1<n1; ++i1) {
-      d[i1] = 1.0f+256.0f*sin(FLT_PI*(float)i1/(float)(n1-1));
-      if (i1>0 && i1%100==0)
-        x[i1] = 1.0f;
+  private static void testSolve(int n) {
+    int n1 = n;
+    int n2 = n;
+    float d1 = 1.0f/(n1-1);
+    float d2 = 1.0f/(n2-1);
+    float f1 = 0.0f;
+    float f2 = 0.0f;
+    float[] ai = { 0.0f,   -1.0f/d2,          0.0f,
+                  -1.0f/d1, 2.0f/d1+2.0f/d2, -1.0f/d1,
+                   0.0f,   -1.0f/d2,          0.0f};
+    float[][][] a = new float[n2][n1][9];
+    float[][] b = new float[n2][n1];
+    float[][] c = new float[n2][n1];
+    float[][] x = new float[n2][n1];
+    float[][] y = new float[n2][n1];
+
+    for (int i2=0; i2<n2; ++i2) {
+      float x2 = f2+i2*d2;
+      float x2s = x2*x2;
+      for (int i1=0; i1<n1; ++i1) {
+        float x1 = f1+i1*d1;
+        float x1s = x1*x1;
+        if (0<i1 && i1<n1-1 && 0<i2 && i2<n2-1) {
+          for (int k=0; k<9; ++k)
+            a[i2][i1][k] = ai[k];
+        } else {
+          for (int k=0; k<9; ++k)
+            a[i2][i1][k] = 0.0f;
+          a[i2][i1][4] = 1.0f;
+        }
+        b[i2][i1] = 2.0f*((1.0f-6.0f*x1s)*x2s*(1.0f-x2s) +
+                          (1.0f-6.0f*x2s)*x1s*(1.0f-x1s));
+        y[i2][i1] = (x1s-x1s*x1s)*(x2s*x2s-x2s);
+      }
     }
-    float sigma = 1.0f;
-    float small = 0.0001f;
-    LocalDiffusionFilter ldf = 
-      new LocalDiffusionFilter(sigma,small,niter,nlevel);
-    ldf.applyMg(d,x,y);
-    traceSequence(y);
+    A33 a33 = new MultigridSolver.SimpleA33(a);
+
+    tracePixels(b); // exact rhs
+    apply(a33,y,c);
+    tracePixels(c); // computed rhs
+
+    tracePixels(y); // exact solution
+    solve(a33,b,x);
+    tracePixels(x); // computed solution
+    apply(a33,x,c);
+    tracePixels(c); // computed rhs
   }
 } 
