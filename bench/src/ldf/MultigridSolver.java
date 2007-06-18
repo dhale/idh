@@ -103,6 +103,24 @@ public class MultigridSolver {
     return nlevel;
   }
 
+  private static void apply(A33 a33, float[][] x, float[][] y) {
+    int n1 = a33.getN1();
+    int n2 = a33.getN2();
+    float[] a = new float[9];
+    Buffer33 xb = new Buffer33(x);
+    for (int i2=0; i2<n2; ++i2) {
+      float[] xi2m = xb.get(i2-1);
+      float[] xi20 = xb.get(i2  );
+      float[] xi2p = xb.get(i2+1);
+      for (int i1=0,j1=1; i1<n1; ++i1,++j1) {
+        a33.getA(i1,i2,a);
+        y[i2][i1] = a[0]*xi2m[j1-1] + a[3]*xi20[j1-1] + a[6]*xi2p[j1-1] +
+                    a[1]*xi2m[j1  ] + a[4]*xi20[j1  ] + a[7]*xi2p[j1  ] +
+                    a[2]*xi2m[j1+1] + a[5]*xi20[j1+1] + a[8]*xi2p[j1+1];
+      }
+    }
+  }
+
   private static void solve(A33 a33, float[][] b, float[][] x) {
     int n1 = b[0].length;
     int n2 = b.length;
@@ -118,9 +136,10 @@ public class MultigridSolver {
           int k2 = k/3-1;
           int j1 = i1+k1;
           int j2 = i2+k2;
-          int j = j1+j2*n1;
-          if (0<=j && j<n)
+          if (0<=j1 && j1<n1 && 0<=j2 && j2<n2) {
+            int j = j1+j2*n1;
             am.set(i,j,ai[k]);
+          }
         }
         bm.set(i,0,b[i2][i1]);
       }
@@ -142,9 +161,7 @@ public class MultigridSolver {
 
     // If last (coarsest) level, solve the coarse system exactly.
     if (ilevel==_nlevel) {
-
       solve(a33,b,x);
-
     } 
     
     // Else, solve using recursively coarser levels.
@@ -184,48 +201,6 @@ public class MultigridSolver {
       // Post-smooth.
       for (int irelax=0; irelax<nrelax1; ++irelax)
         relaxJacobi(a33,b,x);
-    }
-  }
-
-  private static void apply(A33 a33, float[][] x, float[][] y) {
-    int n1 = a33.getN1();
-    int n2 = a33.getN2();
-    float[] a = new float[9];
-    Buffer33 xb = new Buffer33(x);
-    for (int i2=0; i2<n2; ++i2) {
-      float[] xi2m = xb.get(i2-1);
-      float[] xi20 = xb.get(i2  );
-      float[] xi2p = xb.get(i2+1);
-      for (int i1=0,j1=1; i1<n1; ++i1,++j1) {
-        a33.getA(i1,i2,a);
-        y[i2][i1] = a[0]*xi2m[j1-1] + a[3]*xi20[j1-1] + a[6]*xi2p[j1-1] +
-                    a[1]*xi2m[j1  ] + a[4]*xi20[j1  ] + a[7]*xi2p[j1  ] +
-                    a[2]*xi2m[j1+1] + a[5]*xi20[j1+1] + a[8]*xi2p[j1+1];
-      }
-    }
-  }
-
-  private static void xapply(A33 a33, float[][] x, float[][] y) {
-    int n1 = a33.getN1();
-    int n2 = a33.getN2();
-    int n1m = n1-1;
-    int n2m = n2-1;
-    float[] a = new float[9];
-    for (int i2=0; i2<n2; ++i2) {
-      for (int i1=0; i1<n1; ++i1) {
-        a33.getA(i1,i2,a);
-        float yi = 0.0f;
-        if (0<i1   && 0<i2  ) yi += a[0]*x[i2-1][i1-1];
-        if (          0<i2  ) yi += a[1]*x[i2-1][i1  ];
-        if (i1<n1m && 0<i2  ) yi += a[2]*x[i2-1][i1+1];
-        if (0<i1            ) yi += a[3]*x[i2  ][i1-1];
-                              yi += a[4]*x[i2  ][i1  ];
-        if (i1<n1m          ) yi += a[5]*x[i2  ][i1+1];
-        if (0<i1   && i2<n2m) yi += a[6]*x[i2+1][i1-1];
-        if (          i2<n2m) yi += a[7]*x[i2+1][i1  ];
-        if (i1<n1m && i2<n2m) yi += a[8]*x[i2+1][i1+1];
-        y[i2][i1] = yi;
-      }
     }
   }
 
@@ -476,23 +451,26 @@ public class MultigridSolver {
 
   // Test code for multigrid.
   public static void main(String[] args) {
-    testSolve(16);
+    testSolve(32);
   }
   private static void testSolve(int n) {
     int n1 = n;
     int n2 = n;
     float d1 = 1.0f/(n1+1);
     float d2 = 1.0f/(n2+1);
+    float d1s = d1*d1;
+    float d2s = d2*d2;
     float f1 = d1;
     float f2 = d2;
-    float[] ai = { 0.0f,   -1.0f/d2,          0.0f,
-                  -1.0f/d1, 2.0f/d1+2.0f/d2, -1.0f/d1,
-                   0.0f,   -1.0f/d2,          0.0f};
+    float[] ai = { 0.0f,    -1.0f/d2s,           0.0f,
+                  -1.0f/d1s, 2.0f/d1s+2.0f/d2s, -1.0f/d1s,
+                   0.0f,    -1.0f/d2s,           0.0f};
     float[][][] a = new float[n2][n1][9];
-    float[][] b = new float[n2][n1];
-    float[][] c = new float[n2][n1];
-    float[][] x = new float[n2][n1];
-    float[][] y = new float[n2][n1];
+    float[][] b = new float[n2][n1]; // rhs b
+    float[][] c = new float[n2][n1]; // c = Ay
+    float[][] d = new float[n2][n1]; // d = Ax
+    float[][] x = new float[n2][n1]; // computed solution to Ax = b
+    float[][] y = new float[n2][n1]; // exact solution to continuous problem
 
     for (int i2=0; i2<n2; ++i2) {
       float x2 = f2+i2*d2;
@@ -507,16 +485,15 @@ public class MultigridSolver {
         y[i2][i1] = (x1s-x1s*x1s)*(x2s*x2s-x2s);
       }
     }
+
     A33 a33 = new MultigridSolver.SimpleA33(a);
-
-    tracePixels(b); // exact rhs
+    tracePixels(b);
     apply(a33,y,c);
-    tracePixels(c); // computed rhs
-
-    tracePixels(y); // exact solution
+    tracePixels(c);
+    tracePixels(y);
     solve(a33,b,x);
-    tracePixels(x); // computed solution
-    apply(a33,x,c);
-    tracePixels(c); // computed rhs
+    tracePixels(x);
+    apply(a33,x,d);
+    tracePixels(d);
   }
 } 
