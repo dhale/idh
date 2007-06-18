@@ -103,19 +103,54 @@ public class MultigridSolver {
     return nlevel;
   }
 
+  private static void solve(A33 a33, float[][] b, float[][] x) {
+    int n = n1*n2;
+    DMatrix am = new DMatrix(n,n);
+    DMatrix bm = new DMatrix(n,1);
+    float[] ai = new float[9];
+    for (int i2=0,i=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1,++i) {
+        a33.get(i1,i2,ai);
+        for (int k=0; k<9; ++k) {
+          int k1 = k%3-1;
+          int k2 = k/3-1;
+          int j1 = i1+k1;
+          int j2 = i2+k2;
+          int j = j1+j2*n1;
+          if (0<=j && j<n)
+            am.set(i,j,ai[k]);
+        }
+        bm.set(i,0,b[i2][i1]);
+      }
+    }
+    DMatrixLud lud = new DMatrixLud(a);
+    DMatrix xm = lud.solve(bm);
+    for (int i2=0,i=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1,++i) {
+        x[i2][i1] = (float)xm.get(i);
+      }
+    }
+  }
+
   private void vcycle(
     int ilevel, int nrelax1, int nrelax2, 
     float[][] b, float[][] x) 
   {
-    int n1 = b[0].length;
-    int n2 = b.length;
-    int m1 = (n1+1)/2;
-    int m2 = (n2+1)/2;
+    A33 a33 = _a33s[ilevel];
+
+    // If last (coarsest) level, solve the coarse system exactly.
     if (ilevel==_nlevel) {
-      // Solve coarsest system exactly.
-      
-    } else {
-      A33 a33 = _a33s[ilevel];
+
+      solve(a33,b,x);
+
+    } 
+    
+    // Else, solve using recursively coarser levels.
+    else {
+      int n1 = b[0].length;
+      int n2 = b.length;
+      int m1 = (n1+1)/2;
+      int m2 = (n2+1)/2;
 
       // Pre-smooth.
       for (int irelax=0; irelax<nrelax1; ++irelax)
@@ -132,7 +167,7 @@ public class MultigridSolver {
       float[][] bc = new float[m2][m1];
       downsample(1.0f,r,bc);
 
-      // Recurse.
+      // Solve on coarser grid.
       float[][] xc = new float[m2][m1];
       vcycle(ilevel+1,nrelax1,nrelax2,bc,xc);
 
