@@ -130,7 +130,7 @@ public class LocalDipFilter {
   {
     float[][] t = new float[x.length][x[0].length];
     applyForward(0.0f,0.0f,u2,x,t);
-    applyInverse(sd,0.0f,u2,t,y);
+    applyInverse(sd,0.01f,u2,t,y);
   }
 
   /**
@@ -209,7 +209,7 @@ public class LocalDipFilter {
   {
     float[][][] t = new float[x.length][x[0].length][x[0][0].length];
     applyForward(0.0f,0.0f,u2,u3,x,t);
-    applyInverse(sd,0.0f,u2,u3,t,y);
+    applyInverse(sd,0.01f,u2,u3,t,y);
   }
 
   /**
@@ -260,8 +260,6 @@ public class LocalDipFilter {
   }
 
   private FactoredFilter getFactoredFilter(float sd, float sn) {
-    sd = max(0.001f,sd);
-    sn = max(0.001f,sn);
     Small small = new Small(sd,sn);
     if (_ffmap==null)
       _ffmap = new HashMap<Small,FactoredFilter>();
@@ -537,10 +535,10 @@ public class LocalDipFilter {
   }
 
   // A local dip filter approximated with minimum-phase factors.
-  private static class FactoredFilterX {
-    FactoredFilterX(Small small) {
+  private static class FactoredFilter {
+    FactoredFilter(Small small) {
       LocalDipFilter ldf = new LocalDipFilter(Factor.NOT);
-      int maxlag = 6;
+      int maxlag = 8;
       int nlag = maxlag+2+maxlag;
       int[] lag1 = new int[nlag];
       int[] lag2 = new int[nlag];
@@ -572,7 +570,7 @@ public class LocalDipFilter {
       _lcf.applyInverseTranspose(a2,x,y);
       _lcf.applyInverse(a2,y,y);
     }
-    private static int NTHETA = 33;
+    private static int NTHETA = 21;
     private static float FTHETA = -0.5f*FLT_PI;
     private static float DTHETA = FLT_PI/(float)(NTHETA-1);;
     private static float STHETA = 0.9999f/DTHETA;
@@ -581,7 +579,7 @@ public class LocalDipFilter {
         _at = atable;
         _u2 = u2;
       }
-      public void get(int i1, int i2, float[] a) {
+      public void xget(int i1, int i2, float[] a) {
         float theta = -asin(_u2[i2][i1]);
         int i = (int)(0.5f+(theta-FTHETA)*STHETA);
         float[] ai = _at[i];
@@ -589,131 +587,19 @@ public class LocalDipFilter {
         for (int j=0; j<n; ++j)
           a[j] = ai[j];
       }
-      private float[][] _at;
-      private float[][] _u2;
-    }
-    private LocalCausalFilter _lcf;
-    private float[][] _atable = new float[NTHETA][];
-  }
-
-  // A local dip filter approximated with minimum-phase factors.
-  private static class FactoredFilter {
-    FactoredFilter(Small small) {
-      LocalDipFilter ldf = new LocalDipFilter(Factor.NOT);
-      int maxlag = 6;
-      int nlag = maxlag+2+maxlag;
-      int[] lag1 = new int[nlag];
-      int[] lag2 = new int[nlag];
-      for (int ilag=0; ilag<nlag; ++ilag) {
-        lag1[ilag] = (ilag<=maxlag)?ilag:ilag-2*maxlag;
-        lag2[ilag] = (ilag<=maxlag)?0:1;
-      }
-      float[][] u = new float[3][3];
-      float[][] t = new float[3][3];
-      float[][] r = new float[3][3];
-      t[1][1] = 1.0f;
-      CausalFilter cf = new CausalFilter(lag1,lag2);
-      for (int itheta=0; itheta<NTHETA; ++itheta) {
-        float theta = FTHETA+itheta*DTHETA;
-        Array.fill(-sin(theta),u);
-        ldf.applyForward(small.sd,small.sn,u,t,r);
-        cf.factorWilsonBurg(100,0.000001f,r);
-        _atable[itheta] = cf.getA();
-      }
-      _lcf = new LocalCausalFilter(lag1,lag2);
-    }
-    void applyForward(float[][] u2, float[][] x, float[][] y) {
-      int n1 = u2[0].length;
-      int n2 = u2.length;
-      float[][] s = new float[n2][n1];
-      float[][] t = new float[n2][n1];
-      A2 as = new A2(_atable,u2,false);
-      A2 at = new A2(_atable,u2,true);
-      _lcf.apply(as,x,s);
-      _lcf.apply(at,x,t);
-      as.scale(s,s);
-      at.scale(t,t);
-      Array.add(s,t,y);
-      as.scale(y,s);
-      at.scale(y,t);
-      _lcf.applyTranspose(as,s,s);
-      _lcf.applyTranspose(at,t,t);
-      Array.add(s,t,y);
-    }
-    void applyInverse(float[][] u2, float[][] x, float[][] y) {
-      int n1 = u2[0].length;
-      int n2 = u2.length;
-      float[][] s = new float[n2][n1];
-      float[][] t = new float[n2][n1];
-      A2 as = new A2(_atable,u2,false);
-      A2 at = new A2(_atable,u2,true);
-      _lcf.applyInverseTranspose(as,x,s);
-      _lcf.applyInverseTranspose(at,x,t);
-      as.scale(s,s);
-      at.scale(t,t);
-      Array.add(s,t,y);
-      as.scale(y,s);
-      at.scale(y,t);
-      _lcf.applyInverse(as,s,s);
-      _lcf.applyInverse(at,t,t);
-      Array.add(s,t,y);
-    }
-    private static int NTHETA = 33;
-    private static float FTHETA = -0.5f*FLT_PI;
-    private static float DTHETA = FLT_PI/(float)(NTHETA-1);;
-    private static float STHETA = 0.9999f/DTHETA;
-    private static class A2 implements LocalCausalFilter.A2 {
       public void get(int i1, int i2, float[] a) {
         float theta = -asin(_u2[i2][i1]);
         float t = (theta-FTHETA)*STHETA;
         int i = (int)t;
         float w = t-(float)i;
-        if (_up)
-          i = i+1;
-        else
-          w = 1.0f-w;
-        _w[i2][i1] = w;
         float[] ai = _at[i];
+        float[] aj = _at[i+1];
         int n = ai.length;
         for (int j=0; j<n; ++j)
-          a[j] = ai[j];
-      }
-      A2(float[][] atable, float[][] u2, boolean up) {
-        _at = atable;
-        _u2 = u2;
-        int n1 = u2[0].length;
-        int n2 = u2.length;
-        _w = new float[n2][n1];
-        _up = up;
-      }
-      void scaleAndAdd(float[][] x, float[][] y) {
-        int n1 = x[0].length;
-        int n2 = x.length;
-        for (int i2=0; i2<n2; ++i2) {
-          float[] x2 = x[i2];
-          float[] y2 = y[i2];
-          float[] w2 = _w[i2];
-          for (int i1=0; i1<n1; ++i1) {
-            y2[i1] += x2[i1]*w2[i1];
-          }
-        }
-      }
-      void scale(float[][] x, float[][] y) {
-        int n1 = x[0].length;
-        int n2 = x.length;
-        for (int i2=0; i2<n2; ++i2) {
-          float[] w2 = _w[i2];
-          float[] x2 = x[i2];
-          float[] y2 = y[i2];
-          for (int i1=0; i1<n1; ++i1) {
-            y2[i1] = w2[i1]*x2[i1];
-          }
-        }
+          a[j] = (1.0f-w)*ai[j]+w*aj[j];
       }
       private float[][] _at;
       private float[][] _u2;
-      private float[][] _w;
-      private boolean _up;
     }
     private LocalCausalFilter _lcf;
     private float[][] _atable = new float[NTHETA][];

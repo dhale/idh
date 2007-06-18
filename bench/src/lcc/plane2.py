@@ -13,6 +13,9 @@ from edu.mines.jtk.util import *
 
 from lcc import *
 
+True = 1
+False = 0
+
 #############################################################################
 # parameters
 
@@ -68,14 +71,14 @@ def goLinear():
 def goDip():
   sd = 0.00
   sn = 0.01
-  doDip(LocalDipFilter.Factor.NOT,sd,sn)
+  #doDip(LocalDipFilter.Factor.NOT,sd,sn)
   #doDip(LocalDipFilter.Factor.PCG,sd,sn)
   doDip(LocalDipFilter.Factor.INV,sd,sn)
   #doDip(LocalDipFilter.Factor.ALL,sd,sn)
 
 def doDip(factor,sd,sn):
   ldf = LocalDipFilter(factor)
-  for dip in [20,40,60,80]:
+  for dip in [-80,-60,-40,-20,0,20,40,60,80]:
     x,u1,u2 = makeImpulse(dip)
     if sn>0.0:
       suffix = "hn"+str(dip)
@@ -87,12 +90,18 @@ def doDip(factor,sd,sn):
     a = frequencyResponse(y)
     plotf(a,"a"+suffix)
   x = readImage()
+  #x = Array.transpose(x)
   #x = makeTargetImage()
   u1,u2 = getU(x)
   y = applyLdfForward(ldf,sd,sn,u2,x)
   z = Array.sub(x,y)
-  plot(y,2.0,"yhd")
+  plot(y,2.0,"yhd"+suffix)
   plot(z,10.0,"zhd"+suffix)
+  r = makeRandom()
+  r = smooth(r)
+  s = Array.zerofloat(n1,n2)
+  ldf.applyInverse(sd,sn,u2,r,s)
+  plot(s,0.0,"s"+suffix)
 
 def goNotch():
   #lpf1 = LocalPlaneFilter(LocalPlaneFilter.Type.HALE3,0.00)
@@ -117,11 +126,9 @@ def goNotch():
   u1,u2 = getU(x)
   y = applyLpfForward(lpf1,u1,u2,x)
   z = applyLpfInverse(lpf2,u1,u2,y)
-  #w = inverseLaplacian(y)
   plot(y,2.0,"yhn")
   plot(z,2.0,"zhn")
   plot(Array.sub(x,z),10.0,None)
-  #plot(w,1.0,"whn")
 
 def inverseLaplacian(x):
   n1 = len(x[0])
