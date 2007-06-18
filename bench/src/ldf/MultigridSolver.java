@@ -7,6 +7,7 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 package ldf;
 
 import edu.mines.jtk.dsp.*;
+import edu.mines.jtk.la.*;
 import edu.mines.jtk.util.*;
 import static edu.mines.jtk.util.MathPlus.*;
 
@@ -37,9 +38,9 @@ public class MultigridSolver {
     }
     public void getA(int i1, int i2, float[] a) {
       float[] ai = _a[i2][i1];
-      a[0] = ai[0]; a[1] = ai[1]; a[2] = ai[2];
-      a[3] = ai[3]; a[4] = ai[4]; a[5] = ai[5];
-      a[6] = ai[6]; a[7] = ai[7]; a[8] = ai[8];
+      a[0] = ai[0];  a[1] = ai[1];  a[2] = ai[2];
+      a[3] = ai[3];  a[4] = ai[4];  a[5] = ai[5];
+      a[6] = ai[6];  a[7] = ai[7];  a[8] = ai[8];
     }
     private int _n1,_n2;
     private float[][][] _a;
@@ -104,13 +105,15 @@ public class MultigridSolver {
   }
 
   private static void solve(A33 a33, float[][] b, float[][] x) {
+    int n1 = b[0].length;
+    int n2 = b.length;
     int n = n1*n2;
     DMatrix am = new DMatrix(n,n);
     DMatrix bm = new DMatrix(n,1);
     float[] ai = new float[9];
     for (int i2=0,i=0; i2<n2; ++i2) {
       for (int i1=0; i1<n1; ++i1,++i) {
-        a33.get(i1,i2,ai);
+        a33.getA(i1,i2,ai);
         for (int k=0; k<9; ++k) {
           int k1 = k%3-1;
           int k2 = k/3-1;
@@ -123,11 +126,11 @@ public class MultigridSolver {
         bm.set(i,0,b[i2][i1]);
       }
     }
-    DMatrixLud lud = new DMatrixLud(a);
+    DMatrixLud lud = new DMatrixLud(am);
     DMatrix xm = lud.solve(bm);
     for (int i2=0,i=0; i2<n2; ++i2) {
       for (int i1=0; i1<n1; ++i1,++i) {
-        x[i2][i1] = (float)xm.get(i);
+        x[i2][i1] = (float)xm.get(i,0);
       }
     }
   }
