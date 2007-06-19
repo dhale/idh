@@ -270,9 +270,9 @@ public class MultigridSolver {
   }
 
   // Returns a coarsened version of the specified operator.
-  private A33 coarsen(A33 a) {
-    int n1 = a.getN1();
-    int n2 = a.getN2();
+  private A33 coarsen(A33 a33) {
+    int n1 = a33.getN1();
+    int n2 = a33.getN2();
     int m1 = (n1+1)/2;
     int m2 = (n2+1)/2;
     float[][][] b = new float[m2][m1][9];
@@ -295,27 +295,30 @@ public class MultigridSolver {
           int j1 = 2*i1+d1;
           int j2 = 2*i2+d2;
           if (0<=j1 && j1<n1 && 0<=j2 && j2<n2) {
-            a.getA(j1,j2,aj);
+            a33.getA(j1,j2,aj);
             for (int e=0; e<9; ++e) {
               int e1 = index1[e];
               int e2 = index2[e];
-              float se = s[e];
+              float se = 0.25f*s[e];
               for (int g=0; g<9; ++g) {
                 int g1 = index1[g];
                 int g2 = index2[g];
                 int f1 = e1+g1-2*d1;
                 int f2 = e2+g2-2*d2;
-                int f = 4+f1+3*f2;
-                if (0<=f && f<9)
+                if (-1<=f1 && f1<=1 && -1<=f2 && f2<=1) {
+                  int f = 4+f1+3*f2;
                   bi[d] += se*s[f]*aj[g];
+                }
               }
             }
           }
         }
-        for (int i=0; i<9; ++i)
-          bi[i] *= 0.25f;
       }
     }
+    trace("coarsen: n1="+n1+" n2="+n2);
+    a33.getA(n1/2,n2/2,aj);
+    Array.dump(aj);
+    Array.dump(b[m2/2][m1/2]);
     return new SimpleA33(b);
   }
  
@@ -508,6 +511,8 @@ public class MultigridSolver {
     float d2 = 1.0f/(n2+1);
     float d1s = d1*d1;
     float d2s = d2*d2;
+    d1s = 1.0f;
+    d2s = 1.0f;
     float f1 = d1;
     float f2 = d2;
     float[] ai = { 0.0f,    -1.0f/d2s,           0.0f,
