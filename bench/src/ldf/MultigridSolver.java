@@ -46,22 +46,44 @@ public class MultigridSolver {
     private float[][][] _a;
   }
 
-  public MultigridSolver(A33 a33) {
+  /**
+   * Constructs a multigrid solver for 3x3 stencil.
+   * @param a33 the linear operator.
+   * @param nbefore number of smoothings before downsampling
+   * @param ncycle number of recursive cycles for coarse grids
+   * @param nafter number smoothings after upsampling
+   */
+  public MultigridSolver(A33 a33, int nbefore, int ncycle, int nafter) {
     int n1 = a33.getN1();
     int n2 = a33.getN2();
     _nlevel = nlevel(n1,n2);
+    _nbefore = nbefore;
+    _ncycle = ncycle;
+    _nafter = nafter;
     _n1 = n1;
     _n2 = n2;
     _a33s = new A33[_nlevel];
-    _a33s[0] = a33;
-    for (int ilevel=1; ilevel<_nlevel; ++ilevel)
-      _a33s[ilevel] = coarsen(_a33s[ilevel-1]);
+    _a33s[_nlevel-1] = a33;
+    for (int ilevel=_nlevel-2; ilevel>=0; --ilevel)
+      _a33s[ilevel] = coarsen(_a33s[ilevel+1]);
+  }
+
+  /**
+   * Updates the multigrid solution x of Ax = b.
+   * @param b the right-hand-side.
+   * @param x the updated solution.
+   */
+  public void solve(float[][] b, float[][] x) {
+    cycleDownUp(_nlevel-1,b,x);
   }
 
   ///////////////////////////////////////////////////////////////////////////
   // private
 
   private int _nlevel; // number of multigrid levels
+  private int _nbefore; // number of smoothings before downsampling
+  private int _ncycle; // number of recursive cycles on coarse grids
+  private int _nafter; // number of smoothings after upsampling
   private int _n1,_n2; // problem dimensions
   private A33[] _a33s; // array of matrices, one for each level
 
@@ -153,79 +175,101 @@ public class MultigridSolver {
     }
   }
 
-  private void vcycle(
-    int ilevel, int nrelax1, int nrelax2, 
-    float[][] b, float[][] x) 
-  {
+  private void cycleDownUp(int ilevel, float[][] b, float[][] x) {
     A33 a33 = _a33s[ilevel];
+    int n1 = a33.getN1();
+    int n2 = a33.getN2();
+    trace("ilevel="+ilevel+" n1="+n1+" n2="+n2+" r0="+residual(a33,b,x));
 
-    // If last (coarsest) level, solve the coarse system exactly.
-    if (ilevel==_nlevel) {
+    // If coarsest level, solve the coarsest system exactly.
+    if (ilevel==0) {
       solve(a33,b,x);
     } 
     
-    // Else, solve using recursively coarser levels.
+    // Else, cycle recursively on coarser grids.
     else {
-      int n1 = b[0].length;
-      int n2 = b.length;
       int m1 = (n1+1)/2;
       int m2 = (n2+1)/2;
 
-      // Pre-smooth.
-      for (int irelax=0; irelax<nrelax1; ++irelax)
-        relaxJacobi(a33,b,x);
+      // Smooth the solution x.
+      for (int ibefore=0; ibefore<_nbefore; ++ibefore)
+        smoothJacobi(a33,b,x);
 
-      // Compute and restrict residual.
+      // Apply operator and compute residual.
       float[][] r = new float[n2][n1];
       apply(a33,x,r);
-      for (int i2=0; i2<n2; ++i2) {
-        for (int i1=0; i1<n1; ++i1) {
-          r[i2][i1] = b[i2][i1]-r[i2][i1];
-        }
-      }
+      Array.sub(b,r,r);
+
+      trace("ilevel="+ilevel+" n1="+n1+" n2="+n2+" r1="+residual(a33,b,x));
+
+      // Downsample the residual.
       float[][] bc = new float[m2][m1];
       downsample(1.0f,r,bc);
 
-      // Solve on coarser grid.
+      // Cycle recursively on coarser grid.
       float[][] xc = new float[m2][m1];
-      vcycle(ilevel+1,nrelax1,nrelax2,bc,xc);
+      for (int icycle=0; icycle<_ncycle; ++icycle)
+        cycleDownUp(ilevel-1,bc,xc);
 
-      // Interpolate and correct.
-      upsample(1.0f,xc,r);
-      for (int i2=0; i2<n2; ++i2) {
-        for (int i1=0; i1<n1; ++i1) {
-          x[i2][i1] += r[i2][i1];
-        }
-      }
+      // Upsample and accumulate into x.
+      upsample(1.0f,xc,x);
 
-      // Post-smooth.
-      for (int irelax=0; irelax<nrelax1; ++irelax)
-        relaxJacobi(a33,b,x);
+      trace("ilevel="+ilevel+" n1="+n1+" n2="+n2+" r2="+residual(a33,b,x));
+
+      // Smooth the solution x.
+      for (int iafter=0; iafter<_nafter; ++iafter)
+        smoothJacobi(a33,b,x);
     }
+
+    trace("ilevel="+ilevel+" n1="+n1+" n2="+n2+" r3="+residual(a33,b,x));
   }
 
-  private void relaxJacobi(A33 a33, float[][] b, float[][] v) {
+  private static float norm2(float[][] x) {
+    int n1 = x[0].length;
+    int n2 = x.length;
+    double sum = 0.0;
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        float xi = x[i2][i1];
+        sum += xi*xi;
+      }
+    }
+    return (float)sum;
+  }
+
+  private static float residual(A33 a33, float[][] b, float[][] x) {
+    int n1 = x[0].length;
+    int n2 = x.length;
+    float[][] r = new float[n2][n1];
+    apply(a33,x,r);
+    Array.sub(b,r,r);
+    return norm2(r);
+  }
+
+  // Weighted Jacobi relaxation with weight w = 2/3.
+  private void smoothJacobi(A33 a33, float[][] b, float[][] x) {
     int n1 = a33.getN1();
     int n2 = a33.getN2();
     float w = 2.0f/3.0f;
     float omw = 1.0f-w;
     float[] a = new float[9];
-    Buffer33 vb = new Buffer33(v);
+    Buffer33 xb = new Buffer33(x);
     for (int i2=0; i2<n2; ++i2) {
-      float[] vi2m = vb.get(i2-1);
-      float[] vi20 = vb.get(i2  );
-      float[] vi2p = vb.get(i2+1);
+      float[] xi2m = xb.get(i2-1);
+      float[] xi20 = xb.get(i2  );
+      float[] xi2p = xb.get(i2+1);
       for (int i1=0,j1=1; i1<n1; ++i1,++j1) {
         a33.getA(i1,i2,a);
         float si = w/a[4];
-        float ti = a[0]*vi2m[j1-1] + a[3]*vi20[j1-1] + a[6]*vi2p[j1-1] +
-                   a[1]*vi2m[j1  ] +                   a[7]*vi2p[j1  ] +
-                   a[2]*vi2m[j1+1] + a[5]*vi20[j1+1] + a[8]*vi2p[j1+1];
-        v[i2][i1] = omw*v[i2][i1]+si*(b[i2][i1]-ti);
+        float ti = a[0]*xi2m[j1-1] + a[3]*xi20[j1-1] + a[6]*xi2p[j1-1] +
+                   a[1]*xi2m[j1  ] +                   a[7]*xi2p[j1  ] +
+                   a[2]*xi2m[j1+1] + a[5]*xi20[j1+1] + a[8]*xi2p[j1+1];
+        x[i2][i1] = omw*x[i2][i1]+si*(b[i2][i1]-ti);
       }
     }
   }
 
+  // Returns a coarsened version of the specified operator.
   private A33 coarsen(A33 a) {
     int n1 = a.getN1();
     int n2 = a.getN2();
@@ -277,6 +321,7 @@ public class MultigridSolver {
  
   // Downsamples from [n1] x samples to [(n1+1)/2] y samples.
   // The gathering stencil is scale*[1/4,1/2,1/4].
+  // Accumulates into the output array y.
   private static void downsample(float scale, float[] x, float[] y) {
     Array.zero(y);
     int n1 = x.length;
@@ -284,7 +329,7 @@ public class MultigridSolver {
     int j1 = 0;
     float s = scale/4.0f;
     float t = x[i1];
-    y[i1] = s*t;
+    y[i1] += s*t;
     for (i1=1,j1=0; i1<n1; ++i1,j1=i1/2) {
       t = x[i1  ] +
           x[i1-1];
@@ -296,6 +341,7 @@ public class MultigridSolver {
   //                                [1/16, 1/8, 1/16]
   // The gathering stencil is scale*[1/8,  1/4, 1/8 ]
   //                                [1/16, 1/8, 1/16].
+  // Accumulates into the output array y.
   private static void downsample(float scale, float[][] x, float[][] y) {
     Array.zero(y);
     int n1 = x[0].length;
@@ -306,7 +352,7 @@ public class MultigridSolver {
     int j2 = 0;
     float s = scale/16.0f;
     float t = x[i2][i1];
-    y[j2][j1] = s*t;
+    y[j2][j1] += s*t;
     for (i1=1,j1=0; i1<n1; ++i1,j1=i1/2) {
       t = x[i2][i1  ] +
           x[i2][i1-1];
@@ -329,16 +375,17 @@ public class MultigridSolver {
 
   // Upsample from [(n1+1)/2] x samples to [n1] y samples.
   // The scattering stencil is scale*[1/2,1/1,1/2].
+  // Accumulates into the output array y.
   private static void upsample(float scale, float[] x, float[] y) {
     int n1 = y.length;
     int i1 = 0;
     int j1 = 0;
     float s = scale/2.0f;
     float t = s*x[i1];
-    y[j1]  = t;
+    y[j1] += t;
     for (j1=1,i1=0; j1<n1; ++j1,i1=j1/2) {
       t = s*x[i1];
-      y[j1  ]  = t;
+      y[j1  ] += t;
       y[j1-1] += t;
     }
   }
@@ -347,6 +394,7 @@ public class MultigridSolver {
   //                                 [1/4, 1/2, 1/4]
   // The scattering stencil is scale*[1/2, 1/1  1/2]
   //                                 [1/4, 1/2, 1/4].
+  // Accumulates into the output array y.
   private static void upsample(float scale, float[][] x, float[][] y) {
     int n1 = y[0].length;
     int n2 = y.length;
@@ -356,20 +404,20 @@ public class MultigridSolver {
     int j2 = 0;
     float s = scale/4.0f;
     float t = s*x[i2][i1];
-    y[j2][j1]  = t;
+    y[j2][j1] += t;
     for (j1=1,i1=0; j1<n1; ++j1,i1=j1/2) {
       t = s*x[i2][i1];
-      y[j2][j1  ]  = t;
+      y[j2][j1  ] += t;
       y[j2][j1-1] += t;
     }
     for (j2=1,i2=0; j2<n2; ++j2,i2=j2/2) {
       i1 = j1 = 0;
       t = s*x[i2][i1];
-      y[j2  ][j1]  = t;
+      y[j2  ][j1] += t;
       y[j2-1][j1] += t;
       for (j1=1,i1=0; j1<n1; ++j1,i1=j1/2) {
         t = s*x[i2][i1];
-        y[j2  ][j1  ]  = t;
+        y[j2  ][j1  ] += t;
         y[j2  ][j1-1] += t;
         y[j2-1][j1  ] += t;
         y[j2-1][j1-1] += t;
@@ -467,10 +515,10 @@ public class MultigridSolver {
                    0.0f,    -1.0f/d2s,           0.0f};
     float[][][] a = new float[n2][n1][9];
     float[][] b = new float[n2][n1]; // rhs b
-    float[][] c = new float[n2][n1]; // c = Ay
-    float[][] d = new float[n2][n1]; // d = Ax
-    float[][] x = new float[n2][n1]; // computed solution to Ax = b
-    float[][] y = new float[n2][n1]; // exact solution to continuous problem
+    float[][] c = new float[n2][n1]; // c = Ax
+    float[][] d = new float[n2][n1]; // d = Ay
+    float[][] x = new float[n2][n1]; // multigrid solution
+    float[][] y = new float[n2][n1]; // exact solution
 
     for (int i2=0; i2<n2; ++i2) {
       float x2 = f2+i2*d2;
@@ -487,13 +535,14 @@ public class MultigridSolver {
     }
 
     A33 a33 = new MultigridSolver.SimpleA33(a);
-    tracePixels(b);
-    apply(a33,y,c);
-    tracePixels(c);
-    tracePixels(y);
-    solve(a33,b,x);
+    MultigridSolver ms = new MultigridSolver(a33,4,1,4);
+    ms.solve(b,x);
+    solve(a33,b,y);
     tracePixels(x);
-    apply(a33,x,d);
+    tracePixels(y);
+    apply(a33,x,c);
+    apply(a33,y,d);
+    tracePixels(c);
     tracePixels(d);
   }
 } 
