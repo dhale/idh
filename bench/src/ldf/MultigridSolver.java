@@ -184,6 +184,7 @@ public class MultigridSolver {
     // If coarsest level, solve the coarsest system exactly.
     if (ilevel==0) {
       solve(a33,b,x);
+      tracePixels(x);
     } 
     
     // Else, cycle recursively on coarser grids.
@@ -192,7 +193,6 @@ public class MultigridSolver {
       // Smooth the solution x.
       for (int ibefore=0; ibefore<_nbefore; ++ibefore)
         smoothJacobi(a33,b,x);
-      //tracePixels(x);
 
       // Apply operator and compute residual.
       float[][] r = new float[n2][n1];
@@ -200,6 +200,7 @@ public class MultigridSolver {
       Array.sub(b,r,r);
 
       trace("ilevel="+ilevel+" n1="+n1+" n2="+n2+" r1="+residual(a33,b,x));
+      traceResidual(a33,b,x);
 
       // Downsample the residual.
       int m1 = (n1+1)/2;
@@ -216,6 +217,7 @@ public class MultigridSolver {
       upsample(1.0f,xc,x);
 
       trace("ilevel="+ilevel+" n1="+n1+" n2="+n2+" r2="+residual(a33,b,x));
+      traceResidual(a33,b,x);
 
       // Smooth the solution x.
       for (int iafter=0; iafter<_nafter; ++iafter)
@@ -236,6 +238,15 @@ public class MultigridSolver {
       }
     }
     return (float)sum;
+  }
+
+  private static void traceResidual(A33 a33, float[][] b, float[][] x) {
+    int n1 = x[0].length;
+    int n2 = x.length;
+    float[][] r = new float[n2][n1];
+    apply(a33,x,r);
+    Array.sub(b,r,r);
+    tracePixels(r);
   }
 
   private static float residual(A33 a33, float[][] b, float[][] x) {
@@ -316,10 +327,10 @@ public class MultigridSolver {
         }
       }
     }
-    trace("coarsen: n1="+n1+" n2="+n2);
-    a33.getA(n1/2,n2/2,aj);
+    //trace("coarsen: n1="+n1+" n2="+n2);
+    //a33.getA(n1/2,n2/2,aj);
     //Array.dump(aj);
-    Array.dump(b[m2/2][m1/2]);
+    //Array.dump(b[m2/2][m1/2]);
     return new SimpleA33(b);
   }
  
@@ -327,7 +338,6 @@ public class MultigridSolver {
   // The gathering stencil is scale*[1/4,1/2,1/4].
   // Accumulates into the output array y.
   private static void downsample(float scale, float[] x, float[] y) {
-    Array.zero(y);
     int n1 = x.length;
     int i1 = 0;
     int j1 = 0;
@@ -346,10 +356,39 @@ public class MultigridSolver {
   // The gathering stencil is scale*[1/8,  1/4, 1/8 ]
   //                                [1/16, 1/8, 1/16].
   // Accumulates into the output array y.
-  private static void downsample(float scale, float[][] x, float[][] y) {
-    Array.zero(y);
+  private static void xdownsample(float scale, float[][] x, float[][] y) {
     int n1 = x[0].length;
     int n2 = x.length;
+    int m1 = y[0].length;
+    int m2 = y.length;
+    Check.argument(m1==(n1+1)/2,"m1=(n1+1)/2");
+    Check.argument(m2==(n2+1)/2,"m2=(n2+1)/2");
+    float s0 = scale*1.0f/4.0f;
+    float s1 = scale*1.0f/8.0f;
+    float s2 = scale*1.0f/16.0f;
+    Buffer33 xb = new Buffer33(x);
+    for (int i2=0,j2=0; i2<m2; ++i2,j2+=2) {
+      float[] xj2m = xb.get(j2-1);
+      float[] xj20 = xb.get(j2  );
+      float[] xj2p = xb.get(j2+1);
+      for (int i1=0,j1=1; i1<m1; ++i1,j1+=2) {
+        y[i2][i1] = s0*(xj20[j1  ]) +
+                    s1*(xj2m[j1  ]+xj2p[j1  ]+xj20[j1-1]+xj20[j1+1]) +
+                    s2*(xj2m[j1-1]+xj2m[j1+1]+xj2p[j1-1]+xj2p[j1+1]);
+      }
+    }
+  }
+
+  // Downsample from [n2][n1] x samples to [(n2+1)/2][(n1+1)/2] y samples.
+  //                                [1/16, 1/8, 1/16]
+  // The gathering stencil is scale*[1/8,  1/4, 1/8 ]
+  //                                [1/16, 1/8, 1/16].
+  // Accumulates into the output array y.
+  private static void downsample(float scale, float[][] x, float[][] y) {
+    int n1 = x[0].length;
+    int n2 = x.length;
+    int m1 = y[0].length;
+    int m2 = y.length;
     int i1 = 0;
     int i2 = 0;
     int j1 = 0;
@@ -362,6 +401,10 @@ public class MultigridSolver {
           x[i2][i1-1];
       y[j2][j1] += s*t;
     }
+    if (j1<m1) {
+      t = x[i2][i1-1];
+      y[j2][j1] += s*t;
+    }
     for (i2=1,j2=0; i2<n2; ++i2,j2=i2/2) {
       i1 = j1 = 0;
       t = x[i2  ][i1  ] +
@@ -372,6 +415,25 @@ public class MultigridSolver {
             x[i2  ][i1-1] +
             x[i2-1][i1  ] +
             x[i2-1][i1-1];
+        y[j2][j1] += s*t;
+      }
+      if (j1<m1) {
+        t = x[i2  ][i1-1] +
+            x[i2-1][i1-1];
+        y[j2][j1] += s*t;
+      }
+    }
+    if (j2<m2) {
+      i1 = j1 = 0;
+      t = x[i2-1][i1  ];
+      y[j2][j1] += s*t;
+      for (i1=1,j1=0; i1<n1; ++i1,j1=i1/2) {
+        t = x[i2-1][i1  ] +
+            x[i2-1][i1-1];
+        y[j2][j1] += s*t;
+      }
+      if (j1<m1) {
+        t = x[i2-1][i1-1];
         y[j2][j1] += s*t;
       }
     }
@@ -400,6 +462,8 @@ public class MultigridSolver {
   //                                 [1/4, 1/2, 1/4].
   // Accumulates into the output array y.
   private static void upsample(float scale, float[][] x, float[][] y) {
+    int m1 = x[0].length;
+    int m2 = x.length;
     int n1 = y[0].length;
     int n2 = y.length;
     int i1 = 0;
@@ -414,6 +478,10 @@ public class MultigridSolver {
       y[j2][j1  ] += t;
       y[j2][j1-1] += t;
     }
+    if (i1<m1) {
+      t = s*x[i2][i1];
+      y[j2][j1-1] += t;
+    }
     for (j2=1,i2=0; j2<n2; ++j2,i2=j2/2) {
       i1 = j1 = 0;
       t = s*x[i2][i1];
@@ -424,6 +492,25 @@ public class MultigridSolver {
         y[j2  ][j1  ] += t;
         y[j2  ][j1-1] += t;
         y[j2-1][j1  ] += t;
+        y[j2-1][j1-1] += t;
+      }
+      if (i1<m1) {
+        t = s*x[i2][i1];
+        y[j2  ][j1-1] += t;
+        y[j2-1][j1-1] += t;
+      }
+    }
+    if (i2<m2) {
+      i1 = j1 = 0;
+      t = s*x[i2][i1];
+      y[j2-1][j1] += t;
+      for (j1=1,i1=0; j1<n1; ++j1,i1=j1/2) {
+        t = s*x[i2][i1];
+        y[j2-1][j1  ] += t;
+        y[j2-1][j1-1] += t;
+      }
+      if (i1<m1) {
+        t = s*x[i2][i1];
         y[j2-1][j1-1] += t;
       }
     }
@@ -440,6 +527,7 @@ public class MultigridSolver {
   }
   private static void tracePixels(float[][] x) {
     if (TRACE) {
+      trace("x: min="+Array.min(x)+" max="+Array.max(x));
       edu.mines.jtk.mosaic.SimplePlot sp =
         new edu.mines.jtk.mosaic.SimplePlot();
       edu.mines.jtk.mosaic.PixelsView pv = sp.addPixels(x);
@@ -454,7 +542,8 @@ public class MultigridSolver {
 
   // Test code ensures that upsampling is the transpose of downsampling,
   // to within a known scale factor.
-  private static void mainTestDownUpSampling(String[] args) {
+  /*
+  public static void main(String[] args) {
     testDownUpSampling(107);
     testDownUpSampling(108);
     testDownUpSampling(107,107);
@@ -462,6 +551,7 @@ public class MultigridSolver {
     testDownUpSampling(108,107);
     testDownUpSampling(108,108);
   }
+  */
   private static void testDownUpSampling(int n) {
     System.out.println("testDownUpSampling: n="+n);
     int nx = n;
@@ -530,6 +620,7 @@ public class MultigridSolver {
     float[][] x = new float[n2][n1]; // multigrid solution
     float[][] y = new float[n2][n1]; // exact solution
 
+    /*
     for (int i2=0; i2<n2; ++i2) {
       float x2 = f2+i2*d2;
       float x2s = x2*x2;
@@ -543,10 +634,23 @@ public class MultigridSolver {
         y[i2][i1] = (x1s-x1s*x1s)*(x2s*x2s-x2s);
       }
     }
+    */
+    for (int i2=0; i2<n2; ++i2) {
+      float x2 = f2+i2*d2;
+      float x2s = x2*x2;
+      for (int i1=0; i1<n1; ++i1) {
+        float x1 = f1+i1*d1;
+        float x1s = x1*x1;
+        for (int k=0; k<9; ++k)
+          a[i2][i1][k] = ai[k];
+        b[i2][i1] = 2.0f*FLT_PI*FLT_PI*sin(FLT_PI*x1)*sin(FLT_PI*x2);
+        y[i2][i1] = sin(FLT_PI*x1)*sin(FLT_PI*x2);
+      }
+    }
     trace("y: min="+Array.min(y)+" max="+Array.max(y));
 
     A33 a33 = new MultigridSolver.SimpleA33(a);
-    MultigridSolver ms = new MultigridSolver(a33,1,1,1);
+    MultigridSolver ms = new MultigridSolver(a33,0,1,0);
     int ncycle = 1;
     float rnew = residual(a33,b,x);
     trace("initial r="+rnew);
@@ -559,15 +663,5 @@ public class MultigridSolver {
       tracePixels(x);
     }
     tracePixels(y);
-    /*
-    ms.solve(b,x);
-    //solve(a33,b,y);
-    tracePixels(x);
-    //tracePixels(y);
-    apply(a33,x,c);
-    //apply(a33,y,d);
-    tracePixels(c);
-    //tracePixels(d);
-    */
   }
 } 
