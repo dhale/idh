@@ -179,12 +179,11 @@ public class MultigridSolver {
     A33 a33 = _a33s[ilevel];
     int n1 = a33.getN1();
     int n2 = a33.getN2();
-    trace("ilevel="+ilevel+" n1="+n1+" n2="+n2+" r0="+residual(a33,b,x));
+    //trace("ilevel="+ilevel+" n1="+n1+" n2="+n2+" r0="+residual(a33,b,x));
 
-    // If coarsest level, solve the coarsest system exactly.
+    // If coarsest grid, solve the coarsest system exactly.
     if (ilevel==0) {
       solve(a33,b,x);
-      tracePixels(x);
     } 
     
     // Else, cycle recursively on coarser grids.
@@ -199,32 +198,42 @@ public class MultigridSolver {
       apply(a33,x,r);
       Array.sub(b,r,r);
 
-      trace("ilevel="+ilevel+" n1="+n1+" n2="+n2+" r1="+residual(a33,b,x));
-      traceResidual(a33,b,x);
+      //trace("ilevel="+ilevel+" n1="+n1+" n2="+n2+" r1="+residual(a33,b,x));
+      //trace("before: ilevel="+ilevel+" rnorm="+norm2(r));
+      //tracePixels(r);
 
       // Downsample the residual.
       int m1 = (n1+1)/2;
       int m2 = (n2+1)/2;
-      float[][] bc = new float[m2][m1];
-      downsample(1.0f,r,bc);
+      float[][] rc = new float[m2][m1];
+      downsample(1.0f,r,rc);
 
-      // Cycle recursively on coarser grid.
-      float[][] xc = new float[m2][m1];
+      // Estimate error from downsampled residual on coarser grid.
+      float[][] ec = new float[m2][m1];
       for (int icycle=0; icycle<_ncycle; ++icycle)
-        cycleDownUp(ilevel-1,bc,xc);
+        cycleDownUp(ilevel-1,rc,ec);
 
-      // Upsample the correction and accumulate into x.
-      upsample(1.0f,xc,x);
+      // Upsample the estimated error and accumulate in solution x.
+      //float[][] e = new float[n2][n1];
+      //upsample(1.0f,ec,e);
+      //Array.add(e,x,x);
+      upsample(1.0f,ec,x);
 
-      trace("ilevel="+ilevel+" n1="+n1+" n2="+n2+" r2="+residual(a33,b,x));
-      traceResidual(a33,b,x);
+      //trace("ilevel="+ilevel+" n1="+n1+" n2="+n2+" r2="+residual(a33,b,x));
+      //float[][] ae = new float[n2][n1];
+      //apply(a33,e,ae);
+      //tracePixels(e);
+      //tracePixels(ae);
+      //Array.sub(r,ae,r);
+      //trace(" after: ilevel="+ilevel+" rnorm="+norm2(r));
+      //tracePixels(r);
 
       // Smooth the solution x.
       for (int iafter=0; iafter<_nafter; ++iafter)
         smoothJacobi(a33,b,x);
     }
 
-    trace("ilevel="+ilevel+" n1="+n1+" n2="+n2+" r3="+residual(a33,b,x));
+    //trace("ilevel="+ilevel+" n1="+n1+" n2="+n2+" r3="+residual(a33,b,x));
   }
 
   private static float norm2(float[][] x) {
@@ -327,10 +336,10 @@ public class MultigridSolver {
         }
       }
     }
-    //trace("coarsen: n1="+n1+" n2="+n2);
-    //a33.getA(n1/2,n2/2,aj);
-    //Array.dump(aj);
-    //Array.dump(b[m2/2][m1/2]);
+    trace("coarsen: n1="+n1+" n2="+n2);
+    a33.getA(n1/2,n2/2,aj);
+    Array.dump(aj);
+    Array.dump(b[m2/2][m1/2]);
     return new SimpleA33(b);
   }
  
@@ -542,8 +551,7 @@ public class MultigridSolver {
 
   // Test code ensures that upsampling is the transpose of downsampling,
   // to within a known scale factor.
-  /*
-  public static void main(String[] args) {
+  private static void testDownUpSampling() {
     testDownUpSampling(107);
     testDownUpSampling(108);
     testDownUpSampling(107,107);
@@ -551,7 +559,6 @@ public class MultigridSolver {
     testDownUpSampling(108,107);
     testDownUpSampling(108,108);
   }
-  */
   private static void testDownUpSampling(int n) {
     System.out.println("testDownUpSampling: n="+n);
     int nx = n;
@@ -597,10 +604,6 @@ public class MultigridSolver {
     System.out.println("  yax="+yax);
   }
 
-  // Test code for multigrid.
-  public static void main(String[] args) {
-    testSolve(25);
-  }
   private static void testSolve(int n) {
     int n1 = n;
     int n2 = n;
@@ -613,6 +616,9 @@ public class MultigridSolver {
     float[] ai = { 0.0f,    -1.0f/d2s,           0.0f,
                   -1.0f/d1s, 2.0f/d1s+2.0f/d2s, -1.0f/d1s,
                    0.0f,    -1.0f/d2s,           0.0f};
+    //float[] ai = { 0.0f, 0.0f, 0.0f,
+    //               0.0f, 1.0f, 0.0f,
+    //               0.0f, 0.0f, 0.0f};
     float[][][] a = new float[n2][n1][9];
     float[][] b = new float[n2][n1]; // rhs b
     float[][] c = new float[n2][n1]; // c = Ax
@@ -620,7 +626,6 @@ public class MultigridSolver {
     float[][] x = new float[n2][n1]; // multigrid solution
     float[][] y = new float[n2][n1]; // exact solution
 
-    /*
     for (int i2=0; i2<n2; ++i2) {
       float x2 = f2+i2*d2;
       float x2s = x2*x2;
@@ -634,7 +639,7 @@ public class MultigridSolver {
         y[i2][i1] = (x1s-x1s*x1s)*(x2s*x2s-x2s);
       }
     }
-    */
+    /*
     for (int i2=0; i2<n2; ++i2) {
       float x2 = f2+i2*d2;
       float x2s = x2*x2;
@@ -647,21 +652,32 @@ public class MultigridSolver {
         y[i2][i1] = sin(FLT_PI*x1)*sin(FLT_PI*x2);
       }
     }
+    */
     trace("y: min="+Array.min(y)+" max="+Array.max(y));
+    tracePixels(y);
 
     A33 a33 = new MultigridSolver.SimpleA33(a);
-    MultigridSolver ms = new MultigridSolver(a33,0,1,0);
-    int ncycle = 1;
+    MultigridSolver ms = new MultigridSolver(a33,0,2,4);
+    int ncycle = 2;
     float rnew = residual(a33,b,x);
     trace("initial r="+rnew);
     for (int icycle=0; icycle<ncycle; ++icycle) {
       ms.solve(b,x);
+      float[][] ax = new float[n2][n1];
+      ms.apply(a33,x,ax);
+      tracePixels(x);
+      //tracePixels(ax);
+      //tracePixels(Array.sub(b,ax));
       float rold = rnew;
       rnew = residual(a33,b,x);
       trace("  r="+rnew+" ratio="+rnew/rold);
       trace("  min="+Array.min(x)+" max="+Array.max(x));
-      tracePixels(x);
     }
-    tracePixels(y);
   }
-} 
+
+  // Test code for multigrid.
+  public static void main(String[] args) {
+    // testDownUpSampling();
+    testSolve(25);
+  }
+}
