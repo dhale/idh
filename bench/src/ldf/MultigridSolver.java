@@ -199,8 +199,6 @@ public class MultigridSolver {
       Array.sub(b,r,r);
 
       //trace("ilevel="+ilevel+" n1="+n1+" n2="+n2+" r1="+residual(a33,b,x));
-      //trace("before: ilevel="+ilevel+" rnorm="+norm2(r));
-      //tracePixels(r);
 
       // Downsample the residual.
       int m1 = (n1+1)/2;
@@ -214,19 +212,9 @@ public class MultigridSolver {
         cycleDownUp(ilevel-1,rc,ec);
 
       // Upsample the estimated error and accumulate in solution x.
-      //float[][] e = new float[n2][n1];
-      //upsample(1.0f,ec,e);
-      //Array.add(e,x,x);
       upsample(1.0f,ec,x);
 
       //trace("ilevel="+ilevel+" n1="+n1+" n2="+n2+" r2="+residual(a33,b,x));
-      //float[][] ae = new float[n2][n1];
-      //apply(a33,e,ae);
-      //tracePixels(e);
-      //tracePixels(ae);
-      //Array.sub(r,ae,r);
-      //trace(" after: ilevel="+ilevel+" rnorm="+norm2(r));
-      //tracePixels(r);
 
       // Smooth the solution x.
       for (int iafter=0; iafter<_nafter; ++iafter)
@@ -336,10 +324,10 @@ public class MultigridSolver {
         }
       }
     }
-    trace("coarsen: n1="+n1+" n2="+n2);
-    a33.getA(n1/2,n2/2,aj);
-    Array.dump(aj);
-    Array.dump(b[m2/2][m1/2]);
+    //trace("coarsen: n1="+n1+" n2="+n2);
+    //a33.getA(n1/2,n2/2,aj);
+    //Array.dump(aj);
+    //Array.dump(b[m2/2][m1/2]);
     return new SimpleA33(b);
   }
  
@@ -537,12 +525,15 @@ public class MultigridSolver {
   private static void tracePixels(float[][] x) {
     if (TRACE) {
       trace("x: min="+Array.min(x)+" max="+Array.max(x));
+      edu.mines.jtk.mosaic.SimplePlot.asPixels(x);
+      /*
       edu.mines.jtk.mosaic.SimplePlot sp =
         new edu.mines.jtk.mosaic.SimplePlot();
       edu.mines.jtk.mosaic.PixelsView pv = sp.addPixels(x);
       pv.setInterpolation(
         edu.mines.jtk.mosaic.PixelsView.Interpolation.NEAREST);
-      //pv.setClips(-0.05f,0.05f);
+      pv.setClips(-0.05f,0.05f);
+      */
     }
   }
 
@@ -657,27 +648,25 @@ public class MultigridSolver {
     tracePixels(y);
 
     A33 a33 = new MultigridSolver.SimpleA33(a);
-    MultigridSolver ms = new MultigridSolver(a33,0,2,4);
+    MultigridSolver ms = new MultigridSolver(a33,0,2,2);
     int ncycle = 2;
     float rnew = residual(a33,b,x);
     trace("initial r="+rnew);
+    trace("  |x-y|^2 = "+norm2(Array.sub(x,y)));
     for (int icycle=0; icycle<ncycle; ++icycle) {
       ms.solve(b,x);
-      float[][] ax = new float[n2][n1];
-      ms.apply(a33,x,ax);
       tracePixels(x);
-      //tracePixels(ax);
-      //tracePixels(Array.sub(b,ax));
       float rold = rnew;
       rnew = residual(a33,b,x);
       trace("  r="+rnew+" ratio="+rnew/rold);
-      trace("  min="+Array.min(x)+" max="+Array.max(x));
+      //trace("  min="+Array.min(x)+" max="+Array.max(x));
+      trace("  |x-y|^2 = "+norm2(Array.sub(x,y)));
     }
   }
 
   // Test code for multigrid.
   public static void main(String[] args) {
     // testDownUpSampling();
-    testSolve(25);
+    testSolve(127);
   }
 }
