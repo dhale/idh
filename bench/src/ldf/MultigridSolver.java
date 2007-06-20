@@ -188,12 +188,11 @@ public class MultigridSolver {
     
     // Else, cycle recursively on coarser grids.
     else {
-      int m1 = (n1+1)/2;
-      int m2 = (n2+1)/2;
 
       // Smooth the solution x.
       for (int ibefore=0; ibefore<_nbefore; ++ibefore)
         smoothJacobi(a33,b,x);
+      //tracePixels(x);
 
       // Apply operator and compute residual.
       float[][] r = new float[n2][n1];
@@ -203,6 +202,8 @@ public class MultigridSolver {
       trace("ilevel="+ilevel+" n1="+n1+" n2="+n2+" r1="+residual(a33,b,x));
 
       // Downsample the residual.
+      int m1 = (n1+1)/2;
+      int m2 = (n2+1)/2;
       float[][] bc = new float[m2][m1];
       downsample(1.0f,r,bc);
 
@@ -211,7 +212,7 @@ public class MultigridSolver {
       for (int icycle=0; icycle<_ncycle; ++icycle)
         cycleDownUp(ilevel-1,bc,xc);
 
-      // Upsample and accumulate into x.
+      // Upsample the correction and accumulate into x.
       upsample(1.0f,xc,x);
 
       trace("ilevel="+ilevel+" n1="+n1+" n2="+n2+" r2="+residual(a33,b,x));
@@ -289,20 +290,20 @@ public class MultigridSolver {
     for (int i2=0; i2<m2; ++i2) {
       for (int i1=0; i1<m1; ++i1) {
         float[] bi = b[i2][i1];
-        for (int d=0; d<9; ++d) {
-          int d1 = index1[d];
-          int d2 = index2[d];
-          int j1 = 2*i1+d1;
-          int j2 = 2*i2+d2;
+        for (int e=0; e<9; ++e) {
+          int e1 = index1[e];
+          int e2 = index2[e];
+          int j1 = 2*i1+e1;
+          int j2 = 2*i2+e2;
           if (0<=j1 && j1<n1 && 0<=j2 && j2<n2) {
+            float se = 0.25f*s[e];
             a33.getA(j1,j2,aj);
-            for (int e=0; e<9; ++e) {
-              int e1 = index1[e];
-              int e2 = index2[e];
-              float se = 0.25f*s[e];
-              for (int g=0; g<9; ++g) {
-                int g1 = index1[g];
-                int g2 = index2[g];
+            for (int g=0; g<9; ++g) {
+              int g1 = index1[g];
+              int g2 = index2[g];
+              for (int d=0; d<9; ++d) {
+                int d1 = index1[d];
+                int d2 = index2[d];
                 int f1 = e1+g1-2*d1;
                 int f2 = e2+g2-2*d2;
                 if (-1<=f1 && f1<=1 && -1<=f2 && f2<=1) {
@@ -317,7 +318,7 @@ public class MultigridSolver {
     }
     trace("coarsen: n1="+n1+" n2="+n2);
     a33.getA(n1/2,n2/2,aj);
-    Array.dump(aj);
+    //Array.dump(aj);
     Array.dump(b[m2/2][m1/2]);
     return new SimpleA33(b);
   }
@@ -438,8 +439,14 @@ public class MultigridSolver {
       edu.mines.jtk.mosaic.SimplePlot.asSequence(x);
   }
   private static void tracePixels(float[][] x) {
-    if (TRACE)
-      edu.mines.jtk.mosaic.SimplePlot.asPixels(x);
+    if (TRACE) {
+      edu.mines.jtk.mosaic.SimplePlot sp =
+        new edu.mines.jtk.mosaic.SimplePlot();
+      edu.mines.jtk.mosaic.PixelsView pv = sp.addPixels(x);
+      pv.setInterpolation(
+        edu.mines.jtk.mosaic.PixelsView.Interpolation.NEAREST);
+      //pv.setClips(-0.05f,0.05f);
+    }
   }
 
   ///////////////////////////////////////////////////////////////////////////
@@ -502,7 +509,7 @@ public class MultigridSolver {
 
   // Test code for multigrid.
   public static void main(String[] args) {
-    testSolve(32);
+    testSolve(25);
   }
   private static void testSolve(int n) {
     int n1 = n;
@@ -511,8 +518,6 @@ public class MultigridSolver {
     float d2 = 1.0f/(n2+1);
     float d1s = d1*d1;
     float d2s = d2*d2;
-    d1s = 1.0f;
-    d2s = 1.0f;
     float f1 = d1;
     float f2 = d2;
     float[] ai = { 0.0f,    -1.0f/d2s,           0.0f,
@@ -538,16 +543,31 @@ public class MultigridSolver {
         y[i2][i1] = (x1s-x1s*x1s)*(x2s*x2s-x2s);
       }
     }
+    trace("y: min="+Array.min(y)+" max="+Array.max(y));
 
     A33 a33 = new MultigridSolver.SimpleA33(a);
-    MultigridSolver ms = new MultigridSolver(a33,4,1,4);
-    ms.solve(b,x);
-    solve(a33,b,y);
-    tracePixels(x);
+    MultigridSolver ms = new MultigridSolver(a33,1,1,1);
+    int ncycle = 1;
+    float rnew = residual(a33,b,x);
+    trace("initial r="+rnew);
+    for (int icycle=0; icycle<ncycle; ++icycle) {
+      ms.solve(b,x);
+      float rold = rnew;
+      rnew = residual(a33,b,x);
+      trace("  r="+rnew+" ratio="+rnew/rold);
+      trace("  min="+Array.min(x)+" max="+Array.max(x));
+      tracePixels(x);
+    }
     tracePixels(y);
+    /*
+    ms.solve(b,x);
+    //solve(a33,b,y);
+    tracePixels(x);
+    //tracePixels(y);
     apply(a33,x,c);
-    apply(a33,y,d);
+    //apply(a33,y,d);
     tracePixels(c);
-    tracePixels(d);
+    //tracePixels(d);
+    */
   }
 } 
