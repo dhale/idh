@@ -254,7 +254,7 @@ public class MultigridSolver {
   }
 
   // Weighted Jacobi relaxation with weight w = 2/3.
-  private void smoothJacobi(A33 a33, float[][] b, float[][] x) {
+  private static void smoothJacobi(A33 a33, float[][] b, float[][] x) {
     int n1 = a33.getN1();
     int n2 = a33.getN2();
     float w = 2.0f/3.0f;
@@ -277,7 +277,7 @@ public class MultigridSolver {
   }
 
   // Four-color Gauss-Seidel relaxation.
-  private void smoothGaussSeidel4(A33 a33, float[][] b, float[][] x) {
+  private static void smoothGaussSeidel4(A33 a33, float[][] b, float[][] x) {
     int n1 = a33.getN1();
     int n2 = a33.getN2();
     float[] a = new float[9];
