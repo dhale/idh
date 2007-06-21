@@ -12,93 +12,127 @@ import edu.mines.jtk.util.*;
 import static edu.mines.jtk.util.MathPlus.*;
 
 /**
- * Multigrid solver.
+ * A multigrid solver for 2-D grids. Solves Ax = b, where A is a linear
+ * operator, b is a known function sampled on a 2-D grid, and x is an
+ * unknown sampled function to be computed.
+ * <p>
+ * This solver currently supports operators with 3x3 stencils. For such 
+ * stencils, each sample of b is coupled to nine samples nearest to the 
+ * corresponding sample of x. That is,
+ * <pre><code>
+ * b[i2][i1] = 
+ *   a[0]*x[i2-1][i1-1] + a[1]*x[i2-1][i1  ] + a[2]*x[i2-1][i1+1] +
+ *   a[3]*x[i2  ][i1-1] + a[4]*x[i2  ][i1  ] + a[5]*x[i2  ][i1+1] +
+ *   a[6]*x[i2+1][i1-1] + a[7]*x[i2+1][i1  ] + a[8]*x[i2+1][i1+1];
+ * </code></pre>
+ *
  * @author Dave Hale, Colorado School of Mines
  * @version 2007.06.17
  */
-public class MultigridSolver {
+public class Multigrid2 {
 
   /**
-   * A linear operator with a 3x3 stencil.
+   * A 3x3 nine-point operator. When applying this operator the nine stencil 
+   * coefficients are used as follows:
    */
   public interface A33 {
 
     /**
-     *
+     * Gets nine stencil coefficients for specified indices.
+     * @param i1 index in 1st dimension.
+     * @param i2 index in 2nd dimension.
+     * @param a array of stencil coefficients.
      */
-    public int getN1();
-    public int getN2();
-
-    /**
-     * Gets stencil coefficients for the specified indices.
-     */
-    public void getA(int i1, int i2, float[] a);
+    public void get(int i1, int i2, float[] a);
   }
 
+  /**
+   * A simple implementation of 3x3 stencils.
+   */
   public static class SimpleA33 implements A33 {
+
+    /**
+     * Constructs a simple 3x3 stencil.
+     * @param a array[n2][n1][9] of stencil coefficients.
+     */
     public SimpleA33(float[][][] a) {
-      _n1 = a[0].length;
-      _n2 = a.length;
       _a = a;
     }
-    public int getN1() {
-      return _n1;
-    }
-    public int getN2() {
-      return _n2;
-    }
-    public void getA(int i1, int i2, float[] a) {
+    public void get(int i1, int i2, float[] a) {
       float[] ai = _a[i2][i1];
       a[0] = ai[0];  a[1] = ai[1];  a[2] = ai[2];
       a[3] = ai[3];  a[4] = ai[4];  a[5] = ai[5];
       a[6] = ai[6];  a[7] = ai[7];  a[8] = ai[8];
     }
-    private int _n1,_n2;
     private float[][][] _a;
   }
 
   /**
-   * Constructs a multigrid solver for 3x3 stencil.
-   * @param a33 the linear operator.
-   * @param nbefore number of smoothings before downsampling
-   * @param ncycle number of recursive cycles for coarse grids
-   * @param nafter number smoothings after upsampling
+   * Constructs a multigrid solver.
+   * @param n1 number of samples in 1st dimension of grid.
+   * @param n2 number of samples in 2nd dimension of grid.
+   * @param a33 a 3x3 stencil.
+   * @param nbefore number of smoothings before downsampling.
+   * @param ncycle number of recursive cycles at each coarse grid level.
+   *  In the terminology of multigrid methods, ncycle=1 yields a V cycle, 
+   *  and ncycle=2 yields a W cycle. Values greater than 2 are unusual.
+   * @param nafter number of smoothings after upsampling.
    */
-  public MultigridSolver(A33 a33, int nbefore, int ncycle, int nafter) {
-    int n1 = a33.getN1();
-    int n2 = a33.getN2();
+  public Multigrid2(
+    int n1, int n2, A33 a33, 
+    int nbefore, int ncycle, int nafter) 
+  {
+    _n1 = n1;
+    _n2 = n2;
     _nlevel = nlevel(n1,n2);
     _nbefore = nbefore;
     _ncycle = ncycle;
     _nafter = nafter;
-    _n1 = n1;
-    _n2 = n2;
+
+    // Array of operators, for the specified grid and coarser grids.
     _a33s = new A33[_nlevel];
     _a33s[_nlevel-1] = a33;
-    for (int ilevel=_nlevel-2; ilevel>=0; --ilevel)
-      _a33s[ilevel] = coarsen(_a33s[ilevel+1]);
+    for (int ilevel=_nlevel-2; ilevel>=0; --ilevel) {
+      _a33s[ilevel] = coarsen(n1,n2,_a33s[ilevel+1]);
+      n1 = (n1+1)/2;
+      n2 = (n2+1)/2;
+    }
   }
 
   /**
-   * Updates the multigrid solution x of Ax = b.
-   * @param b the right-hand-side.
-   * @param x the updated solution.
+   * Updates the multigrid solution x of Ax = b with one cycle for the
+   * finest grid level. Typically, this update corresponds to one V or
+   * W cycle. If a good initial guess is not available, the solution x 
+   * may be initially zero.
+   * @param b array[n2][n1] for the right-hand-side.
+   * @param x array[n2][n1] for the solution to be updated.
    */
-  public void solve(float[][] b, float[][] x) {
+  public void update(float[][] b, float[][] x) {
     cycleDownUp(_nlevel-1,b,x);
   }
 
   ///////////////////////////////////////////////////////////////////////////
   // private
 
+  private int _n1,_n2; // grid dimensions
   private int _nlevel; // number of multigrid levels
   private int _nbefore; // number of smoothings before downsampling
   private int _ncycle; // number of recursive cycles on coarse grids
   private int _nafter; // number of smoothings after upsampling
-  private int _n1,_n2; // problem dimensions
   private A33[] _a33s; // array of matrices, one for each level
 
+  /**
+   * Facilitates loops for 3x3 stencils. In effect, this class pads 2-D 
+   * arrays with zeros on all sides, without making a complete copy of the 
+   * entire array. Because typically only three consecutive columns of the 
+   * array are needed at any time, this class maintains three columns that
+   * are padded with one extra zero sample at each end.
+   */
   private static class Buffer33 {
+
+    /**
+     * Constructs a buffer for the specified array.
+     */
     Buffer33(float[][] a) {
       _n1 = a[0].length;
       _n2 = a.length;
@@ -106,6 +140,11 @@ public class MultigridSolver {
       _i = new int[]{-2,-2,-2};
       _b = new float[3][1+_n1+1];
     }
+
+    /**
+     * Gets an array for the specified column indexed by i2.
+     * The returned array is padded with one extra zero sample at each end.
+     */
     float[] get(int i2) {
       Check.argument(-1<=i2 && i2<=_n2,"index i2 is in bounds");
       int j2 = (i2+1)%3;
@@ -119,16 +158,20 @@ public class MultigridSolver {
       }
       return _b[j2];
     }
+
     private int _n1,_n2;
     private float[][] _a;
     private int[] _i;
     private float[][] _b;
   }
 
+  /**
+   * Computes the number of levels such that neither n1 nor n2 on the
+   * coarsest grid is less than 3.
+   */
   private static int nlevel(int n1, int n2) {
     int nlevel = 1;
-    while ((n1==1 || n1>=5) && 
-           (n2==1 || n2>=5)) {
+    while ((n1>=5 && n2>=5)) {
       n1 = (n1+1)/2;
       n2 = (n2+1)/2;
       ++nlevel;
@@ -136,9 +179,13 @@ public class MultigridSolver {
     return nlevel;
   }
 
+  
+  /**
+   * Applies the specified operator. Computes y = Ax.
+   */
   private static void apply(A33 a33, float[][] x, float[][] y) {
-    int n1 = a33.getN1();
-    int n2 = a33.getN2();
+    int n1 = y[0].length;
+    int n2 = y.length;
     float[] a = new float[9];
     Buffer33 xb = new Buffer33(x);
     for (int i2=0; i2<n2; ++i2) {
@@ -146,7 +193,7 @@ public class MultigridSolver {
       float[] xi20 = xb.get(i2  );
       float[] xi2p = xb.get(i2+1);
       for (int i1=0,j1=1; i1<n1; ++i1,++j1) {
-        a33.getA(i1,i2,a);
+        a33.get(i1,i2,a);
         y[i2][i1] = a[0]*xi2m[j1-1] + a[3]*xi20[j1-1] + a[6]*xi2p[j1-1] +
                     a[1]*xi2m[j1  ] + a[4]*xi20[j1  ] + a[7]*xi2p[j1  ] +
                     a[2]*xi2m[j1+1] + a[5]*xi20[j1+1] + a[8]*xi2p[j1+1];
@@ -154,6 +201,10 @@ public class MultigridSolver {
     }
   }
 
+  /**
+   * Computes the solution x of the system Ax = b. Computes x by LU
+   * decomposition of A, which is costly unless the specified system is small.
+   */
   private static void solve(A33 a33, float[][] b, float[][] x) {
     int n1 = b[0].length;
     int n2 = b.length;
@@ -163,7 +214,7 @@ public class MultigridSolver {
     float[] ai = new float[9];
     for (int i2=0,i=0; i2<n2; ++i2) {
       for (int i1=0; i1<n1; ++i1,++i) {
-        a33.getA(i1,i2,ai);
+        a33.get(i1,i2,ai);
         for (int k=0; k<9; ++k) {
           int k1 = k%3-1;
           int k2 = k/3-1;
@@ -186,10 +237,18 @@ public class MultigridSolver {
     }
   }
 
+  /**
+   * Performs one cycle of the multigrid for the specified grid level.
+   * This cycle may recursively perform multiple cycles for lower levels
+   * corresponding to coarser grids. If the specified level is zero,
+   * corresponding to the coarsest grid, then this method solves this
+   * smallest system directly by LU decomposition.
+   * 
+   */
   private void cycleDownUp(int ilevel, float[][] b, float[][] x) {
     A33 a33 = _a33s[ilevel];
-    int n1 = a33.getN1();
-    int n2 = a33.getN2();
+    int n1 = x[0].length;
+    int n2 = x.length;
 
     // If coarsest grid, solve the coarsest system exactly.
     if (ilevel==0) {
@@ -266,8 +325,8 @@ public class MultigridSolver {
 
   // Weighted Jacobi relaxation with weight w = 2/3.
   private static void smoothJacobi(A33 a33, float[][] b, float[][] x) {
-    int n1 = a33.getN1();
-    int n2 = a33.getN2();
+    int n1 = x[0].length;
+    int n2 = x.length;
     float w = 2.0f/3.0f;
     float omw = 1.0f-w;
     float[] a = new float[9];
@@ -277,7 +336,7 @@ public class MultigridSolver {
       float[] xi20 = xb.get(i2  );
       float[] xi2p = xb.get(i2+1);
       for (int i1=0,j1=1; i1<n1; ++i1,++j1) {
-        a33.getA(i1,i2,a);
+        a33.get(i1,i2,a);
         float si = w/a[4];
         float ti = a[0]*xi2m[j1-1] + a[3]*xi20[j1-1] + a[6]*xi2p[j1-1] +
                    a[1]*xi2m[j1  ] +                   a[7]*xi2p[j1  ] +
@@ -289,8 +348,8 @@ public class MultigridSolver {
 
   // Four-color Gauss-Seidel relaxation.
   private static void smoothGaussSeidel4(A33 a33, float[][] b, float[][] x) {
-    int n1 = a33.getN1();
-    int n2 = a33.getN2();
+    int n1 = x[0].length;
+    int n2 = x.length;
     float[] a = new float[9];
     Buffer33 xb = new Buffer33(x);
     int[] k1s = {0,1,0,1};
@@ -303,7 +362,7 @@ public class MultigridSolver {
         float[] xi20 = xb.get(i2  );
         float[] xi2p = xb.get(i2+1);
         for (int i1=k1,j1=1+k1; i1<n1; i1+=2,j1+=2) {
-          a33.getA(i1,i2,a);
+          a33.get(i1,i2,a);
           float ti = a[0]*xi2m[j1-1] + a[3]*xi20[j1-1] + a[6]*xi2p[j1-1] +
                      a[1]*xi2m[j1  ] +                   a[7]*xi2p[j1  ] +
                      a[2]*xi2m[j1+1] + a[5]*xi20[j1+1] + a[8]*xi2p[j1+1];
@@ -315,9 +374,7 @@ public class MultigridSolver {
   }
 
   // Returns a coarsened version of the specified operator.
-  private A33 coarsen(A33 a33) {
-    int n1 = a33.getN1();
-    int n2 = a33.getN2();
+  private A33 coarsen(int n1, int n2, A33 a33) {
     int m1 = (n1+1)/2;
     int m2 = (n2+1)/2;
     float[][][] b = new float[m2][m1][9];
@@ -341,7 +398,7 @@ public class MultigridSolver {
           int j2 = 2*i2+e2;
           if (0<=j1 && j1<n1 && 0<=j2 && j2<n2) {
             float se = 0.25f*s[e];
-            a33.getA(j1,j2,aj);
+            a33.get(j1,j2,aj);
             for (int g=0; g<9; ++g) {
               int g1 = index1[g];
               int g2 = index2[g];
@@ -361,7 +418,7 @@ public class MultigridSolver {
       }
     }
     //trace("coarsen: n1="+n1+" n2="+n2);
-    //a33.getA(n1/2,n2/2,aj);
+    //a33.get(n1/2,n2/2,aj);
     //Array.dump(aj);
     //Array.dump(b[m2/2][m1/2]);
     return new SimpleA33(b);
@@ -683,14 +740,14 @@ public class MultigridSolver {
     trace("y: min="+Array.min(y)+" max="+Array.max(y));
     tracePixels(y);
 
-    A33 a33 = new MultigridSolver.SimpleA33(a);
-    MultigridSolver ms = new MultigridSolver(a33,0,2,2);
+    A33 a33 = new Multigrid2.SimpleA33(a);
+    Multigrid2 m2 = new Multigrid2(n1,n2,a33,0,2,2);
     int ncycle = 2;
     float rnew = residual(a33,b,x);
     trace("initial r="+rnew);
     trace("  |x-y|^2 = "+norm2(Array.sub(x,y)));
     for (int icycle=0; icycle<ncycle; ++icycle) {
-      ms.solve(b,x);
+      m2.update(b,x);
       tracePixels(x);
       float rold = rnew;
       rnew = residual(a33,b,x);
