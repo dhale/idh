@@ -179,7 +179,6 @@ public class MultigridSolver {
     A33 a33 = _a33s[ilevel];
     int n1 = a33.getN1();
     int n2 = a33.getN2();
-    //trace("ilevel="+ilevel+" n1="+n1+" n2="+n2+" r0="+residual(a33,b,x));
 
     // If coarsest grid, solve the coarsest system exactly.
     if (ilevel==0) {
@@ -191,14 +190,12 @@ public class MultigridSolver {
 
       // Smooth the solution x.
       for (int ibefore=0; ibefore<_nbefore; ++ibefore)
-        smoothJacobi(a33,b,x);
+        smooth(a33,b,x);
 
       // Apply operator and compute residual.
       float[][] r = new float[n2][n1];
       apply(a33,x,r);
       Array.sub(b,r,r);
-
-      //trace("ilevel="+ilevel+" n1="+n1+" n2="+n2+" r1="+residual(a33,b,x));
 
       // Downsample the residual.
       int m1 = (n1+1)/2;
@@ -214,14 +211,15 @@ public class MultigridSolver {
       // Upsample the estimated error and accumulate in solution x.
       upsample(1.0f,ec,x);
 
-      //trace("ilevel="+ilevel+" n1="+n1+" n2="+n2+" r2="+residual(a33,b,x));
-
       // Smooth the solution x.
       for (int iafter=0; iafter<_nafter; ++iafter)
-        smoothJacobi(a33,b,x);
+        smooth(a33,b,x);
     }
+  }
 
-    //trace("ilevel="+ilevel+" n1="+n1+" n2="+n2+" r3="+residual(a33,b,x));
+  private static void smooth(A33 a33, float[][] b, float[][] x) {
+    smoothJacobi(a33,b,x); // requires only pass
+    //smoothGaussSeidel4(a33,b,x); // requires four passes
   }
 
   private static float norm2(float[][] x) {
@@ -274,6 +272,33 @@ public class MultigridSolver {
                    a[1]*xi2m[j1  ] +                   a[7]*xi2p[j1  ] +
                    a[2]*xi2m[j1+1] + a[5]*xi20[j1+1] + a[8]*xi2p[j1+1];
         x[i2][i1] = omw*x[i2][i1]+si*(b[i2][i1]-ti);
+      }
+    }
+  }
+
+  // Four-color Gauss-Seidel relaxation.
+  private void smoothGaussSeidel4(A33 a33, float[][] b, float[][] x) {
+    int n1 = a33.getN1();
+    int n2 = a33.getN2();
+    float[] a = new float[9];
+    Buffer33 xb = new Buffer33(x);
+    int[] k1s = {0,1,0,1};
+    int[] k2s = {0,0,1,1};
+    for (int k=0; k<4; ++k) {
+      int k1 = k1s[k];
+      int k2 = k2s[k];
+      for (int i2=k2; i2<n2; i2+=2) {
+        float[] xi2m = xb.get(i2-1);
+        float[] xi20 = xb.get(i2  );
+        float[] xi2p = xb.get(i2+1);
+        for (int i1=k1,j1=1+k1; i1<n1; i1+=2,j1+=2) {
+          a33.getA(i1,i2,a);
+          float ti = a[0]*xi2m[j1-1] + a[3]*xi20[j1-1] + a[6]*xi2p[j1-1] +
+                     a[1]*xi2m[j1  ] +                   a[7]*xi2p[j1  ] +
+                     a[2]*xi2m[j1+1] + a[5]*xi20[j1+1] + a[8]*xi2p[j1+1];
+          float si = 1.0f/a[4];
+          x[i2][i1] = si*(b[i2][i1]-ti);
+        }
       }
     }
   }
