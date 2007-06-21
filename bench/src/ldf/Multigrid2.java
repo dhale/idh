@@ -32,8 +32,7 @@ import static edu.mines.jtk.util.MathPlus.*;
 public class Multigrid2 {
 
   /**
-   * A 3x3 nine-point operator. When applying this operator the nine stencil 
-   * coefficients are used as follows:
+   * A linear operator represented by a 3x3 nine-point stencil. 
    */
   public interface A33 {
 
@@ -47,12 +46,12 @@ public class Multigrid2 {
   }
 
   /**
-   * A simple implementation of 3x3 stencils.
+   * A simple implementation for 3x3 stencils.
    */
   public static class SimpleA33 implements A33 {
 
     /**
-     * Constructs a simple 3x3 stencil.
+     * Constructs a simple 3x3 stencil. See description above.
      * @param a array[n2][n1][9] of stencil coefficients.
      */
     public SimpleA33(float[][][] a) {
