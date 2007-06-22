@@ -85,64 +85,6 @@ public class LocalDiffusionFilter {
   }
 
   /**
-   * Applies this filter using a multigrid method.
-   * @param d array of diffusion coefficients.
-   * @param x array with input image.
-   * @param y array with output image.
-   */
-  public void applyMg(float[] d, float[] x, float[] y) {
-    float[][] dd = makePyramid(0.25f,_nlevel,d);
-    float[][] xx = makePyramid(1.00f,_nlevel,x);
-    int m1 = xx[_nlevel-1].length;
-    float[] yi = new float[xx[_nlevel-1].length];
-    for (int ilevel=_nlevel-1; ilevel>=0; --ilevel) {
-      float[] di = dd[ilevel];
-      float[] xi = xx[ilevel];
-      solveCg(di,xi,yi);
-      if (ilevel>0) {
-        m1 = xx[ilevel-1].length;
-        float[] yt = new float[m1];
-        upsample(1.0f,yi,yt);
-        traceSequence(yt);
-        yi = yt;
-      } else {
-        Array.copy(yi,y);
-      }
-    }
-  }
-
-  /**
-   * Applies this filter using a multigrid method.
-   * @param d array of diffusion coefficients.
-   * @param x array with input image.
-   * @param y array with output image.
-   */
-  public void applyMg(float[][][] d, float[][] x, float[][] y) {
-    float[][][] dd0 = makePyramid(0.25f,_nlevel,d[0]);
-    float[][][] dd1 = makePyramid(0.25f,_nlevel,d[1]);
-    float[][][] dd2 = makePyramid(0.25f,_nlevel,d[2]);
-    float[][][] xx = makePyramid(1.00f,_nlevel,x);
-    int m1 = xx[_nlevel-1][0].length;
-    int m2 = xx[_nlevel-1].length;
-    float[][] yi = new float[m2][m1];
-    for (int ilevel=_nlevel-1; ilevel>=0; --ilevel) {
-      float[][][] di = {dd0[ilevel],dd1[ilevel],dd2[ilevel]};
-      float[][] xi = xx[ilevel];
-      solveCg(di,xi,yi);
-      tracePixels(yi);
-      if (ilevel>0) {
-        m1 = xx[ilevel-1][0].length;
-        m2 = xx[ilevel-1].length;
-        float[][] yt = new float[m2][m1];
-        upsample(1.0f,yi,yt);
-        yi = yt;
-      } else {
-        Array.copy(yi,y);
-      }
-    }
-  }
-
-  /**
    * Applies a dip smoothing filter using a multigrid method.
    * @param u2 array of 2nd components of vectors normal to dip.
    * @param x array with input image.
@@ -166,7 +108,7 @@ public class LocalDiffusionFilter {
       }
     }
     float[][][] d = {d11,d12,d22};
-    applyMg(d,x,y);
+    //applyMg(d,x,y);
   }
 
   ///////////////////////////////////////////////////////////////////////////
@@ -176,36 +118,6 @@ public class LocalDiffusionFilter {
   private float _small; // small value used to terminate CG iterations
   private int _niter; // number of CG iterations per multigrid level
   private int _nlevel; // number of CG iterations per multigrid level
-
-  // Makes a downsampled pyramid with specified number of levels. In the 
-  // returned array of arrays, the array x is referenced, not copied.
-  private float[][] makePyramid(float scale, int nlevel, float[] x) {
-    int n1 = x.length;
-    float[][] y = new float[nlevel][];
-    y[0] = x;
-    for (int ilevel=1; ilevel<nlevel; ++ilevel) {
-      n1 = (n1+1)/2;
-      y[ilevel] = new float[n1];
-      downsample(scale,y[ilevel-1],y[ilevel]);
-    }
-    return y;
-  }
-
-  // Makes a downsampled pyramid with specified number of levels. In the 
-  // returned array of arrays, the array x is referenced, not copied.
-  private float[][][] makePyramid(float scale, int nlevel, float[][] x) {
-    int n1 = x[0].length;
-    int n2 = x.length;
-    float[][][] y = new float[nlevel][][];
-    y[0] = x;
-    for (int ilevel=1; ilevel<nlevel; ++ilevel) {
-      n1 = (n1+1)/2;
-      n2 = (n2+1)/2;
-      y[ilevel] = new float[n2][n1];
-      downsample(scale,y[ilevel-1],y[ilevel]);
-    }
-    return y;
-  }
 
   // Solves the diffusion system via conjugate gradient iterations.
   private void solveCg(float[] d, float[] x, float[] y) {
@@ -382,108 +294,6 @@ public class LocalDiffusionFilter {
         if (i1>0) y[i2][i1-1] -= r*y1-s*y2;
         if (i2>0) y[i2-1][i1  ] += s*y1-r*y2;
         if (i2>0 && i1>0) y[i2-1][i1-1] -= s*y1+s*y2;
-      }
-    }
-  }
- 
-  // Downsamples from [n1] x samples to [(n1+1)/2] y samples.
-  // The gathering stencil is scale*[1/4,1/2,1/4].
-  private static void downsample(float scale, float[] x, float[] y) {
-    Array.zero(y);
-    int n1 = x.length;
-    int i1 = 0;
-    int j1 = 0;
-    float s = scale/4.0f;
-    float t = x[i1];
-    y[i1] = s*t;
-    for (i1=1,j1=0; i1<n1; ++i1,j1=i1/2) {
-      t = x[i1  ] +
-          x[i1-1];
-      y[j1] += s*t;
-    }
-  }
-
-  // Downsample from [n2][n1] x samples to [(n2+1)/2][(n1+1)/2] y samples.
-  //                                [1/16, 1/8, 1/16]
-  // The gathering stencil is scale*[1/8,  1/4, 1/8 ]
-  //                                [1/16, 1/8, 1/16].
-  private static void downsample(float scale, float[][] x, float[][] y) {
-    Array.zero(y);
-    int n1 = x[0].length;
-    int n2 = x.length;
-    int i1 = 0;
-    int i2 = 0;
-    int j1 = 0;
-    int j2 = 0;
-    float s = scale/16.0f;
-    float t = x[i2][i1];
-    y[j2][j1] = s*t;
-    for (i1=1,j1=0; i1<n1; ++i1,j1=i1/2) {
-      t = x[i2][i1  ] +
-          x[i2][i1-1];
-      y[j2][j1] += s*t;
-    }
-    for (i2=1,j2=0; i2<n2; ++i2,j2=i2/2) {
-      i1 = j1 = 0;
-      t = x[i2  ][i1  ] +
-          x[i2-1][i1  ];
-      y[j2][j1] += s*t;
-      for (i1=1,j1=0; i1<n1; ++i1,j1=i1/2) {
-        t = x[i2  ][i1  ] +
-            x[i2  ][i1-1] +
-            x[i2-1][i1  ] +
-            x[i2-1][i1-1];
-        y[j2][j1] += s*t;
-      }
-    }
-  }
-
-  // Upsample from [(n1+1)/2] x samples to [n1] y samples.
-  // The scattering stencil is scale*[1/2,1/1,1/2].
-  private static void upsample(float scale, float[] x, float[] y) {
-    int n1 = y.length;
-    int i1 = 0;
-    int j1 = 0;
-    float s = scale/2.0f;
-    float t = s*x[i1];
-    y[j1]  = t;
-    for (j1=1,i1=0; j1<n1; ++j1,i1=j1/2) {
-      t = s*x[i1];
-      y[j1  ]  = t;
-      y[j1-1] += t;
-    }
-  }
-
-  // Upsample from [(n2+1)/2][(n1+1)/2] x samples to [n2][n1] y samples.
-  //                                 [1/4, 1/2, 1/4]
-  // The scattering stencil is scale*[1/2, 1/1  1/2]
-  //                                 [1/4, 1/2, 1/4].
-  private static void upsample(float scale, float[][] x, float[][] y) {
-    int n1 = y[0].length;
-    int n2 = y.length;
-    int i1 = 0;
-    int i2 = 0;
-    int j1 = 0;
-    int j2 = 0;
-    float s = scale/4.0f;
-    float t = s*x[i2][i1];
-    y[j2][j1]  = t;
-    for (j1=1,i1=0; j1<n1; ++j1,i1=j1/2) {
-      t = s*x[i2][i1];
-      y[j2][j1  ]  = t;
-      y[j2][j1-1] += t;
-    }
-    for (j2=1,i2=0; j2<n2; ++j2,i2=j2/2) {
-      i1 = j1 = 0;
-      t = s*x[i2][i1];
-      y[j2  ][j1]  = t;
-      y[j2-1][j1] += t;
-      for (j1=1,i1=0; j1<n1; ++j1,i1=j1/2) {
-        t = s*x[i2][i1];
-        y[j2  ][j1  ]  = t;
-        y[j2  ][j1-1] += t;
-        y[j2-1][j1  ] += t;
-        y[j2-1][j1-1] += t;
       }
     }
   }
@@ -717,85 +527,46 @@ public class LocalDiffusionFilter {
       edu.mines.jtk.mosaic.SimplePlot.asPixels(x);
   }
 
-  ///////////////////////////////////////////////////////////////////////////
-  // testing
-
-  // Test code ensures that upsampling is the transpose of downsampling,
-  // to within a known scale factor.
-  private static void mainTestDownUpSampling(String[] args) {
-    testDownUpSampling(107);
-    testDownUpSampling(108);
-    testDownUpSampling(107,107);
-    testDownUpSampling(107,108);
-    testDownUpSampling(108,107);
-    testDownUpSampling(108,108);
-  }
-  private static void testDownUpSampling(int n) {
-    System.out.println("testDownUpSampling: n="+n);
-    int nx = n;
-    int ny = (nx+1)/2;
-    float[] x = Array.randfloat(nx);
-    float[] y = Array.randfloat(ny);
-    float[] ax = Array.zerofloat(ny);
-    float[] ay = Array.zerofloat(nx);
-    downsample(3.1f,x,ax);
-    upsample(3.1f,y,ay);
-    double xay = 0.0;
-    for (int ix=0; ix<nx; ++ix)
-      xay += x[ix]*ay[ix];
-    double yax = 0.0;
-    for (int iy=0; iy<ny; ++iy)
-      yax += y[iy]*ax[iy];
-    yax *= 2.0f;
-    System.out.println("  xay="+xay);
-    System.out.println("  yax="+yax);
-  }
-  private static void testDownUpSampling(int n1, int n2) {
-    System.out.println("testDownUpSampling: n1="+n1+" n2="+n2);
-    int n1x = n1;
-    int n1y = (n1x+1)/2;
-    int n2x = n2;
-    int n2y = (n2x+1)/2;
-    float[][] x = Array.randfloat(n1x,n2x);
-    float[][] y = Array.randfloat(n1y,n2y);
-    float[][] ax = Array.zerofloat(n1y,n2y);
-    float[][] ay = Array.zerofloat(n1x,n2x);
-    downsample(2.3f,x,ax);
-    upsample(2.3f,y,ay);
-    double xay = 0.0;
-    for (int i2x=0; i2x<n2x; ++i2x)
-      for (int i1x=0; i1x<n1x; ++i1x)
-        xay += x[i2x][i1x]*ay[i2x][i1x];
-    double yax = 0.0;
-    for (int i2y=0; i2y<n2y; ++i2y)
-      for (int i1y=0; i1y<n1y; ++i1y)
-        yax += y[i2y][i1y]*ax[i2y][i1y];
-    yax *= 4.0f;
-    System.out.println("  xay="+xay);
-    System.out.println("  yax="+yax);
-  }
-
-
-  // Test code for multigrid.
-  public static void main(String[] args) {
-    testMg(200,1,1000);
-    testMg(16,1,1000);
-    testMg(5,4,1000);
-  }
-  private static void testMg(int niter, int nlevel, int n1) {
-    float[] d = new float[n1];
-    float[] x = new float[n1];
-    float[] y = new float[n1];
-    for (int i1=0; i1<n1; ++i1) {
-      d[i1] = 1.0f+256.0f*sin(FLT_PI*(float)i1/(float)(n1-1));
-      if (i1>0 && i1%100==0)
-        x[i1] = 1.0f;
+  /*
+  private static Multigrid2.A33 makeOperator(float[][][] d) {
+    int n1 = x[0].length;
+    int n2 = x.length;
+    float[][][] a = new float[n2][n1][9];
+    float ss = 0.5f*_sigma*_sigma;
+    //float r = 0.5f*(1.0f+sqrt(2.0f/3.0f));
+    //float s = 0.5f*(1.0f-sqrt(2.0f/3.0f));
+    float r = 0.5f;
+    float s = 0.5f;
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        float d11 = ss*d[0][i2][i1];
+        float d12 = ss*d[1][i2][i1];
+        float d22 = ss*d[2][i2][i1];
+        float x00 = x[i2][i1];
+        float x01 = (i1>0)?x[i2][i1-1]:0.0f;
+        float x10 = (i2>0)?x[i2-1][i1]:0.0f;
+        float x11 = (i2>0 && i1>0)?x[i2-1][i1-1]:0.0f;
+        float x1 = r*(x00-x01)+s*(x10-x11);
+        float x2 = r*(x00-x10)+s*(x01-x11);
+        float y1 = d11*x1+d12*x2;
+        float y2 = d12*x1+d22*x2;
+        y[i2][i1] += r*y1+r*y2;
+        if (i1>0) y[i2][i1-1] -= r*y1-s*y2;
+        if (i2>0) y[i2-1][i1  ] += s*y1-r*y2;
+        if (i2>0 && i1>0) y[i2-1][i1-1] -= s*y1+s*y2;
+      }
     }
-    float sigma = 1.0f;
-    float small = 0.0001f;
-    LocalDiffusionFilter ldf = 
-      new LocalDiffusionFilter(sigma,small,niter,nlevel);
-    ldf.applyMg(d,x,y);
-    traceSequence(y);
+    t = 0.5*(d[i]+d[i-1])*(x[i]-x[i-1]);
+    y[i  ]  = t;
+    y[i-1] -= t;
+    
+    y[i] = 0.5*(d[i]+d[i-1])*(x[i]-x[i-1]) -
+           0.5*(d[i+1]+d[i])*(x[i+1]-x[i]);
+
+    am = -0.5*(d[i]-d[i-1])
+    a0 =  0.5*(2.0*d[i]-d[i-1]-d[i+1])
+    ap = -0.5*(d[i+1]-d[i])
+
   }
+  */
 } 
