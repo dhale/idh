@@ -110,6 +110,36 @@ public class Multigrid2 {
     cycleDownUp(_nlevel-1,b,x);
   }
 
+  /**
+   * Returns the sum of squared residuals r = b-Ax.
+   * @param b array[n2][n1] for the right-hand-side.
+   * @param x array[n2][n1] for the solution.
+   */
+  public float normResidual(float[][] b, float[][] x) {
+    float[][] c = Array.copy(x);
+    apply(_a33s[_nlevel-1],x,c);
+    return normError(b,c);
+  }
+
+  /**
+   * Returns the sum of squared errors e = x-y, where y is a known solution.
+   * Useful only for test problems for which the solution is known.
+   * @param x array[n2][n1] for the estimated solution.
+   * @param y array[n2][n1] for the known solution.
+   */
+  public static float normError(float[][] x, float[][] y) {
+    int n1 = x[0].length;
+    int n2 = x.length;
+    double sum = 0.0f;
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        float e = x[i2][i1]-y[i2][i1];
+        sum += e*e;
+      }
+    }
+    return (float)sum;
+  }
+
   ///////////////////////////////////////////////////////////////////////////
   // private
 
@@ -286,43 +316,9 @@ public class Multigrid2 {
     }
   }
 
-  private static void smooth(A33 a33, float[][] b, float[][] x) {
-    smoothJacobi(a33,b,x); // requires only pass
-    //smoothGaussSeidel4(a33,b,x); // requires four passes
-  }
-
-  private static float norm2(float[][] x) {
-    int n1 = x[0].length;
-    int n2 = x.length;
-    double sum = 0.0;
-    for (int i2=0; i2<n2; ++i2) {
-      for (int i1=0; i1<n1; ++i1) {
-        float xi = x[i2][i1];
-        sum += xi*xi;
-      }
-    }
-    return (float)sum;
-  }
-
-  private static void traceResidual(A33 a33, float[][] b, float[][] x) {
-    int n1 = x[0].length;
-    int n2 = x.length;
-    float[][] r = new float[n2][n1];
-    apply(a33,x,r);
-    Array.sub(b,r,r);
-    tracePixels(r);
-  }
-
-  private static float residual(A33 a33, float[][] b, float[][] x) {
-    int n1 = x[0].length;
-    int n2 = x.length;
-    float[][] r = new float[n2][n1];
-    apply(a33,x,r);
-    Array.sub(b,r,r);
-    return norm2(r);
-  }
-
-  // Weighted Jacobi relaxation with weight w = 2/3.
+  /**
+   * Weighted Jacobi relaxation with weight w = 2/3.
+   */
   private static void smoothJacobi(A33 a33, float[][] b, float[][] x) {
     int n1 = x[0].length;
     int n2 = x.length;
@@ -345,7 +341,9 @@ public class Multigrid2 {
     }
   }
 
-  // Four-color Gauss-Seidel relaxation.
+  /**
+   * Four-color Gauss-Seidel relaxation.
+   */
   private static void smoothGaussSeidel4(A33 a33, float[][] b, float[][] x) {
     int n1 = x[0].length;
     int n2 = x.length;
@@ -372,7 +370,16 @@ public class Multigrid2 {
     }
   }
 
-  // Returns a coarsened version of the specified operator.
+  private static void smooth(A33 a33, float[][] b, float[][] x) {
+    smoothJacobi(a33,b,x); // requires only pass
+    //smoothGaussSeidel4(a33,b,x); // requires four passes
+  }
+
+  /**
+   * Returns a coarsened version of the specified operator.
+   * The specified operator has indices for an array[n2][n1].
+   * The coarse operator has indices for an array[(n2+1)/2][(n1+1)/2].
+   */
   private A33 coarsen(int n1, int n2, A33 a33) {
     int m1 = (n1+1)/2;
     int m2 = (n2+1)/2;
@@ -416,10 +423,6 @@ public class Multigrid2 {
         }
       }
     }
-    //trace("coarsen: n1="+n1+" n2="+n2);
-    //a33.get(n1/2,n2/2,aj);
-    //Array.dump(aj);
-    //Array.dump(b[m2/2][m1/2]);
     return new SimpleA33(b);
   }
  
@@ -478,11 +481,13 @@ public class Multigrid2 {
     int n2 = x.length;
     int m1 = y[0].length;
     int m2 = y.length;
+    float s = scale/16.0f;
+
+    // Rolling on.
     int i1 = 0;
     int i2 = 0;
     int j1 = 0;
     int j2 = 0;
-    float s = scale/16.0f;
     float t = x[i2][i1];
     y[j2][j1] += s*t;
     for (i1=1,j1=0; i1<n1; ++i1,j1=i1/2) {
@@ -494,6 +499,8 @@ public class Multigrid2 {
       t = x[i2][i1-1];
       y[j2][j1] += s*t;
     }
+
+    // Interior.
     for (i2=1,j2=0; i2<n2; ++i2,j2=i2/2) {
       i1 = j1 = 0;
       t = x[i2  ][i1  ] +
@@ -512,6 +519,8 @@ public class Multigrid2 {
         y[j2][j1] += s*t;
       }
     }
+
+    // Rolling off.
     if (j2<m2) {
       i1 = j1 = 0;
       t = x[i2-1][i1  ];
@@ -616,7 +625,7 @@ public class Multigrid2 {
   }
   private static void tracePixels(float[][] x) {
     if (TRACE) {
-      trace("x: min="+Array.min(x)+" max="+Array.max(x));
+      trace("tracePixels: min="+Array.min(x)+" max="+Array.max(x));
       edu.mines.jtk.mosaic.SimplePlot.asPixels(x);
       /*
       edu.mines.jtk.mosaic.SimplePlot sp =
@@ -690,6 +699,40 @@ public class Multigrid2 {
   private static void testSolve(int n) {
     int n1 = n;
     int n2 = n;
+    float[][][] a = new float[n2][n1][9];
+    float[][] b = new float[n2][n1]; // rhs b
+    float[][] x = new float[n2][n1]; // multigrid solution
+    float[][] y = new float[n2][n1]; // exact solution
+    //loadBriggs(a,y,b);
+    loadSimple(a,y,b);
+    trace("y: min="+Array.min(y)+" max="+Array.max(y));
+    tracePixels(y);
+
+    A33 a33 = new Multigrid2.SimpleA33(a);
+    Multigrid2 m2 = new Multigrid2(n1,n2,a33,0,2,2);
+    float enew = m2.normError(x,y);
+    float rnew = m2.normResidual(b,x);
+    trace("initial e="+enew);
+    trace("initial r="+rnew);
+    int ncycle = 2;
+    for (int icycle=0; icycle<ncycle; ++icycle) {
+      m2.update(b,x);
+      tracePixels(x);
+      float eold = enew;
+      float rold = rnew;
+      enew = m2.normError(x,y);
+      rnew = m2.normResidual(b,x);
+      trace("  e="+enew+" ratio="+enew/eold);
+      trace("  r="+rnew+" ratio="+rnew/rold);
+    }
+  }
+
+  /**
+   * Ax = b from Brigg's tutorial.
+   */
+  private static void loadBriggs(float[][][] a, float[][] x, float[][] b) {
+    int n1 = x[0].length;
+    int n2 = x.length;
     float d1 = 1.0f/(n1+1);
     float d2 = 1.0f/(n2+1);
     float d1s = d1*d1;
@@ -699,16 +742,6 @@ public class Multigrid2 {
     float[] ai = { 0.0f,    -1.0f/d2s,           0.0f,
                   -1.0f/d1s, 2.0f/d1s+2.0f/d2s, -1.0f/d1s,
                    0.0f,    -1.0f/d2s,           0.0f};
-    //float[] ai = { 0.0f, 0.0f, 0.0f,
-    //               0.0f, 1.0f, 0.0f,
-    //               0.0f, 0.0f, 0.0f};
-    float[][][] a = new float[n2][n1][9];
-    float[][] b = new float[n2][n1]; // rhs b
-    float[][] c = new float[n2][n1]; // c = Ax
-    float[][] d = new float[n2][n1]; // d = Ay
-    float[][] x = new float[n2][n1]; // multigrid solution
-    float[][] y = new float[n2][n1]; // exact solution
-
     for (int i2=0; i2<n2; ++i2) {
       float x2 = f2+i2*d2;
       float x2s = x2*x2;
@@ -719,10 +752,26 @@ public class Multigrid2 {
           a[i2][i1][k] = ai[k];
         b[i2][i1] = 2.0f*((1.0f-6.0f*x1s)*x2s*(1.0f-x2s) +
                           (1.0f-6.0f*x2s)*x1s*(1.0f-x1s));
-        y[i2][i1] = (x1s-x1s*x1s)*(x2s*x2s-x2s);
+        x[i2][i1] = (x1s-x1s*x1s)*(x2s*x2s-x2s);
       }
     }
-    /*
+  }
+
+  /**
+   * Simple Ax = b for which x = s*b, where s is a constant scale factor.
+   */
+  private static void loadSimple(float[][][] a, float[][] x, float[][] b) {
+    int n1 = x[0].length;
+    int n2 = x.length;
+    float d1 = 1.0f/(n1+1);
+    float d2 = 1.0f/(n2+1);
+    float d1s = d1*d1;
+    float d2s = d2*d2;
+    float f1 = d1;
+    float f2 = d2;
+    float[] ai = { 0.0f,    -1.0f/d2s,           0.0f,
+                  -1.0f/d1s, 2.0f/d1s+2.0f/d2s, -1.0f/d1s,
+                   0.0f,    -1.0f/d2s,           0.0f};
     for (int i2=0; i2<n2; ++i2) {
       float x2 = f2+i2*d2;
       float x2s = x2*x2;
@@ -731,28 +780,9 @@ public class Multigrid2 {
         float x1s = x1*x1;
         for (int k=0; k<9; ++k)
           a[i2][i1][k] = ai[k];
-        b[i2][i1] = 2.0f*FLT_PI*FLT_PI*sin(FLT_PI*x1)*sin(FLT_PI*x2);
-        y[i2][i1] = sin(FLT_PI*x1)*sin(FLT_PI*x2);
+        x[i2][i1] = sin(FLT_PI*x1)*sin(FLT_PI*x2);
+        b[i2][i1] = 2.0f*FLT_PI*FLT_PI*x[i2][i1];
       }
-    }
-    */
-    trace("y: min="+Array.min(y)+" max="+Array.max(y));
-    tracePixels(y);
-
-    A33 a33 = new Multigrid2.SimpleA33(a);
-    Multigrid2 m2 = new Multigrid2(n1,n2,a33,0,2,2);
-    int ncycle = 2;
-    float rnew = residual(a33,b,x);
-    trace("initial r="+rnew);
-    trace("  |x-y|^2 = "+norm2(Array.sub(x,y)));
-    for (int icycle=0; icycle<ncycle; ++icycle) {
-      m2.update(b,x);
-      tracePixels(x);
-      float rold = rnew;
-      rnew = residual(a33,b,x);
-      trace("  r="+rnew+" ratio="+rnew/rold);
-      //trace("  min="+Array.min(x)+" max="+Array.max(x));
-      trace("  |x-y|^2 = "+norm2(Array.sub(x,y)));
     }
   }
 
