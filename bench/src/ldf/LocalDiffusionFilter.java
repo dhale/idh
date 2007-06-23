@@ -119,6 +119,121 @@ public class LocalDiffusionFilter {
   private int _niter; // number of CG iterations per multigrid level
   private int _nlevel; // number of CG iterations per multigrid level
 
+  private Multigrid2.A33 makeOperator(float[][][] d) {
+    int n1 = d[0][0].length;
+    int n2 = d[0].length;
+
+    // Coefficients for finite-difference approximation.
+    float r = 0.5f*(1.0f+sqrt(2.0f/3.0f));
+    float s = 0.5f*(1.0f-sqrt(2.0f/3.0f));
+
+    // Array of stencil coefficients.
+    float[][][] a = new float[n2][n1][9];
+
+    // Array of stencil coefficients for indices out of bounds.
+    float[] aout = new float[9];
+
+    // Arrays of ones and zeros to pick out stencil coefficients.
+    // Array x00s picks out the coefficient of x[i2  ][i1  ].
+    // Array x01s picks out the coefficient of x[i2  ][i1-1].
+    // Array x10s picks out the coefficient of x[i2-1][i1  ].
+    // Array x11s picks out the coefficient of x[i2-1][i1-1].
+    float[][] x00s = {{1.0f,0.0f},{0.0f,0.0f}};
+    float[][] x01s = {{0.0f,1.0f},{0.0f,0.0f}};
+    float[][] x10s = {{0.0f,0.0f},{1.0f,0.0f}};
+    float[][] x11s = {{0.0f,0.0f},{0.0f,1.0f}};
+
+    // Array of zeros only used for indices out of bounds.
+    float[][] xout = {{0.0f,0.0f},{0.0f,0.0f}};
+
+    // Arrays of elements of diffusion tensor.
+    float[][] d11s = d[0];
+    float[][] d12s = d[1];
+    float[][] d22s = d[2];
+
+    // Scale factors for averaging diffusion tensors.
+    // Only the factors 1, 0.5, and 0.25 are used.
+    float[] ds = {0.00f,1.00f,0.50f,0.33f,0.25f};
+
+    // Scale factor applied to diffusion tensor.
+    float ss = 0.5f*_sigma*_sigma;
+
+    // For all samples, ...
+    for (int i2=0; i2<=n2; ++i2) {
+      for (int i1=0; i1<=n1; ++i1) {
+
+        // Initially assume indices out of bounds.
+        float[][] x00t = xout;
+        float[][] x01t = xout;
+        float[][] x10t = xout;
+        float[][] x11t = xout;
+        float[] a00t = aout;
+        float[] a01t = aout;
+        float[] a10t = aout;
+        float[] a11t = aout;
+
+        // Average diffusion tensor while determining arrays.
+        int ns = 0;
+        float d11 = 0.0f;
+        float d12 = 0.0f;
+        float d22 = 0.0f;
+        if (i1<n1 && i2<n2) {
+          x00t = x00s;
+          a00t = a[i2][i1];
+          d11 += d11s[i2][i1];
+          d12 += d12s[i2][i1];
+          d22 += d22s[i2][i1];
+          ++ns;
+        }
+        if (0<i1 && i2<n2) {
+          x01t = x01s;
+          a01t = a[i2][i1-1];
+          d11 += d11s[i2][i1-1];
+          d12 += d12s[i2][i1-1];
+          d22 += d22s[i2][i1-1];
+          ++ns;
+        }
+        if (i1<n1 && 0<i2) {
+          x10t = x10s;
+          a10t = a[i2-1][i1];
+          d11 += d11s[i2-1][i1];
+          d12 += d12s[i2-1][i1];
+          d22 += d22s[i2-1][i1];
+          ++ns;
+        }
+        if (0<i1 && 0<i2) {
+          x11t = x11s;
+          a11t = a[i2-1][i1-1];
+          d11 += d11s[i2-1][i1-1];
+          d12 += d12s[i2-1][i1-1];
+          d22 += d22s[i2-1][i1-1];
+          ++ns;
+        }
+        float dss = ss*ds[ns];
+        d11 *= dss;
+        d12 *= dss;
+        d22 *= dss;
+        for (int k2=0; k2<2; ++k2) {
+          for (int k1=0; k1<2; ++k1) {
+            float x00 = x00t[k2][k1];
+            float x01 = x01t[k2][k1];
+            float x10 = x10t[k2][k1];
+            float x11 = x11t[k2][k1];
+            float x1 = r*(x00-x01)+s*(x10-x11);
+            float x2 = r*(x00-x10)+s*(x01-x11);
+            float y1 = d11*x1+d12*x2;
+            float y2 = d12*x1+d22*x2;
+            a00t[4-k1-3*k2] += r*y1+r*y2; // updates a[4],a[3],a[1],a[0]
+            a01t[5-k1-3*k2] -= r*y1-s*y2; // updates a[5],a[4],a[2],a[1]
+            a10t[7-k1-3*k2] += s*y1-r*y2; // updates a[7],a[6],a[4],a[3]
+            a11t[8-k1-3*k2] -= s*y1+s*y2; // updates a[8],a[7],a[5],a[4]
+          }
+        }
+      }
+    }
+    return new Multigrid2.SimpleA33(a);
+  }
+
   // Solves the diffusion system via conjugate gradient iterations.
   private void solveCg(float[] d, float[] x, float[] y) {
     int n1 = x.length;
