@@ -316,13 +316,19 @@ public class Multigrid2 {
     }
   }
 
+  private static void smooth(A33 a33, float[][] b, float[][] x) {
+    //smoothJacobi(a33,b,x); // requires only pass
+    smoothGaussSeidel4(a33,b,x); // requires four passes
+  }
+
   /**
    * Weighted Jacobi relaxation with weight w = 2/3.
    */
   private static void smoothJacobi(A33 a33, float[][] b, float[][] x) {
     int n1 = x[0].length;
     int n2 = x.length;
-    float w = 2.0f/3.0f;
+    //float w = 2.0f/3.0f;
+    float w = 1.0f;
     float omw = 1.0f-w;
     float[] a = new float[9];
     Buffer33 xb = new Buffer33(x);
@@ -368,11 +374,6 @@ public class Multigrid2 {
         }
       }
     }
-  }
-
-  private static void smooth(A33 a33, float[][] b, float[][] x) {
-    smoothJacobi(a33,b,x); // requires only pass
-    //smoothGaussSeidel4(a33,b,x); // requires four passes
   }
 
   /**

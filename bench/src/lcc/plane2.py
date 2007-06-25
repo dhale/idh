@@ -78,30 +78,45 @@ def goDip():
 
 def doDip(factor,sd,sn):
   ldf = LocalDipFilter(factor)
-  for dip in [-80,-60,-40,-20,0,20,40,60,80]:
+  for dip in [-88,-60,-40,-20,0,20,40,60,88]:
     x,u1,u2 = makeImpulse(dip)
+    v1 = Array.neg(u2)
+    vw = Array.fillfloat(sn,len(x[0]),len(x))
     if sn>0.0:
       suffix = "hn"+str(dip)
     elif sd>0.0:
       suffix = "hd"+str(dip)
     else:
       suffix = "hb"+str(dip)
-    y = applyLdfForward(ldf,sd,sn,u2,x)
+    #y = applyLdfForward(ldf,sd,sn,v1,x)
+    y =  Array.copy(x)
+    ldf.applyLineFilter(vw,v1,x,y)
     a = frequencyResponse(y)
     plotf(a,"a"+suffix)
   x = readImage()
   #x = Array.transpose(x)
   #x = makeTargetImage()
-  u1,u2 = getU(x)
-  y = applyLdfForward(ldf,sd,sn,u2,x)
+  v1 = getV1(x)
+  n1,n2 = len(x[0]),len(x)
+  #vw = Array.mul(0.1,Array.randfloat(n1,n2))
+  vw = Array.zerofloat(n1,n2)
+  for i2 in range(n2):
+    for i1 in range(n1):
+      if n1/4<i1<3*n1/4 and n2/4<i2<3*n2/4:
+        vw[i2][i1] = 0.01
+      else:
+        vw[i2][i1] = 1.00
+  #y = applyLdfForward(ldf,sd,sn,u2,x)
+  y =  Array.copy(x)
+  ldf.applyLineFilter(vw,v1,x,y)
   z = Array.sub(x,y)
   plot(y,2.0,"yhd"+suffix)
   plot(z,10.0,"zhd"+suffix)
-  r = makeRandom()
-  r = smooth(r)
-  s = Array.zerofloat(n1,n2)
-  ldf.applyInverse(sd,sn,u2,r,s)
-  plot(s,0.0,"s"+suffix)
+  #r = makeRandom()
+  #r = smooth(r)
+  #s = Array.zerofloat(n1,n2)
+  #ldf.applyInverse(sd,sn,u2,r,s)
+  #plot(s,0.0,"s"+suffix)
 
 def goNotch():
   #lpf1 = LocalPlaneFilter(LocalPlaneFilter.Type.HALE3,0.00)
@@ -421,7 +436,13 @@ def getU(x):
   u1 = Array.zerofloat(n1,n2)
   u2 = Array.zerofloat(n1,n2)
   lof.applyForNormal(x,u1,u2)
-  return u1,u2
+
+def getV1(x):
+  n1 = len(x[0])
+  n2 = len(x)
+  v1 = Array.zerofloat(n1,n2)
+  lof.apply(x,None,None,None,v1,None,None,None,None)
+  return v1
 
 #############################################################################
 # plot

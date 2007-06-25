@@ -103,7 +103,7 @@ def goDiff():
   x3 = makeTargetImage()
   for x,s in [(x1,"_1"),(x2,"_2"),(x3,"_3")]:
     plot(x,10.0,"x"+s)
-    doDiff(x,"h3"+s)
+    doDiff(x,"d"+s)
 
 def makeRandom():
   r = Random(314159)
@@ -113,16 +113,18 @@ def doDiff(x,png):
   u1,u2 = getU(x)
   su = Array.fillfloat(0.0,n1,n2)
   sv = Array.fillfloat(1.0,n1,n2)
-  sigma = 16
-  ldf = LocalDiffusionFilter(sigma)
+  sigma = 14
+  small = 0.00001
+  niter = 5
+  ldf = LocalDiffusionFilter(sigma,small,niter)
   y = Array.zerofloat(n1,n2)
   z = Array.zerofloat(n1,n2)
   r = makeRandom()
   r = smooth(r)
   s = Array.zerofloat(n1,n2)
-  ldf.applyDipSmoothing(u2,x,y)
+  ldf.applyLineSmoothing(u2,x,y)
   y = Array.sub(x,y)
-  ldf.applyDipSmoothing(u2,r,s)
+  ldf.applyLineSmoothing(u2,r,s)
   plot(y,5.0,"ys"+png)
   plot(s,0.0,"ss"+png)
 
@@ -133,26 +135,13 @@ def doAmpDiff(dip,png=None):
   sv = Array.copy(x)
   Array.fill(0.0,su)
   Array.fill(1.0,sv)
-  sigma = 16
-  small = 0.0001
-  niter = 5
-  nlevel = 3
-  ldf = LocalDiffusionFilter(sigma,small,niter,nlevel)
-  ldf.applyDipSmoothing(u2,x,h)
+  sigma = 10
+  ldf = LocalDiffusionFilter(sigma)
+  #ldf.applyLineSmoothing(u2,x,h)
+  ldf.apply(su,sv,u2,x,h)
   h = Array.sub(x,h)
   ah = frequencyResponse(h)
   plotf(ah,png)
-  for niter in [10,20,40,80]:
-    ldf = LocalDiffusionFilter(sigma,0.000001,niter,1)
-    ldf.applyDipSmoothing(u2,x,h)
-    h = Array.sub(x,h)
-    ah = frequencyResponse(h)
-    plotf(ah,png)
-  #ldf = LocalDiffusionFilter(sigma)
-  #ldf.apply(su,sv,u2,x,h)
-  #h = Array.sub(x,h)
-  #ah = frequencyResponse(h)
-  #plotf(ah,png)
 
 def frequencyResponse(x):
   n1 = len(x[0])
