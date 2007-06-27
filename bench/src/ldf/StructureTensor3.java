@@ -6,29 +6,6 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package ldf;
 
-/*
-StructureTensor3
-  CompressedStructureTensor3
-    construct from six 3-D arrays g1g1, g1g2, g1g3, g2g2, ...
-    use Denning's compression for normal vectors
-    quantize eigenvectors u and w; get v from cross-product
-    u 16 bits 
-    w 16 bits 
-    eu 32 bits
-    ev/eu 8 bits
-    ew/eu 8 bits
-    total is 80 bits = 2.5 floats/sample
-    use coarser grid to store filters
-      store barycentric weights on finer grid
-      need to be able to store information at all levels
-      
-    float[] getU(int i1, int i2, int i3)
-    float[] getE(int 
-  BlockedStructureTensor3
-    average eight nearest structure tensors
-
-SphereSampling
-*/
 /**
  * Interface for 3-D structure tensors. A structure tensor S is a 3 x 3
  * symmetric positive-semidefinite matrix of averaged products of components
@@ -61,6 +38,9 @@ public interface StructureTensor3 {
 
   /**
    * Gets array of elements {S11, S12, S13, S22, S23, S33}.
+   * @param i1 index in 1st dimension.
+   * @param i2 index in 2nd dimension.
+   * @param i3 index in 3rd dimension.
    */
   public float[] getElements(int i1, int i2, int i3);
 
