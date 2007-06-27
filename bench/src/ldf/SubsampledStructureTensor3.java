@@ -7,6 +7,7 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package ldf;
 
+import edu.mines.jtk.dsp.*;
 import static edu.mines.jtk.util.MathPlus.*;
 
 /**
@@ -15,6 +16,28 @@ import static edu.mines.jtk.util.MathPlus.*;
  * @version 2007.06.26
  */
 public class SubsampledStructureTensor3 implements StructureTensor3 {
+
+  public SubsampledStructureTensor3(double sigma, float[][][] x) {
+    LocalOrientFilter lof = new LocalOrientFilter(sigma);
+    int n1 = x[0][0].length;
+    int n2 = x[0].length;
+    int n3 = x.length;
+    float[][][] eu = new float[n3][n2][n1];
+    float[][][] ev = new float[n3][n2][n1];
+    float[][][] ew = new float[n3][n2][n1];
+    float[][][] u2 = new float[n3][n2][n1];
+    float[][][] u3 = new float[n3][n2][n1];
+    float[][][] w2 = new float[n3][n2][n1];
+    float[][][] w3 = new float[n3][n2][n1];
+    lof.apply(x,null,null,
+      null,u2,u3,
+      null,null,null,
+      null,w2,w2,
+      eu,ev,ew,
+      null,null);
+  }
+  private void subsample(int ms, float[][][] x, float[][][] y) {
+  }
 
   public SubsampledStructureTensor3(
     float[][][] s11, float[][][] s12, float[][][] s13,
