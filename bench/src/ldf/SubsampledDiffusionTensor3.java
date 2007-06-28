@@ -1,4 +1,3 @@
-
 /****************************************************************************
 Copyright (c) 2007, Colorado School of Mines and others. All rights reserved.
 This program and accompanying materials are made available under the terms of
@@ -11,7 +10,17 @@ import edu.mines.jtk.dsp.*;
 import static edu.mines.jtk.util.MathPlus.*;
 
 /**
- * Subsampled diffusion tensors for 3-D images.
+ * Subsampled diffusion tensors for 3-D images. Tensors for each sample of
+ * an image can consume significantly more memory than the image itself.
+ * This class subsamples tensors by a factor of two in each image dimension.
+ * Eight tensors are averaged to obtain each subsampled tensor. The resulting 
+ * data structure requires less memory than the image.
+ * <p>
+ * Methods that return tensor elements, eigenvectors or eigenvalues return
+ * values corresponding to the nearest average tensor. In other words, these 
+ * return the same average tensor for up to eight different 3-D sample 
+ * indices. These methods do not interpolate tensors.
+ *
  * @author Dave Hale, Colorado School of Mines
  * @version 2007.06.26
  */
@@ -32,19 +41,19 @@ public class SubsampledDiffusionTensor3 implements DiffusionTensor3 {
     lof.apply(x,null,null,
       null,u2,u3,
       null,null,null,
-      null,w2,w2,
+      null,w2,w3,
       eu,ev,ew,
       null,null);
     _n1 = n1;
     _n2 = n2;
     _n3 = n3;
-    _eu = downsample(eu);
-    _ev = downsample(ev);
-    _ew = downsample(ew);
-    _u2 = downsample(u2);
-    _u3 = downsample(u3);
-    _w2 = downsample(u2);
-    _w3 = downsample(u3);
+    _eu = subsample(eu);
+    _ev = subsample(ev);
+    _ew = subsample(ew);
+    _u2 = subsample(u2);
+    _u3 = subsample(u3);
+    _w2 = subsample(w2);
+    _w3 = subsample(w3);
   }
 
   public SubsampledDiffusionTensor3(
@@ -165,6 +174,51 @@ public class SubsampledDiffusionTensor3 implements DiffusionTensor3 {
 
   /**
    * Downsample from [n3][n2][n1] to [(n3+1)/2][(n2+1)/2][(n1+1)/2] samples.
+   */
+  private static float[][][] subsample(float[][][] x) {
+    // Example for n even:
+    // 0   0   0   0         n = 4 before subsampling
+    //   x       x           m = 2  after subsampling
+    //
+    // Example for n odd:
+    // 0   0   0   0   0     n = 5 before subsampling
+    //   x       x       x   m = 3  after subsampling
+    int n1 = x[0][0].length;
+    int n2 = x[0].length;
+    int n3 = x.length;
+    int m1 = (n1+1)/2;
+    int m2 = (n2+1)/2;
+    int m3 = (n3+1)/2;
+    float s8 = 1.0f/8.0f;
+    float[][][] y =  new float[m3][m2][m1];
+    int j1max = n1-1;
+    int j2max = n2-1;
+    int j3max = n3-1;
+    for (int i3=0,j3=0; i3<m3; ++i3,j3+=2) {
+      int j30 = j3;
+      int j3p = (j3<j3max)?j3+1:j3max;
+      for (int i2=0,j2=0; i2<m2; ++i2,j2+=2) {
+        int j20 = j2;
+        int j2p = (j2<j2max)?j2+1:j2max;
+        float[] x00 = x[j30][j20];
+        float[] x0p = x[j30][j2p];
+        float[] xp0 = x[j3p][j20];
+        float[] xpp = x[j3p][j2p];
+        for (int i1=0,j1=0; i1<m1; ++i1,j1+=2) {
+          int j10 = j1;
+          int j1p = (j1<j1max)?j1+1:j1max;
+          y[i3][i2][i1] = s8*(x00[j10]+x00[j1p] +
+                              x0p[j10]+x0p[j1p] +
+                              xp0[j10]+xp0[j1p] +
+                              xpp[j10]+xpp[j1p]);
+        }
+      }
+    }
+    return y;
+  }
+
+  /**
+   * Downsample from [n3][n2][n1] to [(n3+1)/2][(n2+1)/2][(n1+1)/2] samples.
    * The 27-sample stencil used to average samples is
    * <pre><code>
    *   [ 1/64 1/32 1/64 ] [ 1/32 1/16 1/32 ] [ 1/64 1/32 1/64 ]
@@ -172,7 +226,7 @@ public class SubsampledDiffusionTensor3 implements DiffusionTensor3 {
    *   [ 1/64 1/32 1/64 ] [ 1/32 1/16 1/32 ] [ 1/64 1/32 1/64 ]
    * </code></pre>
    */
-  private static float[][][] downsample(float[][][] x) {
+  private static float[][][] xsubsample(float[][][] x) {
     int n1 = x[0][0].length;
     int n2 = x[0].length;
     int n3 = x.length;
