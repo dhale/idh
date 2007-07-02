@@ -336,6 +336,7 @@ public class LocalDipFilter {
   private void applyForwardNot(
     float sd, float sn, float[][] u2, float[][] x, float[][] y) 
   {
+    Array.zero(y);
     float aone = 1.0f+sd;
     float aeps = sn;
     int n1 = x[0].length;
@@ -599,13 +600,22 @@ public class LocalDipFilter {
   // Factors are tabulated as a function of sigma and theta.
   private static class FactoredFilter2 {
     FactoredFilter2() {
-      int maxlag = 8;
+      int maxlag = 4;
+      /*
       int nlag = maxlag+2+maxlag;
       int[] lag1 = new int[nlag];
       int[] lag2 = new int[nlag];
       for (int ilag=0; ilag<nlag; ++ilag) {
         lag1[ilag] = (ilag<=maxlag)?ilag:ilag-2*maxlag;
         lag2[ilag] = (ilag<=maxlag)?0:1;
+      }
+      */
+      int nlag = 4+maxlag;
+      int[] lag1 = new int[nlag];
+      int[] lag2 = new int[nlag];
+      for (int ilag=0; ilag<nlag; ++ilag) {
+        lag1[ilag] = (ilag<=1)?ilag:ilag-2-maxlag;
+        lag2[ilag] = (ilag<=1)?0:1;
       }
       float[][] w = new float[3][3];
       float[][] v = new float[3][3];
@@ -684,13 +694,22 @@ public class LocalDipFilter {
   private static class FactoredFilter {
     FactoredFilter(Small small) {
       LocalDipFilter ldf = new LocalDipFilter(Factor.NOT);
-      int maxlag = 8;
+      int maxlag = 4;
+      /*
       int nlag = maxlag+2+maxlag;
       int[] lag1 = new int[nlag];
       int[] lag2 = new int[nlag];
       for (int ilag=0; ilag<nlag; ++ilag) {
         lag1[ilag] = (ilag<=maxlag)?ilag:ilag-2*maxlag;
         lag2[ilag] = (ilag<=maxlag)?0:1;
+      }
+      */
+      int nlag = 4+maxlag;
+      int[] lag1 = new int[nlag];
+      int[] lag2 = new int[nlag];
+      for (int ilag=0; ilag<nlag; ++ilag) {
+        lag1[ilag] = (ilag<=1)?ilag:ilag-2-maxlag;
+        lag2[ilag] = (ilag<=1)?0:1;
       }
       float[][] u = new float[3][3];
       float[][] t = new float[3][3];
@@ -699,10 +718,13 @@ public class LocalDipFilter {
       CausalFilter cf = new CausalFilter(lag1,lag2);
       for (int itheta=0; itheta<NTHETA; ++itheta) {
         float theta = FTHETA+itheta*DTHETA;
+        trace("theta = "+theta*180.0f/FLT_PI);
         Array.fill(-sin(theta),u);
         ldf.applyForward(small.sd,small.sn,u,t,r);
+        //Array.dump(r);
         cf.factorWilsonBurg(100,0.000001f,r);
         _atable[itheta] = cf.getA();
+        Array.dump(cf.getA());
       }
       _lcf = new LocalCausalFilter(lag1,lag2);
     }
@@ -716,7 +738,7 @@ public class LocalDipFilter {
       _lcf.applyInverseTranspose(a2,x,y);
       _lcf.applyInverse(a2,y,y);
     }
-    private static int NTHETA = 21;
+    private static int NTHETA = 13;
     private static float FTHETA = -0.5f*FLT_PI;
     private static float DTHETA = FLT_PI/(float)(NTHETA-1);;
     private static float STHETA = 0.9999f/DTHETA;

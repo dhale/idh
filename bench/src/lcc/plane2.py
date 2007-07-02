@@ -70,7 +70,7 @@ def goLinear():
 
 def goDip():
   sd = 0.00
-  sn = 0.01
+  sn = 0.002
   #doDip(LocalDipFilter.Factor.NOT,sd,sn)
   #doDip(LocalDipFilter.Factor.PCG,sd,sn)
   doDip(LocalDipFilter.Factor.INV,sd,sn)
@@ -89,6 +89,8 @@ def doDip(factor,sd,sn):
     else:
       suffix = "hb"+str(dip)
     #y = applyLdfForward(ldf,sd,sn,v1,x)
+    #y = applyLdfInverse(ldf,sd,sn,v1,x)
+    #return
     y =  Array.copy(x)
     ldf.applyLineFilter(vw,v1,x,y)
     a = frequencyResponse(y)
