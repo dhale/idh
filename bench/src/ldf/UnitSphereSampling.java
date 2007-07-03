@@ -44,8 +44,7 @@ public class UnitSphereSampling {
 
   /**
    * Gets the index of the sampled point nearest to the specified point.
-   * Here, the nearest sampled point is that corresponding to the
-   * projection from the unit-sphere onto an octahedron.
+   * Here, the nearest sampled point is that nearest on the octahedron.
    * @param x the x-coordinate of the point.
    * @param y the y-coordinate of the point.
    * @param z the z-coordinate of the point.
@@ -61,19 +60,35 @@ public class UnitSphereSampling {
     int ir = (int)(0.5+(r+1.0)/_d);
     int is = (int)(0.5+(s+1.0)/_d);
     int index = _ip[is][ir];
-    System.out.println("index="+index);
     return (z>=0.0f)?index:-index;
   }
 
   /**
    * Gets the index of the sampled point nearest to the specified point.
-   * Here, the nearest sampled point is that corresponding to the
-   * projection from the unit-sphere onto an octahedron.
+   * Here, the nearest sampled point is that nearest on the octahedron.
    * @param xyz the array {x,y,z} of point coordinates.
    * @return the sample index.
    */
   public int getIndex(float[] xyz) {
     return getIndex(xyz[0],xyz[1],xyz[2]);
+  }
+
+  /**
+   * Gets the maximum sample index, a positive integer. The smallest
+   * positive index is one. The smallest index is the negative of the 
+   * maximum index, and the largest negative index is minus one.
+   * @return the maximum index.
+   */
+  public int getMaxIndex() {
+    return _nindex;
+  }
+
+  /**
+   * Gets the number of points sampled on this unit sphere.
+   * @return the number of points sampled.
+   */
+  public int countPointsSampled() {
+    return _npoint;
   }
 
   ///////////////////////////////////////////////////////////////////////////
@@ -83,26 +98,28 @@ public class UnitSphereSampling {
   // on the sphere; that is, on the x, y, and z axes. The upper hemisphere
   // (z>=0) is projected onto the upper half of the octahedron. 
   //
-  // Imagine that this upper half is flattened. Let r and s denote the 
-  // projections of the x and y axes onto the flat plane. The upper 
+  // Imagine that this upper half is flattened into the x and y plane, and
+  // let r and s the projected coordinates in this flat plane. The upper 
   // hemisphere corresponds to a diamond in the r-s plane. The number of
   // points in this diamond is the number of points sampled for the upper
   // hemisphere, including the points on the equator for which z=0.
   //
   // The lower hemisphere (z<=0) is sampled in the same way, and its 
   // mapping also includes points on the equator. The number of samples
-  // in these diamonds (the sampling resolution) depends on the number 
+  // in these diamonds (the sampling resolution) is limited by the number 
   // of bits (nbits) in the signed integer sample indices.
   //
-  // The r-s plane is sampled on a n by n grid, where n = 2*m+1 and m is 
-  // the number of sampling intervals along the positive r or s axes. But
-  // not all samples in this grid are used. Let
-  // ir and is denote sample indices. The central samples with indices This 
-  // number m is chosen to be as large as possible
+  // The r-s plane is sampled on an n by n grid, where n = 2*m+1 and m is 
+  // the number of sampling intervals along each of the positive r and s 
+  // axes. But not all samples in this grid are used.
   // 
-  // In the example below for nbits = 6,  m = 3,  n = 7, only samples 
-  // marked with X correspond to sampled points. Samples marked with 0 
-  // are unused.
+  // In the example below, for nbits = 6,  m = 3,  and n = 7, only the 25
+  // samples marked with X correspond to sampled points. Samples marked 
+  // with 0 are unused, but are included in the grid for simplicity. The
+  // indices for the upper hemisphere are in the range [1,25]. For the 
+  // lower hemisphere, indices are in the range [-25,-1]. The index 0 is
+  // unused. This range of indices [-25,25] fits in a signed 6-bit integer 
+  // with range[-32:31].
   //
   //                  s
   //                  ^
@@ -110,18 +127,12 @@ public class UnitSphereSampling {
   //     3  |0  0  0  X  0  0  0
   //     2  |0  0  X  X  X  0  0
   //     1  |0  X  X  X  X  X  0
-  // s = 0  |X  X  X  X  X  X  X  ---> r
+  //     0  |X  X  X  X  X  X  X  ---> r
   //    -1  |0  X  X  X  X  X  0
   //    -2  |0  0  X  X  X  0  0
   //    -3  |0  0  0  X  0  0  0
   //         -------------------
-  //    r = -3 -2 -1  0  1  2  3
-  //
-  // In the r-s plane for either the upper or lower hemispheres
-  //  _nindex = _n+_m*(_n-1);
-  //  2*m*m + 2*m + 1
-  //  2*m+1+m*2*m
-  //  1+2*m*(m+1)
+  //        -3 -2 -1  0  1  2  3
 
   private int _nbits; // number of bits used in quantization
   private int _m; // number of samples for positive r and s, not including zero
@@ -148,6 +159,10 @@ public class UnitSphereSampling {
     --_m;
     _n = 2*_m+1;
 
+    // Sampling interval and its inverse for r and s.
+    _d = 1.0/_m;
+    _od = _m;
+
     // Number of positive/negative indices.
     _nindex = 1+2*_m*(1+_m);
 
@@ -157,12 +172,7 @@ public class UnitSphereSampling {
     // Here we do not count them twice.
     _npoint = 2*_nindex-4*_n+2;
 
-    // Number of indices.
-    System.out.println("m="+_m+" n="+_n+" nindex="+_nindex+" npoint="+_npoint);
-
-    // Sampling interval and its inverse for r and s.
-    _d = 1.0/_m;
-    _od = _m;
+    trace("m="+_m+" n="+_n+" nindex="+_nindex+" npoint="+_npoint);
 
     // Tables for points in upper and lower hemispheres.
     _pu = new float[1+_nindex][];
@@ -188,7 +198,7 @@ public class UnitSphereSampling {
 
           // Increment and store index in table.
           _ip[is][ir] = ++index;
-          //System.out.println("ir="+ir+" is="+is+" index="+index);
+          //trace("ir="+ir+" is="+is+" index="+index);
 
           // Planar coordinate r and |r|.
           double r = jr*_d;
@@ -213,6 +223,12 @@ public class UnitSphereSampling {
     }
   }
 
+  private static final boolean TRACE = true;
+  private static void trace(String s) {
+    if (TRACE)
+      System.out.println(s);
+  }
+
   ///////////////////////////////////////////////////////////////////////////
   // testing
 
@@ -232,7 +248,7 @@ public class UnitSphereSampling {
       float[] p = randomPoint();
       int i = uss.getIndex(p);
       float[] q = uss.getPoint(i);
-      System.out.println("ipoint="+ipoint+" i="+i);
+      trace("ipoint="+ipoint+" i="+i);
       edu.mines.jtk.util.Array.dump(p);
       edu.mines.jtk.util.Array.dump(q);
     }
