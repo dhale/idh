@@ -136,8 +136,9 @@ public class UnitSphereSampling {
   //
   // In a more practical example, nbits = 16, m = 127, and n = 255, with
   // sample indices in [-32513,-1] and [1,32513]. In this example, the
-  // number of unique points sampled is 64008, which is less than the
-  // maximum possible 65536 points that could be represented with 16 bits.
+  // number of unique points sampled is 64008. This number is less than 
+  // the maximum possible 65536 points that could be represented in 16 
+  // bits.
   
   private int _nbits; // number of bits used in quantization
   private int _m; // number of samples for positive r and s, not including zero
