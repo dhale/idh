@@ -34,17 +34,15 @@ public class UnitSphereSampling {
    * @return array {x,y,z} of point coordinates; by reference, not by copy.
    */
   public float[] getPoint(int index) {
-    float[][] p = _pu;
-    if (index<0) {
-      index = -index;
-      p = _pl;
-    }
-    return p[index];
+    return (index>=0)?_pu[index]:_pl[-index];
   }
 
   /**
    * Gets the index of the sampled point nearest to the specified point.
    * Here, the nearest sampled point is that nearest on the octahedron.
+   * Returns a positive index for points in the upper hemisphere (z&gt;=0), 
+   * including points on the equator (z=0). Returns a negative index for 
+   * points in the lower hemisphere not on the equator (z&lt;0).
    * @param x the x-coordinate of the point.
    * @param y the y-coordinate of the point.
    * @param z the z-coordinate of the point.
@@ -57,10 +55,58 @@ public class UnitSphereSampling {
     double scale = 1.0/(ax+ay+az);
     double r = x*scale;
     double s = y*scale;
-    int ir = (int)(0.5+(r+1.0)/_d);
-    int is = (int)(0.5+(s+1.0)/_d);
+    int ir = (int)(0.5+(r+1.0)*_od);
+    int is = (int)(0.5+(s+1.0)*_od);
     int index = _ip[is][ir];
     return (z>=0.0f)?index:-index;
+  }
+
+  /**
+   * Returns an array {ia,ib,ic} of three sample indices for triangle
+   * that contains the specified point. As viewed from outside the 
+   * sphere, the sampled points corresponding to the returned indices 
+   * are ordered counter-clockwise.
+   * @param x the x-coordinate of the point.
+   * @param y the y-coordinate of the point.
+   * @param z the z-coordinate of the point.
+   * @return the array of sample indices.
+   */
+  public int[] locatePoint(float x, float y, float z) {
+    double ax = (x>=0.0f)?x:-x;
+    double ay = (y>=0.0f)?y:-y;
+    double az = (z>=0.0f)?z:-z;
+    double scale = 1.0/(ax+ay+az);
+    double r = x*scale;
+    double s = y*scale;
+    float rn = (r+1.0)*_od;
+    float sn = (s+1.0)*_od;
+    int ir = (int)rn;
+    int is = (int)sn;
+    float fr = rn-(float)ir;
+    float fs = sn-(float)is;
+    int ia,ib,ic;
+    if (r*s>=0.0f) {
+      if (-ir-is==_m || fr+fs>1.0f) {
+        ia = _ip[is+1][ir+1];
+        ib = _ip[is+1][ir  ];
+        ic = _ip[is  ][ir+1];
+      } else {
+        ia = _ip[is  ][ir  ];
+        ib = _ip[is  ][ir+1];
+        ic = _ip[is+1][ir  ];
+      }
+    } else {
+      if (-ir+is==_m || fr>=fs) {
+        ia = _ip[is  ][ir+1];
+        ib = _ip[is+1][ir+1];
+        ic = _ip[is  ][ir  ];
+      } else {
+        ia = _ip[is+1][ir  ];
+        ib = _ip[is  ][ir+1];
+        ic = _ip[is+1][ir+1];
+      }
+    }
+    return (z>=0.0f)?new int[]{ia,ib,ic}:new int[]{-ia,-ic,-ib};
   }
 
   /**
@@ -134,9 +180,15 @@ public class UnitSphereSampling {
   //         -------------------
   //        -3 -2 -1  0  1  2  3
   //
+  // Points on the equator correspond to the outermost points in the
+  // the diamonds for the upper and lower hemispheres. These 4*m points
+  // (for which z=0) appear in both tables. The number of unique points
+  // sampled equals the number of points in the tables minus the 4*m
+  // duplicate points.
+  //
   // In a more practical example, nbits = 16, m = 127, and n = 255, with
   // sample indices in [-32513,-1] and [1,32513]. In this example, the
-  // number of unique points sampled is 64008. This number is less than 
+  // number of unique points sampled is 64518. This number is less than 
   // the maximum possible 65536 points that could be represented in 16 
   // bits.
   
@@ -158,25 +210,32 @@ public class UnitSphereSampling {
     // Number of bits in sample indices, including the sign bit.
     _nbits = nbits;
 
-    // Sampling of the r-s plane with an n by n grid.
-    _m = 1;
-    while (2*_m*(1+_m)<=(1<<(nbits-1)))
-      ++_m;
-    --_m;
+    // Sampling of the r-s plane with an n by n grid. Compute the 
+    // largest m such that the number of sample indices fits in a 
+    // signed integer with the specified number of bits. Note that
+    // nbits-1 is the number of bits not counting the sign bit. The
+    // upper limit on the largest positive index is 2^(nbits-1)-1. 
+    // The largest positive index is 1+2*m*(1+m), which also equals
+    // the number (nindex) of positive indices.
+    int indexLimit = (1<<(nbits-1))-1;
+    int m = 1;
+    while (1+2*m*(1+m)<=indexLimit)
+      ++m;
+    _m = --m;
     _n = 2*_m+1;
 
-    // Sampling interval and its inverse for r and s.
+    // Sampling interval and its inverse in the r-s plane.
     _d = 1.0/_m;
     _od = _m;
 
-    // Number of positive/negative indices.
+    // Number of positive/negative indices; equals the largest index.
     _nindex = 1+2*_m*(1+_m);
 
     // Number of unique sampled points. The number of points on the equator 
-    // is 4*n-2; these points for which z=0 appear in both tables for the
-    // upper and lower hemispheres, for both positive and negative indices.
-    // Here we do not count them twice.
-    _npoint = 2*_nindex-4*_n+2;
+    // is 4*m; these points (for which z=0) appear in the tables for both
+    // upper and lower hemispheres. They have both positive and negative 
+    // indices, and are not counted twice here.
+    _npoint = 2*_nindex-4*_m; // = 2+4*_m*_m
 
     trace("m="+_m+" n="+_n+" nindex="+_nindex+" npoint="+_npoint);
 
@@ -247,8 +306,14 @@ public class UnitSphereSampling {
     return new float[]{x*s,y*s,z*s};
   }
 
-  private static void testByteIndex() {
-    UnitSphereSampling uss = new UnitSphereSampling(16);
+  private static float distanceOnSphere(float[] p, float[] q) {
+    return (float)acos(p[0]*q[0]+p[1]*q[1]+p[2]*q[2]);
+  }
+
+  private static void test(int nbits) {
+    UnitSphereSampling uss = new UnitSphereSampling(nbits);
+    estimateMaxError(uss);
+    /*
     int npoint = 10;
     for (int ipoint=0; ipoint<npoint; ++ipoint) {
       float[] p = randomPoint();
@@ -258,8 +323,35 @@ public class UnitSphereSampling {
       edu.mines.jtk.util.Array.dump(p);
       edu.mines.jtk.util.Array.dump(q);
     }
+    */
   }
+
+  private static float estimateMaxError(UnitSphereSampling uss) {
+    int npoint = 100000;
+    float dmax = 0.0f;
+    float[] pmax = null;
+    float[] qmax = null;
+    for (int ipoint=0; ipoint<npoint; ++ipoint) {
+      float[] p = randomPoint();
+      int i = uss.getIndex(p);
+      float[] q = uss.getPoint(i);
+      float d = distanceOnSphere(p,q);
+      if (d>dmax) {
+        dmax = d;
+        pmax = p;
+        qmax = q;
+      }
+    }
+    float dmaxDegrees = (float)(dmax*180.0/PI);
+    trace("npoint="+npoint+" dmax="+dmax+" degrees="+dmaxDegrees);
+    trace("pmax=");
+    edu.mines.jtk.util.Array.dump(pmax);
+    trace("qmax=");
+    edu.mines.jtk.util.Array.dump(qmax);
+    return dmax;
+  }
+
   public static void main(String[] args) {
-    testByteIndex();
+    test(16);
   }
 }
