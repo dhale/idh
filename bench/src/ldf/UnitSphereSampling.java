@@ -113,7 +113,7 @@ public class UnitSphereSampling {
   // the number of sampling intervals along each of the positive r and s 
   // axes. But not all samples in this grid are used.
   // 
-  // In the example below, for nbits = 6,  m = 3,  and n = 7, only the 25
+  // In the example below, for nbits = 6, m = 3, and n = 7, only the 25
   // samples marked with X correspond to sampled points. Samples marked 
   // with 0 are unused, but are included in the grid for simplicity. The
   // indices for the upper hemisphere are in the range [1,25]. For the 
@@ -133,7 +133,12 @@ public class UnitSphereSampling {
   //    -3  |0  0  0  X  0  0  0
   //         -------------------
   //        -3 -2 -1  0  1  2  3
-
+  //
+  // In a more practical example, nbits = 16, m = 127, and n = 255, with
+  // sample indices in [-32513,-1] and [1,32513]. In this example, the
+  // number of unique points sampled is 64008, which is less than the
+  // maximum possible 65536 points that could be represented with 16 bits.
+  
   private int _nbits; // number of bits used in quantization
   private int _m; // number of samples for positive r and s, not including zero
   private int _n; // number of samples of r and s
