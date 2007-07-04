@@ -43,9 +43,9 @@ public class UnitSphereSampling {
    * Returns a positive index for points in the upper hemisphere (z&gt;=0), 
    * including points on the equator (z=0). Returns a negative index for 
    * points in the lower hemisphere not on the equator (z&lt;0).
-   * @param x the x-coordinate of the point.
-   * @param y the y-coordinate of the point.
-   * @param z the z-coordinate of the point.
+   * @param x x-coordinate of the point.
+   * @param y y-coordinate of the point.
+   * @param z z-coordinate of the point.
    * @return the sample index.
    */
   public int getIndex(float x, float y, float z) {
@@ -62,18 +62,28 @@ public class UnitSphereSampling {
   }
 
   /**
-   * Returns an array {ia,ib,ic} of three sample indices for triangle
-   * that contains the specified point. As viewed from outside the 
-   * sphere, the sampled points corresponding to the returned indices 
+   * Gets the index of the sampled point nearest to the specified point.
+   * Here, the nearest sampled point is that nearest on the octahedron.
+   * @param xyz array {x,y,z} of point coordinates.
+   * @return the sample index.
+   */
+  public int getIndex(float[] xyz) {
+    return getIndex(xyz[0],xyz[1],xyz[2]);
+  }
+
+  /**
+   * Returns an array {ia,ib,ic} of three sample indices for a spherical
+   * triangle that contains the specified point. As viewed from outside 
+   * the sphere, the sampled points corresponding to the returned indices 
    * are ordered counter-clockwise.
-   * @param x the x-coordinate of the point.
-   * @param y the y-coordinate of the point.
-   * @param z the z-coordinate of the point.
-   * @return the array of sample indices.
+   * @param x x-coordinate of the point.
+   * @param y y-coordinate of the point.
+   * @param z z-coordinate of the point.
+   * @return array of sample indices.
    */
   public int[] locatePoint(float x, float y, float z) {
 
-    // Coordinates in r-s plane.
+    // Coordinates in r-s plane in [-1,1].
     double ax = (x>=0.0f)?x:-x;
     double ay = (y>=0.0f)?y:-y;
     double az = (z>=0.0f)?z:-z;
@@ -81,11 +91,9 @@ public class UnitSphereSampling {
     double r = x*scale;
     double s = y*scale;
 
-    // Normalized rn and sn in [0,2m].
+    // Integer grid indices in [0,2m] and fractional parts in [0,1).
     double rn = (r+1.0)*_od;
     double sn = (s+1.0)*_od;
-
-    // Integer grid indices in [0,2m] and fractional parts in [0,1).
     int ir = (int)rn;
     int is = (int)sn;
     double fr = rn-ir;
@@ -100,7 +108,7 @@ public class UnitSphereSampling {
 
     // If quadrant 1, ...
     if (jr>=0 && js>=0) {
-      if (jr+js>=_m || fr+fs<=1.0) {
+      if (jr+js+2>_m || fr+fs<=1.0) {
         ia = _ip[is  ][ir  ]; // lower left triangle
         ib = _ip[is  ][ir+1];
         ic = _ip[is+1][ir  ];
@@ -113,20 +121,20 @@ public class UnitSphereSampling {
 
     // Else if quadrant 2, ...
     else if (jr<0 && js>=0) {
-      if (-jr+js>=_m || fr>=fs) {
+      if (-jr+js+1>_m || fr>=fs) {
         ia = _ip[is  ][ir+1]; // lower right triangle
         ib = _ip[is+1][ir+1];
         ic = _ip[is  ][ir  ];
       } else {
         ia = _ip[is+1][ir  ]; // upper left triangle
-        ib = _ip[is  ][ir+1];
+        ib = _ip[is  ][ir  ];
         ic = _ip[is+1][ir+1];
       }
     }
 
     // Else if quadrant 3, ...
     else if (jr<0 && js<0) {
-      if (-jr-js>=_m || fr+fs>=1.0) {
+      if (-jr-js>_m || fr+fs>=1.0) {
         ia = _ip[is+1][ir+1]; // upper right triangle
         ib = _ip[is+1][ir  ];
         ic = _ip[is  ][ir+1];
@@ -139,15 +147,26 @@ public class UnitSphereSampling {
 
     // Else if quadrant 4, ...
     else {
-      if (jr-js>=_m || fr<=fs) {
+      if (jr+1-js>_m || fr<=fs) {
         ia = _ip[is+1][ir  ]; // upper left triangle
-        ib = _ip[is  ][ir+1];
+        ib = _ip[is  ][ir  ];
         ic = _ip[is+1][ir+1];
       } else {
         ia = _ip[is  ][ir+1]; // lower right triangle
         ib = _ip[is+1][ir+1];
         ic = _ip[is  ][ir  ];
       }
+    }
+
+    if (ia==0 || ib==0 || ic==0) {
+      trace("ia="+ia+" ib="+ib+" ic="+ic);
+      trace("x="+x+" y="+y+" z="+z);
+      trace("r="+r+" s="+s);
+      trace("ir="+ir+" is="+is);
+      trace("jr="+jr+" js="+js);
+      trace("fr="+fr+" fs="+fs);
+      trace("rn="+rn+" sn="+sn);
+      assert false:"valid ia,ib,ic";
     }
 
     // Signs of indices depend on sign of z. Order the indices so that
@@ -157,13 +176,15 @@ public class UnitSphereSampling {
   }
 
   /**
-   * Gets the index of the sampled point nearest to the specified point.
-   * Here, the nearest sampled point is that nearest on the octahedron.
-   * @param xyz the array {x,y,z} of point coordinates.
-   * @return the sample index.
+   * Returns an array {ia,ib,ic} of three sample indices for a spherical
+   * triangle that contains the specified point. As viewed from outside 
+   * the sphere, the sampled points corresponding to the returned indices 
+   * are ordered counter-clockwise.
+   * @param xyz array {x,y,z} of point coordinates.
+   * @return array of sample indices.
    */
-  public int getIndex(float[] xyz) {
-    return getIndex(xyz[0],xyz[1],xyz[2]);
+  public int[] locatePoint(float[] xyz) {
+    return locatePoint(xyz[0],xyz[1],xyz[2]);
   }
 
   /**
@@ -244,8 +265,8 @@ public class UnitSphereSampling {
   private int _n; // number of samples of r and s
   private int _nindex; // number of positive/negative indices
   private int _npoint; // number of unique points
-  private double _d; // sampling interval for r and s
-  private double _od; // one over sampling interval = 1/d
+  private double _d; // sampling interval for r and s = 1/m
+  private double _od; // one over sampling interval = m
   private float[][] _pu; // table of points in upper hemisphere (z>=0)
   private float[][] _pl; // table of points in lower hemisphere (z<=0)
   private int[][] _ip; // table[n][n] of point indices
@@ -306,7 +327,8 @@ public class UnitSphereSampling {
         // Process only samples the octahedral diamond corresponding
         // to the upper and lower hemispheres. Other points in the
         // table will be null.
-        if (abs(jr)+abs(js)<=_m) {
+        int jrs = abs(jr)+abs(js);
+        if (jrs<=_m) {
 
           // Increment and store index in table.
           _ip[is][ir] = ++index;
@@ -317,7 +339,8 @@ public class UnitSphereSampling {
           double ar = (r>=0.0)?r:-r;
 
           // Third coordinate t (t>=0) on octahedron.
-          double t = max(0.0,1.0f-ar-as);
+          double t = max(0.0,1.0-ar-as);
+          if (jrs==_m) t = 0.0;
 
           // Coordinates of point in upper hemisphere (z>=0).
           double scale = 1.0/sqrt(s*s+r*r+t*t);
@@ -344,37 +367,48 @@ public class UnitSphereSampling {
   ///////////////////////////////////////////////////////////////////////////
   // testing
 
-  private static java.util.Random _random = new java.util.Random();
-  private static float[] randomPoint() {
-    float x = -1.0f+2.0f*_random.nextFloat();
-    float y = -1.0f+2.0f*_random.nextFloat();
-    float z = -1.0f+2.0f*_random.nextFloat();
-    float s = 1.0f/(float)sqrt(x*x+y*y+z*z);
-    return new float[]{x*s,y*s,z*s};
+  public static void main(String[] args) {
+    UnitSphereSampling uss = new UnitSphereSampling(6);
+    testLocate(uss);
+    //testMaxError(uss);
   }
 
-  private static float distanceOnSphere(float[] p, float[] q) {
-    return (float)acos(p[0]*q[0]+p[1]*q[1]+p[2]*q[2]);
-  }
-
-  private static void test(int nbits) {
-    UnitSphereSampling uss = new UnitSphereSampling(nbits);
-    estimateMaxError(uss);
-    /*
+  private static void testLocate(UnitSphereSampling uss) {
     int npoint = 10;
     for (int ipoint=0; ipoint<npoint; ++ipoint) {
       float[] p = randomPoint();
+      //p[0] = -0.403209f;
+      //p[1] = -0.838007f;
+      //p[2] =  0.367649f;
       int i = uss.getIndex(p);
+      int[] abc = uss.locatePoint(p);
+      int ia = abc[0], ib = abc[1], ic = abc[2];
+      trace("i="+i+" ia="+ia+" ib="+ib+" ic="+ic);
       float[] q = uss.getPoint(i);
-      trace("ipoint="+ipoint+" i="+i);
-      edu.mines.jtk.util.Array.dump(p);
-      edu.mines.jtk.util.Array.dump(q);
+      float[] qa = uss.getPoint(ia);
+      float[] qb = uss.getPoint(ib);
+      float[] qc = uss.getPoint(ic);
+      float d = distanceOnSphere(p,q);
+      float da = distanceOnSphere(p,qa);
+      float db = distanceOnSphere(p,qb);
+      float dc = distanceOnSphere(p,qc);
+      if (i!=ia && i!=ib && i!=ic) {
+        trace("d="+d+" da="+da+" db="+db+" dc="+dc);
+        edu.mines.jtk.util.Array.dump(p);
+        edu.mines.jtk.util.Array.dump(q);
+        edu.mines.jtk.util.Array.dump(qa);
+        edu.mines.jtk.util.Array.dump(qb);
+        edu.mines.jtk.util.Array.dump(qc);
+      }
     }
-    */
+  }
+
+  private static void testMaxError(UnitSphereSampling uss) {
+    estimateMaxError(uss);
   }
 
   private static float estimateMaxError(UnitSphereSampling uss) {
-    int npoint = 100000;
+    int npoint = 1000000;
     float dmax = 0.0f;
     float[] pmax = null;
     float[] qmax = null;
@@ -398,7 +432,17 @@ public class UnitSphereSampling {
     return dmax;
   }
 
-  public static void main(String[] args) {
-    test(16);
+  private static java.util.Random _random = new java.util.Random();
+  private static float[] randomPoint() {
+    float x = -1.0f+2.0f*_random.nextFloat();
+    float y = -1.0f+2.0f*_random.nextFloat();
+    float z = -1.0f+2.0f*_random.nextFloat();
+    float s = 1.0f/(float)sqrt(x*x+y*y+z*z);
+    return new float[]{x*s,y*s,z*s};
   }
+
+  private static float distanceOnSphere(float[] p, float[] q) {
+    return (float)acos(p[0]*q[0]+p[1]*q[1]+p[2]*q[2]);
+  }
+
 }
