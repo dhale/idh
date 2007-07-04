@@ -72,40 +72,87 @@ public class UnitSphereSampling {
    * @return the array of sample indices.
    */
   public int[] locatePoint(float x, float y, float z) {
+
+    // Coordinates in r-s plane.
     double ax = (x>=0.0f)?x:-x;
     double ay = (y>=0.0f)?y:-y;
     double az = (z>=0.0f)?z:-z;
     double scale = 1.0/(ax+ay+az);
     double r = x*scale;
     double s = y*scale;
-    float rn = (r+1.0)*_od;
-    float sn = (s+1.0)*_od;
+
+    // Normalized rn and sn in [0,2m].
+    double rn = (r+1.0)*_od;
+    double sn = (s+1.0)*_od;
+
+    // Integer grid indices in [0,2m] and fractional parts in [0,1).
     int ir = (int)rn;
     int is = (int)sn;
-    float fr = rn-(float)ir;
-    float fs = sn-(float)is;
+    double fr = rn-ir;
+    double fs = sn-is;
+
+    // Centered integer grid indices in [-m,m].
+    int jr = ir-_m;
+    int js = is-_m;
+
+    // Indices for sampled points of triangle.
     int ia,ib,ic;
-    if (r*s>=0.0f) {
-      if (-ir-is==_m || fr+fs>1.0f) {
-        ia = _ip[is+1][ir+1];
-        ib = _ip[is+1][ir  ];
-        ic = _ip[is  ][ir+1];
-      } else {
-        ia = _ip[is  ][ir  ];
+
+    // If quadrant 1, ...
+    if (jr>=0 && js>=0) {
+      if (jr+js>=_m || fr+fs<=1.0) {
+        ia = _ip[is  ][ir  ]; // lower left triangle
         ib = _ip[is  ][ir+1];
         ic = _ip[is+1][ir  ];
+      } else {
+        ia = _ip[is+1][ir+1]; // upper right triangle
+        ib = _ip[is+1][ir  ];
+        ic = _ip[is  ][ir+1];
       }
-    } else {
-      if (-ir+is==_m || fr>=fs) {
-        ia = _ip[is  ][ir+1];
+    }
+
+    // Else if quadrant 2, ...
+    else if (jr<0 && js>=0) {
+      if (-jr+js>=_m || fr>=fs) {
+        ia = _ip[is  ][ir+1]; // lower right triangle
         ib = _ip[is+1][ir+1];
         ic = _ip[is  ][ir  ];
       } else {
-        ia = _ip[is+1][ir  ];
+        ia = _ip[is+1][ir  ]; // upper left triangle
         ib = _ip[is  ][ir+1];
         ic = _ip[is+1][ir+1];
       }
     }
+
+    // Else if quadrant 3, ...
+    else if (jr<0 && js<0) {
+      if (-jr-js>=_m || fr+fs>=1.0) {
+        ia = _ip[is+1][ir+1]; // upper right triangle
+        ib = _ip[is+1][ir  ];
+        ic = _ip[is  ][ir+1];
+      } else {
+        ia = _ip[is  ][ir  ]; // lower left triangle
+        ib = _ip[is  ][ir+1];
+        ic = _ip[is+1][ir  ];
+      }
+    }
+
+    // Else if quadrant 4, ...
+    else {
+      if (jr-js>=_m || fr<=fs) {
+        ia = _ip[is+1][ir  ]; // upper left triangle
+        ib = _ip[is  ][ir+1];
+        ic = _ip[is+1][ir+1];
+      } else {
+        ia = _ip[is  ][ir+1]; // lower right triangle
+        ib = _ip[is+1][ir+1];
+        ic = _ip[is  ][ir  ];
+      }
+    }
+
+    // Signs of indices depend on sign of z. Order the indices so that
+    // points are in counter-clockwise order when viewed from outside
+    // the sphere.
     return (z>=0.0f)?new int[]{ia,ib,ic}:new int[]{-ia,-ic,-ib};
   }
 
@@ -188,9 +235,9 @@ public class UnitSphereSampling {
   //
   // In a more practical example, nbits = 16, m = 127, and n = 255, with
   // sample indices in [-32513,-1] and [1,32513]. In this example, the
-  // number of unique points sampled is 64518. This number is less than 
-  // the maximum possible 65536 points that could be represented in 16 
-  // bits.
+  // number of unique points sampled is 64518. This number is close to
+  // but less than the maximum of 65536 points that could possibly be 
+  // represented in 16 bits.
   
   private int _nbits; // number of bits used in quantization
   private int _m; // number of samples for positive r and s, not including zero
