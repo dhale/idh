@@ -40,7 +40,7 @@ public class LocalDiffusionFilterCg {
    * @param y array with output image; must be distinct from x.
    */
   public void applyInlinePass(
-    float[][] ds, float[][] v1, float[][] x, float[][] y) 
+    final float[][] ds, final float[][] v1, float[][] x, float[][] y) 
   {
     int n1 = x[0].length;
     int n2 = x.length;
@@ -65,7 +65,7 @@ public class LocalDiffusionFilterCg {
   public void applyInlineKill(
     float[][] ds, float[][] v1, float[][] x, float[][] y) 
   {
-    applyInlineSmoother(x,y);
+    applyInlinePass(ds,v1,x,y);
     Array.sub(x,y,y);
   }
 
@@ -93,7 +93,7 @@ public class LocalDiffusionFilterCg {
     float[][] r = new float[n2][n1];
     float[][] s = new float[n2][n1];
     float[][] t = new float[n2][n1];
-    op(y,t);
+    op.apply(y,t);
     double rr = 0.0;
     for (int i2=0; i2<n2; ++i2) {
       float[] x2 = x[i2];
@@ -111,7 +111,7 @@ public class LocalDiffusionFilterCg {
     int miter;
     double rrsmall = rr*_small;
     for (miter=0; miter<_niter && rr>rrsmall; ++miter) {
-      op(s,t);
+      op.apply(s,t);
       double st = 0.0;
       for (int i2=0; i2<n2; ++i2) {
         float[] s2 = s[i2];
