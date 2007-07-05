@@ -11,7 +11,7 @@ import edu.mines.jtk.util.*;
 import static edu.mines.jtk.util.MathPlus.*;
 
 /**
- * Local anisotropic diffusion filter via a multigrid method.
+ * Local anisotropic diffusion filtering via a multigrid method.
  * @author Dave Hale, Colorado School of Mines
  * @version 2007.07.05
  */
@@ -25,6 +25,7 @@ public class LocalDiffusionFilterMg {
     double sigma, double small, int niter,
     int nbefore, int ncycle, int nafter) 
   {
+    _dlf = new DirectionalLaplacianFilter(sigma);
     _sigma = (float)sigma;
     _small = (float)small;
     _niter = niter;
