@@ -11,77 +11,33 @@ import edu.mines.jtk.util.*;
 import static edu.mines.jtk.util.MathPlus.*;
 
 /**
- * Local anisotropic diffusion filter.
+ * Local anisotropic diffusion filter via a multigrid method.
  * @author Dave Hale, Colorado School of Mines
- * @version 2007.04.08
+ * @version 2007.07.05
  */
-public class LocalDiffusionFilter {
+public class LocalDiffusionFilterMg {
 
-  public LocalDiffusionFilter(double sigma) {
-    this(sigma,0.000001,100);
+  public LocalDiffusionFilterMg(double sigma) {
+    this(sigma,0.000001,100,2,2,2);
   }
 
-  public LocalDiffusionFilter(
-    double sigma, double small, int niter) 
+  public LocalDiffusionFilterMg(
+    double sigma, double small, int niter,
+    int nbefore, int ncycle, int nafter) 
   {
     _sigma = (float)sigma;
     _small = (float)small;
     _niter = niter;
-  }
-
-  /**
-   * Applies this local anisotropic diffusion filter.
-   * Input and output arrays must be distinct.
-   * @param sv diffusivities in direction of inline vector v.
-   * @param v1 array of 1st components of inline vectors.
-   * @param x array with input image.
-   * @param y array with output image.
-   */
-  public void applyLineSmoothing(
-    float[][] su, float[][] sv, float[][] u2, float[][] x, float[][] y) 
-  {
-    Array.copy(x,y);
-    //float r = 0.5f*(1.0f+sqrt(2.0f/3.0f));
-    //float s = 0.5f*(1.0f-sqrt(2.0f/3.0f));
-    float r = 0.5f;
-    float s = 0.5f;
-    int n1 = x[0].length;
-    int n2 = x.length;
-    int ns = 1+(int)(_sigma*_sigma);
-    float ss = 0.5f*(_sigma*_sigma)/(float)ns;
-    for (int is=0; is<ns; ++is,x=y) {
-      for (int i2=1; i2<n2; ++i2) {
-        for (int i1=1; i1<n1; ++i1) {
-          float sui = su[i2][i1];
-          float svi = sv[i2][i1];
-          float u2i = u2[i2][i1];
-          float u1i = sqrt(1.0f-u2i*u2i);
-          float v2i =  u1i;
-          float v1i = -u2i;
-          float d11 = ss*(sui*u1i*u1i+svi*v1i*v1i);
-          float d12 = ss*(sui*u1i*u2i+svi*v1i*v2i);
-          float d22 = ss*(sui*u2i*u2i+svi*v2i*v2i);
-          float x00 = x[i2  ][i1  ];
-          float x01 = x[i2  ][i1-1];
-          float x10 = x[i2-1][i1  ];
-          float x11 = x[i2-1][i1-1];
-          float x1 = r*(x00-x01)+s*(x10-x11);
-          float x2 = r*(x00-x10)+s*(x01-x11);
-          float y1 = d11*x1+d12*x2;
-          float y2 = d12*x1+d22*x2;
-          y[i2  ][i1  ] -= r*y1+r*y2;
-          y[i2  ][i1-1] += r*y1-s*y2;
-          y[i2-1][i1  ] -= s*y1-r*y2;
-          y[i2-1][i1-1] += s*y1+s*y2;
-        }
-      }
-    }
+    _nbefore = nbefore;
+    _ncycle = ncycle;
+    _nafter = nafter;
   }
 
   /**
    * Applies a line smoothing filter using a multigrid method.
    * Diffusivities parallel to linear features are one.
    * Diffusivities perpendicular to linear features are zero.
+   * @param v1 array of 1st como
    * @param u2 array of 2nd components of vectors normal to linear features.
    * @param x array with input image.
    * @param y array with output image.
@@ -105,67 +61,18 @@ public class LocalDiffusionFilter {
     }
     float[][][] d = {d11,d12,d22};
     Array.copy(x,y);
-    //solveCg(d,x,y);
     solveMg(d,x,y);
-  }
-
-
-  ///////////////////////////////////////////////////////////////////////////
-  // protected
-  
-  /**
-   * Computes y += G'DGx, where D = dVV' and G is the gradient operator. 
-   * The right-hand-side is zero in the direction of the unit vectors v.
-   * If not null, diffusivities d are scale factors that multiply the nominal 
-   * half-width sigma for this filter. If null, constant d = 1 are assumed.
-   * <p>
-   * Only components v1 of the unit vectors v are specified; the components 
-   * v2 are assumed to be non-negative.
-   * @param dv diffusivities in direction of unit vectors v.
-   * @param v1 array of 1st components of unit vectors.
-   * @param x array with input image. Must be distinct from output y.
-   * @param y array with output image. Must be distinct from input x.
-   */
-  protected void applyGdVVG (
-    float[][] dv, float[][] v1, float[][] x, float[][] y) 
-  {
-    int n1 = x[0].length;
-    int n2 = x.length;
-    float ss = 0.5f*_sigma*_sigma;
-    for (int i2=1; i2<n2; ++i2) {
-      for (int i1=1; i1<n1; ++i1) {
-        float svi = (dv!=null)?ss*dv[i2][i1]:ss;
-        float v1i = v1[i2][i1];
-        float v2i = sqrt(1.0f-v1i*v1i);
-        float d11 = svi*v1i*v1i;
-        float d12 = svi*v1i*v2i;
-        float d22 = svi*v2i*v2i;
-        float x00 = x[i2  ][i1  ];
-        float x01 = x[i2  ][i1-1];
-        float x10 = x[i2-1][i1  ];
-        float x11 = x[i2-1][i1-1];
-        float xa = x00-x11;
-        float xb = x01-x10;
-        float x1 = 0.5f*(xa-xb);
-        float x2 = 0.5f*(xa+xb);
-        float y1 = d11*x1+d12*x2;
-        float y2 = d12*x1+d22*x2;
-        float ya = 0.5f*(y1+y2);
-        float yb = 0.5f*(y1-y2);
-        y[i2  ][i1  ] += ya;
-        y[i2  ][i1-1] -= yb;
-        y[i2-1][i1  ] += yb;
-        y[i2-1][i1-1] -= ya;
-      }
-    }
   }
 
   ///////////////////////////////////////////////////////////////////////////
   // private
 
-  private float _sigma; // filter half-width
+  private float _sigma; // maximum filter half-width
   private float _small; // stop iterations when rr decreases by this factor
   private int _niter; // number of iterations
+  private int _nbefore; // number of mg smoothings before downsampling
+  private int _ncycle; // number of mg recursive cycles on coarse grids
+  private int _nafter; // number of mg smoothings after upsampling
 
   /**
    * Solves the diffusion system via multigrid iterations.
@@ -174,7 +81,7 @@ public class LocalDiffusionFilter {
     int n1 = x[0].length;
     int n2 = x.length;
     Multigrid2.A33 a33 = makeOperator(d);
-    Multigrid2 m2 = new Multigrid2(n1,n2,a33,2,1,2);
+    Multigrid2 m2 = new Multigrid2(n1,n2,a33,_nbefore,_ncycle,_nafter);
     float rr = m2.normResidual(x,y);
     trace("solveMg: r="+rr);
     int miter;
