@@ -72,7 +72,7 @@ public class UnitSphereSampling {
   }
 
   /**
-   * Returns an array {ia,ib,ic} of three sample indices for a spherical
+   * Returns an array {ia,ib,ic} of three sample indices for the spherical
    * triangle that contains the specified point. As viewed from outside 
    * the sphere, the sampled points corresponding to the returned indices 
    * are ordered counter-clockwise.
@@ -91,17 +91,33 @@ public class UnitSphereSampling {
     double r = x*scale;
     double s = y*scale;
 
-    // Integer grid indices in [0,2m] and fractional parts in [0,1).
+    // Integer grid indices in [0,2m]. These are the indices of the lower 
+    // left corner of the square in the grid that contains the point.
     double rn = (r+1.0)*_od;
     double sn = (s+1.0)*_od;
     int ir = (int)rn;
     int is = (int)sn;
-    double fr = rn-ir;
-    double fs = sn-is;
 
-    // Centered integer grid indices in [-m,m].
+    // Centered integer grid indices in [-m,m]. Useful for determining
+    // which quadrant the point lies in, and whether indices lie outside 
+    // the sampled diamond. Points within the diamond satisfy |jr|+|js|<=m.
     int jr = ir-_m;
     int js = is-_m;
+
+    // Adjust for points exactly on the equator in quadrant 1. The square 
+    // that contains the point must contain at least one triangle.
+    if (jr+js==_m) {
+      --jr;
+      --ir;
+    }
+
+    // Fractional parts in [0,1). The grid square that contains the point
+    // is split into two triangles. Squares in quadrants 1 and 3 have
+    // lower-left and upper-right triangles. Squares in quadrants 2 and
+    // 4 have upper-left and lower-right triangles. These fractional parts
+    // are used to determine which triangle contains the point.
+    double fr = rn-ir;
+    double fs = sn-is;
 
     // Indices for sampled points of triangle.
     int ia,ib,ic;
@@ -109,11 +125,11 @@ public class UnitSphereSampling {
     // If quadrant 1, ...
     if (jr>=0 && js>=0) {
       if (jr+js+2>_m || fr+fs<=1.0) {
-        ia = _ip[is  ][ir  ]; // lower left triangle
+        ia = _ip[is  ][ir  ]; // lower-left triangle
         ib = _ip[is  ][ir+1];
         ic = _ip[is+1][ir  ];
       } else {
-        ia = _ip[is+1][ir+1]; // upper right triangle
+        ia = _ip[is+1][ir+1]; // upper-right triangle
         ib = _ip[is+1][ir  ];
         ic = _ip[is  ][ir+1];
       }
@@ -122,11 +138,11 @@ public class UnitSphereSampling {
     // Else if quadrant 2, ...
     else if (jr<0 && js>=0) {
       if (-jr+js+1>_m || fr>=fs) {
-        ia = _ip[is  ][ir+1]; // lower right triangle
+        ia = _ip[is  ][ir+1]; // lower-right triangle
         ib = _ip[is+1][ir+1];
         ic = _ip[is  ][ir  ];
       } else {
-        ia = _ip[is+1][ir  ]; // upper left triangle
+        ia = _ip[is+1][ir  ]; // upper-left triangle
         ib = _ip[is  ][ir  ];
         ic = _ip[is+1][ir+1];
       }
@@ -135,11 +151,11 @@ public class UnitSphereSampling {
     // Else if quadrant 3, ...
     else if (jr<0 && js<0) {
       if (-jr-js>_m || fr+fs>=1.0) {
-        ia = _ip[is+1][ir+1]; // upper right triangle
+        ia = _ip[is+1][ir+1]; // upper-right triangle
         ib = _ip[is+1][ir  ];
         ic = _ip[is  ][ir+1];
       } else {
-        ia = _ip[is  ][ir  ]; // lower left triangle
+        ia = _ip[is  ][ir  ]; // lower-left triangle
         ib = _ip[is  ][ir+1];
         ic = _ip[is+1][ir  ];
       }
@@ -148,16 +164,17 @@ public class UnitSphereSampling {
     // Else if quadrant 4, ...
     else {
       if (jr+1-js>_m || fr<=fs) {
-        ia = _ip[is+1][ir  ]; // upper left triangle
+        ia = _ip[is+1][ir  ]; // upper-left triangle
         ib = _ip[is  ][ir  ];
         ic = _ip[is+1][ir+1];
       } else {
-        ia = _ip[is  ][ir+1]; // lower right triangle
+        ia = _ip[is  ][ir+1]; // lower-right triangle
         ib = _ip[is+1][ir+1];
         ic = _ip[is  ][ir  ];
       }
     }
 
+    // All indices should be non-zero.
     if (ia==0 || ib==0 || ic==0) {
       trace("ia="+ia+" ib="+ib+" ic="+ic);
       trace("x="+x+" y="+y+" z="+z);
@@ -358,6 +375,22 @@ public class UnitSphereSampling {
     }
   }
 
+  private static float distanceOnSphere(float[] p, float[] q) {
+    double x = p[0]+q[0];
+    double y = p[1]+q[1];
+    double z = p[2]+q[2];
+    double d = x*x+y*y+z*z;
+    if (d==0.0) {
+      d = PI;
+    } else if (d==4.0) {
+      d = 0.0;
+    } else {
+      d = 2.0*atan(sqrt((4.0-d)/d));
+    }
+    return (float)d;
+    //return (float)acos(p[0]*q[0]+p[1]*q[1]+p[2]*q[2]);
+  }
+
   private static final boolean TRACE = true;
   private static void trace(String s) {
     if (TRACE)
@@ -368,13 +401,13 @@ public class UnitSphereSampling {
   // testing
 
   public static void main(String[] args) {
-    UnitSphereSampling uss = new UnitSphereSampling(6);
-    testLocate(uss);
-    //testMaxError(uss);
+    UnitSphereSampling uss = new UnitSphereSampling(16);
+    //testLocate(uss);
+    testMaxError(uss);
   }
 
   private static void testLocate(UnitSphereSampling uss) {
-    int npoint = 10;
+    int npoint = 10000;
     for (int ipoint=0; ipoint<npoint; ++ipoint) {
       float[] p = randomPoint();
       //p[0] = -0.403209f;
@@ -383,7 +416,7 @@ public class UnitSphereSampling {
       int i = uss.getIndex(p);
       int[] abc = uss.locatePoint(p);
       int ia = abc[0], ib = abc[1], ic = abc[2];
-      trace("i="+i+" ia="+ia+" ib="+ib+" ic="+ic);
+      //trace("i="+i+" ia="+ia+" ib="+ib+" ic="+ic);
       float[] q = uss.getPoint(i);
       float[] qa = uss.getPoint(ia);
       float[] qb = uss.getPoint(ib);
@@ -399,6 +432,7 @@ public class UnitSphereSampling {
         edu.mines.jtk.util.Array.dump(qa);
         edu.mines.jtk.util.Array.dump(qb);
         edu.mines.jtk.util.Array.dump(qc);
+        assert false:"i equals ia or ib or ic";
       }
     }
   }
@@ -440,9 +474,4 @@ public class UnitSphereSampling {
     float s = 1.0f/(float)sqrt(x*x+y*y+z*z);
     return new float[]{x*s,y*s,z*s};
   }
-
-  private static float distanceOnSphere(float[] p, float[] q) {
-    return (float)acos(p[0]*q[0]+p[1]*q[1]+p[2]*q[2]);
-  }
-
 }
