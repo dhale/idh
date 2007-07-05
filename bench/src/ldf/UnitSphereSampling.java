@@ -72,7 +72,7 @@ public class UnitSphereSampling {
   }
 
   /**
-   * Returns an array {ia,ib,ic} of three sample indices for the spherical
+   * Gets an array {ia,ib,ic} of three sample indices for the spherical
    * triangle that contains the specified point. As viewed from outside 
    * the sphere, the sampled points corresponding to the returned indices 
    * are ordered counter-clockwise.
@@ -81,7 +81,7 @@ public class UnitSphereSampling {
    * @param z z-coordinate of the point.
    * @return array of sample indices.
    */
-  public int[] locatePoint(float x, float y, float z) {
+  public int[] getTriangle(float x, float y, float z) {
 
     // Coordinates in r-s plane in [-1,1].
     double ax = (x>=0.0f)?x:-x;
@@ -193,15 +193,69 @@ public class UnitSphereSampling {
   }
 
   /**
-   * Returns an array {ia,ib,ic} of three sample indices for a spherical
+   * Gets an array {ia,ib,ic} of three sample indices for a spherical
    * triangle that contains the specified point. As viewed from outside 
    * the sphere, the sampled points corresponding to the returned indices 
    * are ordered counter-clockwise.
    * @param xyz array {x,y,z} of point coordinates.
    * @return array of sample indices.
    */
-  public int[] locatePoint(float[] xyz) {
-    return locatePoint(xyz[0],xyz[1],xyz[2]);
+  public int[] getTriangle(float[] xyz) {
+    return getTriangle(xyz[0],xyz[1],xyz[2]);
+  }
+
+  /**
+   * Gets an array {wa,wb,wc} of three weights for a point in a spherical
+   * triangle specified by sample indices of three points. The weights are
+   * proportional to volumes of tetrahedra, and are used for interpolation. 
+   * Weights are non-negative and normalized so that their sum wa+wb+wc = 1.
+   * <p>
+   * For example, let p denote the specified point with coordinates {x,y,z}, 
+   * and let o denote the center of the sphere with coordinates {0,0,0}. 
+   * Then the weight wa is proportional to the volume of the tetrahedron 
+   * formed by points p, b, c, and o.
+   * @param x x-coordinate of the point.
+   * @param y y-coordinate of the point.
+   * @param z z-coordinate of the point.
+   * @param abc array {ia,ib,ic} of sample indices.
+   * @return array {wa,wb,wc} of weights.
+   */
+  public float[] getWeights(float x, float y, float z, int[] iabc) {
+    float[] pa = getPoint(iabc[0]);
+    float[] pb = getPoint(iabc[1]);
+    float[] pc = getPoint(iabc[2]);
+    double xa = pa[0], ya = pa[1], za = pa[2];
+    double xb = pb[0], yb = pb[1], zb = pb[2];
+    double xc = pc[0], yc = pc[1], zc = pc[2];
+    double wa = x*(yb*zc-yc*zb)+y*(zb*xc-zc*xb)+z*(xb*yc-xc*yb);
+    double wb = x*(yc*za-ya*zc)+y*(zc*xa-za*xc)+z*(xc*ya-xa*yc);
+    double wc = x*(ya*zb-yb*za)+y*(za*xb-zb*xa)+z*(xa*yb-xb*ya);
+    if (wa<0.0) wa = 0.0;
+    if (wb<0.0) wb = 0.0;
+    if (wc<0.0) wc = 0.0;
+    double ws = 1.0/(wa+wb+wc);
+    float fa = (float)(wa*ws);
+    float fb = (float)(wb*ws);
+    float fc = (float)(wc*ws);
+    return new float[]{fa,fb,fc};
+  }
+
+  /**
+   * Gets an array {wa,wb,wc} of three weights for a point in a spherical
+   * triangle specified by sample indices of three points. The weights are
+   * proportional to volumes of tetrahedra, and are used for interpolation. 
+   * Weights are non-negative and normalized so that their sum wa+wb+wc = 1.
+   * <p>
+   * For example, let p denote the specified point with coordinates {x,y,z}, 
+   * and let o denote the center of the sphere with coordinates {0,0,0}. 
+   * Then the weight wa is proportional to the volume of the tetrahedron 
+   * formed by points p, b, c, and o.
+   * @param xyz array {x,y,z} of point coordinates.
+   * @param abc array {ia,ib,ic} of sample indices.
+   * @return array {wa,wb,wc} of weights.
+   */
+  public float[] getWeights(float[] xyz, int[] iabc) {
+    return getWeights(xyz[0],xyz[1],xyz[2],iabc);
   }
 
   /**
@@ -402,19 +456,20 @@ public class UnitSphereSampling {
 
   public static void main(String[] args) {
     UnitSphereSampling uss = new UnitSphereSampling(16);
-    //testLocate(uss);
-    testMaxError(uss);
+    //testWeights(uss);
+    testTriangle(uss);
+    //testMaxError(uss);
   }
 
-  private static void testLocate(UnitSphereSampling uss) {
-    int npoint = 10000;
+  private static void testTriangle(UnitSphereSampling uss) {
+    int npoint = 1000000;
     for (int ipoint=0; ipoint<npoint; ++ipoint) {
       float[] p = randomPoint();
       //p[0] = -0.403209f;
       //p[1] = -0.838007f;
       //p[2] =  0.367649f;
       int i = uss.getIndex(p);
-      int[] abc = uss.locatePoint(p);
+      int[] abc = uss.getTriangle(p);
       int ia = abc[0], ib = abc[1], ic = abc[2];
       //trace("i="+i+" ia="+ia+" ib="+ib+" ic="+ic);
       float[] q = uss.getPoint(i);
@@ -434,6 +489,27 @@ public class UnitSphereSampling {
         edu.mines.jtk.util.Array.dump(qc);
         assert false:"i equals ia or ib or ic";
       }
+    }
+  }
+
+  private static void testWeights(UnitSphereSampling uss) {
+    int npoint = 10000;
+    for (int ipoint=0; ipoint<npoint; ++ipoint) {
+      float[] p = randomPoint();
+      int i = uss.getIndex(p);
+      int[] iabc = uss.getTriangle(p);
+      int ia = iabc[0], ib = iabc[1], ic = iabc[2];
+      float[] q = uss.getPoint(i);
+      float[] qa = uss.getPoint(ia);
+      float[] qb = uss.getPoint(ib);
+      float[] qc = uss.getPoint(ic);
+      float[] wabc = uss.getWeights(p,iabc);
+      float wa = wabc[0], wb = wabc[1], wc = wabc[2];
+      trace("wa="+wa+" wb="+wb+" wc="+wc);
+      edu.mines.jtk.util.Array.dump(p);
+      edu.mines.jtk.util.Array.dump(qa);
+      edu.mines.jtk.util.Array.dump(qb);
+      edu.mines.jtk.util.Array.dump(qc);
     }
   }
 
@@ -471,6 +547,10 @@ public class UnitSphereSampling {
     float x = -1.0f+2.0f*_random.nextFloat();
     float y = -1.0f+2.0f*_random.nextFloat();
     float z = -1.0f+2.0f*_random.nextFloat();
+    float f = _random.nextFloat();
+    if (f<0.1f)            x = 0.0f;
+    if (0.1f<=f && f<0.2f) y = 0.0f;
+    if (0.2f<=f && f<0.3f) z = 0.0f;
     float s = 1.0f/(float)sqrt(x*x+y*y+z*z);
     return new float[]{x*s,y*s,z*s};
   }
