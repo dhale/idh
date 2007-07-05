@@ -29,6 +29,9 @@ pngDir = None
 
 n1 = 315
 n2 = 315
+sigma = 14
+small = 0.00001
+niter = 100
 lof = LocalOrientFilter(8)
 
 #############################################################################
@@ -36,8 +39,8 @@ lof = LocalOrientFilter(8)
 
 def main(args):
   #doImage();
-  #goDiff()
-  goAmpDiff()
+  goDiff()
+  #goAmpDiff()
   return
 
 def goIdeal():
@@ -110,23 +113,27 @@ def makeRandom():
   return Array.sub(Array.randfloat(r,n1,n2),0.5)
 
 def doDiff(x,png):
-  u1,u2 = getU(x)
-  su = Array.fillfloat(0.0,n1,n2)
-  sv = Array.fillfloat(1.0,n1,n2)
-  sigma = 14
-  small = 0.00001
-  niter = 5
-  ldf = LocalDiffusionFilter(sigma,small,niter)
   y = Array.zerofloat(n1,n2)
   z = Array.zerofloat(n1,n2)
+  s = Array.zerofloat(n1,n2)
   r = makeRandom()
   r = smooth(r)
-  s = Array.zerofloat(n1,n2)
-  ldf.applyLineSmoothing(u2,x,y)
-  y = Array.sub(x,y)
-  ldf.applyLineSmoothing(u2,r,s)
-  plot(y,5.0,"ys"+png)
-  plot(s,0.0,"ss"+png)
+  v1,v2 = getV(x)
+  ldf = LocalDiffusionFilterCg(sigma,small,niter)
+  ds = makeBlock()
+  ldf.applyInlineKill(ds,v1,x,y)
+  ldf.applyInlinePass(ds,v1,x,z)
+  ldf.applyInlinePass(ds,v1,r,s)
+  plot(y, 2.0,"y"+png)
+  plot(z,10.0,"z"+png)
+  plot(s, 0.0,"s"+png)
+
+def makeBlock():
+  ds = Array.zerofloat(n1,n2);
+  for i2 in range(n2/4,3*n2/4):
+    for i1 in range(n1/4,3*n1/4):
+      ds[i2][i1] = 1.0
+  return ds
 
 def doAmpDiff(dip,png=None):
   x,u1,u2 = makeImpulse(dip)
@@ -217,13 +224,14 @@ def flip2(f):
     Array.copy(f[n2-1-i2],g[i2])
   return g
 
-def getU(x):
+def getV(x):
   n1 = len(x[0])
   n2 = len(x)
-  u1 = Array.zerofloat(n1,n2)
-  u2 = Array.zerofloat(n1,n2)
-  lof.applyForNormal(x,u1,u2)
-  return u1,u2
+  v1 = Array.zerofloat(n1,n2)
+  v2 = Array.zerofloat(n1,n2)
+  lof.applyForNormal(x,v2,v1)
+  Array.neg(v1,v1);
+  return v1,v2
 
 #############################################################################
 # plot

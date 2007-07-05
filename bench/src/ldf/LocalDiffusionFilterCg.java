@@ -85,15 +85,15 @@ public class LocalDiffusionFilterCg {
   }
 
   /**
-   * Solves the inline diffusion system via conjugate gradient iterations.
+   * Solves Ay = x via conjugate gradient iterations.
    */
-  private void solveCg(Operator op, float[][] x, float[][] y) {
+  private void solveCg(Operator a, float[][] x, float[][] y) {
     int n1 = x[0].length;
     int n2 = x.length;
     float[][] r = new float[n2][n1];
     float[][] s = new float[n2][n1];
     float[][] t = new float[n2][n1];
-    op.apply(y,t);
+    a.apply(y,t);
     double rr = 0.0;
     for (int i2=0; i2<n2; ++i2) {
       float[] x2 = x[i2];
@@ -111,7 +111,7 @@ public class LocalDiffusionFilterCg {
     int miter;
     double rrsmall = rr*_small;
     for (miter=0; miter<_niter && rr>rrsmall; ++miter) {
-      op.apply(s,t);
+      a.apply(s,t);
       double st = 0.0;
       for (int i2=0; i2<n2; ++i2) {
         float[] s2 = s[i2];
