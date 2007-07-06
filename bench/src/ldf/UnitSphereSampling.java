@@ -272,7 +272,7 @@ public class UnitSphereSampling {
    * Gets the number of points sampled on this unit sphere.
    * @return the number of points sampled.
    */
-  public int countPointsSampled() {
+  public int countSamples() {
     return _npoint;
   }
 
@@ -455,10 +455,62 @@ public class UnitSphereSampling {
   // testing
 
   public static void main(String[] args) {
-    UnitSphereSampling uss = new UnitSphereSampling(16);
+    UnitSphereSampling uss = new UnitSphereSampling(10);
+    //testInterpolation(uss);
     //testWeights(uss);
-    testTriangle(uss);
-    //testMaxError(uss);
+    //testTriangle(uss);
+    testMaxError(uss);
+  }
+
+  private static void testInterpolation(UnitSphereSampling uss) {
+    int mi = uss.getMaxIndex();
+
+    // Tabulate function values for sampled points.
+    int nf = 1+2*mi;
+    float[] fi = new float[nf];
+    for (int i=1; i<=mi; ++i) {
+      float[] p = uss.getPoint( i);
+      float[] q = uss.getPoint(-i);
+      fi[i   ] = func(p[0],p[1],p[2]);
+      fi[nf-i] = func(q[0],q[1],q[2]);
+    }
+
+    // Interpolate and track errors.
+    float emax = 0.0f;
+    float[] pmax = null;
+    int npoint = 10000;
+    for (int ipoint=0; ipoint<npoint; ++ipoint) {
+      float[] p = randomPoint();
+      //p[0] = -0.564698f;
+      //p[1] = -0.825298f;
+      //p[2] =  0.000000f;
+      int[] iabc = uss.getTriangle(p);
+      float[] wabc = uss.getWeights(p,iabc);
+      int ia = iabc[0], ib = iabc[1], ic = iabc[2];
+      float wa = wabc[0], wb = wabc[1], wc = wabc[2];
+      if (ia<0) {
+        ia = nf+ia;
+        ib = nf+ib;
+        ic = nf+ic;
+      }
+      float fa = fi[ia], fb = fi[ib], fc = fi[ic];
+      float f = func(p[0],p[1],p[2]);
+      float g = wa*fa+wb*fb+wc*fc;
+      //trace("ia="+ia+" ib="+ib+" ic="+ic);
+      //trace("wa="+wa+" wb="+wb+" wc="+wc);
+      //trace("fa="+fa+" fb="+fb+" fc="+fc);
+      //trace("f="+f+" g="+g);
+      float e = abs(g-f);
+      if (e>emax) {
+        emax = e;
+        pmax = p;
+      }
+    }
+    trace("emax="+emax);
+    edu.mines.jtk.util.Array.dump(pmax);
+  }
+  private static float func(float x, float y, float z) {
+    return 0.1f*(9.0f*x*x*x-2.0f*x*x*y+3.0f*x*y*y-4.0f*y*y*y+2.0f*z*z*z-x*y*z);
   }
 
   private static void testTriangle(UnitSphereSampling uss) {
@@ -493,7 +545,7 @@ public class UnitSphereSampling {
   }
 
   private static void testWeights(UnitSphereSampling uss) {
-    int npoint = 10000;
+    int npoint = 10;
     for (int ipoint=0; ipoint<npoint; ++ipoint) {
       float[] p = randomPoint();
       int i = uss.getIndex(p);
