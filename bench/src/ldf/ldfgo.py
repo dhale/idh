@@ -32,6 +32,9 @@ n2 = 315
 sigma = 14
 small = 0.00001
 niter = 100
+nbefore = 2
+ncycle = 2
+nafter = 2
 lof = LocalOrientFilter(8)
 
 #############################################################################
@@ -105,6 +108,7 @@ def goDiff():
   x2 = Array.transpose(x1)
   x3 = makeTargetImage()
   for x,s in [(x1,"_1"),(x2,"_2"),(x3,"_3")]:
+  #for x,s in [(x1,"_1")]:
     plot(x,10.0,"x"+s)
     doDiff(x,"d"+s)
 
@@ -119,8 +123,11 @@ def doDiff(x,png):
   r = makeRandom()
   r = smooth(r)
   v1,v2 = getV(x)
+  #ldf = LocalDiffusionFilter(sigma)
   ldf = LocalDiffusionFilterCg(sigma,small,niter)
+  #ldf = LocalDiffusionFilterMg(sigma,small,niter,nbefore,ncycle,nafter)
   ds = makeBlock()
+  #ds = None
   ldf.applyInlineKill(ds,v1,x,y)
   ldf.applyInlinePass(ds,v1,x,z)
   ldf.applyInlinePass(ds,v1,r,s)
@@ -129,9 +136,9 @@ def doDiff(x,png):
   plot(s, 0.0,"s"+png)
 
 def makeBlock():
-  ds = Array.zerofloat(n1,n2);
-  for i2 in range(n2/4,3*n2/4):
-    for i1 in range(n1/4,3*n1/4):
+  ds = Array.fillfloat(0.0,n1,n2);
+  for i2 in range(n2/5,4*n2/5):
+    for i1 in range(n1/5,4*n1/5):
       ds[i2][i1] = 1.0
   return ds
 

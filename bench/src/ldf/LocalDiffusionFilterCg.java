@@ -6,16 +6,14 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package ldf;
 
-import edu.mines.jtk.dsp.*;
 import edu.mines.jtk.util.*;
-import static edu.mines.jtk.util.MathPlus.*;
 
 /**
  * Local anisotropic diffusion filter via conjugate gradient iterations.
  * @author Dave Hale, Colorado School of Mines
  * @version 2007.07.05
  */
-public class LocalDiffusionFilterCg {
+public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
 
   /**
    * Constructs a local diffusion filter.
@@ -24,49 +22,30 @@ public class LocalDiffusionFilterCg {
    * @param niter stop when number of iterations exceeds this number.
    */
   public LocalDiffusionFilterCg(double sigma, double small, int niter) {
+    super(sigma);
     _dlf = new DirectionalLaplacianFilter(sigma);
     _sigma = (float)sigma;
     _small = (float)small;
     _niter = niter;
   }
 
-  /**
-   * Applies an inline filter that enhances (passes) features that are
-   * constant in the direction of the unit vectors v.
-   * @param ds scale factors for diffusivity in direction of unit vectors v;
-   *  if null, this method uses constant ds = 1.
-   * @param v1 array of 1st components of inline unit vectors.
-   * @param x array with input image; must be distinct from y.
-   * @param y array with output image; must be distinct from x.
-   */
-  public void applyInlinePass(
-    final float[][] ds, final float[][] v1, float[][] x, float[][] y) 
+  ///////////////////////////////////////////////////////////////////////////
+  // protected
+
+  protected void solveInline(
+    float[][] ds, float[][] v1, float[][] x, float[][] y) 
   {
     int n1 = x[0].length;
     int n2 = x.length;
+    final float[][] dsf = ds;
+    final float[][] v1f = v1;
     Operator op = new Operator() {
       public void apply(float[][] x, float[][] y) {
         Array.copy(x,y);
-        _dlf.applyInline(ds,v1,x,y);
+        _dlf.applyInline(dsf,v1f,x,y);
       }
     };
     solveCg(op,x,y);
-  }
-
-  /**
-   * Applies an inline filter that attenuates (kills) features that are
-   * constant in the direction of the unit vectors v.
-   * @param ds scale factors for diffusivity in direction of unit vectors v;
-   *  if null, this method uses constant ds = 1.
-   * @param v1 array of 1st components of inline unit vectors.
-   * @param x array with input image; must be distinct from y.
-   * @param y array with output image; must be distinct from x.
-   */
-  public void applyInlineKill(
-    float[][] ds, float[][] v1, float[][] x, float[][] y) 
-  {
-    applyInlinePass(ds,v1,x,y);
-    Array.sub(x,y,y);
   }
 
   ///////////////////////////////////////////////////////////////////////////
@@ -150,13 +129,5 @@ public class LocalDiffusionFilterCg {
   private static void trace(String s) {
     if (TRACE)
       System.out.println(s);
-  }
-  private static void traceSequence(float[] x) {
-    if (TRACE)
-      edu.mines.jtk.mosaic.SimplePlot.asSequence(x);
-  }
-  private static void tracePixels(float[][] x) {
-    if (TRACE)
-      edu.mines.jtk.mosaic.SimplePlot.asPixels(x);
   }
 } 
