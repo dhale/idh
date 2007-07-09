@@ -154,6 +154,72 @@ public class DirectionalLaplacianFilter {
     y[i2-1][i1-1] -= ya;
   }
 
+  private static class InlineStencil33 {
+    InlineStencil33(float sigma, float[][] ds, float[][] v1) {
+      _i2 = -1;
+      _n1 = x[0].length;
+      _n2 = x.length;
+      _n1m = n1-1;
+      _n2m = n2-1;
+      _ds = ds;
+      _v1 = v1;
+      _cmm = new float[2][n1+1];
+      _cmp = new float[2][n1+1];
+      _cpp = new float[2][n1+1];
+      _scale = _sigma/(2.0f*sqrt(2.0f));
+    }
+    void get(int i1, int i2, float[] a) {
+      if (i2!=_i2) {
+        updateCache(i2);
+        updateCache(i2+1);
+      }
+    }
+    private int _i20,_i21,_n1,_n2,_n1m,_n2m;
+    private float _scale;
+    private float[][] _ds,_v1,_cmm,_cmp,_cpp;
+    private boolean inCache(int i2) {
+      return i2==_i20 || i2==_i21;
+    }
+    private void updateCache(int i2) {
+      if (!inCache(i2))
+        computeProducts(i2);
+      if (!inCache(i2+1))
+        computeProducts(i2+1);
+    }
+    private void computeProducts(int i2) {
+      float[] ds = (_ds!=null)?_ds[i2]:null;
+      float[] cmm = _cmm[i2%2];
+      float[] cmp = _cmp[i2%2];
+      float[] cpp = _cpp[i2%2];
+      if (_ds!=null) {
+        float[] ds = _ds[i2];
+        float[] v1 = _v1[i2];
+        for (int i1=1; i1<n1; ++i1) {
+          float dsi = ds[i1]*scale;
+          float v1i = v1[i1];
+          float v2i = sqrt(1.0f-v1i*v1i);
+          float vmi = dsi*(v1i-v2i);
+          float vpi = dsi*(v1i+v2i);
+          cmm[i1] = vmi*vmi;
+          cmp[i1] = vmi*vpi;
+          cpp[i1] = vpi*vpi;
+        }
+      } else {
+        float[] v1 = _v1[i2];
+        float dsi = scale;
+        for (int i1=1; i1<n1; ++i1) {
+          float v1i = v1[i1];
+          float v2i = sqrt(1.0f-v1i*v1i);
+          float vmi = dsi*(v1i-v2i);
+          float vpi = dsi*(v1i+v2i);
+          cmm[i1] = vmi*vmi;
+          cmp[i1] = vmi*vpi;
+          cpp[i1] = vpi*vpi;
+        }
+      }
+    }
+  }
+
   private void applyInline33(
     float[][] ds, float[][] v1, float[][] x, float[][] y) 
   {
@@ -165,21 +231,18 @@ public class DirectionalLaplacianFilter {
     // Diffusivity scale factor = square-root of (sigma*sigma)/2.
     float scale = _sigma/sqrt(2.0f);
 
-    // Initialize cache of products mm, mp, pp to compute filter stencil.
+    // Cache of products mm, mp, pp to compute filter stencil.
     float[][] cmm = new float[2][n1+1];
     float[][] cmp = new float[2][n1+1];
     float[][] cpp = new float[2][n1+1];
-    float[] dsi2p = (ds!=null)?ds[0]:null;
-    //updateInlineCache(scale,dsi2p,v1[0],cmm,cmp,cpp);
 
     // For all i2, ...
     for (int i2=0; i2<n2; ++i2) {
 
-      // Update cache.
+      // Update the cached products.
       int i2m = max(i2-1,0);
-      int i20 = i2;
       int i2p = min(i2+1,n2m);
-      dsi2p = (ds!=null)?ds[i2p]:null;
+      float[] dsi2p = (ds!=null)?ds[i2p]:null;
       if (i2<n2m) {
         updateInlineCache(scale,dsi2p,v1[i2p],cmm,cmp,cpp);
       } else {
@@ -187,18 +250,16 @@ public class DirectionalLaplacianFilter {
         Array.zero(cmp[1]);
         Array.zero(cpp[1]);
       }
-
       float[] mm0 = cmm[0], mm1 = cmm[1];
       float[] mp0 = cmp[0], mp1 = cmp[1];
       float[] pp0 = cpp[0], pp1 = cpp[1];
 
       // Compute and apply 3 x 3 stencil.
       float[] xm = x[i2m];
-      float[] x0 = x[i20];
+      float[] x0 = x[i2 ];
       float[] xp = x[i2p];
       for (int i1=0,j1=1; i1<n1; ++i1,++j1) {
         int i1m = max(i1-1,0);
-        int i10 = i1;
         int i1p = min(i1+1,n1m);
         float mm01 = mm0[j1];
         float mm10 = mm1[i1];
@@ -218,7 +279,7 @@ public class DirectionalLaplacianFilter {
         float ap0 =  mp10+mp11;
         float app = -pp11;
         y[i2][i1] = amm*xm[i1m] + a0m*x0[i1m] + apm*xp[i1m] +
-                    am0*xm[i10] + a00*x0[i10] + ap0*xp[i10] +
+                    am0*xm[i1 ] + a00*x0[i1 ] + ap0*xp[i1 ] +
                     amp*xm[i1p] + a0p*x0[i1p] + app*xp[i1p];
       }
     }
