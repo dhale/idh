@@ -162,13 +162,15 @@ public class DirectionalLaplacianFilter {
     int n1m = n1-1;
     int n2m = n2-1;
 
+    // Diffusivity scale factor = square-root of (sigma*sigma)/2.
+    float scale = _sigma/sqrt(2.0f);
+
     // Initialize cache of products mm, mp, pp to compute filter stencil.
-    float sigma = _sigma/sqrt(2.0f);
-    float[][] cmm = new float[2][n1];
-    float[][] cmp = new float[2][n1];
-    float[][] cpp = new float[2][n1];
-    float[] dsi = (ds!=null)?ds[0]:null;
-    updateInlineCache(sigma,dsi,v1[0],cmm,cmp,cpp);
+    float[][] cmm = new float[2][n1+1];
+    float[][] cmp = new float[2][n1+1];
+    float[][] cpp = new float[2][n1+1];
+    float[] dsi2p = (ds!=null)?ds[0]:null;
+    //updateInlineCache(scale,dsi2p,v1[0],cmm,cmp,cpp);
 
     // For all i2, ...
     for (int i2=0; i2<n2; ++i2) {
@@ -177,28 +179,35 @@ public class DirectionalLaplacianFilter {
       int i2m = max(i2-1,0);
       int i20 = i2;
       int i2p = min(i2+1,n2m);
-      dsi = (ds!=null)?ds[i2p]:null;
-      updateInlineCache(sigma,dsi,v1[i2p],cmm,cmp,cpp);
+      dsi2p = (ds!=null)?ds[i2p]:null;
+      if (i2<n2m) {
+        updateInlineCache(scale,dsi2p,v1[i2p],cmm,cmp,cpp);
+      } else {
+        Array.zero(cmm[1]);
+        Array.zero(cmp[1]);
+        Array.zero(cpp[1]);
+      }
+
       float[] mm0 = cmm[0], mm1 = cmm[1];
       float[] mp0 = cmp[0], mp1 = cmp[1];
       float[] pp0 = cpp[0], pp1 = cpp[1];
 
-      // Apply 3 x 3 stencil.
+      // Compute and apply 3 x 3 stencil.
       float[] xm = x[i2m];
       float[] x0 = x[i20];
       float[] xp = x[i2p];
-      for (int i1=0; i1<n1; ++i1) {
+      for (int i1=0,j1=1; i1<n1; ++i1,++j1) {
         int i1m = max(i1-1,0);
         int i10 = i1;
         int i1p = min(i1+1,n1m);
-        float mm01 = mm0[i1p]*mm0[i1p];
-        float mm10 = mm1[i10]*mm1[i10];
-        float pp00 = pp0[i10]*pp0[i10];
-        float pp11 = pp1[i1p]*pp1[i1p];
-        float mp00 = mp0[i10]*mp0[i10];
-        float mp10 = mp1[i10]*mp1[i10];
-        float mp01 = mp0[i1p]*mp0[i1p];
-        float mp11 = mp1[i1p]*mp1[i1p];
+        float mm01 = mm0[j1];
+        float mm10 = mm1[i1];
+        float pp00 = pp0[i1];
+        float pp11 = pp1[j1];
+        float mp00 = mp0[i1];
+        float mp10 = mp1[i1];
+        float mp01 = mp0[j1];
+        float mp11 = mp1[j1];
         float amm = -pp00;
         float am0 =  mp00+mp01;
         float amp = -mm01;
@@ -215,19 +224,20 @@ public class DirectionalLaplacianFilter {
     }
   }
   private static void updateInlineCache(
-    float sigma, float[] ds, float[] v1,
+    float scale, float[] ds, float[] v1,
     float[][] cmm, float[][] cmp, float[][] cpp) 
   {
     int n1 = v1.length;
     float[] cmm1 = cmm[0];  cmm[0] = cmm[1];  cmm[1] = cmm1;
     float[] cmp1 = cmp[0];  cmp[0] = cmp[1];  cmp[1] = cmp1;
     float[] cpp1 = cpp[0];  cpp[0] = cpp[1];  cpp[1] = cpp1;
-    for (int i1=0; i1<n1; ++i1) {
-      float dsi = (ds!=null)?sigma*ds[i1]:sigma;
+    scale *= 0.5f; // for finite-difference approximation to gradient
+    for (int i1=1; i1<n1; ++i1) {
+      float dsi = (ds!=null)?scale*ds[i1]:scale;
       float v1i = v1[i1];
       float v2i = sqrt(1.0f-v1i*v1i);
-      float vmi = dsi*0.5f*(v1i-v2i);
-      float vpi = dsi*0.5f*(v1i+v2i);
+      float vmi = dsi*(v1i-v2i);
+      float vpi = dsi*(v1i+v2i);
       cmm1[i1] = vmi*vmi;
       cmp1[i1] = vmi*vpi;
       cpp1[i1] = vpi*vpi;
@@ -239,10 +249,13 @@ public class DirectionalLaplacianFilter {
     testStencil();
   }
   private static void testStencil() {
-    int n1 = 11;
-    int n2 = 13;
-    float[][] x = Array.zerofloat(n1,n2);
-    x[n2/2][n1/2] = 1.0f;
+    int n1 = 5;
+    int n2 = 5;
+    //float[][] x = Array.rampfloat(1.0f,1.0f,1.0f,n1,n2);
+    float[][] x = Array.randfloat(n1,n2);
+    //float[][] x = Array.zerofloat(n1,n2);
+    //x[n2-1][n1-1] = 1.0f;
+    //x[n2/2][n1/2] = 1.0f;
     float[][] y = Array.zerofloat(n1,n2);
     float[][] z = Array.zerofloat(n1,n2);
     float[][] ds = Array.randfloat(n1,n2);
@@ -252,11 +265,12 @@ public class DirectionalLaplacianFilter {
     DirectionalLaplacianFilter dlf = new DirectionalLaplacianFilter(1.0);
     dlf.applyInline(ds,v1,x,y);
     dlf.applyInline33(ds,v1,x,z);
-    edu.mines.jtk.mosaic.SimplePlot.asPixels(y);
-    edu.mines.jtk.mosaic.SimplePlot.asPixels(z);
+    //edu.mines.jtk.mosaic.SimplePlot.asPixels(y);
+    //edu.mines.jtk.mosaic.SimplePlot.asPixels(z);
     float e = Array.sum(Array.abs(Array.sub(z,y)));
+    Array.dump(x);
+    Array.dump(y);
+    Array.dump(z);
     System.out.println("error = "+e);
-    System.out.println("y0 = "+y[n2/2][n1/2]);
-    System.out.println("z0 = "+z[n2/2][n1/2]);
   }
 }
