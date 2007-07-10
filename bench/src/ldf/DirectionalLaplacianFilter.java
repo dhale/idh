@@ -168,54 +168,95 @@ public class DirectionalLaplacianFilter {
       _cpp = new float[2][n1+1];
       _scale = _sigma/(2.0f*sqrt(2.0f));
     }
-    void get(int i1, int i2, float[] a) {
-      if (i2!=_i2) {
-        updateCache(i2);
-        updateCache(i2+1);
+    void get(int i2, float[][] a) {
+      updateCache(i2);
+      int k0 = (i2  )%2;
+      int k1 = (i2+1)%2;
+      float[] mm0 = cmm[k0], mm1 = cmm[k1];
+      float[] mp0 = cmp[k0], mp1 = cmp[k1];
+      float[] pp0 = cpp[k0], pp1 = cpp[k1];
+      for (int i1=0,j1=1; i1<n1; ++i1,++j1) {
+        int j1 = i1+1;
+        float mm01 = mm0[j1];
+        float mm10 = mm1[i1];
+        float pp00 = pp0[i1];
+        float pp11 = pp1[j1];
+        float mp00 = mp0[i1];
+        float mp10 = mp1[i1];
+        float mp01 = mp0[j1];
+        float mp11 = mp1[j1];
+        a[0] = -pp00;
+        a[1] =  mp00+mp01;
+        a[2] = -mm01;
+        a[3] = -mp00-mp10;
+        a[4] =  pp00+pp11+mm01+mm10;
+        a[5] = -mp01-mp11;
+        a[6] = -mm10;
+        a[7] =  mp10+mp11;
+        a[8] = -pp11;
+
+      float amm = -pp00;
+      float am0 =  mp00+mp01;
+      float amp = -mm01;
+      float a0m = -mp00-mp10;
+      float a00 =  pp00+pp11+mm01+mm10;
+      float a0p = -mp01-mp11;
+      float apm = -mm10;
+      float ap0 =  mp10+mp11;
+      float app = -pp11;
       }
     }
     private int _i20,_i21,_n1,_n2,_n1m,_n2m;
     private float _scale;
     private float[][] _ds,_v1,_cmm,_cmp,_cpp;
-    private boolean inCache(int i2) {
-      return i2==_i20 || i2==_i21;
-    }
     private void updateCache(int i2) {
-      if (!inCache(i2))
+      if (i2!=_i20 && i2!=_i21)
         computeProducts(i2);
-      if (!inCache(i2+1))
-        computeProducts(i2+1);
+      ++i2;
+      if (i2!=_i20 && i2!=_i21)
+        computeProducts(i2);
     }
     private void computeProducts(int i2) {
-      float[] ds = (_ds!=null)?_ds[i2]:null;
-      float[] cmm = _cmm[i2%2];
-      float[] cmp = _cmp[i2%2];
-      float[] cpp = _cpp[i2%2];
-      if (_ds!=null) {
-        float[] ds = _ds[i2];
-        float[] v1 = _v1[i2];
-        for (int i1=1; i1<n1; ++i1) {
-          float dsi = ds[i1]*scale;
-          float v1i = v1[i1];
-          float v2i = sqrt(1.0f-v1i*v1i);
-          float vmi = dsi*(v1i-v2i);
-          float vpi = dsi*(v1i+v2i);
-          cmm[i1] = vmi*vmi;
-          cmp[i1] = vmi*vpi;
-          cpp[i1] = vpi*vpi;
-        }
+      if (i2==0 || i2==n2-1) {
+        Array.zero(_cmm[i2%2]);
+        Array.zero(_cmp[i2%2]);
+        Array.zero(_cpp[i2%2]);
       } else {
-        float[] v1 = _v1[i2];
-        float dsi = scale;
-        for (int i1=1; i1<n1; ++i1) {
-          float v1i = v1[i1];
-          float v2i = sqrt(1.0f-v1i*v1i);
-          float vmi = dsi*(v1i-v2i);
-          float vpi = dsi*(v1i+v2i);
-          cmm[i1] = vmi*vmi;
-          cmp[i1] = vmi*vpi;
-          cpp[i1] = vpi*vpi;
+        float[] ds = (_ds!=null)?_ds[i2]:null;
+        float[] cmm = _cmm[i2%2];
+        float[] cmp = _cmp[i2%2];
+        float[] cpp = _cpp[i2%2];
+        if (_ds!=null) {
+          float[] ds = _ds[i2];
+          float[] v1 = _v1[i2];
+          for (int i1=1; i1<n1; ++i1) {
+            float dsi = ds[i1]*scale;
+            float v1i = v1[i1];
+            float v2i = sqrt(1.0f-v1i*v1i);
+            float vmi = dsi*(v1i-v2i);
+            float vpi = dsi*(v1i+v2i);
+            cmm[i1] = vmi*vmi;
+            cmp[i1] = vmi*vpi;
+            cpp[i1] = vpi*vpi;
+          }
+        } else {
+          float[] v1 = _v1[i2];
+          float dsi = scale;
+          for (int i1=1; i1<n1; ++i1) {
+            float v1i = v1[i1];
+            float v2i = sqrt(1.0f-v1i*v1i);
+            float vmi = dsi*(v1i-v2i);
+            float vpi = dsi*(v1i+v2i);
+            cmm[i1] = vmi*vmi;
+            cmp[i1] = vmi*vpi;
+            cpp[i1] = vpi*vpi;
+          }
         }
+      }
+      if (i2%2==0) {
+        _i20 = i2;
+      } else {
+        _i21 = i2;
       }
     }
   }
