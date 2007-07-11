@@ -113,7 +113,8 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
       int n1m = n1-1;
       int n2m = n2-1;
       float w1 = 1.0f;
-      float w2 = 1.0f-w1;
+      float w2 = 2.0f-w1;
+      float ow1 = 1.0f/w1;
       float[][] a = new float[n1][9];
       for (int i2=0; i2<n2; ++i2) {
         int i2m = max(i2-1,0);
@@ -123,16 +124,16 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
         float[] y0 = y[i2 ];
         float[] yp = y[i2p];
         _s33.get(i2,a);
+        // y = w*(2-w)*inv(D+wL')*D*inv(D+wL)*x
         for (int i1=0; i1<n1; ++i1) {
           int i1m = max(i1-1,0);
           int i1p = min(i1+1,n1m);
           float[] ai = a[i1];
-          float d = 1.0f+ai[4];
-          y0[i1] = w1*(x0[i1] - 
-                   ai[0]*ym[i1m] - ai[3]*y0[i1m] - ai[6]*yp[i1m] -
-                   ai[1]*ym[i1 ]                 - ai[7]*yp[i1 ] -
-                   ai[2]*ym[i1p] - ai[5]*y0[i1p] - ai[8]*yp[i1p])/d +
-                   w2*y0[i1];
+          float dow = (1.0f+ai[4])*ow1;
+          y0[i1] = (x0[i1]-(ai[0]*ym[i1m] +
+                            ai[1]*ym[i1 ] +
+                            ai[2]*ym[i1p] +
+                            ai[3]*y0[i1m]))/dow;
         }
       }
       for (int i2=n2-1; i2>=0; --i2) {
@@ -147,12 +148,12 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
           int i1m = max(i1-1,0);
           int i1p = min(i1+1,n1m);
           float[] ai = a[i1];
-          float d = 1.0f+ai[4];
-          y0[i1] = w1*(x0[i1] - 
-                   ai[0]*ym[i1m] - ai[3]*y0[i1m] - ai[6]*yp[i1m] -
-                   ai[1]*ym[i1 ]                 - ai[7]*yp[i1 ] -
-                   ai[2]*ym[i1p] - ai[5]*y0[i1p] - ai[8]*yp[i1p])/d +
-                   w2*y0[i1];
+          float d = (1.0f+ai[4])*ow1;
+          y0[i1] *= w2*d;
+          y0[i1] = (y0[i1]-(ai[5]*y0[i1p] +
+                            ai[6]*yp[i1m] +
+                            ai[7]*yp[i1 ] +
+                            ai[8]*yp[i1p]))/d;
         }
       }
     }
@@ -228,6 +229,7 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
     float rz = 0.0f; // initialize to anything to keep compiler happy
     for (iter=0; iter<_niter && rr>rrsmall; ++iter) {
       //trace("  iter="+iter+" rr="+rr);
+      Array.zero(z);
       m.apply(r,z);
       float rzold = rz;
       rz = sdot(r,z);
@@ -249,6 +251,7 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
 
   /**
    * Solves Ax = b via conjugate gradient iterations with preconditioner M.
+   * Uses the initial values of x; does not assume they are zero.
    */
   private void solve(Operator a, Operator m, float[][] b, float[][] x) {
     int n1 = b[0].length;
