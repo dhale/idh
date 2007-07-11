@@ -53,7 +53,7 @@ public class LocalDiffusionFilterMg extends LocalDiffusionFilter {
   // private
 
   private float _sigma; // maximum filter half-width
-  private float _small; // stop iterations when rr decreases by this factor
+  private float _small; // stop iterations residuals are small 
   private int _niter; // number of iterations
   private int _nbefore; // number of mg smoothings before downsampling
   private int _ncycle; // number of mg recursive cycles on coarse grids
@@ -177,7 +177,7 @@ public class LocalDiffusionFilterMg extends LocalDiffusionFilter {
     float rr = m2.normResidual(x,y);
     trace("solveMg: rr="+rr);
     int miter;
-    double rrsmall = rr*_small;
+    double rrsmall = rr*_small*_small;
     for (miter=0; miter<_niter && rr>rrsmall; ++miter) {
       m2.update(x,y);
       rr = m2.normResidual(x,y);

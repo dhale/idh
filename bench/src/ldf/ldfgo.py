@@ -30,8 +30,8 @@ pngDir = None
 n1 = 315
 n2 = 315
 sigma = 14
-small = 0.00001
-niter = 100
+small = 0.01
+niter = 80
 nbefore = 2
 ncycle = 2
 nafter = 2
@@ -107,8 +107,8 @@ def goDiff():
   x1 = readImage()
   x2 = Array.transpose(x1)
   x3 = makeTargetImage()
-  #for x,s in [(x1,"_1"),(x2,"_2"),(x3,"_3")]:
-  for x,s in [(x1,"_1")]:
+  for x,s in [(x1,"_1"),(x2,"_2"),(x3,"_3")]:
+  #for x,s in [(x1,"_1")]:
     plot(x,10.0,"x"+s)
     doDiff(x,"d"+s)
 
@@ -126,8 +126,8 @@ def doDiff(x,png):
   #ldf = LocalDiffusionFilter(sigma)
   ldf = LocalDiffusionFilterCg(sigma,small,niter)
   #ldf = LocalDiffusionFilterMg(sigma,small,niter,nbefore,ncycle,nafter)
-  ds = makeBlock()
-  #ds = None
+  #ds = makeBlock()
+  ds = None
   ldf.applyInlineKill(ds,v1,x,y)
   ldf.applyInlinePass(ds,v1,x,z)
   ldf.applyInlinePass(ds,v1,r,s)

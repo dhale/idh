@@ -36,45 +36,15 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
   protected void solveInline(
     float[][] ds, float[][] v1, float[][] x, float[][] y) 
   {
+    //solveInlineSimple(ds,v1,x,y);
     solveInlineSsor(ds,v1,x,y);
   }
 
   ///////////////////////////////////////////////////////////////////////////
   // private
 
-  public static void main(String[] args) {
-    testOperators();
-  }
-
-  private static void testOperators() {
-    int n1 = 100;
-    int n2 = 101;
-    DirectionalLaplacianFilter dlf = new DirectionalLaplacianFilter(1.0);
-    float[][] ds = Array.randfloat(n1,n2);
-    float[][] v1 = Array.randfloat(n1,n2);
-    Operator a = new InlineOperator(dlf,ds,v1);
-    Operator m = new InlineSsorOperator(dlf,ds,v1);
-    testSpd(n1,n2,a);
-    testSpd(n1,n2,m);
-  }
-
-  private static void testSpd(int n1, int n2, Operator a) {
-    float[][] x = Array.sub(Array.randfloat(n1,n2),0.5f);
-    float[][] y = Array.sub(Array.randfloat(n1,n2),0.5f);
-    float[][] ax = Array.zerofloat(n1,n2);
-    float[][] ay = Array.zerofloat(n1,n2);
-    a.apply(x,ax);
-    a.apply(y,ay);
-    float xax = sdot(x,ax);
-    float yay = sdot(y,ay);
-    float yax = sdot(y,ax);
-    float xay = sdot(x,ay);
-    System.out.println("xax="+xax+" yay="+yay);
-    System.out.println("yax="+yax+" xay="+xay);
-  }
-
   private float _sigma; // maximum filter half-width
-  private float _small; // stop iterations when rr decreases by this factor
+  private float _small; // stop iterations when residuals are small
   private int _niter; // number of iterations
   private DirectionalLaplacianFilter _dlf;
 
@@ -191,7 +161,7 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
     Array.copy(r,d);
     float delta = sdot(r,r);
     float deltaBegin = delta;
-    float deltaSmall = delta*_small;
+    float deltaSmall = sdot(b,b)*_small*_small;
     trace("solve: delta="+delta);
     int iter;
     for (iter=0; iter<_niter && delta>deltaSmall; ++iter) {
@@ -223,9 +193,10 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
     a.apply(x,q);
     saxpy(-1.0f,r,q); // q = b-Ax
     m.apply(r,d);
+    m.apply(b,s);
     float delta = sdot(r,d);
     float deltaBegin = delta;
-    float deltaSmall = delta*_small;
+    float deltaSmall = sdot(s,s)*_small*_small;
     trace("solve: delta="+delta);
     int iter;
     for (iter=0; iter<_niter && delta>deltaSmall; ++iter) {
@@ -285,5 +256,39 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
   private static void trace(String s) {
     if (TRACE)
       System.out.println(s);
+  }
+
+  ///////////////////////////////////////////////////////////////////////////
+  // testing
+
+  public static void main(String[] args) {
+    testOperators();
+  }
+
+  private static void testOperators() {
+    int n1 = 100;
+    int n2 = 101;
+    DirectionalLaplacianFilter dlf = new DirectionalLaplacianFilter(1.0);
+    float[][] ds = Array.randfloat(n1,n2);
+    float[][] v1 = Array.randfloat(n1,n2);
+    Operator a = new InlineOperator(dlf,ds,v1);
+    Operator m = new InlineSsorOperator(dlf,ds,v1);
+    testSpd(n1,n2,a);
+    testSpd(n1,n2,m);
+  }
+
+  private static void testSpd(int n1, int n2, Operator a) {
+    float[][] x = Array.sub(Array.randfloat(n1,n2),0.5f);
+    float[][] y = Array.sub(Array.randfloat(n1,n2),0.5f);
+    float[][] ax = Array.zerofloat(n1,n2);
+    float[][] ay = Array.zerofloat(n1,n2);
+    a.apply(x,ax);
+    a.apply(y,ay);
+    float xax = sdot(x,ax);
+    float yay = sdot(y,ay);
+    float yax = sdot(y,ax);
+    float xay = sdot(x,ay);
+    System.out.println("xax="+xax+" yay="+yay+" (should be positive)");
+    System.out.println("yax="+yax+" xay="+xay+" (should be equal)");
   }
 } 
