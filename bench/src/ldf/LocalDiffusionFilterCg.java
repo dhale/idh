@@ -32,103 +32,46 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
 
   ///////////////////////////////////////////////////////////////////////////
   // protected
-  //
+
   protected void solveInline(
     float[][] ds, float[][] v1, float[][] x, float[][] y) 
   {
     solveInlineSsor(ds,v1,x,y);
   }
 
-  private void solveInlineSimple(
-    float[][] ds, float[][] v1, float[][] x, float[][] y) 
-  {
-    int n1 = x[0].length;
-    int n2 = x.length;
-    final float[][] dsf = ds;
-    final float[][] v1f = v1;
-    Operator a = new Operator() {
-      public void apply(float[][] x, float[][] y) {
-        Array.copy(x,y);
-        _dlf.applyInline(dsf,v1f,x,y);
-      }
-    };
-    solveCg(a,x,y);
-  }
-
-  private void solveInlineSsor(
-    float[][] ds, float[][] v1, float[][] x, float[][] y) 
-  {
-    int n1 = x[0].length;
-    int n2 = x.length;
-
-    // The operator I+G'DG
-    final float[][] dsf = ds;
-    final float[][] v1f = v1;
-    Operator a = new Operator() {
-      public void apply(float[][] x, float[][] y) {
-        Array.copy(x,y);
-        _dlf.applyInline(dsf,v1f,x,y);
-      }
-    };
-
-    // SSOR preconditioner.
-    final DirectionalLaplacianFilter.Stencil33 s33 =
-      _dlf.makeInlineStencil33(ds,v1);
-    Operator m = new Operator() {
-      public void apply(float[][] x, float[][] y) {
-        /*
-        Array.copy(x,y);
-        */
-        int n1 = x[0].length;
-        int n2 = x.length;
-        int n1m = n1-1;
-        int n2m = n2-1;
-        float[][] a = new float[n1][9];
-        for (int i2=0; i2<n2; ++i2) {
-          int i2m = max(i2-1,0);
-          int i2p = min(i2+1,n2m);
-          float[] x0 = x[i2 ];
-          float[] ym = y[i2m];
-          float[] y0 = y[i2 ];
-          float[] yp = y[i2p];
-          s33.get(i2,a);
-          for (int i1=0; i1<n1; ++i1) {
-            int i1m = max(i1-1,0);
-            int i1p = min(i1+1,n1m);
-            float[] ai = a[i1];
-            float d = 1.0f+ai[4];
-            y0[i1] = (x0[i1] - 
-                      ai[0]*ym[i1m] - ai[3]*y0[i1m] - ai[6]*yp[i1m] -
-                      ai[1]*ym[i1 ]                 - ai[7]*yp[i1 ] -
-                      ai[2]*ym[i1p] - ai[5]*y0[i1p] - ai[8]*yp[i1p])/d;
-          }
-        }
-        for (int i2=n2-1; i2>=0; --i2) {
-          int i2m = max(i2-1,0);
-          int i2p = min(i2+1,n2m);
-          float[] x0 = x[i2 ];
-          float[] ym = y[i2m];
-          float[] y0 = y[i2 ];
-          float[] yp = y[i2p];
-          s33.get(i2,a);
-          for (int i1=n1-1; i1>=0; --i1) {
-            int i1m = max(i1-1,0);
-            int i1p = min(i1+1,n1m);
-            float[] ai = a[i1];
-            float d = 1.0f+ai[4];
-            y0[i1] = (x0[i1] - 
-                      ai[0]*ym[i1m] - ai[3]*y0[i1m] - ai[6]*yp[i1m] -
-                      ai[1]*ym[i1 ]                 - ai[7]*yp[i1 ] -
-                      ai[2]*ym[i1p] - ai[5]*y0[i1p] - ai[8]*yp[i1p])/d;
-          }
-        }
-      }
-    };
-    solveCg(a,m,x,y);
-  }
-
   ///////////////////////////////////////////////////////////////////////////
   // private
+
+  public static void main(String[] args) {
+    testOperators();
+  }
+
+  private static void testOperators() {
+    int n1 = 100;
+    int n2 = 101;
+    DirectionalLaplacianFilter dlf = new DirectionalLaplacianFilter(1.0);
+    float[][] ds = Array.randfloat(n1,n2);
+    float[][] v1 = Array.randfloat(n1,n2);
+    Operator a = new InlineOperator(dlf,ds,v1);
+    Operator m = new InlineSsorOperator(dlf,ds,v1);
+    testSpd(n1,n2,a);
+    testSpd(n1,n2,m);
+  }
+
+  private static void testSpd(int n1, int n2, Operator a) {
+    float[][] x = Array.sub(Array.randfloat(n1,n2),0.5f);
+    float[][] y = Array.sub(Array.randfloat(n1,n2),0.5f);
+    float[][] ax = Array.zerofloat(n1,n2);
+    float[][] ay = Array.zerofloat(n1,n2);
+    a.apply(x,ax);
+    a.apply(y,ay);
+    float xax = sdot(x,ax);
+    float yay = sdot(y,ay);
+    float yax = sdot(y,ax);
+    float xay = sdot(x,ay);
+    System.out.println("xax="+xax+" yay="+yay);
+    System.out.println("yax="+yax+" xay="+xay);
+  }
 
   private float _sigma; // maximum filter half-width
   private float _small; // stop iterations when rr decreases by this factor
@@ -136,167 +79,245 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
   private DirectionalLaplacianFilter _dlf;
 
   /**
-   * Symmetric positive-definite operator to be inverted.
+   * A symmetric positive-definite operator.
    */
   private static interface Operator {
     public void apply(float[][] x, float[][] y);
   }
 
-  /**
-   * Solves Ay = x via conjugate gradient iterations.
-   */
-  private void solveCg(Operator a, float[][] x, float[][] y) {
-    int n1 = x[0].length;
-    int n2 = x.length;
-    float[][] r = new float[n2][n1];
-    float[][] s = new float[n2][n1];
-    float[][] t = new float[n2][n1];
-    a.apply(y,t);
-    double rr = 0.0;
-    for (int i2=0; i2<n2; ++i2) {
-      float[] x2 = x[i2], r2 = r[i2], s2 = s[i2], t2 = t[i2];
-      for (int i1=0; i1<n1; ++i1) {
-        float ri = x2[i1]-t2[i1];
-        r2[i1] = ri;
-        s2[i1] = ri;
-        rr += ri*ri;
-      }
+  private static class InlineOperator implements Operator {
+    InlineOperator(
+      DirectionalLaplacianFilter dlf, float[][] ds, float[][] v1) 
+    {
+      _dlf = dlf;
+      _ds = ds;
+      _v1 = v1;
     }
-    trace("solveCg: r="+rr);
-    int miter;
-    double rrsmall = rr*_small;
-    for (miter=0; miter<_niter && rr>rrsmall; ++miter) {
-      a.apply(s,t);
-      double st = 0.0;
-      for (int i2=0; i2<n2; ++i2) {
-        float[] s2 = s[i2], t2 = t[i2];
-        for (int i1=0; i1<n1; ++i1)
-          st += s2[i1]*t2[i1];
-      }
-      float alpha = (float)(rr/st);
-      double rrold = rr;
-      rr = 0.0;
-      for (int i2=0; i2<n2; ++i2) {
-        float[] y2 = y[i2], r2 = r[i2], s2 = s[i2], t2 = t[i2];
-        for (int i1=0; i1<n1; ++i1) {
-          y2[i1] += alpha*s2[i1];
-          r2[i1] -= alpha*t2[i1];
-          rr += r2[i1]*r2[i1];
-        }
-      }
-      if (rr<=rrsmall)
-        break;
-      float beta = (float)(rr/rrold);
-      for (int i2=0; i2<n2; ++i2) {
-        float[] r2 = r[i2], s2 = s[i2];
-        for (int i1=0; i1<n1; ++i1)
-          s2[i1] = r2[i1]+beta*s2[i1];
-      }
+    public void apply(float[][] x, float[][] y) {
+      Array.copy(x,y);
+      _dlf.applyInline(_ds,_v1,x,y);
     }
-    trace("  miter="+miter+" rr="+rr);
+    private float[][] _ds,_v1;
+    private DirectionalLaplacianFilter _dlf;
   }
 
-  /**
-   * Solves Ay = x via conjugate gradient iterations with preconditioner M.
-   */
-  private void solveCg(Operator a, Operator m, float[][] x, float[][] y) {
-    int n1 = x[0].length;
-    int n2 = x.length;
-    float[][] r = new float[n2][n1];
-    float[][] s = new float[n2][n1];
-    float[][] t = new float[n2][n1];
-    float[][] w = new float[n2][n1];
-    a.apply(y,t);
-    for (int i2=0; i2<n2; ++i2) {
-      float[] x2 = x[i2], r2 = r[i2], t2 = t[i2];
-      for (int i1=0; i1<n1; ++i1) {
-        r2[i1] = x2[i1]-t2[i1];
-      }
+  private static class InlineSsorOperator implements Operator {
+    InlineSsorOperator(
+      DirectionalLaplacianFilter dlf, float[][] ds, float[][] v1) 
+    {
+      _s33 = dlf.makeInlineStencil33(ds,v1);
     }
-    m.apply(r,s);
-    double rr = 0.0;
-    for (int i2=0; i2<n2; ++i2) {
-      float[] r2 = r[i2], s2 = s[i2];
-      for (int i1=0; i1<n1; ++i1) {
-        rr += r2[i1]*s2[i1];
-      }
-    }
-    trace("solveCgPc: r="+rr);
-    int miter;
-    double rrsmall = rr*_small;
-    for (miter=0; miter<_niter && rr>rrsmall; ++miter) {
-      a.apply(s,t);
-      double st = 0.0;
+    public void apply(float[][] x, float[][] y) {
+      int n1 = x[0].length;
+      int n2 = x.length;
+      int n1m = n1-1;
+      int n2m = n2-1;
+      float w1 = 1.0f;
+      float w2 = 1.0f-w1;
+      float[][] a = new float[n1][9];
       for (int i2=0; i2<n2; ++i2) {
-        float[] s2 = s[i2], t2 = t[i2];
-        for (int i1=0; i1<n1; ++i1)
-          st += s2[i1]*t2[i1];
-      }
-      float alpha = (float)(rr/st);
-      for (int i2=0; i2<n2; ++i2) {
-        float[] y2 = y[i2], r2 = r[i2], s2 = s[i2], t2 = t[i2];
+        int i2m = max(i2-1,0);
+        int i2p = min(i2+1,n2m);
+        float[] x0 = x[i2 ];
+        float[] ym = y[i2m];
+        float[] y0 = y[i2 ];
+        float[] yp = y[i2p];
+        _s33.get(i2,a);
         for (int i1=0; i1<n1; ++i1) {
-          y2[i1] += alpha*s2[i1];
-          r2[i1] -= alpha*t2[i1];
+          int i1m = max(i1-1,0);
+          int i1p = min(i1+1,n1m);
+          float[] ai = a[i1];
+          float d = 1.0f+ai[4];
+          y0[i1] = w1*(x0[i1] - 
+                   ai[0]*ym[i1m] - ai[3]*y0[i1m] - ai[6]*yp[i1m] -
+                   ai[1]*ym[i1 ]                 - ai[7]*yp[i1 ] -
+                   ai[2]*ym[i1p] - ai[5]*y0[i1p] - ai[8]*yp[i1p])/d +
+                   w2*y0[i1];
         }
       }
-      m.apply(r,w);
-      double rrold = rr;
-      rr = 0.0;
-      for (int i2=0; i2<n2; ++i2) {
-        float[] r2 = r[i2], w2 = w[i2];
-        for (int i1=0; i1<n1; ++i1) {
-          rr += r2[i1]*w2[i1];
+      for (int i2=n2-1; i2>=0; --i2) {
+        int i2m = max(i2-1,0);
+        int i2p = min(i2+1,n2m);
+        float[] x0 = x[i2 ];
+        float[] ym = y[i2m];
+        float[] y0 = y[i2 ];
+        float[] yp = y[i2p];
+        _s33.get(i2,a);
+        for (int i1=n1-1; i1>=0; --i1) {
+          int i1m = max(i1-1,0);
+          int i1p = min(i1+1,n1m);
+          float[] ai = a[i1];
+          float d = 1.0f+ai[4];
+          y0[i1] = w1*(x0[i1] - 
+                   ai[0]*ym[i1m] - ai[3]*y0[i1m] - ai[6]*yp[i1m] -
+                   ai[1]*ym[i1 ]                 - ai[7]*yp[i1 ] -
+                   ai[2]*ym[i1p] - ai[5]*y0[i1p] - ai[8]*yp[i1p])/d +
+                   w2*y0[i1];
         }
       }
-      if (rr<=rrsmall)
-        break;
-      float beta = (float)(rr/rrold);
-      for (int i2=0; i2<n2; ++i2) {
-        float[] w2 = w[i2], s2 = s[i2];
-        for (int i1=0; i1<n1; ++i1)
-          s2[i1] = w2[i1]+beta*s2[i1];
-      }
     }
-    trace("  miter="+miter+" rr="+rr);
+    private DirectionalLaplacianFilter.Stencil33 _s33;
   }
 
-  /*
-  private void applyInverseSpdSsor(
-    float[][] u1, float[][] u2, float[][] x, float[][] y) 
+  private void solveInlineSimple(
+    float[][] ds, float[][] v1, float[][] x, float[][] y) 
   {
+    Operator a = new InlineOperator(_dlf,ds,v1);
+    solve(a,x,y);
+  }
+
+  private void solveInlineSsor(
+    float[][] ds, float[][] v1, float[][] x, float[][] y) 
+  {
+    Operator a = new InlineOperator(_dlf,ds,v1);
+    Operator m = new InlineSsorOperator(_dlf,ds,v1);
+    solve(a,m,x,y);
+  }
+
+  /**
+   * Solves Ax = b via conjugate gradient iterations. (No preconditioner.)
+   * (Golub and van Loan, 1989, Matrix Computations, John Hopkins Press.)
+   */
+  private void solve(Operator a, float[][] b, float[][] x) {
+    int n1 = b[0].length;
+    int n2 = b.length;
+    float[][] r = new float[n2][n1];
+    float[][] p = new float[n2][n1];
+    float[][] w = new float[n2][n1];
+    Array.zero(x);
+    Array.copy(b,r);
+    float rr = sdot(r,r);
+    float rrold = rr;
+    trace("solve: rr="+rr);
+    int iter;
+    float rrsmall = rr*_small;
+    for (iter=0; iter<_niter && rr>rrsmall; ++iter) {
+      if (iter==0) {
+        Array.copy(r,p);
+      } else {
+        float beta = rr/rrold;
+        sxpay(beta,r,p);
+      }
+      a.apply(p,w);
+      float pw = sdot(p,w);
+      float alpha = rr/pw;
+      saxpy( alpha,p,x);
+      saxpy(-alpha,w,r);
+      rrold = rr;
+      rr = sdot(r,r);
+    }
+    trace("  iter="+iter+" rr="+rr);
+  }
+
+  /**
+   * Solves Ax = b via conjugate gradient iterations with preconditioner M.
+   */
+  private void xsolve(Operator a, Operator m, float[][] b, float[][] x) {
+    int n1 = b[0].length;
+    int n2 = b.length;
+    float[][] r = new float[n2][n1];
+    float[][] p = new float[n2][n1];
+    float[][] w = new float[n2][n1];
+    float[][] z = new float[n2][n1];
+    Array.zero(x);
+    Array.copy(b,r);
+    float rr = sdot(r,r);
+    trace("solve: rr="+rr);
+    int iter;
+    float rrsmall = rr*_small;
+    float rz = 0.0f; // initialize to anything to keep compiler happy
+    for (iter=0; iter<_niter && rr>rrsmall; ++iter) {
+      //trace("  iter="+iter+" rr="+rr);
+      m.apply(r,z);
+      float rzold = rz;
+      rz = sdot(r,z);
+      if (iter==0) {
+        Array.copy(z,p);
+      } else {
+        float beta = rz/rzold;
+        sxpay(beta,z,p);
+      }
+      a.apply(p,w);
+      float pw = sdot(p,w);
+      float alpha = rz/pw;
+      saxpy( alpha,p,x);
+      saxpy(-alpha,w,r);
+      rr = sdot(r,r);
+    }
+    trace("  iter="+iter+" rr="+rr);
+  }
+
+  /**
+   * Solves Ax = b via conjugate gradient iterations with preconditioner M.
+   */
+  private void solve(Operator a, Operator m, float[][] b, float[][] x) {
+    int n1 = b[0].length;
+    int n2 = b.length;
+    float[][] d = new float[n2][n1];
+    float[][] q = new float[n2][n1];
+    float[][] r = new float[n2][n1];
+    float[][] s = new float[n2][n1];
+    Array.copy(b,r);
+    a.apply(x,q);
+    saxpy(-1.0f,r,q);
+    m.apply(r,d);
+    float delta = sdot(r,d);
+    float deltaSmall = delta*_small;
+    trace("solve: delta="+delta);
+    int iter;
+    for (iter=0; iter<_niter && delta>deltaSmall; ++iter) {
+      //trace("  iter="+iter+" delta="+delta);
+      a.apply(d,q);
+      float dq = sdot(d,q);
+      float alpha = delta/dq;
+      saxpy( alpha,d,x);
+      saxpy(-alpha,q,r);
+      m.apply(r,s);
+      float deltaOld = delta;
+      delta = sdot(r,s);
+      float beta = delta/deltaOld;
+      sxpay(beta,s,d);
+    }
+    trace("  iter="+iter+" delta="+delta);
+  }
+
+  // Returns the dot product x'y.
+  private static float sdot(float[][] x, float[][] y) {
     int n1 = x[0].length;
     int n2 = x.length;
-    float[][] r = new float[n2][n1]; // r
-    float[][] s = new float[n2][n1]; // d
-    float[][] t = new float[n2][n1]; // q
-    float[][] w = new float[n2][n1]; // s
-    Array.zero(y);
-    Array.copy(x,r);
-    applyInverseSsor(u1,u2,r,s);
-    float rr = dot(r,s);
-    float small = rr*0.00001f;
-    trace("small="+small);
-    int niter;
-    for (niter=0; niter<100 && rr>small; ++niter) {
-      applyForwardSpd(u1,u2,s,t);
-      float alpha = rr/dot(s,t);
-      saxpy( alpha,s,y);
-      saxpy(-alpha,t,r);
-      applyInverseSsor(u1,u2,r,w);
-      float rrold = rr;
-      rr = dot(r,w);
-      float beta = rr/rrold;
-      for (int i2=0; i2<n2; ++i2) {
-        float[] w2 = w[i2];
-        float[] s2 = s[i2];
-        for (int i1=0; i1<n1; ++i1)
-          s2[i1] = w2[i1]+beta*s2[i1];
+    float d = 0.0f;
+    for (int i2=0; i2<n2; ++i2) {
+      float[] x2 = x[i2], y2 = y[i2];
+      for (int i1=0; i1<n1; ++i1) {
+        d += x2[i1]*y2[i1];
       }
-      trace("niter="+niter+" rr="+rr);
+    }
+    return d;
+  }
+
+  // Computes y = y + ax.
+  private static void saxpy(float a, float[][] x, float[][] y) {
+    int n1 = x[0].length;
+    int n2 = x.length;
+    for (int i2=0; i2<n2; ++i2) {
+      float[] x2 = x[i2], y2 = y[i2];
+      for (int i1=0; i1<n1; ++i1) {
+        y2[i1] += a*x2[i1];
+      }
     }
   }
-  */
+
+  // Computes y = x + ay.
+  private static void sxpay(float a, float[][] x, float[][] y) {
+    int n1 = x[0].length;
+    int n2 = x.length;
+    for (int i2=0; i2<n2; ++i2) {
+      float[] x2 = x[i2], y2 = y[i2];
+      for (int i1=0; i1<n1; ++i1) {
+        y2[i1] = a*y2[i1]+x2[i1];
+      }
+    }
+  }
 
   private static final boolean TRACE = true;
   private static void trace(String s) {

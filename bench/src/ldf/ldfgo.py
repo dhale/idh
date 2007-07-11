@@ -107,8 +107,8 @@ def goDiff():
   x1 = readImage()
   x2 = Array.transpose(x1)
   x3 = makeTargetImage()
-  for x,s in [(x1,"_1"),(x2,"_2"),(x3,"_3")]:
-  #for x,s in [(x1,"_1")]:
+  #for x,s in [(x1,"_1"),(x2,"_2"),(x3,"_3")]:
+  for x,s in [(x1,"_1")]:
     plot(x,10.0,"x"+s)
     doDiff(x,"d"+s)
 

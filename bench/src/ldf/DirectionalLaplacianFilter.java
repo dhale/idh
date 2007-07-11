@@ -69,7 +69,7 @@ public class DirectionalLaplacianFilter {
      *   a[i1][1]*x[i2-1][i1  ]+a[i1][4]*x[i2  ][i1  ]+a[i1][7]*x[i2+1][i1  ]
      *   a[i1][2]*x[i2-1][i1+1]+a[i1][5]*x[i2  ][i1+1]+a[i1][8]*x[i2+1][i1+1]
      * </code></pre>
-     * Currently, zero-slope boundary conditions are used.
+     * Coefficients corresponding to samples off the ends of arrays are zero.
      * @param i2 sample index in 2nd dimension.
      * @param a array[n1][9] in which to get coefficients.
      */
@@ -312,6 +312,33 @@ public class DirectionalLaplacianFilter {
     }
   }
 
+  private void applyInlineStencil33Reverse(
+    float[][] ds, float[][] v1, float[][] x, float[][] y) 
+  {
+    int n1 = x[0].length;
+    int n2 = x.length;
+    int n1m = n1-1;
+    int n2m = n2-1;
+    float[][] a = new float[n1][9];
+    Stencil33 s33 = new InlineStencil33(_sigma,ds,v1);
+    for (int i2=n2-1; i2>=0; --i2) {
+      int i2m = max(i2-1,0);
+      int i2p = min(i2+1,n2m);
+      float[] xm = x[i2m];
+      float[] x0 = x[i2 ];
+      float[] xp = x[i2p];
+      s33.get(i2,a);
+      for (int i1=n1-1; i1>=0; --i1) {
+        int i1m = max(i1-1,0);
+        int i1p = min(i1+1,n1m);
+        float[] ai = a[i1];
+        y[i2][i1] += ai[0]*xm[i1m] + ai[3]*x0[i1m] + ai[6]*xp[i1m] +
+                     ai[1]*xm[i1 ] + ai[4]*x0[i1 ] + ai[7]*xp[i1 ] +
+                     ai[2]*xm[i1p] + ai[5]*x0[i1p] + ai[8]*xp[i1p];
+      }
+    }
+  }
+
   // Tests y'(Ax) = (y'Ax)' = x'(A'y) = x'(Ay)
   public static void main(String[] args) {
     testStencil();
@@ -327,7 +354,7 @@ public class DirectionalLaplacianFilter {
     float[][] z = Array.zerofloat(n1,n2);
     DirectionalLaplacianFilter dlf = new DirectionalLaplacianFilter(1.0);
     dlf.applyInline(ds,v1,x,y);
-    dlf.applyInlineStencil33(ds,v1,x,z);
+    dlf.applyInlineStencil33Reverse(ds,v1,x,z);
     //edu.mines.jtk.mosaic.SimplePlot.asPixels(y);
     //edu.mines.jtk.mosaic.SimplePlot.asPixels(z);
     //Array.dump(x);
