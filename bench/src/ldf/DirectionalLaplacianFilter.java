@@ -150,6 +150,18 @@ public class DirectionalLaplacianFilter {
     }
   }
 
+  /**
+   * Makes filter stencil for G'DG.
+   * @param ds scale factors for diffusivity in direction of unit vectors v;
+   *  if null, this method uses constant ds = 1.
+   * @param v1 array of 1st components of inline unit vectors.
+   * @return the stencil.
+   */
+  public Stencil33 makeInlineStencil33(float[][] ds, float[][] v1) {
+    return new InlineStencil33(_sigma,ds,v1);
+  }
+
+
   ///////////////////////////////////////////////////////////////////////////
   // private
 
@@ -293,9 +305,9 @@ public class DirectionalLaplacianFilter {
         int i1m = max(i1-1,0);
         int i1p = min(i1+1,n1m);
         float[] ai = a[i1];
-        y[i2][i1] = ai[0]*xm[i1m] + ai[3]*x0[i1m] + ai[6]*xp[i1m] +
-                    ai[1]*xm[i1 ] + ai[4]*x0[i1 ] + ai[7]*xp[i1 ] +
-                    ai[2]*xm[i1p] + ai[5]*x0[i1p] + ai[8]*xp[i1p];
+        y[i2][i1] += ai[0]*xm[i1m] + ai[3]*x0[i1m] + ai[6]*xp[i1m] +
+                     ai[1]*xm[i1 ] + ai[4]*x0[i1 ] + ai[7]*xp[i1 ] +
+                     ai[2]*xm[i1p] + ai[5]*x0[i1p] + ai[8]*xp[i1p];
       }
     }
   }
@@ -303,21 +315,16 @@ public class DirectionalLaplacianFilter {
   // Tests y'(Ax) = (y'Ax)' = x'(A'y) = x'(Ay)
   public static void main(String[] args) {
     testStencil();
+    benchStencil();
   }
   private static void testStencil() {
     int n1 = 5;
     int n2 = 7;
-    //float[][] x = Array.rampfloat(1.0f,1.0f,1.0f,n1,n2);
-    float[][] x = Array.randfloat(n1,n2);
-    //float[][] x = Array.zerofloat(n1,n2);
-    //x[n2-1][n1-1] = 1.0f;
-    //x[n2/2][n1/2] = 1.0f;
-    float[][] y = Array.zerofloat(n1,n2);
-    float[][] z = Array.zerofloat(n1,n2);
     float[][] ds = Array.randfloat(n1,n2);
     float[][] v1 = Array.randfloat(n1,n2);
-    ds = null;
-    v1 = Array.fillfloat(0.5f,n1,n2);
+    float[][] x = Array.randfloat(n1,n2);
+    float[][] y = Array.zerofloat(n1,n2);
+    float[][] z = Array.zerofloat(n1,n2);
     DirectionalLaplacianFilter dlf = new DirectionalLaplacianFilter(1.0);
     dlf.applyInline(ds,v1,x,y);
     dlf.applyInlineStencil33(ds,v1,x,z);
@@ -326,7 +333,37 @@ public class DirectionalLaplacianFilter {
     //Array.dump(x);
     //Array.dump(y);
     //Array.dump(z);
-    float e = Array.sum(Array.abs(Array.sub(z,y)));
+    float e = Array.max(Array.abs(Array.sub(z,y)));
+    System.out.println("error = "+e);
+  }
+  private static void benchStencil() {
+    int napply;
+    double maxtime = 2.0;
+    int n1 = 1000;
+    int n2 = 1000;
+    float[][] ds = Array.randfloat(n1,n2);
+    float[][] v1 = Array.randfloat(n1,n2);
+    float[][] x = Array.randfloat(n1,n2);
+    float[][] y = Array.zerofloat(n1,n2);
+    float[][] z = Array.zerofloat(n1,n2);
+    DirectionalLaplacianFilter dlf = new DirectionalLaplacianFilter(1.0);
+    Stopwatch sw = new Stopwatch();
+    sw.restart();
+    for (napply=0; sw.time()<maxtime; ++napply) {
+      Array.zero(y);
+      dlf.applyInline(ds,v1,x,y);
+    }
+    sw.stop();
+    System.out.println(" simple rate = "+napply/sw.time());
+    sw.restart();
+    for (napply=0; sw.time()<maxtime; ++napply) {
+      Array.zero(z);
+      dlf.applyInlineStencil33(ds,v1,x,z);
+    }
+    sw.stop();
+    System.out.println("stencil rate = "+napply/sw.time());
+    edu.mines.jtk.mosaic.SimplePlot.asPixels(Array.sub(z,y));
+    float e = Array.max(Array.abs(Array.sub(z,y)));
     System.out.println("error = "+e);
   }
 }
