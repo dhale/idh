@@ -108,12 +108,13 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
       _s33 = dlf.makeInlineStencil33(ds,v1);
     }
     public void apply(float[][] x, float[][] y) {
+      // y = (2-w) * inv(D/w+L') * D/w * inv(D/w+L) * x
       int n1 = x[0].length;
       int n2 = x.length;
       int n1m = n1-1;
       int n2m = n2-1;
-      float w1 = 1.0f;
-      float w2 = 2.0f-w1;
+      float w1 = 1.02f;    // optimal choice seems to be near 1.00, so
+      float w2 = 2.00f-w1; // could possibly eliminate the w1, w2, ...
       float ow1 = 1.0f/w1;
       float[][] a = new float[n1][9];
       for (int i2=0; i2<n2; ++i2) {
@@ -124,7 +125,6 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
         float[] y0 = y[i2 ];
         float[] yp = y[i2p];
         _s33.get(i2,a);
-        // y = w*(2-w)*inv(D+wL')*D*inv(D+wL)*x
         for (int i1=0; i1<n1; ++i1) {
           int i1m = max(i1-1,0);
           int i1p = min(i1+1,n1m);
@@ -149,11 +149,11 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
           int i1p = min(i1+1,n1m);
           float[] ai = a[i1];
           float d = (1.0f+ai[4])*ow1;
-          y0[i1] *= w2*d;
-          y0[i1] = (y0[i1]-(ai[5]*y0[i1p] +
+          y0[i1] *= w2;
+          y0[i1] =  y0[i1]-(ai[5]*y0[i1p] +
                             ai[6]*yp[i1m] +
                             ai[7]*yp[i1 ] +
-                            ai[8]*yp[i1p]))/d;
+                            ai[8]*yp[i1p])/d;
         }
       }
     }
@@ -177,76 +177,35 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
 
   /**
    * Solves Ax = b via conjugate gradient iterations. (No preconditioner.)
-   * (Golub and van Loan, 1989, Matrix Computations, John Hopkins Press.)
+   * Uses the initial values of x; does not assume they are zero.
    */
   private void solve(Operator a, float[][] b, float[][] x) {
     int n1 = b[0].length;
     int n2 = b.length;
+    float[][] d = new float[n2][n1];
+    float[][] q = new float[n2][n1];
     float[][] r = new float[n2][n1];
-    float[][] p = new float[n2][n1];
-    float[][] w = new float[n2][n1];
-    Array.zero(x);
     Array.copy(b,r);
-    float rr = sdot(r,r);
-    float rrold = rr;
-    trace("solve: rr="+rr);
+    a.apply(x,q);
+    saxpy(-1.0f,r,q); // q = b-Ax
+    Array.copy(r,d);
+    float delta = sdot(r,r);
+    float deltaBegin = delta;
+    float deltaSmall = delta*_small;
+    trace("solve: delta="+delta);
     int iter;
-    float rrsmall = rr*_small;
-    for (iter=0; iter<_niter && rr>rrsmall; ++iter) {
-      if (iter==0) {
-        Array.copy(r,p);
-      } else {
-        float beta = rr/rrold;
-        sxpay(beta,r,p);
-      }
-      a.apply(p,w);
-      float pw = sdot(p,w);
-      float alpha = rr/pw;
-      saxpy( alpha,p,x);
-      saxpy(-alpha,w,r);
-      rrold = rr;
-      rr = sdot(r,r);
+    for (iter=0; iter<_niter && delta>deltaSmall; ++iter) {
+      a.apply(d,q);
+      float dq = sdot(d,q);
+      float alpha = delta/dq;
+      saxpy( alpha,d,x);
+      saxpy(-alpha,q,r);
+      float deltaOld = delta;
+      delta = sdot(r,r);
+      float beta = delta/deltaOld;
+      sxpay(beta,r,d);
     }
-    trace("  iter="+iter+" rr="+rr);
-  }
-
-  /**
-   * Solves Ax = b via conjugate gradient iterations with preconditioner M.
-   */
-  private void xsolve(Operator a, Operator m, float[][] b, float[][] x) {
-    int n1 = b[0].length;
-    int n2 = b.length;
-    float[][] r = new float[n2][n1];
-    float[][] p = new float[n2][n1];
-    float[][] w = new float[n2][n1];
-    float[][] z = new float[n2][n1];
-    Array.zero(x);
-    Array.copy(b,r);
-    float rr = sdot(r,r);
-    trace("solve: rr="+rr);
-    int iter;
-    float rrsmall = rr*_small;
-    float rz = 0.0f; // initialize to anything to keep compiler happy
-    for (iter=0; iter<_niter && rr>rrsmall; ++iter) {
-      //trace("  iter="+iter+" rr="+rr);
-      Array.zero(z);
-      m.apply(r,z);
-      float rzold = rz;
-      rz = sdot(r,z);
-      if (iter==0) {
-        Array.copy(z,p);
-      } else {
-        float beta = rz/rzold;
-        sxpay(beta,z,p);
-      }
-      a.apply(p,w);
-      float pw = sdot(p,w);
-      float alpha = rz/pw;
-      saxpy( alpha,p,x);
-      saxpy(-alpha,w,r);
-      rr = sdot(r,r);
-    }
-    trace("  iter="+iter+" rr="+rr);
+    trace("  iter="+iter+" delta="+delta+" ratio="+delta/deltaBegin);
   }
 
   /**
@@ -262,14 +221,14 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
     float[][] s = new float[n2][n1];
     Array.copy(b,r);
     a.apply(x,q);
-    saxpy(-1.0f,r,q);
+    saxpy(-1.0f,r,q); // q = b-Ax
     m.apply(r,d);
     float delta = sdot(r,d);
+    float deltaBegin = delta;
     float deltaSmall = delta*_small;
     trace("solve: delta="+delta);
     int iter;
     for (iter=0; iter<_niter && delta>deltaSmall; ++iter) {
-      //trace("  iter="+iter+" delta="+delta);
       a.apply(d,q);
       float dq = sdot(d,q);
       float alpha = delta/dq;
@@ -281,7 +240,7 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
       float beta = delta/deltaOld;
       sxpay(beta,s,d);
     }
-    trace("  iter="+iter+" delta="+delta);
+    trace("  iter="+iter+" delta="+delta+" ratio="+delta/deltaBegin);
   }
 
   // Returns the dot product x'y.
