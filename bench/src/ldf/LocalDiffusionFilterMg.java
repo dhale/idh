@@ -19,7 +19,7 @@ public class LocalDiffusionFilterMg extends LocalDiffusionFilter {
   /**
    * Constructs a local diffusion filter.
    * @param sigma the nominal half-width for this filter.
-   * @param small stop when sum of residuals squared decreases by this factor.
+   * @param small stop when L2 norm of residuals decreases by this factor.
    * @param niter stop when number of iterations exceeds this number.
    * @param nbefore number of iterations before downsampling
    * @param ncycle number of recursive cycles on coarse grids
