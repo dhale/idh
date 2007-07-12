@@ -53,30 +53,6 @@ import static edu.mines.jtk.util.MathPlus.*;
 public class DirectionalLaplacianFilter {
 
   /**
-   * A 2-D directional Laplacian filters with a 3 x 3 (9-point) stencil.
-   * Note that filters need not use these stencils when applied. Rather,
-   * stencils are used in certain iterative methods for solving sparse 
-   * positive-definite systems of equations such as (I+G'DG)y = x.
-   */
-  public interface Stencil33 {
-
-    /**
-     * Gets an array of stencil coefficients. With care taken near the ends 
-     * of arrays, filters may be applied using this stencil as follows:
-     * <pre><code>
-     * y[i2][i1] += 
-     *   a[i1][0]*x[i2-1][i1-1]+a[i1][3]*x[i2  ][i1-1]+a[i1][6]*x[i2+1][i1-1]
-     *   a[i1][1]*x[i2-1][i1  ]+a[i1][4]*x[i2  ][i1  ]+a[i1][7]*x[i2+1][i1  ]
-     *   a[i1][2]*x[i2-1][i1+1]+a[i1][5]*x[i2  ][i1+1]+a[i1][8]*x[i2+1][i1+1]
-     * </code></pre>
-     * Coefficients corresponding to samples off the ends of arrays are zero.
-     * @param i2 sample index in 2nd dimension.
-     * @param a array[n1][9] in which to get coefficients.
-     */
-    public void get(int i2, float[][] a);
-  }
-
-  /**
    * Constructs a directional Laplacian filter with nominal half-width sigma.
    * @param sigma the nominal half-width for this filter.
    */
@@ -118,6 +94,50 @@ public class DirectionalLaplacianFilter {
   }
 
   /**
+   * Computes y = y+G'DGx, where D = dww' and G is the gradient operator. 
+   * The right-hand-side G'DGx is zero in the direction of the unit vectors w.
+   * Diffusivities d are scale factors that multiply the nominal half-width 
+   * sigma for this filter.
+   * <p>
+   * Unit vectors w are specified by short indices iw that correspond to a
+   * 16-bit sampling of the unit-sphere.
+   * @param ds scale factors for diffusivity in direction of unit vectors w;
+   *  if null, this method uses constant ds = 1.
+   * @param iw sample indices of unit vectors w.
+   * @param x input image. Must be distinct from the array y.
+   * @param y input/output image. Must be distinct from the array x.
+   */
+  public void applyInline(
+    float[][][] ds, short[][][] iw, 
+    float[][][] x, float[][][] y) 
+  {
+    if (_uss==null)
+      _uss = new UnitSphereSampling(16);
+    int n1 = x[0][0].length;
+    int n2 = x[0].length;
+    int n3 = x.length;
+    for (int i3=1; i3<n3; ++i3) {
+      for (int i2=1; i2<n2; ++i2) {
+        for (int i1=1; i1<n1; ++i1) {
+          float dsi = (ds!=null)?_sigma*ds[i3][i2][i1]:_sigma;
+          float swi = 0.5f*dsi*dsi;
+          float[] wi = _uss.getPoint(iw[i3][i2][i1]);
+          float w1i = wi[0];
+          float w2i = wi[1];
+          float w3i = wi[2];
+          float d11 = swi*w1i*w1i;
+          float d12 = swi*w1i*w2i;
+          float d13 = swi*w1i*w3i;
+          float d22 = swi*w2i*w2i;
+          float d23 = swi*w2i*w3i;
+          float d33 = swi*w3i*w3i;
+          apply(d11,d12,d13,d22,d23,d33,i1,i2,i3,x,y);
+        }
+      }
+    }
+  }
+
+  /**
    * Computes y = y+G'DGx, where D = d(I-uu') and G is the gradient operator. 
    * The right-hand-side G'DGx is zero in all directions orthogonal to the 
    * unit vectors u. Diffusivities d are scale factors that multiply the 
@@ -151,6 +171,30 @@ public class DirectionalLaplacianFilter {
   }
 
   /**
+   * A 2-D directional Laplacian filters with a 3 x 3 (9-point) stencil.
+   * Note that filters need not use these stencils when applied. Rather,
+   * stencils are used in certain iterative methods for solving sparse 
+   * positive-definite systems of equations such as (I+G'DG)y = x.
+   */
+  public interface Stencil33 {
+
+    /**
+     * Gets an array of stencil coefficients. With care taken near the ends 
+     * of arrays, filters may be applied using this stencil as follows:
+     * <pre><code>
+     * y[i2][i1] += 
+     *   a[i1][0]*x[i2-1][i1-1]+a[i1][3]*x[i2  ][i1-1]+a[i1][6]*x[i2+1][i1-1]
+     *   a[i1][1]*x[i2-1][i1  ]+a[i1][4]*x[i2  ][i1  ]+a[i1][7]*x[i2+1][i1  ]
+     *   a[i1][2]*x[i2-1][i1+1]+a[i1][5]*x[i2  ][i1+1]+a[i1][8]*x[i2+1][i1+1]
+     * </code></pre>
+     * Coefficients corresponding to samples off the ends of arrays are zero.
+     * @param i2 sample index in 2nd dimension.
+     * @param a array[n1][9] in which to get coefficients.
+     */
+    public void get(int i2, float[][] a);
+  }
+
+  /**
    * Makes filter stencil for G'DG.
    * @param ds scale factors for diffusivity in direction of unit vectors v;
    *  if null, this method uses constant ds = 1.
@@ -164,6 +208,8 @@ public class DirectionalLaplacianFilter {
 
   ///////////////////////////////////////////////////////////////////////////
   // private
+  //
+  private static UnitSphereSampling _uss; // maps indices to unit-vectors
 
   private float _sigma; // nominal filter half-width
 
@@ -188,6 +234,46 @@ public class DirectionalLaplacianFilter {
     y[i2  ][i1-1] -= yb;
     y[i2-1][i1  ] += yb;
     y[i2-1][i1-1] -= ya;
+  }
+
+  // Computes y = y+G'DGx for one sample.
+  private void apply(
+   float d11, float d12, float d13, float d22, float d23, float d33,
+   int i1, int i2, int i3, float[][][] x, float[][][] y) 
+  {
+    float x000 = x[i3  ][i2  ][i1  ];
+    float x001 = x[i3  ][i2  ][i1-1];
+    float x010 = x[i3  ][i2-1][i1  ];
+    float x100 = x[i3-1][i2  ][i1  ];
+    float x011 = x[i3  ][i2-1][i1-1];
+    float x101 = x[i3-1][i2  ][i1-1];
+    float x110 = x[i3-1][i2-1][i1  ];
+    float x111 = x[i3-1][i2-1][i1-1];
+    //float x1 = 0.25f*(x000+x010+x100+x110-x001-x011-x101-x111);
+    //float x2 = 0.25f*(x000+x001+x100+x101-x010-x011-x110-x111);
+    //float x3 = 0.25f*(x000+x001+x010+x011-x100-x101-x110-x111);
+    float xa = x000-x111;
+    float xb = x001-x110;
+    float xc = x010-x101;
+    float xd = x100-x011;
+    float x1 = 0.25f*(xa-xb+xc+xd);
+    float x2 = 0.25f*(xa+xb-xc+xd);
+    float x3 = 0.25f*(xa+xb+xc-xd);
+    float y1 = d11*x1+d12*x2+d13*x3;
+    float y2 = d12*x1+d22*x2+d23*x3;
+    float y3 = d13*x1+d23*x2+d33*x3;
+    float ya = 0.25f*(y1+y2+y3);
+    float yb = 0.25f*(y1-y2+y3);
+    float yc = 0.25f*(y1+y2-y3);
+    float yd = 0.25f*(y1-y2-y3);
+    y[i3  ][i2  ][i1  ] += ya;
+    y[i3  ][i2  ][i1-1] -= yd;
+    y[i3  ][i2-1][i1  ] += yb;
+    y[i3-1][i2  ][i1  ] += yc;
+    y[i3  ][i2-1][i1-1] -= yc;
+    y[i3-1][i2  ][i1-1] -= yb;
+    y[i3-1][i2-1][i1  ] += yd;
+    y[i3-1][i2-1][i1-1] -= ya;
   }
 
   /**

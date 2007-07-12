@@ -49,6 +49,8 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
   private float _sigma;
   private DirectionalLaplacianFilter _dlf;
   private static FactoredInlineFilter2 _fif2;
+  private static FactoredInlineFilter3 _fif3;
+  private static UnitSphereSampling _uss16 = new UnitSphereSampling(16);
 
   // A local inline filter approximated with minimum-phase factors.
   // Factors are tabulated as a function of sigma and theta.
@@ -173,6 +175,119 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
       private float _sigma;
       private float[][] _ds;
       private float[][] _v1;
+    }
+  }
+
+  // A local inline filter approximated with minimum-phase factors.
+  // Factors are tabulated as a function of sigma and a unit-sphere 
+  // sampling index.
+  private static class FactoredInlineFilter3 {
+
+    FactoredInlineFilter3() {
+      trace("FactoredInlineFilter3: constructing filters ...");
+
+      // A causal filter to compute tabulated factors.
+      CausalFilter cf = new CausalFilter(LAG1,LAG2,LAG3);
+
+      // Arrays used to compute 3x3x3 auto-correlations to be factored.
+      short[][][] w = new short[3][3][3];
+      float[][][] t = new float[3][3][3];
+      float[][][] r = new float[3][3][3];
+      t[1][1][1] = 1.0f;
+
+      // A filter to compute the auto-correlations to be factored.
+      DirectionalLaplacianFilter dlf = new DirectionalLaplacianFilter(1.0);
+
+      // Tabulated factors for unit-vector indices and half-widths sigma.
+      for (int iw=1; iw<=NVEC; ++iw) {
+        for (int isigma=0; isigma<NSIGMA; ++isigma) {
+          float sigma = FSIGMA+isigma*DSIGMA;
+          float scale = 2.0f/(sigma*sigma);
+          Array.mul(scale,t,r);
+          Array.fill((short)iw,w);
+          dlf.applyInline(null,w,t,r);
+          cf.factorWilsonBurg(100,0.000001f,r);
+          ATABLE[iw][isigma] = cf.getA();
+        }
+      }
+      trace("...  done.");
+    }
+
+    void applyForward(
+      float sigma, float[][][] ds, short[][][] iw, 
+      float[][][] x, float[][][] y) 
+    {
+      A3 a3 = new A3(ATABLE,sigma,ds,iw);
+      LCF.apply(a3,x,y);
+      LCF.applyTranspose(a3,y,y);
+    }
+
+    void applyInverse(
+      float sigma, float[][][] ds, short[][][] iw, 
+      float[][][] x, float[][][] y) 
+    {
+      A3 a3 = new A3(ATABLE,sigma,ds,iw);
+      LCF.applyInverseTranspose(a3,x,y);
+      LCF.applyInverse(a3,y,y);
+    }
+
+    // Sampling of sigma for tabulated filter coefficients.
+    private static final float SIGMA_MIN =  0.1f;
+    private static final float SIGMA_MAX = 20.0f;
+    private static final int NSIGMA = 20;
+    private static final float FSIGMA = SIGMA_MIN;
+    private static final float DSIGMA = (SIGMA_MAX-SIGMA_MIN)/(float)(NSIGMA-1);
+    private static final float SSIGMA = (1.0f-4.0f*FLT_EPSILON)/DSIGMA;
+
+    // Sampling of the unit sphere for tabulated filter coefficients.
+    // This sampling must be coarser (using fewer bits) than the 16-bit
+    // sampling used to encode unit vectors.
+    private static final int NBIT = 12;
+    private static final UnitSphereSampling USS =
+      new UnitSphereSampling(NBIT);
+    private static final int NVEC = USS.getMaxIndex();
+
+    // Precomputed weights for linear interpolation within triangles
+    // of the coarse unit-sphere sampling. Because unit-vectors are
+    // quantized to 16 bits, only these weights will be needed to
+    // interpolate filter coefficients.
+    private static int NW = _uss16.getMaxIndex(); // number of weights
+    private static float[] WA = new float[1+NW]; // WA[0] unused
+    private static float[] WB = new float[1+NW]; // WB[0] unused
+    private static float[] WC = new float[1+NW]; // WC[0] unused
+
+    // The table of filter coefficients.
+    private static float[][][] ATABLE = new float[1+NVEC][NSIGMA][];
+
+    // Lags for minimum-phase factors.
+    // TODO: optimize these to include only significant coefficients!
+    private static int MAX_LAG = 4;
+    private static int NLAG = 2*(MAX_LAG+1+MAX_LAG)*(MAX_LAG+1+MAX_LAG);
+    private static int[] LAG1 = new int[NLAG];
+    private static int[] LAG2 = new int[NLAG];
+    private static int[] LAG3 = new int[NLAG];
+    private static LocalCausalFilter LCF;
+
+    // Initialization of static fields.
+    static {
+      for (int ilag3=0,ilag=0; ilag3<2; ++ilag3) {
+        for (int ilag2=-MAX_LAG; ilag2<=MAX_LAG; ++ilag2) {
+          for (int ilag1=-MAX_LAG; ilag1<=MAX_LAG; ++ilag1,++ilag) {
+            LAG1[ilag] = ilag1;
+            LAG2[ilag] = ilag2;
+            LAG3[ilag] = ilag3;
+          }
+        }
+      }
+      LCF = new LocalCausalFilter(LAG1,LAG2,LAG3);
+      for (int iw=1; iw<NW; ++iw) {
+        float[] wi = _uss16.getPoint(iw);
+        int[] iabc = USS.getTriangle(wi);
+        float[] wabc = USS.getWeights(wi,iabc);
+        WA[iw] = wabc[0];
+        WB[iw] = wabc[1];
+        WC[iw] = wabc[2];
+      }
     }
   }
 

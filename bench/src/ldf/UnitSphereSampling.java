@@ -10,7 +10,7 @@ import static java.lang.Math.*;
 import edu.mines.jtk.util.Check;
 
 /**
- * Quasi-uniform sampling of a unit-sphere.
+ * A roughly uniform sampling of the unit-sphere.
  * @author Dave Hale, Colorado School of Mines
  * @version 2007.07.02
  */
