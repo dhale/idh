@@ -97,13 +97,11 @@ public class DirectionalLaplacianFilter {
    * Computes y = y+G'DGx, where D = dww' and G is the gradient operator. 
    * The right-hand-side G'DGx is zero in the direction of the unit vectors w.
    * Diffusivities d are scale factors that multiply the nominal half-width 
-   * sigma for this filter.
-   * <p>
-   * Unit vectors w are specified by short indices iw that correspond to a
-   * 16-bit sampling of the unit-sphere.
+   * sigma for this filter. Unit vectors w are specified by short indices
+   * that correspond to a 16-bit sampling of the unit-sphere.
    * @param ds scale factors for diffusivity in direction of unit vectors w;
    *  if null, this method uses constant ds = 1.
-   * @param iw sample indices of unit vectors w.
+   * @param iw unit-sphere sample indices of unit vectors w.
    * @param x input image. Must be distinct from the array y.
    * @param y input/output image. Must be distinct from the array x.
    */
@@ -111,8 +109,8 @@ public class DirectionalLaplacianFilter {
     float[][][] ds, short[][][] iw, 
     float[][][] x, float[][][] y) 
   {
-    if (_uss==null)
-      _uss = new UnitSphereSampling(16);
+    if (_uss16==null)
+      _uss16 = new UnitSphereSampling(16);
     int n1 = x[0][0].length;
     int n2 = x[0].length;
     int n3 = x.length;
@@ -121,7 +119,7 @@ public class DirectionalLaplacianFilter {
         for (int i1=1; i1<n1; ++i1) {
           float dsi = (ds!=null)?_sigma*ds[i3][i2][i1]:_sigma;
           float swi = 0.5f*dsi*dsi;
-          float[] wi = _uss.getPoint(iw[i3][i2][i1]);
+          float[] wi = _uss16.getPoint(iw[i3][i2][i1]);
           float w1i = wi[0];
           float w2i = wi[1];
           float w3i = wi[2];
@@ -209,7 +207,7 @@ public class DirectionalLaplacianFilter {
   ///////////////////////////////////////////////////////////////////////////
   // private
   //
-  private static UnitSphereSampling _uss; // maps indices to unit-vectors
+  private static UnitSphereSampling _uss16; // maps indices to unit-vectors
 
   private float _sigma; // nominal filter half-width
 

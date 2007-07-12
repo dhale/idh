@@ -231,6 +231,51 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
       LCF.applyInverse(a3,y,y);
     }
 
+    // Provides filter coefficients for each sample index via
+    // linear interpolation of pre-computed filter coefficients.
+    private static class A3 implements LocalCausalFilter.A3 {
+      A3(float[][][] atable, float sigma, float[][][] ds, short[][][] iw) {
+        _sigma = sigma;
+        _at = atable;
+        _ds = ds;
+        _iw = iw;
+      }
+      public void get(int i1, int i2, int i3, float[] a) {
+        short iw = _iw[i3][i2][i1];
+        int ia = IA[iw];
+        int ib = IB[iw];
+        int ic = IC[iw];
+        float wa = WA[iw];
+        float wb = WB[iw];
+        float wc = WC[iw];
+        float sigma = _sigma;
+        if (_ds!=null) sigma *= _ds[i3][i2][i1];
+        if (sigma<SIGMA_MIN) sigma = SIGMA_MIN;
+        if (sigma>SIGMA_MAX) sigma = SIGMA_MAX;
+        float s = (sigma-FSIGMA)*SSIGMA;
+        int is = (int)s;
+        float s1 = s-(float)is;
+        float s0 = 1.0f-s1;
+        float[][] aa = _at[ia];
+        float[][] ab = _at[ib];
+        float[][] ac = _at[ic];
+        float[] aa0 = _at[ia][is  ];
+        float[] aa1 = _at[ia][is+1];
+        float[] ab0 = _at[ib][is  ];
+        float[] ab1 = _at[ib][is+1];
+        float[] ac0 = _at[ic][is  ];
+        float[] ac1 = _at[ic][is+1];
+        int n = aa0.length;
+        for (int j=0; j<n; ++j)
+          a[j] = s0*(wa*aa0[j]+wb*ab0[j]+wc*ac0[j]) +
+                 s1*(wa*aa1[j]+wb*ab1[j]+wc*ac1[j]);
+      }
+      private float _sigma;
+      private float[][][] _at;
+      private float[][][] _ds;
+      private short[][][] _iw;
+    }
+
     // Sampling of sigma for tabulated filter coefficients.
     private static final float SIGMA_MIN =  0.1f;
     private static final float SIGMA_MAX = 20.0f;
@@ -252,6 +297,9 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     // quantized to 16 bits, only these weights will be needed to
     // interpolate filter coefficients.
     private static int NW = _uss16.getMaxIndex(); // number of weights
+    private static int[] IA = new int[1+NW]; // IA[0] unused
+    private static int[] IB = new int[1+NW]; // IB[0] unused
+    private static int[] IC = new int[1+NW]; // IC[0] unused
     private static float[] WA = new float[1+NW]; // WA[0] unused
     private static float[] WB = new float[1+NW]; // WB[0] unused
     private static float[] WC = new float[1+NW]; // WC[0] unused
@@ -284,6 +332,9 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
         float[] wi = _uss16.getPoint(iw);
         int[] iabc = USS.getTriangle(wi);
         float[] wabc = USS.getWeights(wi,iabc);
+        IA[iw] = iabc[0];
+        IB[iw] = iabc[1];
+        IC[iw] = iabc[2];
         WA[iw] = wabc[0];
         WB[iw] = wabc[1];
         WC[iw] = wabc[2];
