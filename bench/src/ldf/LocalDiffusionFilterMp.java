@@ -38,8 +38,22 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     float[][] t = new float[n2][n1];
     _dlf.applyInline(null,v1,x,t);
     if (_fif2==null)
-      _fif2 = new FactoredInlineFilter2();
+      _fif2 = new FactoredFilter2(FactoredFilter2.Type.INLINE);
     _fif2.applyInverse(_sigma,ds,v1,t,y);
+    Array.sub(x,y,y);
+  }
+
+  protected void solveInline(
+    float[][][] ds, short[][][] iw, float[][][] x, float[][][] y) 
+  {
+    int n1 = x[0][0].length;
+    int n2 = x[0].length;
+    int n3 = x.length;
+    float[][][] t = new float[n3][n2][n1];
+    _dlf.applyInline(null,iw,x,t);
+    if (_fif3==null)
+      _fif3 = new FactoredFilter3(FactoredFilter3.Type.INLINE);
+    _fif3.applyInverse(_sigma,ds,iw,t,y);
     Array.sub(x,y,y);
   }
 
@@ -48,16 +62,23 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
 
   private float _sigma;
   private DirectionalLaplacianFilter _dlf;
-  private static FactoredInlineFilter2 _fif2;
-  private static FactoredInlineFilter3 _fif3;
+  private static FactoredFilter2 _fif2; // 2-D inline filter
+  private static FactoredFilter2 _fnf2; // 2-D normal filter
+  private static FactoredFilter3 _fif3; // 3-D inline filter
+  private static FactoredFilter3 _fnf3; // 3-D normal filter
   private static UnitSphereSampling _uss16 = new UnitSphereSampling(16);
 
   // A local inline filter approximated with minimum-phase factors.
   // Factors are tabulated as a function of sigma and theta.
-  private static class FactoredInlineFilter2 {
+  private static class FactoredFilter2 {
 
-    FactoredInlineFilter2() {
-      trace("FactoredInlineFilter2: constructing filters ...");
+    static enum Type {
+      INLINE,
+      NORMAL
+    };
+
+    FactoredFilter2(Type type) {
+      trace("FactoredFilter2: constructing filters ...");
 
       // A causal filter to compute tabulated factors.
       CausalFilter cf = new CausalFilter(LAG1,LAG2);
@@ -72,6 +93,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
       DirectionalLaplacianFilter dlf = new DirectionalLaplacianFilter(1.0);
 
       // Tabulated factors for all angles theta and half-widths sigma.
+      // TODO: include code for type-dependent tables.
       for (int itheta=0; itheta<NTHETA; ++itheta) {
         float theta = FTHETA+itheta*DTHETA;
         for (int isigma=0; isigma<NSIGMA; ++isigma) {
@@ -178,13 +200,17 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     }
   }
 
-  // A local inline filter approximated with minimum-phase factors.
-  // Factors are tabulated as a function of sigma and a unit-sphere 
-  // sampling index.
-  private static class FactoredInlineFilter3 {
+  // A filter approximated with minimum-phase factors. Factors are 
+  // tabulated as a function of sigma and a unit-sphere sampling index.
+  private static class FactoredFilter3 {
 
-    FactoredInlineFilter3() {
-      trace("FactoredInlineFilter3: constructing filters ...");
+    static enum Type {
+      INLINE,
+      NORMAL
+    };
+
+    FactoredFilter3(Type type) {
+      trace("FactoredFilter3: constructing filters ...");
 
       // A causal filter to compute tabulated factors.
       CausalFilter cf = new CausalFilter(LAG1,LAG2,LAG3);
@@ -199,15 +225,27 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
       DirectionalLaplacianFilter dlf = new DirectionalLaplacianFilter(1.0);
 
       // Tabulated factors for unit-vector indices and half-widths sigma.
+      trace("NVEC="+NVEC+" NSIGMA="+NSIGMA);
       for (int iw=1; iw<=NVEC; ++iw) {
         for (int isigma=0; isigma<NSIGMA; ++isigma) {
           float sigma = FSIGMA+isigma*DSIGMA;
           float scale = 2.0f/(sigma*sigma);
           Array.mul(scale,t,r);
           Array.fill((short)iw,w);
-          dlf.applyInline(null,w,t,r);
+          if (type==Type.INLINE) {
+            dlf.applyInline(null,w,t,r);
+          } else {
+            // TODO: implement normal filter
+          }
           cf.factorWilsonBurg(100,0.000001f,r);
           ATABLE[iw][isigma] = cf.getA();
+          if (iw%10==1 && isigma%10==1) {
+            int nlag1 = MAX_LAG+1+MAX_LAG;
+            int nlag2 = MAX_LAG+1+MAX_LAG;
+            int nlag3 = 2;
+            float[][][] a = Array.reshape(nlag1,nlag2,nlag3,cf.getA());
+            Array.dump(a);
+          }
         }
       }
       trace("...  done.");
@@ -346,5 +384,14 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
   private static void trace(String s) {
     if (TRACE)
       System.out.println(s);
+  }
+
+  public static void main(String[] args) {
+    testFactoredFilter3();
+  }
+
+  private static void testFactoredFilter3() {
+    FactoredFilter3 ff3 = new FactoredFilter3(FactoredFilter3.Type.INLINE);
+    trace("ff3="+ff3);
   }
 } 
