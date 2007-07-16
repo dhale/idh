@@ -90,7 +90,10 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
       t[1][1] = 1.0f;
 
       // A filter to compute the auto-correlations to be factored.
-      DirectionalLaplacianFilter dlf = new DirectionalLaplacianFilter(1.0);
+      // By setting sigma = sqrt(2.0), we cancel out the scaling
+      // by sigma*sigma/2.
+      DirectionalLaplacianFilter dlf = 
+        new DirectionalLaplacianFilter(sqrt(2.0f));
 
       // Tabulated factors for all angles theta and half-widths sigma.
       // TODO: include code for type-dependent tables.
@@ -145,18 +148,18 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     private static float[][][] ATABLE = new float[NTHETA][NSIGMA][];
 
     // Lags for minimum-phase factors, with the following stencil:
-    //   lag1 =    1  0 -1 -2 -3 -4  ... -maxlag
-    //   --------------------------------------
+    //   lag1 =    1  0 -1 -2 -3 -4
+    //   --------------------------
     //   lag2 = 0: x  x
-    //          1: x  x  x  x  x  x  ...  x
-    private static int MAX_LAG = 6;
-    private static int NLAG = 4+MAX_LAG;
+    //          1: x  x  x  x  x  x
+    private static int MLAG = 4;
+    private static int NLAG = 4+MLAG;
     private static int[] LAG1 = new int[NLAG];
     private static int[] LAG2 = new int[NLAG];
     private static LocalCausalFilter LCF;
     static {
       for (int ilag=0; ilag<NLAG; ++ilag) {
-        LAG1[ilag] = (ilag<=1)?ilag:ilag-2-MAX_LAG;
+        LAG1[ilag] = (ilag<=1)?ilag:ilag-2-MLAG;
         LAG2[ilag] = (ilag<=1)?0:1;
       }
       LCF = new LocalCausalFilter(LAG1,LAG2);
@@ -216,39 +219,56 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
       CausalFilter cf = new CausalFilter(LAG1,LAG2,LAG3);
 
       // Arrays used to compute 3x3x3 auto-correlations to be factored.
-      short[][][] w = new short[3][3][3];
       float[][][] t = new float[3][3][3];
       float[][][] r = new float[3][3][3];
       t[1][1][1] = 1.0f;
 
       // A filter to compute the auto-correlations to be factored.
-      DirectionalLaplacianFilter dlf = new DirectionalLaplacianFilter(1.0);
+      // By setting sigma = sqrt(2.0), we cancel out the scaling by 
+      // sigma*sigma/2. Below we use a diffusivity scale factor of 1.
+      DirectionalLaplacianFilter dlf = 
+        new DirectionalLaplacianFilter(sqrt(2.0f));
 
       // Tabulated factors for unit-vector indices and half-widths sigma.
       trace("NVEC="+NVEC+" NSIGMA="+NSIGMA);
+      //for (int iw=8; iw<=17; ++iw) {
       for (int iw=1; iw<=NVEC; ++iw) {
-        for (int isigma=0; isigma<NSIGMA; ++isigma) {
+        for (int isigma=NSIGMA-1; isigma<NSIGMA; ++isigma) {
+        //for (int isigma=0; isigma<NSIGMA; ++isigma) {
           float sigma = FSIGMA+isigma*DSIGMA;
           float scale = 2.0f/(sigma*sigma);
           Array.mul(scale,t,r);
-          Array.fill((short)iw,w);
+          float[] w = USS.getPoint(iw);
+          float w1 = w[0];
+          float w2 = w[1];
+          float w3 = w[2];
           if (type==Type.INLINE) {
-            dlf.applyInline(null,w,t,r);
+            dlf.applyInline(1.0f,w1,w2,w3,t,r);
           } else {
             // TODO: implement normal filter
           }
+          trace("iw="+iw+" isigma="+isigma);
+          Array.dump(w);
+          Array.dump(r);
           cf.factorWilsonBurg(100,0.000001f,r);
           ATABLE[iw][isigma] = cf.getA();
-          if (iw%10==1 && isigma%10==1) {
-            int nlag1 = MAX_LAG+1+MAX_LAG;
-            int nlag2 = MAX_LAG+1+MAX_LAG;
-            int nlag3 = 2;
-            float[][][] a = Array.reshape(nlag1,nlag2,nlag3,cf.getA());
-            Array.dump(a);
-          }
+          dumpA(cf.getA());
         }
       }
       trace("...  done.");
+    }
+    static void dumpA(float[] a) {
+      int nlag = a.length;
+      int n = MLAG+1+MLAG;
+      float[][][] b = new float[2][n][n];
+      for (int ilag=0; ilag<nlag; ++ilag) {
+        int i1 = n-1-(LAG1[ilag]+MLAG);
+        int i2 = n-1-(LAG2[ilag]+MLAG);
+        int i3 = LAG3[ilag];
+        b[i3][i2][i1] = a[ilag];
+      }
+      edu.mines.jtk.mosaic.SimplePlot.asPixels(b[0]);
+      edu.mines.jtk.mosaic.SimplePlot.asPixels(b[1]);
     }
 
     void applyForward(
@@ -325,7 +345,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     // Sampling of the unit sphere for tabulated filter coefficients.
     // This sampling must be coarser (using fewer bits) than the 16-bit
     // sampling used to encode unit vectors.
-    private static final int NBIT = 12;
+    private static final int NBIT = 8;
     private static final UnitSphereSampling USS =
       new UnitSphereSampling(NBIT);
     private static final int NVEC = USS.getMaxIndex();
@@ -347,8 +367,20 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
 
     // Lags for minimum-phase factors.
     // TODO: optimize these to include only significant coefficients!
-    private static int MAX_LAG = 4;
-    private static int NLAG = 2*(MAX_LAG+1+MAX_LAG)*(MAX_LAG+1+MAX_LAG);
+    // Lags for minimum-phase factors, with the following stencil:
+    //                lag1 =  4  3  2  1  0 -1 -2 -3 -4
+    //   ----------------------------------------------
+    //   lag3 = 0, lag2 =  0:          x  x
+    //                     1:          x  x  x  x  x  x
+    //   ----------------------------------------------
+    //   lag3 = 1, lag2 = -4: x  x  x  x  x  x  x  x  x
+    //                    -3: x  x  x  x  x  x  x  x  x
+    //                    -2: x  x  x  x  x  x  x  x  x
+    //                    -1: x  x  x  x  x  x  x  x  x
+    //                     0:          x  x  x  x  x  x
+    //                     1:          x  x  x  x  x  x
+    private static int MLAG = 4;
+    private static int NLAG = 2+3*(2+MLAG)+MLAG*(MLAG+1+MLAG);
     private static int[] LAG1 = new int[NLAG];
     private static int[] LAG2 = new int[NLAG];
     private static int[] LAG3 = new int[NLAG];
@@ -356,12 +388,18 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
 
     // Initialization of static fields.
     static {
+      trace("nlag="+NLAG);
       for (int ilag3=0,ilag=0; ilag3<2; ++ilag3) {
-        for (int ilag2=-MAX_LAG; ilag2<=MAX_LAG; ++ilag2) {
-          for (int ilag1=-MAX_LAG; ilag1<=MAX_LAG; ++ilag1,++ilag) {
+        int jlag2 = (ilag3==0)?0:-MLAG;
+        int klag2 = 1;
+        for (int ilag2=jlag2; ilag2<=klag2; ++ilag2) {
+          int jlag1 = (ilag3==0 && ilag2==0)?0:-MLAG;
+          int klag1 = (ilag3==0 || ilag2>=0)?1: MLAG;
+          for (int ilag1=jlag1; ilag1<=klag1; ++ilag1,++ilag) {
             LAG1[ilag] = ilag1;
             LAG2[ilag] = ilag2;
             LAG3[ilag] = ilag3;
+            trace("ilag="+ilag+" lag1="+ilag1+" ilag2="+ilag2+" ilag3="+ilag3);
           }
         }
       }
@@ -391,7 +429,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
   }
 
   private static void testFactoredFilter3() {
+    //FactoredFilter2 ff2 = new FactoredFilter2(FactoredFilter2.Type.INLINE);
     FactoredFilter3 ff3 = new FactoredFilter3(FactoredFilter3.Type.INLINE);
-    trace("ff3="+ff3);
   }
 } 
