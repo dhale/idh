@@ -22,7 +22,9 @@ import static edu.mines.jtk.util.MathPlus.*;
  * then G'DGx is zero for image features that are constant in the direction 
  * of v. The diffusivities d depend on local scale factors ds multiplied by 
  * a nominal filter half-width sigma. Specifically, for each sample, 
- * diffusivities d = 0.5*(ds*sigma)*(ds*sigma).
+ * diffusivities d = 0.5*(ds*sigma)*(ds*sigma). The scale factor 0.5 makes
+ * the Fourier transform of this filter approximate that of a Gaussian 
+ * for small wavenumbers.
  * <p>
  * Alternatively, if D = d(I-UU'), then the right-hand side G'DGx is zero
  * for image features that are constant in all directions orthogonal to the 
@@ -60,6 +62,61 @@ public class DirectionalLaplacianFilter {
     _sigma = (float)sigma;
   }
 
+  ///////////////////////////////////////////////////////////////////////////
+  // 2-D
+
+  /**
+   * Computes y = y+G'DGx, where D = dvv' and G is the gradient operator. 
+   * @param ds scale factor for diffusivity in direction of unit vector v.
+   * @param v1 1st component of unit vector v.
+   * @param v2 2nd component of unit vector v.
+   * @param x input image. Must be distinct from the array y.
+   * @param y input/output image. Must be distinct from the array x.
+   */
+  public void applyInline(
+    float ds, float v1, float v2,
+    float[][] x, float[][] y) 
+  {
+    float ss = ds*_sigma;
+    float sv = 0.5f*ds*ds;
+    float d11 = sv*v1*v1;
+    float d12 = sv*v1*v2;
+    float d22 = sv*v2*v2;
+    int n1 = x[0].length;
+    int n2 = x.length;
+    for (int i2=1; i2<n2; ++i2) {
+      for (int i1=1; i1<n1; ++i1) {
+        apply(d11,d12,d22,i1,i2,x,y);
+      }
+    }
+  }
+
+  /**
+   * Computes y = y+G'DGx, where D = d(I-uu') and G is the gradient operator. 
+   * @param ds scale factor for diffusivity orthogonal to unit vector u.
+   * @param u1 1st component of unit vector u.
+   * @param u2 2nd component of unit vector u.
+   * @param x input image. Must be distinct from the array y.
+   * @param y input/output image. Must be distinct from the array x.
+   */
+  public void applyNormal(
+    float ds, float u1, float u2,
+    float[][] x, float[][] y) 
+  {
+    float ss = ds*_sigma;
+    float sw = 0.5f*ds*ds;
+    float d11 = sw*(1.0f-u1*u1);
+    float d22 = sw*(1.0f-u2*u2);
+    float d12 = sw*u1*u2;
+    int n1 = x[0].length;
+    int n2 = x.length;
+    for (int i2=1; i2<n2; ++i2) {
+      for (int i1=1; i1<n1; ++i1) {
+        apply(d11,d12,d22,i1,i2,x,y);
+      }
+    }
+  }
+
   /**
    * Computes y = y+G'DGx, where D = dvv' and G is the gradient operator. 
    * Only components v1 of the inline vectors v are specified; all components 
@@ -85,6 +142,104 @@ public class DirectionalLaplacianFilter {
         float d12 = svi*v1i*v2i;
         float d22 = svi*v2i*v2i;
         apply(d11,d12,d22,i1,i2,x,y);
+      }
+    }
+  }
+
+  /**
+   * Computes y = y+G'DGx, where D = d(I-uu') and G is the gradient operator. 
+   * Only components u2 of the normal vectors u are specified; all components 
+   * u1 = sqrt(1-u2*u2) are assumed to be non-negative.
+   * @param ds scale factors for diffusivity in directions orthogonal to
+   *  unit vectors u; if null, this method uses constant ds = 1.
+   * @param u2 array of 2nd components of normal unit vectors.
+   * @param x input image. Must be distinct from the array y.
+   * @param y input/output image. Must be distinct from the array x.
+   */
+  public void applyNormal(
+    float[][] ds, float[][] u2, float[][] x, float[][] y) 
+  {
+    int n1 = x[0].length;
+    int n2 = x.length;
+    for (int i2=1; i2<n2; ++i2) {
+      for (int i1=1; i1<n1; ++i1) {
+        float dsi = (ds!=null)?_sigma*ds[i2][i1]:_sigma;
+        float sui = 0.5f*dsi*dsi;
+        float u2i = u2[i2][i1];
+        float u1i = sqrt(1.0f-u2i*u2i);
+        float d11 = 1.0f-sui*u1i*u1i;
+        float d12 =     -sui*u1i*u2i;
+        float d22 = 1.0f-sui*u2i*u2i;
+        apply(d11,d12,d22,i1,i2,x,y);
+      }
+    }
+  }
+
+  ///////////////////////////////////////////////////////////////////////////
+  // 3-D
+
+  /**
+   * Computes y = y+G'DGx, where D = dww' and G is the gradient operator. 
+   * @param ds scale factor for diffusivity in direction of unit vector w.
+   * @param w1 1st component of unit vector w.
+   * @param w2 2nd component of unit vector w.
+   * @param w3 3rd component of unit vector w.
+   * @param x input image. Must be distinct from the array y.
+   * @param y input/output image. Must be distinct from the array x.
+   */
+  public void applyInline(
+    float ds, float w1, float w2, float w3, 
+    float[][][] x, float[][][] y) 
+  {
+    float ss = ds*_sigma;
+    float sw = 0.5f*ds*ds;
+    float d11 = sw*w1*w1;
+    float d12 = sw*w1*w2;
+    float d13 = sw*w1*w3;
+    float d22 = sw*w2*w2;
+    float d23 = sw*w2*w3;
+    float d33 = sw*w3*w3;
+    int n1 = x[0][0].length;
+    int n2 = x[0].length;
+    int n3 = x.length;
+    for (int i3=1; i3<n3; ++i3) {
+      for (int i2=1; i2<n2; ++i2) {
+        for (int i1=1; i1<n1; ++i1) {
+          apply(d11,d12,d13,d22,d23,d33,i1,i2,i3,x,y);
+        }
+      }
+    }
+  }
+
+  /**
+   * Computes y = y+G'DGx, where D = d(I-uu') and G is the gradient operator. 
+   * @param ds scale factor for diffusivity orthogonal to unit vector u.
+   * @param u1 1st component of unit vector u.
+   * @param u2 2nd component of unit vector u.
+   * @param u3 3rd component of unit vector u.
+   * @param x input image. Must be distinct from the array y.
+   * @param y input/output image. Must be distinct from the array x.
+   */
+  public void applyNormal(
+    float ds, float u1, float u2, float u3, 
+    float[][][] x, float[][][] y) 
+  {
+    float ss = ds*_sigma;
+    float sw = 0.5f*ds*ds;
+    float d11 = sw*(1.0f-u1*u1);
+    float d22 = sw*(1.0f-u2*u2);
+    float d33 = sw*(1.0f-u3*u3);
+    float d12 = sw*u1*u2;
+    float d13 = sw*u1*u3;
+    float d23 = sw*u2*u3;
+    int n1 = x[0][0].length;
+    int n2 = x[0].length;
+    int n3 = x.length;
+    for (int i3=1; i3<n3; ++i3) {
+      for (int i2=1; i2<n2; ++i2) {
+        for (int i1=1; i1<n1; ++i1) {
+          apply(d11,d12,d13,d22,d23,d33,i1,i2,i3,x,y);
+        }
       }
     }
   }
@@ -130,131 +285,6 @@ public class DirectionalLaplacianFilter {
   }
 
   /**
-   * Computes y = y+G'DGx, where D = dww' and G is the gradient operator. 
-   * @param ds scale factor for diffusivity in direction of unit vector w.
-   * @param w1 1st component of unit vector w.
-   * @param w2 2nd component of unit vector w.
-   * @param w3 3rd component of unit vector w.
-   * @param x input image. Must be distinct from the array y.
-   * @param y input/output image. Must be distinct from the array x.
-   */
-  public void applyInline(
-    float ds, float w1, float w2, float w3, 
-    float[][][] x, float[][][] y) 
-  {
-    float ss = ds*_sigma;
-    float sw = 0.5f*ds*ds;
-    float d11 = sw*w1*w1;
-    float d12 = sw*w1*w2;
-    float d13 = sw*w1*w3;
-    float d22 = sw*w2*w2;
-    float d23 = sw*w2*w3;
-    float d33 = sw*w3*w3;
-    int n1 = x[0][0].length;
-    int n2 = x[0].length;
-    int n3 = x.length;
-    for (int i3=1; i3<n3; ++i3) {
-      for (int i2=1; i2<n2; ++i2) {
-        for (int i1=1; i1<n1; ++i1) {
-          apply(d11,d12,d13,d22,d23,d33,i1,i2,i3,x,y);
-        }
-      }
-    }
-  }
-
-  /**
-   * Computes y = y+G'DGx, where D = d(I-uu') and G is the gradient operator. 
-   * @param ds scale factor for diffusivity orthogonal to unit vector u.
-   * @param u1 1st component of unit vector u.
-   * @param u2 2nd component of unit vector u.
-   * @param x input image. Must be distinct from the array y.
-   * @param y input/output image. Must be distinct from the array x.
-   */
-  public void applyNormal(
-    float ds, float u1, float u2,
-    float[][] x, float[][] y) 
-  {
-    if (_uss16==null)
-      _uss16 = new UnitSphereSampling(16);
-    float ss = ds*_sigma;
-    float sw = 0.5f*ds*ds;
-    float d11 = sw*(1.0f-u1*u1);
-    float d22 = sw*(1.0f-u2*u2);
-    float d12 = sw*u1*u2;
-    int n1 = x[0].length;
-    int n2 = x.length;
-    for (int i2=1; i2<n2; ++i2) {
-      for (int i1=1; i1<n1; ++i1) {
-        apply(d11,d12,d22,i1,i2,x,y);
-      }
-    }
-  }
-
-  /**
-   * Computes y = y+G'DGx, where D = d(I-uu') and G is the gradient operator. 
-   * @param ds scale factor for diffusivity orthogonal to unit vector u.
-   * @param u1 1st component of unit vector u.
-   * @param u2 2nd component of unit vector u.
-   * @param u3 3rd component of unit vector u.
-   * @param x input image. Must be distinct from the array y.
-   * @param y input/output image. Must be distinct from the array x.
-   */
-  public void applyNormal(
-    float ds, float u1, float u2, float u3, 
-    float[][][] x, float[][][] y) 
-  {
-    if (_uss16==null)
-      _uss16 = new UnitSphereSampling(16);
-    float ss = ds*_sigma;
-    float sw = 0.5f*ds*ds;
-    float d11 = sw*(1.0f-u1*u1);
-    float d22 = sw*(1.0f-u2*u2);
-    float d33 = sw*(1.0f-u3*u3);
-    float d12 = sw*u1*u2;
-    float d13 = sw*u1*u3;
-    float d23 = sw*u2*u3;
-    int n1 = x[0][0].length;
-    int n2 = x[0].length;
-    int n3 = x.length;
-    for (int i3=1; i3<n3; ++i3) {
-      for (int i2=1; i2<n2; ++i2) {
-        for (int i1=1; i1<n1; ++i1) {
-          apply(d11,d12,d13,d22,d23,d33,i1,i2,i3,x,y);
-        }
-      }
-    }
-  }
-
-  /**
-   * Computes y = y+G'DGx, where D = d(I-uu') and G is the gradient operator. 
-   * Only components u2 of the normal vectors u are specified; all components 
-   * u1 = sqrt(1-u2*u2) are assumed to be non-negative.
-   * @param ds scale factors for diffusivity in directions orthogonal to
-   *  unit vectors u; if null, this method uses constant ds = 1.
-   * @param u2 array of 2nd components of normal unit vectors.
-   * @param x input image. Must be distinct from the array y.
-   * @param y input/output image. Must be distinct from the array x.
-   */
-  public void applyNormal(
-    float[][] ds, float[][] u2, float[][] x, float[][] y) 
-  {
-    int n1 = x[0].length;
-    int n2 = x.length;
-    for (int i2=1; i2<n2; ++i2) {
-      for (int i1=1; i1<n1; ++i1) {
-        float dsi = (ds!=null)?_sigma*ds[i2][i1]:_sigma;
-        float sui = 0.5f*dsi*dsi;
-        float u2i = u2[i2][i1];
-        float u1i = sqrt(1.0f-u2i*u2i);
-        float d11 = 1.0f-sui*u1i*u1i;
-        float d12 =     -sui*u1i*u2i;
-        float d22 = 1.0f-sui*u2i*u2i;
-        apply(d11,d12,d22,i1,i2,x,y);
-      }
-    }
-  }
-
-  /**
    * A 2-D directional Laplacian filters with a 3 x 3 (9-point) stencil.
    * Note that filters need not use these stencils when applied. Rather,
    * stencils are used in certain iterative methods for solving sparse 
@@ -292,7 +322,7 @@ public class DirectionalLaplacianFilter {
 
   ///////////////////////////////////////////////////////////////////////////
   // private
-  //
+
   private static UnitSphereSampling _uss16; // maps indices to unit-vectors
 
   private float _sigma; // nominal filter half-width
@@ -322,10 +352,11 @@ public class DirectionalLaplacianFilter {
 
   // Computes y = y+G'DGx for one sample.
   // Operations per sample for this method:
-  // 16 loads + 8 stores + 4+12+6+8 adds + 3+9+4 muls = 
-  // 16 loads + 8 stores +       30 adds +    16 muls
-  // Versus alternative (more complicated) method with 27-point stencil:
-  // 28 loads + 1 store  +       27 adds +    27 muls
+  //    16 loads + 8 stores + 4+12+6+8 adds + 3+9+4 muls
+  //  = 16 loads + 8 stores +       30 adds +    16 muls
+  // For alternative (more complicated) method with 27-point stencil:
+  //    28 loads + 1 store  +       27 adds +    27 muls
+  // This does not include the cost of computing the 27 coefficients!
   private void apply(
    float d11, float d12, float d13, float d22, float d23, float d33,
    int i1, int i2, int i3, float[][][] x, float[][][] y) 
