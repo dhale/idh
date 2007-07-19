@@ -36,8 +36,8 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
   protected void solveInline(
     float[][] ds, float[][] v1, float[][] x, float[][] y) 
   {
-    //solveInlineSimple(ds,v1,x,y);
-    solveInlineSsor(ds,v1,x,y);
+    solveInlineSimple(ds,v1,x,y);
+    //solveInlineSsor(ds,v1,x,y);
   }
 
   ///////////////////////////////////////////////////////////////////////////

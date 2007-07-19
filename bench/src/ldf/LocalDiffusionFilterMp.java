@@ -11,7 +11,7 @@ import edu.mines.jtk.util.*;
 import static edu.mines.jtk.util.MathPlus.*;
 
 /**
- * Local anisotropic diffusion filter via minimum-phase filter factors.
+ * Local anisotropic diffusion filter via minimum-phase factors.
  * @author Dave Hale, Colorado School of Mines
  * @version 2007.07.12
  */
@@ -57,6 +57,20 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     Array.sub(x,y,y);
   }
 
+  protected void solveNormal(
+    float[][][] ds, short[][][] iu, float[][][] x, float[][][] y) 
+  {
+    int n1 = x[0][0].length;
+    int n2 = x[0].length;
+    int n3 = x.length;
+    float[][][] t = new float[n3][n2][n1];
+    _dlf.applyInline(null,iu,x,t);
+    if (_fif3==null)
+      _fif3 = new FactoredFilter3(FactoredFilter3.Type.NORMAL);
+    _fif3.applyInverse(_sigma,ds,iu,t,y);
+    Array.sub(x,y,y);
+  }
+
   ///////////////////////////////////////////////////////////////////////////
   // private
 
@@ -89,7 +103,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
       t[1][1] = 1.0f;
 
       // A filter to compute the auto-correlations to be factored. 
-      // By setting sigma = sqrt(2.0), we cancel out the scaling by 
+      // With sigma = sqrt(2.0), we compensate for the scaling by 
       // sigma*sigma/2 performed by the directional Laplacian filter.
       DirectionalLaplacianFilter dlf = 
         new DirectionalLaplacianFilter(sqrt(2.0f));
@@ -246,7 +260,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
       t[1][1][1] = 1.0f;
 
       // A filter to compute the auto-correlations to be factored. 
-      // By setting sigma = sqrt(2.0), we cancel out the scaling by 
+      // With sigma = sqrt(2.0), we compensate for the scaling by 
       // sigma*sigma/2 performed by the directional Laplacian filter.
       DirectionalLaplacianFilter dlf = 
         new DirectionalLaplacianFilter(sqrt(2.0f));
@@ -256,7 +270,8 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
 
       // Tabulated factors for unit-vector indices and half-widths sigma.
       trace("NVEC="+NVEC+" NSIGMA="+NSIGMA);
-      for (int iw=1; iw<=NVEC; ++iw) {
+      //for (int iw=1; iw<=NVEC; ++iw) {
+      for (int iw=1; iw<=NVEC; iw+=10) {
         for (int isigma=NSIGMA-1; isigma<NSIGMA; ++isigma) {
           trace("iw="+iw+" isigma="+isigma);
           float sigma = FSIGMA+isigma*DSIGMA;
@@ -285,15 +300,14 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     static void dumpA(float[] a) {
       int nlag = a.length;
       int n = MLAG+1+MLAG;
-      float[][][] b = new float[2][n][n];
+      float[][] b = new float[2*n][n];
       for (int ilag=0; ilag<nlag; ++ilag) {
         int i1 = n-1-(LAG1[ilag]+MLAG);
         int i2 = n-1-(LAG2[ilag]+MLAG);
         int i3 = LAG3[ilag];
-        b[i3][i2][i1] = a[ilag];
+        b[i3*n+i2][i1] = a[ilag];
       }
-      edu.mines.jtk.mosaic.SimplePlot.asPixels(b[0]);
-      edu.mines.jtk.mosaic.SimplePlot.asPixels(b[1]);
+      edu.mines.jtk.mosaic.SimplePlot.asPixels(b);
     }
 
     void applyForward(
@@ -458,6 +472,6 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
 
   private static void testFactoredFilter3() {
     //FactoredFilter2 ff2 = new FactoredFilter2(FactoredFilter2.Type.INLINE);
-    FactoredFilter3 ff3 = new FactoredFilter3(FactoredFilter3.Type.INLINE);
+    FactoredFilter3 ff3 = new FactoredFilter3(FactoredFilter3.Type.NORMAL);
   }
 } 
