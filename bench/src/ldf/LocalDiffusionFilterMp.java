@@ -314,9 +314,9 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
           float scale = 2.0f/(sigma*sigma);
           Array.mul(scale,t,r);
           float[] w = USS.getPoint(iw);
-          float w1 = w[0];
+          float w1 = w[2];
           float w2 = w[1];
-          float w3 = w[2];
+          float w3 = w[0];
           if (type==Type.INLINE) {
             dlf.applyInline(1.0f,w1,w2,w3,t,r);
           } else {

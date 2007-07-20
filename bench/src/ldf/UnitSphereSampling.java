@@ -11,6 +11,19 @@ import edu.mines.jtk.util.Check;
 
 /**
  * A roughly uniform sampling of the unit-sphere.
+ * Maps integer sample indices i to points (x,y,z) on the unit sphere. 
+ * <p>
+ * Positive sample indices correspond to points in the upper hemisphere
+ * for which z&gt;=0. Negative sample indices correspond to points in the
+ * lower hemisphere for which z&lt;=0. The sample index zero corresponds 
+ * to no point. Points on the equator (x,y,z=0) correspond to both negative 
+ * and positive sample indices.
+ * <p>
+ * Points with positive and negative indices are sampled symmetrically
+ * about the center of the unit sphere. That is, if sample index i
+ * is mapped to a point (x,y,z), then sample index -i is mapped to
+ * the point (-x,-y,-z).
+ *
  * @author Dave Hale, Colorado School of Mines
  * @version 2007.07.02
  */
@@ -34,7 +47,7 @@ public class UnitSphereSampling {
    * @return array {x,y,z} of point coordinates; by reference, not by copy.
    */
   public float[] getPoint(int index) {
-    return (index>=0)?_pu[index]:_pl[-index];
+    return (index>=0)?_pu[index]:_pl[index+_nindex];
   }
 
   /**
@@ -58,7 +71,7 @@ public class UnitSphereSampling {
     int ir = (int)(0.5+(r+1.0)*_od);
     int is = (int)(0.5+(s+1.0)*_od);
     int index = _ip[is][ir];
-    return (z>=0.0f)?index:-index;
+    return (z>=0.0f)?index:index-_nindex;
   }
 
   /**
@@ -189,7 +202,9 @@ public class UnitSphereSampling {
     // Signs of indices depend on sign of z. Order the indices so that
     // points are in counter-clockwise order when viewed from outside
     // the sphere.
-    return (z>=0.0f)?new int[]{ia,ib,ic}:new int[]{-ia,-ic,-ib};
+    return (z>=0.0f) ? 
+      new int[]{ia,        ib,        ic        } :
+      new int[]{ia-_nindex,ic-_nindex,ib-_nindex};
   }
 
   /**
@@ -265,7 +280,7 @@ public class UnitSphereSampling {
    * @return the maximum index.
    */
   public int getMaxIndex() {
-    return _nindex;
+    return _mindex;
   }
 
   /**
@@ -334,7 +349,8 @@ public class UnitSphereSampling {
   private int _nbits; // number of bits used in quantization
   private int _m; // number of samples for positive r and s, not including zero
   private int _n; // number of samples of r and s
-  private int _nindex; // number of positive/negative indices
+  private int _mindex; // maximum positive index
+  private int _nindex; // = _mindex+1; for negative indices
   private int _npoint; // number of unique points
   private double _d; // sampling interval for r and s = 1/m
   private double _od; // one over sampling interval = m
@@ -367,20 +383,24 @@ public class UnitSphereSampling {
     _d = 1.0/_m;
     _od = _m;
 
-    // Number of positive/negative indices; equals the largest index.
-    _nindex = 1+2*_m*(1+_m);
+    // Maximum positive index.
+    _mindex = 1+2*_m*(1+_m);
+
+    // Constant used for negative indices. Points in upper/lower 
+    // hemispheres are related by pu[index] = -pl[_nindex-index].
+    _nindex = _mindex+1;
 
     // Number of unique sampled points. The number of points on the equator 
     // is 4*m; these points (for which z=0) appear in the tables for both
     // upper and lower hemispheres. They have both positive and negative 
     // indices, and are not counted twice here.
-    _npoint = 2*_nindex-4*_m; // = 2+4*_m*_m
+    _npoint = 2*_mindex-4*_m; // = 2+4*_m*_m
 
-    trace("m="+_m+" n="+_n+" nindex="+_nindex+" npoint="+_npoint);
+    trace("m="+_m+" n="+_n+" mindex="+_mindex+" npoint="+_npoint);
 
     // Tables for points in upper and lower hemispheres.
-    _pu = new float[1+_nindex][];
-    _pl = new float[1+_nindex][];
+    _pu = new float[_nindex][];
+    _pl = new float[_nindex][];
 
     // Table of point indices.
     _ip = new int[_n][_n];
@@ -420,10 +440,10 @@ public class UnitSphereSampling {
           float z = (float)(t*scale);
 
           // Store coordinates in tables.
-          float[] pu = _pu[index] = new float[3];
-          float[] pl = _pl[index] = new float[3];
-          pu[0] = x;  pu[1] = y;  pu[2] =  z;
-          pl[0] = x;  pl[1] = y;  pl[2] = -z;
+          float[] pu = _pu[        index] = new float[3];
+          float[] pl = _pl[_nindex-index] = new float[3];
+          pu[0] =  x;  pu[1] =  y;  pu[2] =  z;
+          pl[0] = -x;  pl[1] = -y;  pl[2] = -z;
         }
       }
     }
@@ -456,10 +476,34 @@ public class UnitSphereSampling {
 
   public static void main(String[] args) {
     UnitSphereSampling uss = new UnitSphereSampling(10);
+    //testSymmetry(uss);
     //testInterpolation(uss);
-    //testWeights(uss);
+    testWeights(uss);
     //testTriangle(uss);
-    testMaxError(uss);
+    //testMaxError(uss);
+  }
+
+  private static void testSymmetry(UnitSphereSampling uss) {
+    int mi = uss.getMaxIndex();
+    for (int i=1,j=-i; i<=mi; ++i,j=-i) {
+      float[] p = uss.getPoint(i);
+      float[] q = uss.getPoint(j);
+      assert p[0]==-q[0];
+      assert p[1]==-q[1];
+      assert p[2]==-q[2];
+    }
+    int npoint = 10000;
+    for (int ipoint=0; ipoint<npoint; ++ipoint) {
+      float[] p = randomPoint();
+      float[] q = {-p[0],-p[1],-p[2]};
+      int i = uss.getIndex(p);
+      int j = uss.getIndex(q);
+      if (p[2]==0.0f) {
+        assert i+j==mi+1;
+      } else {
+        assert -i==j;
+      }
+    }
   }
 
   private static void testInterpolation(UnitSphereSampling uss) {
@@ -486,7 +530,7 @@ public class UnitSphereSampling {
       //p[2] =  0.000000f;
       int[] iabc = uss.getTriangle(p);
       float[] wabc = uss.getWeights(p,iabc);
-      int ia = iabc[0], ib = iabc[1], ic = iabc[2];
+      int   ia = iabc[0], ib = iabc[1], ic = iabc[2];
       float wa = wabc[0], wb = wabc[1], wc = wabc[2];
       if (ia<0) {
         ia = nf+ia;
