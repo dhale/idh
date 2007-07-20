@@ -6,6 +6,8 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package ldf;
 
+import java.io.*;
+
 import edu.mines.jtk.dsp.*;
 import edu.mines.jtk.util.*;
 import static edu.mines.jtk.util.MathPlus.*;
@@ -26,6 +28,39 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     _sigma = (float)sigma;
     _dlf = new DirectionalLaplacianFilter(1.0f);
   }
+
+  /**
+   * Constructs a local diffusion filter with pre-computed coefficients.
+   * Coefficients are stored in a file with specified name.
+   * @param sigma the nominal half-width for this filter.
+   * @param fileName name of file containing pre-computed filters.
+   */
+  public LocalDiffusionFilterMp(double sigma, String fileName) {
+    super(sigma);
+    _sigma = (float)sigma;
+    _dlf = new DirectionalLaplacianFilter(1.0f);
+    _file = new File(fileName);
+    Check.argument(_file.exists(),"file "+fileName+" exists");
+    Check.argument(_file.canRead(),"file "+fileName+" is readable");
+    Check.argument(_file.isFile(),"file "+fileName+" is a normal file");
+  }
+
+  public static void precomputeFilters(String fileName) {
+  }
+
+  /*
+   * 2-D NSIGMA,NVECTOR,NLAG
+   * 2-D sigma[NSIGMA]
+   * 2-D vector[NSIGMA][NVECTOR][2]
+   * 2-D inline[NSIGMA][NVECTOR][NLAG]
+   * 2-D normal[NSIGMA][NVECTOR][NLAG]
+   *
+   * 3-D NSIGMA,NVECTOR,NLAG
+   * 3-D sigma[NSIGMA]
+   * 3-D vector[NSIGMA][NVECTOR][3]
+   * 3-D inline[NSIGMA][NVECTOR][NLAG]
+   * 3-D normal[NSIGMA][NVECTOR][NLAG]
+   */
 
   ///////////////////////////////////////////////////////////////////////////
   // protected
@@ -75,6 +110,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
   // private
 
   private float _sigma;
+  private File _file;
   private DirectionalLaplacianFilter _dlf;
   private static FactoredFilter2 _fif2; // 2-D inline filter
   private static FactoredFilter2 _fnf2; // 2-D normal filter
@@ -342,7 +378,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
         _iw = iw;
       }
       public void get(int i1, int i2, int i3, float[] a) {
-        short iw = _iw[i3][i2][i1];
+        int iw = _iw[i3][i2][i1];
         int ia = IA[iw];
         int ib = IB[iw];
         int ic = IC[iw];

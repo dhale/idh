@@ -103,32 +103,46 @@ def goAmpDiff():
     suffix = str(dip)
     doAmpDiff(dip,"ahs"+suffix)
 
+def bigger(x):
+  m1 = len(x[0])
+  m2 = len(x)
+  n1 = 2*m1
+  n2 = 2*m2
+  y = Array.zerofloat(n1,n2)
+  Array.copy(m1,m2,0,0,x, 0, 0,y)
+  Array.copy(m1,m2,0,0,x,m1, 0,y)
+  Array.copy(m1,m2,0,0,x, 0,m2,y)
+  Array.copy(m1,m2,0,0,x,m1,m2,y)
+  return y
+
 def goDiff():
   x1 = readImage()
   x2 = Array.transpose(x1)
   x3 = makeTargetImage()
-  for x,s in [(x1,"_1"),(x2,"_2"),(x3,"_3")]:
-  #for x,s in [(x1,"_1")]:
+  #for x,s in [(x1,"_1"),(x2,"_2"),(x3,"_3")]:
+  for x,s in [(x1,"_1")]:
+    x = bigger(bigger(x))
     plot(x,10.0,"x"+s)
     doDiff(x,"d"+s)
 
-def makeRandom():
+def makeRandom(n1,n2):
   r = Random(314159)
   return Array.sub(Array.randfloat(r,n1,n2),0.5)
 
 def doDiff(x,png):
+  n1,n2 = len(x[0]),len(x)
   y = Array.zerofloat(n1,n2)
   z = Array.zerofloat(n1,n2)
   s = Array.zerofloat(n1,n2)
-  r = makeRandom()
+  r = makeRandom(n1,n2)
   r = smooth(r)
   v1,v2 = getV(x)
   #ldf = LocalDiffusionFilter(sigma)
-  #ldf = LocalDiffusionFilterMp(sigma)
-  ldf = LocalDiffusionFilterCg(sigma,small,niter)
+  ldf = LocalDiffusionFilterMp(sigma)
+  #ldf = LocalDiffusionFilterCg(sigma,small,niter)
   #ldf = LocalDiffusionFilterMg(sigma,small,niter,nbefore,ncycle,nafter)
-  #ds = None
-  ds = makeBlock()
+  ds = None
+  #ds = makeBlock(n1,n2)
   ldf.applyInlineKill(ds,v1,x,y)
   ldf.applyInlinePass(ds,v1,x,z)
   ldf.applyInlinePass(ds,v1,r,s)
@@ -136,13 +150,13 @@ def doDiff(x,png):
   plot(z,10.0,"z"+png)
   plot(s, 0.0,"s"+png)
 
-def makeBlock():
-  ds = Array.fillfloat(1.0,n1,n2);
-  #for i2 in range(n2/5,4*n2/5):
-  #  for i1 in range(n1/5,4*n1/5):
-  for i2 in range(n2/2,n2/2+2):
-    for i1 in range(n1):
-      ds[i2][i1] = 0.0
+def makeBlock(n1,n2):
+  ds = Array.fillfloat(0.0,n1,n2);
+  for i2 in range(n2/5,4*n2/5):
+    for i1 in range(n1/5,4*n1/5):
+  #for i2 in range(n2/2,n2):
+  #  for i1 in range(n1):
+      ds[i2][i1] = 1.0
   return ds
 
 def doAmpDiff(dip,png=None):
