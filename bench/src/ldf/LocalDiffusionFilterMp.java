@@ -89,9 +89,9 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     int n2 = x[0].length;
     int n3 = x.length;
     float[][][] t = new float[n3][n2][n1];
-    _dlf.applyInline(null,iw,x,t);
-    _fif3.applyInverse(_sigma,ds,iw,t,y);
-    Array.sub(x,y,y);
+    //_dlf.applyInline(null,iw,x,t);
+    _fif3.applyInverse(_sigma,ds,iw,x,y);
+    //Array.sub(x,y,y);
   }
 
   protected void solveNormal(
@@ -483,6 +483,14 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
         float[] a1a = a1[ia];
         float[] a1b = a1[ib];
         float[] a1c = a1[ic];
+        //
+        if (i1==52 && i2==52 && i3==52) {
+          trace("s0="+s0+" s1="+s1);
+          trace("ia="+ia+" ib="+ib+" ic="+ic);
+          trace("wa="+wa+" wb="+wb+" wc="+wc);
+          dumpA(a1[ia]);
+        }
+        //
         int n = a0a.length;
         for (int j=0; j<n; ++j)
           a[j] = s0*(wa*a0a[j]+wb*a0b[j]+wc*a0c[j]) +
@@ -496,7 +504,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
 
     // Sampling of sigma for tabulated filter coefficients.
     private static final float _sigmaMin =  0.1f;
-    private static final float _sigmaMax = 20.0f;
+    private static final float _sigmaMax = 16.0f;
     private static final int _nsigma = 2;
     private static final float _fsigma = _sigmaMin;
     private static final float _dsigma = (_sigmaMax-_sigmaMin) /
@@ -506,7 +514,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     // Sampling of the unit sphere for tabulated filter coefficients.
     // This sampling must be coarser (using fewer bits) than the 16-bit
     // sampling used to encode unit vectors.
-    private static final UnitSphereSampling _uss = new UnitSphereSampling(4);
+    private static final UnitSphereSampling _uss = new UnitSphereSampling(7);
     private static final int _nvec = _uss.getMaxIndex();
 
     // Tables of coefficients for both inline and normal filters.
@@ -629,12 +637,14 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
   private static void test3() {
     float sigma = 20.0f;
     String ffile = "filters.dat";
-    //LocalDiffusionFilterMp ldf = new LocalDiffusionFilterMp(sigma);
-    //ldf.save(ffile);
+    /*
+    LocalDiffusionFilterMp ldf = new LocalDiffusionFilterMp(sigma);
+    ldf.save(ffile);
+    */
     LocalDiffusionFilterMp ldf = new LocalDiffusionFilterMp(sigma,ffile);
-    int n1 = 3;
-    int n2 = 3;
-    int n3 = 3;
+    int n1 = 101;
+    int n2 = 101;
+    int n3 = 101;
     float[][][] x = Array.randfloat(n1,n2,n3);
     float[][][] y = Array.zerofloat(n1,n2,n3);
     short[][][] iw = Array.fillshort((short)1,n1,n2,n3);
