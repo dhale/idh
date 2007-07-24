@@ -23,6 +23,8 @@ False = 0
 n1,n2,n3 = 105,105,105
 sigma = 16
 ffile = "filters.dat"
+small = 0.01
+niter = 80
 
 
 #############################################################################
@@ -48,7 +50,8 @@ def makeVectors(dip,azi,n1,n2,n3):
   return iv
 
 def doAmp(dip,azi):
-  ldf = LocalDiffusionFilterMp(sigma,ffile)
+  #ldf = LocalDiffusionFilterMp(sigma,ffile)
+  ldf = LocalDiffusionFilterCg(sigma,small,niter)
   x = makeImpulse(n1,n2,n3)
   ds = None
   iv = makeVectors(dip,azi,n1,n2,n3)

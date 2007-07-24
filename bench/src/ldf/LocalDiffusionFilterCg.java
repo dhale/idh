@@ -40,6 +40,12 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
     //solveInlineSsor(ds,v1,x,y);
   }
 
+  protected void solveInline(
+    float[][][] ds, short[][][] iw, float[][][] x, float[][][] y) 
+  {
+    solveInlineSimple(ds,iw,x,y);
+  }
+
   ///////////////////////////////////////////////////////////////////////////
   // private
 
@@ -51,12 +57,15 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
   /**
    * A symmetric positive-definite operator.
    */
-  private static interface Operator {
+  private static interface Operator2 {
     public void apply(float[][] x, float[][] y);
   }
+  private static interface Operator3 {
+    public void apply(float[][][] x, float[][][] y);
+  }
 
-  private static class InlineOperator implements Operator {
-    InlineOperator(
+  private static class InlineOperator2 implements Operator2 {
+    InlineOperator2(
       DirectionalLaplacianFilter dlf, float[][] ds, float[][] v1) 
     {
       _dlf = dlf;
@@ -70,9 +79,25 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
     private float[][] _ds,_v1;
     private DirectionalLaplacianFilter _dlf;
   }
+  private static class InlineOperator3 implements Operator3 {
+    InlineOperator3(
+      DirectionalLaplacianFilter dlf, float[][][] ds, short[][][] iw) 
+    {
+      _dlf = dlf;
+      _ds = ds;
+      _iw = iw;
+    }
+    public void apply(float[][][] x, float[][][] y) {
+      Array.copy(x,y);
+      _dlf.applyInline(_ds,_iw,x,y);
+    }
+    private float[][][] _ds;
+    private short[][][] _iw;
+    private DirectionalLaplacianFilter _dlf;
+  }
 
-  private static class InlineSsorOperator implements Operator {
-    InlineSsorOperator(
+  private static class InlineSsorOperator2 implements Operator2 {
+    InlineSsorOperator2(
       DirectionalLaplacianFilter dlf, float[][] ds, float[][] v1) 
     {
       _s33 = dlf.makeInlineStencil33(ds,v1);
@@ -133,15 +158,21 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
   private void solveInlineSimple(
     float[][] ds, float[][] v1, float[][] x, float[][] y) 
   {
-    Operator a = new InlineOperator(_dlf,ds,v1);
+    Operator2 a = new InlineOperator2(_dlf,ds,v1);
+    solve(a,x,y);
+  }
+  private void solveInlineSimple(
+    float[][][] ds, short[][][] iw, float[][][] x, float[][][] y) 
+  {
+    Operator3 a = new InlineOperator3(_dlf,ds,iw);
     solve(a,x,y);
   }
 
   private void solveInlineSsor(
     float[][] ds, float[][] v1, float[][] x, float[][] y) 
   {
-    Operator a = new InlineOperator(_dlf,ds,v1);
-    Operator m = new InlineSsorOperator(_dlf,ds,v1);
+    Operator2 a = new InlineOperator2(_dlf,ds,v1);
+    Operator2 m = new InlineSsorOperator2(_dlf,ds,v1);
     solve(a,m,x,y);
   }
 
@@ -149,7 +180,7 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
    * Solves Ax = b via conjugate gradient iterations. (No preconditioner.)
    * Uses the initial values of x; does not assume they are zero.
    */
-  private void solve(Operator a, float[][] b, float[][] x) {
+  private void solve(Operator2 a, float[][] b, float[][] x) {
     int n1 = b[0].length;
     int n2 = b.length;
     float[][] d = new float[n2][n1];
@@ -177,18 +208,79 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
     }
     trace("  iter="+iter+" delta="+delta+" ratio="+delta/deltaBegin);
   }
+  private void solve(Operator3 a, float[][][] b, float[][][] x) {
+    int n1 = b[0][0].length;
+    int n2 = b[0].length;
+    int n3 = b.length;
+    float[][][] d = new float[n3][n2][n1];
+    float[][][] q = new float[n3][n2][n1];
+    float[][][] r = new float[n3][n2][n1];
+    Array.copy(b,r);
+    a.apply(x,q);
+    saxpy(-1.0f,r,q); // q = b-Ax
+    Array.copy(r,d);
+    float delta = sdot(r,r);
+    float deltaBegin = delta;
+    float deltaSmall = sdot(b,b)*_small*_small;
+    trace("solve: delta="+delta);
+    int iter;
+    for (iter=0; iter<_niter && delta>deltaSmall; ++iter) {
+      a.apply(d,q);
+      float dq = sdot(d,q);
+      float alpha = delta/dq;
+      saxpy( alpha,d,x);
+      saxpy(-alpha,q,r);
+      float deltaOld = delta;
+      delta = sdot(r,r);
+      float beta = delta/deltaOld;
+      sxpay(beta,r,d);
+    }
+    trace("  iter="+iter+" delta="+delta+" ratio="+delta/deltaBegin);
+  }
 
   /**
    * Solves Ax = b via conjugate gradient iterations with preconditioner M.
    * Uses the initial values of x; does not assume they are zero.
    */
-  private void solve(Operator a, Operator m, float[][] b, float[][] x) {
+  private void solve(Operator2 a, Operator2 m, float[][] b, float[][] x) {
     int n1 = b[0].length;
     int n2 = b.length;
     float[][] d = new float[n2][n1];
     float[][] q = new float[n2][n1];
     float[][] r = new float[n2][n1];
     float[][] s = new float[n2][n1];
+    Array.copy(b,r);
+    a.apply(x,q);
+    saxpy(-1.0f,r,q); // q = b-Ax
+    m.apply(r,d);
+    m.apply(b,s);
+    float delta = sdot(r,d);
+    float deltaBegin = delta;
+    float deltaSmall = sdot(s,s)*_small*_small;
+    trace("solve: delta="+delta);
+    int iter;
+    for (iter=0; iter<_niter && delta>deltaSmall; ++iter) {
+      a.apply(d,q);
+      float dq = sdot(d,q);
+      float alpha = delta/dq;
+      saxpy( alpha,d,x);
+      saxpy(-alpha,q,r);
+      m.apply(r,s);
+      float deltaOld = delta;
+      delta = sdot(r,s);
+      float beta = delta/deltaOld;
+      sxpay(beta,s,d);
+    }
+    trace("  iter="+iter+" delta="+delta+" ratio="+delta/deltaBegin);
+  }
+  private void solve(Operator3 a, Operator3 m, float[][][] b, float[][][] x) {
+    int n1 = b[0][0].length;
+    int n2 = b[0].length;
+    int n3 = b.length;
+    float[][][] d = new float[n3][n2][n1];
+    float[][][] q = new float[n3][n2][n1];
+    float[][][] r = new float[n3][n2][n1];
+    float[][][] s = new float[n3][n2][n1];
     Array.copy(b,r);
     a.apply(x,q);
     saxpy(-1.0f,r,q); // q = b-Ax
@@ -227,6 +319,21 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
     }
     return d;
   }
+  private static float sdot(float[][][] x, float[][][] y) {
+    int n1 = x[0][0].length;
+    int n2 = x[0].length;
+    int n3 = x.length;
+    float d = 0.0f;
+    for (int i3=0; i3<n3; ++i3) {
+      for (int i2=0; i2<n2; ++i2) {
+        float[] x32 = x[i3][i2], y32 = y[i3][i2];
+        for (int i1=0; i1<n1; ++i1) {
+          d += x32[i1]*y32[i1];
+        }
+      }
+    }
+    return d;
+  }
 
   // Computes y = y + ax.
   private static void saxpy(float a, float[][] x, float[][] y) {
@@ -239,6 +346,19 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
       }
     }
   }
+  private static void saxpy(float a, float[][][] x, float[][][] y) {
+    int n1 = x[0][0].length;
+    int n2 = x[0].length;
+    int n3 = x.length;
+    for (int i3=0; i3<n3; ++i3) {
+      for (int i2=0; i2<n2; ++i2) {
+        float[] x32 = x[i3][i2], y32 = y[i3][i2];
+        for (int i1=0; i1<n1; ++i1) {
+          y32[i1] += a*x32[i1];
+        }
+      }
+    }
+  }
 
   // Computes y = x + ay.
   private static void sxpay(float a, float[][] x, float[][] y) {
@@ -248,6 +368,19 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
       float[] x2 = x[i2], y2 = y[i2];
       for (int i1=0; i1<n1; ++i1) {
         y2[i1] = a*y2[i1]+x2[i1];
+      }
+    }
+  }
+  private static void sxpay(float a, float[][][] x, float[][][] y) {
+    int n1 = x[0][0].length;
+    int n2 = x[0].length;
+    int n3 = x.length;
+    for (int i3=0; i3<n3; ++i3) {
+      for (int i2=0; i2<n2; ++i2) {
+        float[] x32 = x[i3][i2], y32 = y[i3][i2];
+        for (int i1=0; i1<n1; ++i1) {
+          y32[i1] = a*y32[i1]+x32[i1];
+        }
       }
     }
   }
@@ -271,13 +404,13 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
     DirectionalLaplacianFilter dlf = new DirectionalLaplacianFilter(1.0);
     float[][] ds = Array.randfloat(n1,n2);
     float[][] v1 = Array.randfloat(n1,n2);
-    Operator a = new InlineOperator(dlf,ds,v1);
-    Operator m = new InlineSsorOperator(dlf,ds,v1);
+    Operator2 a = new InlineOperator2(dlf,ds,v1);
+    Operator2 m = new InlineSsorOperator2(dlf,ds,v1);
     testSpd(n1,n2,a);
     testSpd(n1,n2,m);
   }
 
-  private static void testSpd(int n1, int n2, Operator a) {
+  private static void testSpd(int n1, int n2, Operator2 a) {
     float[][] x = Array.sub(Array.randfloat(n1,n2),0.5f);
     float[][] y = Array.sub(Array.randfloat(n1,n2),0.5f);
     float[][] ax = Array.zerofloat(n1,n2);

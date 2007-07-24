@@ -361,7 +361,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
           } else {
             dlf.applyNormal(1.0f,v1,v2,v3,t,r);
           }
-          Array.dump(v);
+          trace("v1="+v1+" v2="+v2+" v3="+v3);
           Array.dump(r);
           cf.factorWilsonBurg(100,0.000001f,r);
           atable[isigma][ivec] = cf.getA();
