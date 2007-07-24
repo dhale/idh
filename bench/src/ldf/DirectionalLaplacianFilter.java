@@ -285,6 +285,46 @@ public class DirectionalLaplacianFilter {
   }
 
   /**
+   * Computes y = y+G'DGx, where D = d(I-uu') and G is the gradient operator. 
+   * Unit vectors u are specified by short indices iu that correspond to a 
+   * 16-bit sampling of the unit-sphere.
+   * @param ds scale factor for diffusivity orthogonal to unit vectors u;
+   *  if null, this method uses constant ds = 1.
+   * @param iu unit-sphere sample indices of unit vectors u.
+   * @param x input image. Must be distinct from the array y.
+   * @param y input/output image. Must be distinct from the array x.
+   */
+  public void applyNormal(
+    float[][][] ds, short[][][] iu, 
+    float[][][] x, float[][][] y) 
+  {
+    if (_uss16==null)
+      _uss16 = new UnitSphereSampling(16);
+    int n1 = x[0][0].length;
+    int n2 = x[0].length;
+    int n3 = x.length;
+    for (int i3=1; i3<n3; ++i3) {
+      for (int i2=1; i2<n2; ++i2) {
+        for (int i1=1; i1<n1; ++i1) {
+          float ssi = (ds!=null)?_sigma*ds[i3][i2][i1]:_sigma;
+          float sui = 0.5f*ssi*ssi;
+          float[] ui = _uss16.getPoint(iu[i3][i2][i1]);
+          float u1i = ui[0];
+          float u2i = ui[1];
+          float u3i = ui[2];
+          float d11 = sui*(1.0f-u1i*u1i);
+          float d22 = sui*(1.0f-u2i*u2i);
+          float d33 = sui*(1.0f-u3i*u3i);
+          float d12 = sui*u1i*u2i;
+          float d13 = sui*u1i*u3i;
+          float d23 = sui*u2i*u3i;
+          apply(d11,d12,d13,d22,d23,d33,i1,i2,i3,x,y);
+        }
+      }
+    }
+  }
+
+  /**
    * A 2-D directional Laplacian filters with a 3 x 3 (9-point) stencil.
    * Note that filters need not use these stencils when applied. Rather,
    * stencils are used in certain iterative methods for solving sparse 

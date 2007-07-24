@@ -9,13 +9,14 @@ package ldf;
 import java.io.*;
 
 import edu.mines.jtk.dsp.*;
+import edu.mines.jtk.io.*;
 import edu.mines.jtk.util.*;
 import static edu.mines.jtk.util.MathPlus.*;
 
 /**
  * Local anisotropic diffusion filter via minimum-phase factors.
  * @author Dave Hale, Colorado School of Mines
- * @version 2007.07.12
+ * @version 2007.07.23
  */
 public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
 
@@ -24,43 +25,44 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
    * @param sigma the nominal half-width for this filter.
    */
   public LocalDiffusionFilterMp(double sigma) {
-    super(sigma);
-    _sigma = (float)sigma;
-    _dlf = new DirectionalLaplacianFilter(1.0f);
+    this(sigma,null);
   }
 
   /**
    * Constructs a local diffusion filter with pre-computed coefficients.
    * Coefficients are stored in a file with specified name.
    * @param sigma the nominal half-width for this filter.
-   * @param fileName name of file containing pre-computed filters.
+   * @param filtersFile name of file containing pre-computed filters.
+   *  If null, filters will be computed on-the-fly as necessary.
    */
-  public LocalDiffusionFilterMp(double sigma, String fileName) {
+  public LocalDiffusionFilterMp(double sigma, String filtersFile) {
     super(sigma);
+    File file = new File(filtersFile);
+    Check.argument(file.exists(),"file "+file+" exists");
+    Check.argument(file.canRead(),"file "+file+" is readable");
+    Check.argument(file.isFile(),"file "+file+" is a file");
     _sigma = (float)sigma;
+    _filtersFile = filtersFile;
     _dlf = new DirectionalLaplacianFilter(1.0f);
-    _file = new File(fileName);
-    Check.argument(_file.exists(),"file "+fileName+" exists");
-    Check.argument(_file.canRead(),"file "+fileName+" is readable");
-    Check.argument(_file.isFile(),"file "+fileName+" is a normal file");
   }
 
-  public static void precomputeFilters(String fileName) {
-  }
-
-  /*
-   * 2-D NSIGMA,NVECTOR,NLAG
-   * 2-D sigma[NSIGMA]
-   * 2-D vector[NSIGMA][NVECTOR][2]
-   * 2-D inline[NSIGMA][NVECTOR][NLAG]
-   * 2-D normal[NSIGMA][NVECTOR][NLAG]
-   *
-   * 3-D NSIGMA,NVECTOR,NLAG
-   * 3-D sigma[NSIGMA]
-   * 3-D vector[NSIGMA][NVECTOR][3]
-   * 3-D inline[NSIGMA][NVECTOR][NLAG]
-   * 3-D normal[NSIGMA][NVECTOR][NLAG]
+  /**
+   * Saves filter coefficients to a file with specified name.
+   * @param filtersFile name of file to contain pre-computed filters.
    */
+  public void save(String filtersFile) {
+    try {
+      ensureInlineFilter3();
+      ensureNormalFilter3();
+      ArrayFile af = new ArrayFile(filtersFile,"rw");
+      af.writeInt(_fileFormat);
+      _fif3.save(af);
+      _fnf3.save(af);
+      af.close();
+    } catch (IOException ioe) {
+      Check.state(false,"no exception "+ioe);
+    }
+  }
 
   ///////////////////////////////////////////////////////////////////////////
   // protected
@@ -72,8 +74,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     int n2 = x.length;
     float[][] t = new float[n2][n1];
     _dlf.applyInline(null,v1,x,t);
-    if (_fif2==null)
-      _fif2 = new FactoredFilter2(FactoredFilter2.Type.INLINE);
+    ensureInlineFilter2();
     _fif2.applyInverse(_sigma,ds,v1,t,y);
     Array.sub(x,y,y);
   }
@@ -86,8 +87,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     int n3 = x.length;
     float[][][] t = new float[n3][n2][n1];
     _dlf.applyInline(null,iw,x,t);
-    if (_fif3==null)
-      _fif3 = new FactoredFilter3(FactoredFilter3.Type.INLINE);
+    ensureInlineFilter3();
     _fif3.applyInverse(_sigma,ds,iw,t,y);
     Array.sub(x,y,y);
   }
@@ -99,10 +99,9 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     int n2 = x[0].length;
     int n3 = x.length;
     float[][][] t = new float[n3][n2][n1];
-    _dlf.applyInline(null,iu,x,t);
-    if (_fif3==null)
-      _fif3 = new FactoredFilter3(FactoredFilter3.Type.NORMAL);
-    _fif3.applyInverse(_sigma,ds,iu,t,y);
+    _dlf.applyNormal(null,iu,x,t);
+    ensureNormalFilter3();
+    _fnf3.applyInverse(_sigma,ds,iu,t,y);
     Array.sub(x,y,y);
   }
 
@@ -110,13 +109,46 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
   // private
 
   private float _sigma;
-  private File _file;
+  private String _filtersFile;
   private DirectionalLaplacianFilter _dlf;
+  private static final int _fileFormat = 1;
   private static FactoredFilter2 _fif2; // 2-D inline filter
   private static FactoredFilter2 _fnf2; // 2-D normal filter
   private static FactoredFilter3 _fif3; // 3-D inline filter
   private static FactoredFilter3 _fnf3; // 3-D normal filter
   private static UnitSphereSampling _uss16 = new UnitSphereSampling(16);
+
+  private void ensureInlineFilter2() {
+    if (_fif2==null)
+      _fif2 = new FactoredFilter2(FactoredFilter2.Type.INLINE);
+  }
+
+  private void ensureNormalFilter2() {
+    if (_fnf2==null)
+      _fnf2 = new FactoredFilter2(FactoredFilter2.Type.NORMAL);
+  }
+
+  private void ensureInlineFilter3() {
+    if (_fif3==null) {
+      if (_filtersFile==null) {
+        _fif3 = new FactoredFilter3(FactoredFilter3.Type.INLINE);
+      } else {
+        _fif3 = new FactoredFilter3(FactoredFilter3.Type.INLINE,_filtersFile);
+      }
+    }
+  }
+
+  private void ensureNormalFilter3() {
+    if (_fnf3==null)
+      if (_filtersFile==null) {
+        _fnf3 = new FactoredFilter3(FactoredFilter3.Type.NORMAL);
+      } else {
+        _fnf3 = new FactoredFilter3(FactoredFilter3.Type.NORMAL,_filtersFile);
+      }
+  }
+
+  ///////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////
 
   // A local inline filter approximated with minimum-phase factors.
   // Factors are tabulated as a function of sigma and theta.
@@ -131,7 +163,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
       trace("FactoredFilter2: constructing filters ...");
 
       // A causal filter to compute tabulated factors.
-      CausalFilter cf = new CausalFilter(LAG1,LAG2);
+      CausalFilter cf = new CausalFilter(_lag1,_lag2);
 
       // Arrays used to get 3x3 auto-correlations to be factored.
       float[][] t = new float[3][3];
@@ -145,7 +177,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
         new DirectionalLaplacianFilter(sqrt(2.0f));
 
       // Which table of coefficients is being computed?
-      float[][][] atable = (type==Type.INLINE)?ATABLE_INLINE:ATABLE_NORMAL;
+      float[][][] atable = (type==Type.INLINE)?_atableInline:_atableNormal;
 
       // Tabulated factors for all angles theta and half-widths sigma.
       // Note that for normal filters we specify u1 = v2 and u2 = v1.
@@ -153,11 +185,11 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
       // use u2 = -v1 = -sin(theta). However, during table lookup we will 
       // use u2 = v1 = sin(theta) for both inline and normal filters, so
       // we need to do the same here.
-      for (int itheta=0; itheta<NTHETA; ++itheta) {
-        float theta = FTHETA+itheta*DTHETA;
-        for (int isigma=0; isigma<NSIGMA; ++isigma) {
-          float sigma = FSIGMA+isigma*DSIGMA;
-          float scale = 2.0f/(sigma*sigma);
+      for (int isigma=0; isigma<_nsigma; ++isigma) {
+        float sigma = _fsigma+isigma*_dsigma;
+        float scale = 2.0f/(sigma*sigma);
+        for (int itheta=0; itheta<_ntheta; ++itheta) {
+          float theta = _ftheta+itheta*_dtheta;
           Array.mul(scale,t,r);
           float v1 = sin(theta);
           float v2 = cos(theta);
@@ -167,7 +199,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
             dlf.applyNormal(1.0f,v2,v1,t,r); // use u2 = v1 (not -v1)!
           }
           cf.factorWilsonBurg(100,0.000001f,r);
-          atable[itheta][isigma] = cf.getA();
+          atable[isigma][itheta] = cf.getA();
         }
       }
 
@@ -178,19 +210,19 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     void applyForward(
       float sigma, float[][] ds, float[][] v1, float[][] x, float[][] y) 
     {
-      float[][][] atable = (_type==Type.INLINE)?ATABLE_INLINE:ATABLE_NORMAL;
+      float[][][] atable = (_type==Type.INLINE)?_atableInline:_atableNormal;
       A2 a2 = new A2(atable,sigma,ds,v1);
-      LCF.apply(a2,x,y);
-      LCF.applyTranspose(a2,y,y);
+      _lcf.apply(a2,x,y);
+      _lcf.applyTranspose(a2,y,y);
     }
 
     void applyInverse(
       float sigma, float[][] ds, float[][] v1, float[][] x, float[][] y) 
     {
-      float[][][] atable = (_type==Type.INLINE)?ATABLE_INLINE:ATABLE_NORMAL;
+      float[][][] atable = (_type==Type.INLINE)?_atableInline:_atableNormal;
       A2 a2 = new A2(atable,sigma,ds,v1);
-      LCF.applyInverseTranspose(a2,x,y);
-      LCF.applyInverse(a2,y,y);
+      _lcf.applyInverseTranspose(a2,x,y);
+      _lcf.applyInverse(a2,y,y);
     }
 
     private Type _type;
@@ -212,20 +244,20 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
         float theta = asin(_v1[i2][i1]);
         float sigma = _sigma;
         if (_ds!=null) sigma *= _ds[i2][i1];
-        if (sigma<SIGMA_MIN) sigma = SIGMA_MIN;
-        if (sigma>SIGMA_MAX) sigma = SIGMA_MAX;
-        float s = (sigma-FSIGMA)*SSIGMA;
-        float t = (theta-FTHETA)*STHETA;
+        if (sigma<_sigmaMin) sigma = _sigmaMin;
+        if (sigma>_sigmaMax) sigma = _sigmaMax;
+        float s = (sigma-_fsigma)*_ssigma;
+        float t = (theta-_ftheta)*_stheta;
         int is = (int)s;
         int it = (int)t;
         float s1 = s-(float)is;
         float t1 = t-(float)it;
         float s0 = 1.0f-s1;
         float t0 = 1.0f-t1;
-        float[] a00 = _at[it  ][is  ];
-        float[] a01 = _at[it  ][is+1];
-        float[] a10 = _at[it+1][is  ];
-        float[] a11 = _at[it+1][is+1];
+        float[] a00 = _at[is  ][it  ];
+        float[] a01 = _at[is  ][it+1];
+        float[] a10 = _at[is+1][it  ];
+        float[] a11 = _at[is+1][it+1];
         int n = a00.length;
         for (int j=0; j<n; ++j)
           a[j] = t0*(s0*a00[j]+s1*a01[j])+t1*(s0*a10[j]+s1*a11[j]);
@@ -237,43 +269,48 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     }
 
     // Sampling of sigma for tabulated filter coefficients.
-    private static final float SIGMA_MIN =  0.1f;
-    private static final float SIGMA_MAX = 20.0f;
-    private static final int NSIGMA = 20;
-    private static final float FSIGMA = SIGMA_MIN;
-    private static final float DSIGMA = (SIGMA_MAX-SIGMA_MIN)/(float)(NSIGMA-1);
-    private static final float SSIGMA = (1.0f-4.0f*FLT_EPSILON)/DSIGMA;
+    private static final float _sigmaMin =  0.1f;
+    private static final float _sigmaMax = 20.0f;
+    private static final int _nsigma = 20;
+    private static final float _fsigma = _sigmaMin;
+    private static final float _dsigma = (_sigmaMax-_sigmaMin) /
+                                         (float)(_nsigma-1);
+    private static final float _ssigma = (1.0f-4.0f*FLT_EPSILON)/_dsigma;
 
     // Sampling of theta for tabulated filter coefficients.
-    private static final float THETA_MIN = -0.5f*FLT_PI;
-    private static final float THETA_MAX =  0.5f*FLT_PI;
-    private static final int NTHETA = 21;
-    private static final float FTHETA = THETA_MIN;
-    private static final float DTHETA = (THETA_MAX-THETA_MIN)/(float)(NTHETA-1);
-    private static final float STHETA = (1.0f-4.0f*FLT_EPSILON)/DTHETA;
+    private static final float _thetaMin = -0.5f*FLT_PI;
+    private static final float _thetaMax =  0.5f*FLT_PI;
+    private static final int _ntheta = 21;
+    private static final float _ftheta = _thetaMin;
+    private static final float _dtheta = (_thetaMax-_thetaMin) /
+                                         (float)(_ntheta-1);
+    private static final float _stheta = (1.0f-4.0f*FLT_EPSILON)/_dtheta;
 
     // Tables of coefficients for both inline and normal filters.
-    private static float[][][] ATABLE_INLINE = new float[NTHETA][NSIGMA][];
-    private static float[][][] ATABLE_NORMAL = new float[NTHETA][NSIGMA][];
+    private static float[][][] _atableInline = new float[_nsigma][_ntheta][];
+    private static float[][][] _atableNormal = new float[_nsigma][_ntheta][];
 
     // Lags for minimum-phase factors, with the following stencil:
     //   lag1 =    1  0 -1 -2 -3 -4
     //   --------------------------
     //   lag2 = 0: x  x
     //          1: x  x  x  x  x  x
-    private static int MLAG = 4;
-    private static int NLAG = 4+MLAG;
-    private static int[] LAG1 = new int[NLAG];
-    private static int[] LAG2 = new int[NLAG];
-    private static LocalCausalFilter LCF;
+    private static int _mlag = 4;
+    private static int _nlag = 4+_mlag;
+    private static int[] _lag1 = new int[_nlag];
+    private static int[] _lag2 = new int[_nlag];
+    private static LocalCausalFilter _lcf;
     static {
-      for (int ilag=0; ilag<NLAG; ++ilag) {
-        LAG1[ilag] = (ilag<=1)?ilag:ilag-2-MLAG;
-        LAG2[ilag] = (ilag<=1)?0:1;
+      for (int ilag=0; ilag<_nlag; ++ilag) {
+        _lag1[ilag] = (ilag<=1)?ilag:ilag-2-_mlag;
+        _lag2[ilag] = (ilag<=1)?0:1;
       }
-      LCF = new LocalCausalFilter(LAG1,LAG2);
+      _lcf = new LocalCausalFilter(_lag1,_lag2);
     }
   }
+
+  ///////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////
 
   // A filter approximated with minimum-phase factors. Factors are 
   // tabulated as a function of sigma and a unit-sphere sampling index.
@@ -285,10 +322,11 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     };
 
     FactoredFilter3(Type type) {
-      trace("FactoredFilter3: constructing filters ...");
+      trace("FactoredFilter3: begin make ...");
+      _type = type;
 
-      // A causal filter to compute tabulated factors.
-      CausalFilter cf = new CausalFilter(LAG1,LAG2,LAG3);
+      // A causal filter to with same lags as the local causal filter.
+      CausalFilter cf = new CausalFilter(_lag1,_lag2,_lag3);
 
       // Arrays used to compute 3x3x3 auto-correlations to be factored.
       float[][][] t = new float[3][3][3];
@@ -302,71 +340,113 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
         new DirectionalLaplacianFilter(sqrt(2.0f));
 
       // Which table of coefficients is being computed?
-      float[][][] atable = (type==Type.INLINE)?ATABLE_INLINE:ATABLE_NORMAL;
+      float[][][] atable = (type==Type.INLINE)?_atableInline:_atableNormal;
 
-      // Tabulated factors for unit-vector indices and half-widths sigma.
-      trace("NVEC="+NVEC+" NSIGMA="+NSIGMA);
-      //for (int iw=1; iw<=NVEC; ++iw) {
-      for (int iw=1; iw<=NVEC; iw+=10) {
-        for (int isigma=NSIGMA-1; isigma<NSIGMA; ++isigma) {
-          trace("iw="+iw+" isigma="+isigma);
-          float sigma = FSIGMA+isigma*DSIGMA;
-          float scale = 2.0f/(sigma*sigma);
+      // Filters for all half-widths sigma and unit-vector indices.
+      trace("_nsigma="+_nsigma+" _nvec="+_nvec);
+      for (int isigma=0; isigma<_nsigma; ++isigma) {
+        float sigma = _fsigma+isigma*_dsigma;
+        float scale = 2.0f/(sigma*sigma);
+        for (int ivec=0; ivec<_nvec; ++ivec) {
+          trace("isigma="+isigma+" ivec="+ivec);
           Array.mul(scale,t,r);
-          float[] w = USS.getPoint(iw);
-          float w1 = w[2];
-          float w2 = w[1];
-          float w3 = w[0];
+          float[] v = _uss.getPoint(1+ivec);
+          float v1 = v[2];
+          float v2 = v[1];
+          float v3 = v[0];
           if (type==Type.INLINE) {
-            dlf.applyInline(1.0f,w1,w2,w3,t,r);
+            dlf.applyInline(1.0f,v1,v2,v3,t,r);
           } else {
-            dlf.applyNormal(1.0f,w1,w2,w3,t,r);
+            dlf.applyNormal(1.0f,v1,v2,v3,t,r);
           }
-          Array.dump(w);
+          Array.dump(v);
           Array.dump(r);
           cf.factorWilsonBurg(100,0.000001f,r);
-          atable[iw][isigma] = cf.getA();
-          dumpA(cf.getA());
+          atable[isigma][ivec] = cf.getA();
+          dumpA(atable[isigma][ivec]);
         }
       }
-
-      _type = type;
       trace("...  done.");
     }
-    static void dumpA(float[] a) {
-      int nlag = a.length;
-      int n = MLAG+1+MLAG;
-      float[][] b = new float[2*n][n];
-      for (int ilag=0; ilag<nlag; ++ilag) {
-        int i1 = n-1-(LAG1[ilag]+MLAG);
-        int i2 = n-1-(LAG2[ilag]+MLAG);
-        int i3 = LAG3[ilag];
-        b[i3*n+i2][i1] = a[ilag];
+
+    FactoredFilter3(Type type, String filtersFile) {
+      trace("FactoredFilter3: begin load ...");
+      _type = type;
+
+      try {
+        ArrayFile af = new ArrayFile(filtersFile,"r");
+
+        // Ensure known file format.
+        int fileFormat = af.readInt();
+        Check.state(_fileFormat==fileFormat,"known file format");
+
+        // Find filter with specified type.
+        int itype = itype(type);
+        int nbyte = nbyte(type);
+        boolean found = false;
+        while (!found) {
+          int itypeRead = af.readInt();
+          int nbyteRead = af.readInt();
+          found = (itype==itypeRead && nbyte==nbyteRead);
+          if (!found)
+            af.skipBytes(nbyteRead);
+        }
+
+        // Read arrays of filter coefficients.
+        float[][][] atable = (type==Type.INLINE)?_atableInline:_atableNormal;
+        for (int isigma=0; isigma<_nsigma; ++isigma) {
+          for (int ivec=0; ivec<_nvec; ++ivec) {
+            atable[isigma][ivec] = new float[_nlag];
+            af.readFloats(atable[isigma][ivec]);
+          }
+        }
+
+        af.close();
+      } catch (IOException ioe) {
+        Check.state(false,"loaded filters without exception "+ioe);
       }
-      edu.mines.jtk.mosaic.SimplePlot.asPixels(b);
+      trace("...  done.");
+    }
+
+    void save(ArrayFile af) {
+      trace("FactoredFilter3: begin save ...");
+
+      try {
+        af.writeInt(itype(_type));
+        af.writeInt(nbyte(_type));
+        float[][][] atable = (_type==Type.INLINE)?_atableInline:_atableNormal;
+        for (int isigma=0; isigma<_nsigma; ++isigma) {
+          for (int ivec=0; ivec<_nvec; ++ivec) {
+            af.writeFloats(atable[isigma][ivec]);
+          }
+        }
+      } catch (IOException ioe) {
+        Check.state(false,"saved filters without exception "+ioe);
+      }
+      trace("...  done.");
     }
 
     void applyForward(
       float sigma, float[][][] ds, short[][][] iw, 
       float[][][] x, float[][][] y) 
     {
-      float[][][] atable = (_type==Type.INLINE)?ATABLE_INLINE:ATABLE_NORMAL;
+      float[][][] atable = (_type==Type.INLINE)?_atableInline:_atableNormal;
       A3 a3 = new A3(atable,sigma,ds,iw);
-      LCF.apply(a3,x,y);
-      LCF.applyTranspose(a3,y,y);
+      _lcf.apply(a3,x,y);
+      _lcf.applyTranspose(a3,y,y);
     }
 
     void applyInverse(
       float sigma, float[][][] ds, short[][][] iw, 
       float[][][] x, float[][][] y) 
     {
-      float[][][] atable = (_type==Type.INLINE)?ATABLE_INLINE:ATABLE_NORMAL;
+      float[][][] atable = (_type==Type.INLINE)?_atableInline:_atableNormal;
       A3 a3 = new A3(atable,sigma,ds,iw);
-      LCF.applyInverseTranspose(a3,x,y);
-      LCF.applyInverse(a3,y,y);
+      _lcf.applyInverseTranspose(a3,x,y);
+      _lcf.applyInverse(a3,y,y);
     }
 
-    private Type _type;
+    private Type _type; // filter type, inline or normal
 
     // Provides filter coefficients for each sample index via
     // linear interpolation of pre-computed filter coefficients.
@@ -378,18 +458,18 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
         _iw = iw;
       }
       public void get(int i1, int i2, int i3, float[] a) {
-        int iw = _iw[i3][i2][i1];
-        int ia = IA[iw];
-        int ib = IB[iw];
-        int ic = IC[iw];
-        float wa = WA[iw];
-        float wb = WB[iw];
-        float wc = WC[iw];
+        int iw = abs(_iw[i3][i2][i1]);
+        int ia = _ia[iw];
+        int ib = _ib[iw];
+        int ic = _ic[iw];
+        float wa = _wa[iw];
+        float wb = _wb[iw];
+        float wc = _wc[iw];
         float sigma = _sigma;
         if (_ds!=null) sigma *= _ds[i3][i2][i1];
-        if (sigma<SIGMA_MIN) sigma = SIGMA_MIN;
-        if (sigma>SIGMA_MAX) sigma = SIGMA_MAX;
-        float s = (sigma-FSIGMA)*SSIGMA;
+        if (sigma<_sigmaMin) sigma = _sigmaMin;
+        if (sigma>_sigmaMax) sigma = _sigmaMax;
+        float s = (sigma-_fsigma)*_ssigma;
         int is = (int)s;
         float s1 = s-(float)is;
         float s0 = 1.0f-s1;
@@ -414,38 +494,37 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     }
 
     // Sampling of sigma for tabulated filter coefficients.
-    private static final float SIGMA_MIN =  0.1f;
-    private static final float SIGMA_MAX = 20.0f;
-    private static final int NSIGMA = 20;
-    private static final float FSIGMA = SIGMA_MIN;
-    private static final float DSIGMA = (SIGMA_MAX-SIGMA_MIN)/(float)(NSIGMA-1);
-    private static final float SSIGMA = (1.0f-4.0f*FLT_EPSILON)/DSIGMA;
+    private static final float _sigmaMin =  0.1f;
+    private static final float _sigmaMax = 20.0f;
+    private static final int _nsigma = 2;
+    private static final float _fsigma = _sigmaMin;
+    private static final float _dsigma = (_sigmaMax-_sigmaMin) /
+                                         (float)(_nsigma-1);
+    private static final float _ssigma = (1.0f-4.0f*FLT_EPSILON)/_dsigma;
 
     // Sampling of the unit sphere for tabulated filter coefficients.
     // This sampling must be coarser (using fewer bits) than the 16-bit
     // sampling used to encode unit vectors.
-    private static final int NBIT = 8;
-    private static final UnitSphereSampling USS =
-      new UnitSphereSampling(NBIT);
-    private static final int NVEC = USS.getMaxIndex();
+    private static final UnitSphereSampling _uss = new UnitSphereSampling(4);
+    private static final int _nvec = _uss.getMaxIndex();
+
+    // Tables of coefficients for both inline and normal filters.
+    private static float[][][] _atableInline = new float[_nsigma][_nvec][];
+    private static float[][][] _atableNormal = new float[_nsigma][_nvec][];
 
     // Precomputed weights for linear interpolation within triangles
     // of the coarse unit-sphere sampling. Because unit-vectors are
     // quantized to 16 bits, only these weights will be needed to
     // interpolate filter coefficients.
-    private static int NW = _uss16.getMaxIndex(); // number of weights
-    private static int[] IA = new int[1+NW]; // IA[0] unused
-    private static int[] IB = new int[1+NW]; // IB[0] unused
-    private static int[] IC = new int[1+NW]; // IC[0] unused
-    private static float[] WA = new float[1+NW]; // WA[0] unused
-    private static float[] WB = new float[1+NW]; // WB[0] unused
-    private static float[] WC = new float[1+NW]; // WC[0] unused
+    private static int _nw = _uss16.getMaxIndex(); // number of weights
+    private static int[] _ia = new int[1+_nw]; // _ia[0] unused
+    private static int[] _ib = new int[1+_nw]; // _ib[0] unused
+    private static int[] _ic = new int[1+_nw]; // _ic[0] unused
+    private static float[] _wa = new float[1+_nw]; // _wa[0] unused
+    private static float[] _wb = new float[1+_nw]; // _wb[0] unused
+    private static float[] _wc = new float[1+_nw]; // _wc[0] unused
 
-    // Tables of coefficients for both inline and normal filters.
-    private static float[][][] ATABLE_INLINE = new float[1+NVEC][NSIGMA][];
-    private static float[][][] ATABLE_NORMAL = new float[1+NVEC][NSIGMA][];
-
-    // Lags for minimum-phase factors, with the following stencil:
+    // Lags for minimum-phase factors with the following stencil:
     //                lag1 =  4  3  2  1  0 -1 -2 -3 -4
     //   ----------------------------------------------
     //   lag3 = 0, lag2 =  0:          x  x
@@ -457,42 +536,65 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     //                    -1: x  x  x  x  x  x  x  x  x
     //                     0:          x  x  x  x  x  x
     //                     1:          x  x  x  x  x  x
-    private static int MLAG = 4;
-    private static int NLAG = 2+3*(2+MLAG)+MLAG*(MLAG+1+MLAG); // = 56
-    private static int[] LAG1 = new int[NLAG];
-    private static int[] LAG2 = new int[NLAG];
-    private static int[] LAG3 = new int[NLAG];
-    private static LocalCausalFilter LCF;
+    private static int _mlag = 4;
+    private static int _nlag = 2+3*(2+_mlag)+_mlag*(_mlag+1+_mlag); // = 56
+    private static int[] _lag1 = new int[_nlag];
+    private static int[] _lag2 = new int[_nlag];
+    private static int[] _lag3 = new int[_nlag];
+    private static LocalCausalFilter _lcf;
 
     // Initialization of static fields.
     static {
-      trace("nlag="+NLAG);
+      trace("nlag="+_nlag);
       for (int ilag3=0,ilag=0; ilag3<2; ++ilag3) {
-        int jlag2 = (ilag3==0)?0:-MLAG;
+        int jlag2 = (ilag3==0)?0:-_mlag;
         int klag2 = 1;
         for (int ilag2=jlag2; ilag2<=klag2; ++ilag2) {
-          int jlag1 = (ilag3==0 && ilag2==0)?0:-MLAG;
-          int klag1 = (ilag3==0 || ilag2>=0)?1: MLAG;
+          int jlag1 = (ilag3==0 && ilag2==0)?0:-_mlag;
+          int klag1 = (ilag3==0 || ilag2>=0)?1: _mlag;
           for (int ilag1=jlag1; ilag1<=klag1; ++ilag1,++ilag) {
-            LAG1[ilag] = ilag1;
-            LAG2[ilag] = ilag2;
-            LAG3[ilag] = ilag3;
+            _lag1[ilag] = ilag1;
+            _lag2[ilag] = ilag2;
+            _lag3[ilag] = ilag3;
             trace("ilag="+ilag+" lag1="+ilag1+" ilag2="+ilag2+" ilag3="+ilag3);
           }
         }
       }
-      LCF = new LocalCausalFilter(LAG1,LAG2,LAG3);
-      for (int iw=1; iw<NW; ++iw) {
+      for (int iw=1; iw<_nw; ++iw) {
         float[] wi = _uss16.getPoint(iw);
-        int[] iabc = USS.getTriangle(wi);
-        float[] wabc = USS.getWeights(wi,iabc);
-        IA[iw] = iabc[0];
-        IB[iw] = iabc[1];
-        IC[iw] = iabc[2];
-        WA[iw] = wabc[0];
-        WB[iw] = wabc[1];
-        WC[iw] = wabc[2];
+        int[] iabc = _uss.getTriangle(wi);
+        float[] wabc = _uss.getWeights(wi,iabc);
+        _ia[iw] = iabc[0]-1; // subtract 1 because of
+        _ib[iw] = iabc[1]-1; // zero-based indexing
+        _ic[iw] = iabc[2]-1; // in arrays of filters
+        _wa[iw] = wabc[0];
+        _wb[iw] = wabc[1];
+        _wc[iw] = wabc[2];
       }
+      _lcf = new LocalCausalFilter(_lag1,_lag2,_lag3);
+    }
+
+    private static int itype(Type type) {
+      return 3*10+type.ordinal();
+    }
+
+    private static int nbyte(Type type) {
+      return 4*_nlag*_nvec*_nsigma;
+    }
+
+  ///////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////
+
+    static void dumpA(float[] a) {
+      int n = _mlag+1+_mlag;
+      float[][] b = new float[2*n][n];
+      for (int ilag=0; ilag<_nlag; ++ilag) {
+        int i1 = n-1-(_lag1[ilag]+_mlag);
+        int i2 = n-1-(_lag2[ilag]+_mlag);
+        int i3 = _lag3[ilag];
+        b[i3*n+i2][i1] = a[ilag];
+      }
+      edu.mines.jtk.mosaic.SimplePlot.asPixels(b);
     }
   }
 
@@ -503,11 +605,36 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
   }
 
   public static void main(String[] args) {
-    testFactoredFilter3();
+    //testFactoredFilter3();
+    test3();
   }
 
   private static void testFactoredFilter3() {
+    String filtersFile = "filters.dat";
     //FactoredFilter2 ff2 = new FactoredFilter2(FactoredFilter2.Type.INLINE);
-    FactoredFilter3 ff3 = new FactoredFilter3(FactoredFilter3.Type.NORMAL);
+    //FactoredFilter3 ff3 = new FactoredFilter3(FactoredFilter3.Type.INLINE);
+    FactoredFilter3 ff3 = new FactoredFilter3(
+      FactoredFilter3.Type.INLINE,filtersFile);
+    try {
+      ArrayFile af = new ArrayFile(filtersFile,"rw");
+      af.writeInt(_fileFormat);
+      ff3.save(af);
+      af.close();
+    } catch (IOException ioe) {
+      Check.state(false,"no exception "+ioe);
+    }
   }
-} 
+
+  private static void test3() {
+    float sigma = 20.0f;
+    String filtersFile = "filters.dat";
+    LocalDiffusionFilterMp ldf = new LocalDiffusionFilterMp(sigma,filtersFile);
+    int n1 = 11;
+    int n2 = 11;
+    int n3 = 11;
+    float[][][] x = Array.randfloat(n1,n2,n3);
+    float[][][] y = Array.zerofloat(n1,n2,n3);
+    int[][][] iw = Array.fillint(1,n1,n2,n3);
+    //ldf.applyInlinePass(null,iw,x,y);
+  }
+}

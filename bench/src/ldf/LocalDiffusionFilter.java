@@ -55,6 +55,23 @@ public class LocalDiffusionFilter {
     Array.sub(x,y,y);
   }
 
+  /**
+   * Applies an inline filter that enhances (passes) features that are
+   * constant in the direction of the unit vectors w.
+   * Unit vectors w are specified by short indices iw that correspond to a 
+   * 16-bit sampling of the unit-sphere.
+   * @param ds scale factors for diffusivity in direction of unit vectors w;
+   *  if null, this method uses constant ds = 1.
+   * @param iw unit-sphere sample indices of unit vectors w.
+   * @param x input image. Must be distinct from the array y.
+   * @param y input/output image. Must be distinct from the array x.
+   */
+  public void applyInlinePass(
+    float[][][] ds, short[][][] iw, float[][][] x, float[][][] y) 
+  {
+    solveInline(ds,iw,x,y);
+  }
+
   ///////////////////////////////////////////////////////////////////////////
   // protected
 
@@ -105,6 +122,12 @@ public class LocalDiffusionFilter {
         }
       }
     }
+  }
+
+  protected void solveInline(
+    float[][][] ds, short[][][] iw, float[][][] x, float[][][] y) 
+  {
+    Check.state(false,"method implemented");
   }
 
   ///////////////////////////////////////////////////////////////////////////

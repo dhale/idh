@@ -475,12 +475,12 @@ public class UnitSphereSampling {
   // testing
 
   public static void main(String[] args) {
-    UnitSphereSampling uss = new UnitSphereSampling(10);
+    UnitSphereSampling uss = new UnitSphereSampling(8);
     //testSymmetry(uss);
     //testInterpolation(uss);
-    testWeights(uss);
+    //testWeights(uss);
     //testTriangle(uss);
-    //testMaxError(uss);
+    testMaxError(uss);
   }
 
   private static void testSymmetry(UnitSphereSampling uss) {
