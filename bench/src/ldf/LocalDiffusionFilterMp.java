@@ -32,29 +32,31 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
    * Constructs a local diffusion filter with pre-computed coefficients.
    * Coefficients are stored in a file with specified name.
    * @param sigma the nominal half-width for this filter.
-   * @param filtersFile name of file containing pre-computed filters.
+   * @param ffile name of file containing pre-computed filters.
    *  If null, filters will be computed on-the-fly as necessary.
    */
-  public LocalDiffusionFilterMp(double sigma, String filtersFile) {
+  public LocalDiffusionFilterMp(double sigma, String ffile) {
     super(sigma);
-    File file = new File(filtersFile);
-    Check.argument(file.exists(),"file "+file+" exists");
-    Check.argument(file.canRead(),"file "+file+" is readable");
-    Check.argument(file.isFile(),"file "+file+" is a file");
+    if (ffile!=null) {
+      File file = new File(ffile);
+      Check.argument(file.exists(),"file "+file+" exists");
+      Check.argument(file.canRead(),"file "+file+" is readable");
+      Check.argument(file.isFile(),"file "+file+" is a file");
+    }
+    _ffile = ffile;
     _sigma = (float)sigma;
-    _filtersFile = filtersFile;
     _dlf = new DirectionalLaplacianFilter(1.0f);
   }
 
   /**
    * Saves filter coefficients to a file with specified name.
-   * @param filtersFile name of file to contain pre-computed filters.
+   * @param ffile name of file to contain pre-computed filters.
    */
-  public void save(String filtersFile) {
+  public void save(String ffile) {
     try {
       ensureInlineFilter3();
       ensureNormalFilter3();
-      ArrayFile af = new ArrayFile(filtersFile,"rw");
+      ArrayFile af = new ArrayFile(ffile,"rw");
       af.writeInt(_fileFormat);
       _fif3.save(af);
       _fnf3.save(af);
@@ -70,11 +72,11 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
   protected void solveInline(
     float[][] ds, float[][] v1, float[][] x, float[][] y) 
   {
+    ensureInlineFilter2();
     int n1 = x[0].length;
     int n2 = x.length;
     float[][] t = new float[n2][n1];
     _dlf.applyInline(null,v1,x,t);
-    ensureInlineFilter2();
     _fif2.applyInverse(_sigma,ds,v1,t,y);
     Array.sub(x,y,y);
   }
@@ -82,12 +84,12 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
   protected void solveInline(
     float[][][] ds, short[][][] iw, float[][][] x, float[][][] y) 
   {
+    ensureInlineFilter3();
     int n1 = x[0][0].length;
     int n2 = x[0].length;
     int n3 = x.length;
     float[][][] t = new float[n3][n2][n1];
     _dlf.applyInline(null,iw,x,t);
-    ensureInlineFilter3();
     _fif3.applyInverse(_sigma,ds,iw,t,y);
     Array.sub(x,y,y);
   }
@@ -95,12 +97,12 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
   protected void solveNormal(
     float[][][] ds, short[][][] iu, float[][][] x, float[][][] y) 
   {
+    ensureNormalFilter3();
     int n1 = x[0][0].length;
     int n2 = x[0].length;
     int n3 = x.length;
     float[][][] t = new float[n3][n2][n1];
     _dlf.applyNormal(null,iu,x,t);
-    ensureNormalFilter3();
     _fnf3.applyInverse(_sigma,ds,iu,t,y);
     Array.sub(x,y,y);
   }
@@ -109,7 +111,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
   // private
 
   private float _sigma;
-  private String _filtersFile;
+  private String _ffile;
   private DirectionalLaplacianFilter _dlf;
   private static final int _fileFormat = 1;
   private static FactoredFilter2 _fif2; // 2-D inline filter
@@ -130,20 +132,20 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
 
   private void ensureInlineFilter3() {
     if (_fif3==null) {
-      if (_filtersFile==null) {
+      if (_ffile==null) {
         _fif3 = new FactoredFilter3(FactoredFilter3.Type.INLINE);
       } else {
-        _fif3 = new FactoredFilter3(FactoredFilter3.Type.INLINE,_filtersFile);
+        _fif3 = new FactoredFilter3(FactoredFilter3.Type.INLINE,_ffile);
       }
     }
   }
 
   private void ensureNormalFilter3() {
     if (_fnf3==null)
-      if (_filtersFile==null) {
+      if (_ffile==null) {
         _fnf3 = new FactoredFilter3(FactoredFilter3.Type.NORMAL);
       } else {
-        _fnf3 = new FactoredFilter3(FactoredFilter3.Type.NORMAL,_filtersFile);
+        _fnf3 = new FactoredFilter3(FactoredFilter3.Type.NORMAL,_ffile);
       }
   }
 
@@ -363,18 +365,18 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
           Array.dump(r);
           cf.factorWilsonBurg(100,0.000001f,r);
           atable[isigma][ivec] = cf.getA();
-          dumpA(atable[isigma][ivec]);
+          //dumpA(atable[isigma][ivec]);
         }
       }
       trace("...  done.");
     }
 
-    FactoredFilter3(Type type, String filtersFile) {
+    FactoredFilter3(Type type, String ffile) {
       trace("FactoredFilter3: begin load ...");
       _type = type;
 
       try {
-        ArrayFile af = new ArrayFile(filtersFile,"r");
+        ArrayFile af = new ArrayFile(ffile,"r");
 
         // Ensure known file format.
         int fileFormat = af.readInt();
@@ -473,19 +475,18 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
         int is = (int)s;
         float s1 = s-(float)is;
         float s0 = 1.0f-s1;
-        float[][] aa = _at[ia];
-        float[][] ab = _at[ib];
-        float[][] ac = _at[ic];
-        float[] aa0 = _at[ia][is  ];
-        float[] aa1 = _at[ia][is+1];
-        float[] ab0 = _at[ib][is  ];
-        float[] ab1 = _at[ib][is+1];
-        float[] ac0 = _at[ic][is  ];
-        float[] ac1 = _at[ic][is+1];
-        int n = aa0.length;
+        float[][] a0 = _at[is  ];
+        float[][] a1 = _at[is+1];
+        float[] a0a = a0[ia];
+        float[] a0b = a0[ib];
+        float[] a0c = a0[ic];
+        float[] a1a = a1[ia];
+        float[] a1b = a1[ib];
+        float[] a1c = a1[ic];
+        int n = a0a.length;
         for (int j=0; j<n; ++j)
-          a[j] = s0*(wa*aa0[j]+wb*ab0[j]+wc*ac0[j]) +
-                 s1*(wa*aa1[j]+wb*ab1[j]+wc*ac1[j]);
+          a[j] = s0*(wa*a0a[j]+wb*a0b[j]+wc*a0c[j]) +
+                 s1*(wa*a1a[j]+wb*a1b[j]+wc*a1c[j]);
       }
       private float _sigma;
       private float[][][] _at;
@@ -545,7 +546,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
 
     // Initialization of static fields.
     static {
-      trace("nlag="+_nlag);
+      //trace("nlag="+_nlag);
       for (int ilag3=0,ilag=0; ilag3<2; ++ilag3) {
         int jlag2 = (ilag3==0)?0:-_mlag;
         int klag2 = 1;
@@ -556,7 +557,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
             _lag1[ilag] = ilag1;
             _lag2[ilag] = ilag2;
             _lag3[ilag] = ilag3;
-            trace("ilag="+ilag+" lag1="+ilag1+" ilag2="+ilag2+" ilag3="+ilag3);
+            //trace("ilag="+ilag+" lag1="+ilag1+" ilag2="+ilag2+" ilag3="+ilag3);
           }
         }
       }
@@ -610,13 +611,13 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
   }
 
   private static void testFactoredFilter3() {
-    String filtersFile = "filters.dat";
+    String ffile = "filters.dat";
     //FactoredFilter2 ff2 = new FactoredFilter2(FactoredFilter2.Type.INLINE);
     //FactoredFilter3 ff3 = new FactoredFilter3(FactoredFilter3.Type.INLINE);
     FactoredFilter3 ff3 = new FactoredFilter3(
-      FactoredFilter3.Type.INLINE,filtersFile);
+      FactoredFilter3.Type.INLINE,ffile);
     try {
-      ArrayFile af = new ArrayFile(filtersFile,"rw");
+      ArrayFile af = new ArrayFile(ffile,"rw");
       af.writeInt(_fileFormat);
       ff3.save(af);
       af.close();
@@ -627,14 +628,16 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
 
   private static void test3() {
     float sigma = 20.0f;
-    String filtersFile = "filters.dat";
-    LocalDiffusionFilterMp ldf = new LocalDiffusionFilterMp(sigma,filtersFile);
-    int n1 = 11;
-    int n2 = 11;
-    int n3 = 11;
+    String ffile = "filters.dat";
+    //LocalDiffusionFilterMp ldf = new LocalDiffusionFilterMp(sigma);
+    //ldf.save(ffile);
+    LocalDiffusionFilterMp ldf = new LocalDiffusionFilterMp(sigma,ffile);
+    int n1 = 3;
+    int n2 = 3;
+    int n3 = 3;
     float[][][] x = Array.randfloat(n1,n2,n3);
     float[][][] y = Array.zerofloat(n1,n2,n3);
-    int[][][] iw = Array.fillint(1,n1,n2,n3);
-    //ldf.applyInlinePass(null,iw,x,y);
+    short[][][] iw = Array.fillshort((short)1,n1,n2,n3);
+    ldf.applyInlinePass(null,iw,x,y);
   }
 }

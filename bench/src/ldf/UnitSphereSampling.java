@@ -396,7 +396,7 @@ public class UnitSphereSampling {
     // indices, and are not counted twice here.
     _npoint = 2*_mindex-4*_m; // = 2+4*_m*_m
 
-    trace("m="+_m+" n="+_n+" mindex="+_mindex+" npoint="+_npoint);
+    //trace("m="+_m+" n="+_n+" mindex="+_mindex+" npoint="+_npoint);
 
     // Tables for points in upper and lower hemispheres.
     _pu = new float[_nindex][];

@@ -14,11 +14,11 @@ public class IoBench {
   private static void benchReadWrite(int order) {
     String file;
     for(int iter=0; iter<3; ++iter) {
-      file = dira+"tmp.dat"; 
+      file = dira+"junk.dat"; 
       remove(file);
       makeFile(file);
       benchReadWrite(file,order);
-      file = dirb+"tmp.dat"; 
+      file = dirb+"junk.dat"; 
       remove(file);
       makeFile(file);
       benchReadWrite(file,order);
@@ -37,17 +37,19 @@ public class IoBench {
   private static void benchCopy() {
     String afile,bfile;
     for(int iter=0; iter<3; ++iter) {
-      afile = dira+"atmp.dat"; 
-      bfile = dira+"btmp.dat"; 
+      /*
+      afile = dira+"junka.dat"; 
+      bfile = dira+"junkb.dat"; 
       remove(afile);
       remove(bfile);
       makeFile(afile);
       benchCopy(afile,bfile);
-      afile = dirb+"atmp.dat"; 
-      bfile = dirc+"btmp.dat"; 
-      remove(afile);
-      remove(bfile);
-      makeFile(afile);
+      */
+      afile = dirb+"junk.dat"; 
+      bfile = dirc+"junk.dat"; 
+      //remove(afile);
+      //remove(bfile);
+      //makeFile(afile);
       benchCopy(afile,bfile);
     }
   }
@@ -58,7 +60,7 @@ public class IoBench {
     copy(afile,bfile);
     sw.stop();
     int rate = (int)(nbytes*1.0e-6/sw.time());
-    trace("           rate="+rate+" MB/s");
+    trace("           time="+sw.time()+" rate="+rate+" MB/s");
   }
 
   private static void benchRandom() {
@@ -71,7 +73,7 @@ public class IoBench {
   private static final int n1 = 1000;
   private static final int n2 = 1000;
   private static final int n3 = 1000;
-  private static final long nbytes = n1*n2*n3*4;
+  private static final long nbytes = n1*n2*n3*4L;
 
   private static void makeFile(String name) {
     trace("makeFile: begin");
@@ -96,6 +98,8 @@ public class IoBench {
       ArrayFile afb = new ArrayFile(bfile,"rw");
       float[] a = new float[n1];
       for (int i3=0; i3<n3; ++i3) {
+        if (i3%100==0)
+          trace("copy: i3="+i3);
         for (int i2=0; i2<n2; ++i2) {
           afa.readFloats(a);
           afb.writeFloats(a);
