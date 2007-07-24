@@ -31,7 +31,7 @@ public class IoBench {
     readWrite(file,order);
     sw.stop();
     int rate = (int)(nbytes*1.0e-6/sw.time());
-    trace("           rate="+rate+" MB/s");
+    trace("time = "+sw.time()+" s rate = "+rate+" MB/s");
   }
 
   private static void benchCopy() {
@@ -60,7 +60,7 @@ public class IoBench {
     copy(afile,bfile);
     sw.stop();
     int rate = (int)(nbytes*1.0e-6/sw.time());
-    trace("           time="+sw.time()+" rate="+rate+" MB/s");
+    trace("time = "+sw.time()+" s rate = "+rate+" MB/s");
   }
 
   private static void benchRandom() {
@@ -89,7 +89,7 @@ public class IoBench {
     } catch(IOException e) {
       throw new RuntimeException(e);
     }
-    trace("          end");
+    trace("done");
   }
 
   private static void copy(String afile, String bfile) {
