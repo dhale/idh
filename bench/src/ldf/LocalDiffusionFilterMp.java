@@ -89,9 +89,10 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     int n2 = x[0].length;
     int n3 = x.length;
     float[][][] t = new float[n3][n2][n1];
-    //_dlf.applyInline(null,iw,x,t);
-    _fif3.applyInverse(_sigma,ds,iw,x,y);
-    //Array.sub(x,y,y);
+    _dlf.applyInline(null,iw,x,t);         // t = G'SGx
+    _fif3.applyInverse(_sigma,ds,iw,t,y);  // y = inv(T+G'G)G'SGx
+    Array.sub(x,y,y);                      // y = (I-inv(T+G'G)G'SG)x
+                                           //   = (T+G'G-G'SG)
   }
 
   protected void solveNormal(
@@ -141,12 +142,13 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
   }
 
   private void ensureNormalFilter3() {
-    if (_fnf3==null)
+    if (_fnf3==null) {
       if (_ffile==null) {
         _fnf3 = new FactoredFilter3(FactoredFilter3.Type.NORMAL);
       } else {
         _fnf3 = new FactoredFilter3(FactoredFilter3.Type.NORMAL,_ffile);
       }
+    }
   }
 
   ///////////////////////////////////////////////////////////////////////////
@@ -352,10 +354,10 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
         for (int ivec=0; ivec<_nvec; ++ivec) {
           trace("isigma="+isigma+" ivec="+ivec);
           Array.mul(scale,t,r);
-          float[] v = _uss.getPoint(1+ivec);
-          float v1 = v[2];
-          float v2 = v[1];
-          float v3 = v[0];
+          float[] v = _uss.getPoint(1+ivec); // {vx,vy,vz}
+          float v1 = v[2]; // v1 = vz
+          float v2 = v[1]; // v2 = vy
+          float v3 = v[0]; // v3 = vx
           if (type==Type.INLINE) {
             dlf.applyInline(1.0f,v1,v2,v3,t,r);
           } else {
@@ -372,7 +374,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     }
 
     FactoredFilter3(Type type, String ffile) {
-      trace("FactoredFilter3: begin load ...");
+      trace("FactoredFilter3: begin load type="+type+" ...");
       _type = type;
 
       try {
@@ -389,6 +391,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
         while (!found) {
           int itypeRead = af.readInt();
           int nbyteRead = af.readInt();
+          trace("itype="+itype+" itypeRead="+itypeRead);
           found = (itype==itypeRead && nbyte==nbyteRead);
           if (!found)
             af.skipBytes(nbyteRead);
@@ -411,7 +414,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     }
 
     void save(ArrayFile af) {
-      trace("FactoredFilter3: begin save ...");
+      trace("FactoredFilter3: begin save type="+_type+" ...");
 
       try {
         af.writeInt(itype(_type));
@@ -514,7 +517,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     // Sampling of the unit sphere for tabulated filter coefficients.
     // This sampling must be coarser (using fewer bits) than the 16-bit
     // sampling used to encode unit vectors.
-    private static final UnitSphereSampling _uss = new UnitSphereSampling(7);
+    private static final UnitSphereSampling _uss = new UnitSphereSampling(4);
     private static final int _nvec = _uss.getMaxIndex();
 
     // Tables of coefficients for both inline and normal filters.

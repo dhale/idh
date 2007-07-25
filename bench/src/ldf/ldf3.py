@@ -31,30 +31,31 @@ niter = 80
 # functions
 
 def main(args):
+  #makeFilters()
   doAmp(0,0)
   return
+
+def makeFilters():
+  ldf = LocalDiffusionFilterMp(sigma)
+  ldf.save(ffile)
 
 def makeImpulse(n1,n2,n3):
   x = Array.zerofloat(n1,n2,n3)
   x[(n3-1)/2][(n2-1)/2][(n1-1)/2] = 1.0
   return x
 
-def makeVectors(dip,azi,n1,n2,n3):
+def makeVectors(v2,v3,n1,n2,n3):
   uss = UnitSphereSampling(16);
-  dip *= pi/180.0
-  azi *= pi/180.0
-  v1 = cos(dip)
-  v2 = -sin(dip)*cos(azi)
-  v3 = -sin(dip)*sin(azi)
+  v1 = sqrt(1.0-v2*v2+v3*v3)
   iv = Array.fillshort(uss.getIndex(v3,v2,v1),n1,n2,n3);
   return iv
 
-def doAmp(dip,azi):
-  #ldf = LocalDiffusionFilterMp(sigma,ffile)
-  ldf = LocalDiffusionFilterCg(sigma,small,niter)
+def doAmp(v2,v3):
+  ldf = LocalDiffusionFilterMp(sigma,ffile)
+  #ldf = LocalDiffusionFilterCg(sigma,small,niter)
   x = makeImpulse(n1,n2,n3)
   ds = None
-  iv = makeVectors(dip,azi,n1,n2,n3)
+  iv = makeVectors(v2,v3,n1,n2,n3)
   h = Array.zerofloat(n1,n2,n3)
   ldf.applyInlinePass(ds,iv,x,h)
   ah = frequencyResponse(h)

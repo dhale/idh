@@ -268,10 +268,10 @@ public class DirectionalLaplacianFilter {
         for (int i1=1; i1<n1; ++i1) {
           float ssi = (ds!=null)?_sigma*ds[i3][i2][i1]:_sigma;
           float swi = 0.5f*ssi*ssi;
-          float[] wi = _uss16.getPoint(iw[i3][i2][i1]);
-          float w1i = wi[0];
-          float w2i = wi[1];
-          float w3i = wi[2];
+          float[] wi = _uss16.getPoint(iw[i3][i2][i1]); // {wx,wy,wz}
+          float w1i = wi[2]; // w1 = wz
+          float w2i = wi[1]; // w2 = wy
+          float w3i = wi[0]; // w3 = wx
           float d11 = swi*w1i*w1i;
           float d12 = swi*w1i*w2i;
           float d13 = swi*w1i*w3i;
@@ -308,10 +308,10 @@ public class DirectionalLaplacianFilter {
         for (int i1=1; i1<n1; ++i1) {
           float ssi = (ds!=null)?_sigma*ds[i3][i2][i1]:_sigma;
           float sui = 0.5f*ssi*ssi;
-          float[] ui = _uss16.getPoint(iu[i3][i2][i1]);
-          float u1i = ui[0];
-          float u2i = ui[1];
-          float u3i = ui[2];
+          float[] ui = _uss16.getPoint(iu[i3][i2][i1]); // {ux,uy,uz}
+          float u1i = ui[2]; // u1 = uz
+          float u2i = ui[1]; // u2 = uy
+          float u3i = ui[0]; // u3 = ux
           float d11 = sui*(1.0f-u1i*u1i);
           float d22 = sui*(1.0f-u2i*u2i);
           float d33 = sui*(1.0f-u3i*u3i);
