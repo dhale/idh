@@ -113,15 +113,20 @@ public class UnitSphereSampling {
 
     // Centered integer grid indices in [-m,m]. Useful for determining
     // which quadrant the point lies in, and whether indices lie outside 
-    // the sampled diamond. Points within the diamond satisfy |jr|+|js|<=m.
+    // the sampled diamond. Points not outside satisfy |jr|+|js|<=m.
     int jr = ir-_m;
     int js = is-_m;
 
     // Adjust for points exactly on the equator in quadrant 1. The square 
     // that contains the point must contain at least one triangle.
     if (jr+js==_m) {
-      --jr;
-      --ir;
+      if (jr>0) {
+        --jr;
+        --ir;
+      } else {
+        --js;
+        --is;
+      }
     }
 
     // Fractional parts in [0,1). The grid square that contains the point

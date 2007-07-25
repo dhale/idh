@@ -107,7 +107,7 @@ public class DirectionalLaplacianFilter {
     float su = 0.5f*ss*ss;
     float d11 = su*(1.0f-u1*u1);
     float d22 = su*(1.0f-u2*u2);
-    float d12 = su*u1*u2;
+    float d12 = su*(    -u1*u2);
     int n1 = x[0].length;
     int n2 = x.length;
     for (int i2=1; i2<n2; ++i2) {
@@ -167,9 +167,9 @@ public class DirectionalLaplacianFilter {
         float sui = 0.5f*ssi*ssi;
         float u2i = u2[i2][i1];
         float u1i = sqrt(1.0f-u2i*u2i);
-        float d11 = 1.0f-sui*u1i*u1i;
-        float d12 =     -sui*u1i*u2i;
-        float d22 = 1.0f-sui*u2i*u2i;
+        float d11 = sui*(1.0f-u1i*u1i);
+        float d22 = sui*(1.0f-u2i*u2i);
+        float d12 = sui*(    -u1i*u2i);
         apply(d11,d12,d22,i1,i2,x,y);
       }
     }
@@ -229,9 +229,9 @@ public class DirectionalLaplacianFilter {
     float d11 = su*(1.0f-u1*u1);
     float d22 = su*(1.0f-u2*u2);
     float d33 = su*(1.0f-u3*u3);
-    float d12 = su*u1*u2;
-    float d13 = su*u1*u3;
-    float d23 = su*u2*u3;
+    float d12 = su*(    -u1*u2);
+    float d13 = su*(    -u1*u3);
+    float d23 = su*(    -u2*u3);
     int n1 = x[0][0].length;
     int n2 = x[0].length;
     int n3 = x.length;
@@ -315,9 +315,9 @@ public class DirectionalLaplacianFilter {
           float d11 = sui*(1.0f-u1i*u1i);
           float d22 = sui*(1.0f-u2i*u2i);
           float d33 = sui*(1.0f-u3i*u3i);
-          float d12 = sui*u1i*u2i;
-          float d13 = sui*u1i*u3i;
-          float d23 = sui*u2i*u3i;
+          float d12 = sui*(    -u1i*u2i);
+          float d13 = sui*(    -u1i*u3i);
+          float d23 = sui*(    -u2i*u3i);
           apply(d11,d12,d13,d22,d23,d33,i1,i2,i3,x,y);
         }
       }
@@ -396,7 +396,7 @@ public class DirectionalLaplacianFilter {
   //  = 16 loads + 8 stores +       30 adds +    16 muls
   // For alternative (more complicated) method with 27-point stencil:
   //    28 loads + 1 store  +       27 adds +    27 muls
-  // This does not include the cost of computing the 27 coefficients!
+  //    (does not include the cost of computing the 27 coefficients!)
   private void apply(
    float d11, float d12, float d13, float d22, float d23, float d33,
    int i1, int i2, int i3, float[][][] x, float[][][] y) 

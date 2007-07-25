@@ -45,7 +45,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     }
     _ffile = ffile;
     _sigma = (float)sigma;
-    _dlf = new DirectionalLaplacianFilter(1.0f);
+    _dlf = new DirectionalLaplacianFilter(sqrt(2.0f));
   }
 
   /**
@@ -89,10 +89,9 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     int n2 = x[0].length;
     int n3 = x.length;
     float[][][] t = new float[n3][n2][n1];
-    _dlf.applyInline(null,iw,x,t);         // t = G'SGx
-    _fif3.applyInverse(_sigma,ds,iw,t,y);  // y = inv(T+G'G)G'SGx
-    Array.sub(x,y,y);                      // y = (I-inv(T+G'G)G'SG)x
-                                           //   = (T+G'G-G'SG)
+    _dlf.applyInline(null,iw,x,t);
+    _fif3.applyInverse(_sigma,ds,iw,t,y);
+    Array.sub(x,y,y);
   }
 
   protected void solveNormal(
@@ -391,7 +390,6 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
         while (!found) {
           int itypeRead = af.readInt();
           int nbyteRead = af.readInt();
-          trace("itype="+itype+" itypeRead="+itypeRead);
           found = (itype==itypeRead && nbyte==nbyteRead);
           if (!found)
             af.skipBytes(nbyteRead);
@@ -486,14 +484,6 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
         float[] a1a = a1[ia];
         float[] a1b = a1[ib];
         float[] a1c = a1[ic];
-        //
-        if (i1==52 && i2==52 && i3==52) {
-          trace("s0="+s0+" s1="+s1);
-          trace("ia="+ia+" ib="+ib+" ic="+ic);
-          trace("wa="+wa+" wb="+wb+" wc="+wc);
-          dumpA(a1[ia]);
-        }
-        //
         int n = a0a.length;
         for (int j=0; j<n; ++j)
           a[j] = s0*(wa*a0a[j]+wb*a0b[j]+wc*a0c[j]) +
@@ -517,7 +507,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     // Sampling of the unit sphere for tabulated filter coefficients.
     // This sampling must be coarser (using fewer bits) than the 16-bit
     // sampling used to encode unit vectors.
-    private static final UnitSphereSampling _uss = new UnitSphereSampling(4);
+    private static final UnitSphereSampling _uss = new UnitSphereSampling(7);
     private static final int _nvec = _uss.getMaxIndex();
 
     // Tables of coefficients for both inline and normal filters.
@@ -572,7 +562,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
           }
         }
       }
-      for (int iw=1; iw<_nw; ++iw) {
+      for (int iw=1; iw<=_nw; ++iw) {
         float[] wi = _uss16.getPoint(iw);
         int[] iabc = _uss.getTriangle(wi);
         float[] wabc = _uss.getWeights(wi,iabc);
