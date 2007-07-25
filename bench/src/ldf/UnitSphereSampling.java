@@ -70,6 +70,21 @@ public class UnitSphereSampling {
     double s = y*scale;
     int ir = (int)(0.5+(r+1.0)*_od);
     int is = (int)(0.5+(s+1.0)*_od);
+    int jr = ir-_m;
+    int js = is-_m;
+    if (jr+js>_m) {
+      --ir;
+      --is;
+    } else if (-jr+js>_m) {
+      ++ir;
+      --is;
+    } else if (-jr-js>_m) {
+      ++ir;
+      ++is;
+    } else if (jr-js>_m) {
+      --ir;
+      ++is;
+    }
     int index = _ip[is][ir];
     return (z>=0.0f)?index:index-_nindex;
   }

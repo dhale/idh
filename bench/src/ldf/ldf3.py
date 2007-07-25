@@ -32,7 +32,7 @@ niter = 80
 
 def main(args):
   makeFilters()
-  #doAmp(45,45)
+  #doAmp(85,37)
   return
 
 def makeFilters():
@@ -52,7 +52,7 @@ def makeVectors(theta,phi,n1,n2,n3):
   v2 = sin(theta)*sin(phi)
   v3 = sin(theta)*cos(phi)
   kv = uss.getIndex(v3,v2,v1)
-  #print "v1 =",v1," v2 =",v2," v3 =",v3," kv =",kv
+  print "v1 =",v1," v2 =",v2," v3 =",v3," kv =",kv
   return Array.fillshort(kv,n1,n2,n3);
 
 def doAmp(theta,phi):

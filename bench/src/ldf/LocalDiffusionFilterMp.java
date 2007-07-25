@@ -55,11 +55,11 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
   public void save(String ffile) {
     try {
       ensureInlineFilter3();
-      ensureNormalFilter3();
+      //ensureNormalFilter3();
       ArrayFile af = new ArrayFile(ffile,"rw");
       af.writeInt(_fileFormat);
       _fif3.save(af);
-      _fnf3.save(af);
+      //_fnf3.save(af);
       af.close();
     } catch (IOException ioe) {
       Check.state(false,"no exception "+ioe);
@@ -347,7 +347,8 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
 
       // Filters for all half-widths sigma and unit-vector indices.
       trace("_nsigma="+_nsigma+" _nvec="+_nvec);
-      for (int isigma=0; isigma<_nsigma; ++isigma) {
+      //for (int isigma=0; isigma<_nsigma; ++isigma) {
+      for (int isigma=_nsigma-1; isigma>=0; --isigma) {
         float sigma = _fsigma+isigma*_dsigma;
         float scale = 2.0f/(sigma*sigma);
         for (int ivec=0; ivec<_nvec; ++ivec) {
@@ -498,7 +499,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     // Sampling of sigma for tabulated filter coefficients.
     private static final float _sigmaMin =  0.1f;
     private static final float _sigmaMax = 16.0f;
-    private static final int _nsigma = 2;
+    private static final int _nsigma = 17;
     private static final float _fsigma = _sigmaMin;
     private static final float _dsigma = (_sigmaMax-_sigmaMin) /
                                          (float)(_nsigma-1);
@@ -507,7 +508,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     // Sampling of the unit sphere for tabulated filter coefficients.
     // This sampling must be coarser (using fewer bits) than the 16-bit
     // sampling used to encode unit vectors.
-    private static final UnitSphereSampling _uss = new UnitSphereSampling(7);
+    private static final UnitSphereSampling _uss = new UnitSphereSampling(10);
     private static final int _nvec = _uss.getMaxIndex();
 
     // Tables of coefficients for both inline and normal filters.
