@@ -11,7 +11,12 @@ import edu.mines.jtk.util.Check;
 
 /**
  * A roughly uniform sampling of the unit-sphere.
- * Maps integer sample indices i to points (x,y,z) on the unit sphere. 
+ * Maps integer sample indices i to points (x,y,z) on the unit sphere. The 
+ * sampling is only approximately uniform because sampled points on the 
+ * sphere are projections of points that uniformly sample an octahedron.
+ * The corners of that octahedron are the points (1,0,0), (-1,0,0), (0,1,0),
+ * (0,-1,0), (0,0,1), and (0,0,-1). Sampling near these corner points is 
+ * finer than sampling elsewhere on the unit sphere.
  * <p>
  * Positive sample indices correspond to points in the upper hemisphere
  * for which z&gt;=0. Negative sample indices correspond to points in the
@@ -20,8 +25,8 @@ import edu.mines.jtk.util.Check;
  * and positive sample indices.
  * <p>
  * Points with positive and negative indices are sampled symmetrically
- * about the center of the unit sphere. That is, if sample index i
- * is mapped to a point (x,y,z), then sample index -i is mapped to
+ * about the center of the unit sphere. Specifically, if sample index i
+ * corresponds to a point (x,y,z), then sample index -i corresponds to
  * the point (-x,-y,-z).
  *
  * @author Dave Hale, Colorado School of Mines
@@ -33,20 +38,42 @@ public class UnitSphereSampling {
    * Constructs a sampling for the specified number of bits.
    * Sample indices are signed integers with no more than this
    * number of bits, which includes the sign bit.
-   * @param nbits the number of bits.
+   * @param nbits the number of bits; 4 &lt;= nbits &lt;= 32 required.
    */
   public UnitSphereSampling(int nbits) {
     initialize(nbits);
   }
 
   /**
-   * Gets the sampled point for the specified index.
+   * Gets the number of points sampled on this unit sphere.
+   * @return the number of points sampled.
+   */
+  public int countSamples() {
+    return _npoint;
+  }
+
+  /**
+   * Gets the maximum sample index, a positive integer. The smallest
+   * positive index is one. The smallest index is the negative of the 
+   * maximum index, and the largest negative index is minus one.
+   * <p>
+   * This number equals the number of points sampled in one hemisphere,
+   * including points on the equator.
+   * @return the maximum index.
+   */
+  public int getMaxIndex() {
+    return _mindex;
+  }
+
+  /**
+   * Gets the sampled point for the specified index, which must be non-zero.
    * For efficiency, returns the array {x,y,z} of point coordinates 
    * by reference, not by copy. These coordinates must not be modified.
-   * @param index the index of the sampled point.
+   * @param index the index of the sampled point; must be non-zero.
    * @return array {x,y,z} of point coordinates; by reference, not by copy.
    */
   public float[] getPoint(int index) {
+    Check.argument(index!=0,"index!=0");
     return (index>=0)?_pu[index]:_pl[index+_nindex];
   }
 
@@ -86,6 +113,7 @@ public class UnitSphereSampling {
       ++is;
     }
     int index = _ip[is][ir];
+    assert index>0:"index>0";
     return (z>=0.0f)?index:index-_nindex;
   }
 
@@ -293,24 +321,6 @@ public class UnitSphereSampling {
     return getWeights(xyz[0],xyz[1],xyz[2],iabc);
   }
 
-  /**
-   * Gets the maximum sample index, a positive integer. The smallest
-   * positive index is one. The smallest index is the negative of the 
-   * maximum index, and the largest negative index is minus one.
-   * @return the maximum index.
-   */
-  public int getMaxIndex() {
-    return _mindex;
-  }
-
-  /**
-   * Gets the number of points sampled on this unit sphere.
-   * @return the number of points sampled.
-   */
-  public int countSamples() {
-    return _npoint;
-  }
-
   ///////////////////////////////////////////////////////////////////////////
   // private
 
@@ -379,7 +389,7 @@ public class UnitSphereSampling {
   private int[][] _ip; // table[n][n] of point indices
 
   private void initialize(int nbits) {
-    Check.argument(nbits>=3,"nbits>=3");
+    Check.argument(nbits>=4,"nbits>=4");
     Check.argument(nbits<=32,"nbits<=32");
 
     // Number of bits in sample indices, including the sign bit.
@@ -545,9 +555,6 @@ public class UnitSphereSampling {
     int npoint = 10000;
     for (int ipoint=0; ipoint<npoint; ++ipoint) {
       float[] p = randomPoint();
-      //p[0] = -0.564698f;
-      //p[1] = -0.825298f;
-      //p[2] =  0.000000f;
       int[] iabc = uss.getTriangle(p);
       float[] wabc = uss.getWeights(p,iabc);
       int   ia = iabc[0], ib = iabc[1], ic = iabc[2];
@@ -581,9 +588,6 @@ public class UnitSphereSampling {
     int npoint = 1000000;
     for (int ipoint=0; ipoint<npoint; ++ipoint) {
       float[] p = randomPoint();
-      //p[0] = -0.403209f;
-      //p[1] = -0.838007f;
-      //p[2] =  0.367649f;
       int i = uss.getIndex(p);
       int[] abc = uss.getTriangle(p);
       int ia = abc[0], ib = abc[1], ic = abc[2];
