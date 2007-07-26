@@ -55,11 +55,11 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
   public void save(String ffile) {
     try {
       ensureInlineFilter3();
-      //ensureNormalFilter3();
+      ensureNormalFilter3();
       ArrayFile af = new ArrayFile(ffile,"rw");
       af.writeInt(_fileFormat);
       _fif3.save(af);
-      //_fnf3.save(af);
+      _fnf3.save(af);
       af.close();
     } catch (IOException ioe) {
       Check.state(false,"no exception "+ioe);
