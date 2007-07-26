@@ -332,8 +332,8 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
       CausalFilter cf = new CausalFilter(_lag1,_lag2,_lag3);
 
       // Arrays used to compute 3x3x3 auto-correlations to be factored.
-      float[][][] t = new float[3][3][3];
       float[][][] r = new float[3][3][3];
+      float[][][] t = new float[3][3][3];
       t[1][1][1] = 1.0f;
 
       // A filter to compute the auto-correlations to be factored. 
@@ -364,13 +364,23 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
             dlf.applyNormal(1.0f,v1,v2,v3,t,r);
           }
           trace("v1="+v1+" v2="+v2+" v3="+v3);
-          Array.dump(r);
           cf.factorWilsonBurg(100,0.000001f,r);
           atable[isigma][ivec] = cf.getA();
-          //dumpA(atable[isigma][ivec]);
+          //Array.dump(r);
+          dumpA(atable[isigma][ivec]);
+          //checkA(cf,r);
         }
       }
       trace("...  done.");
+    }
+    private void checkA(CausalFilter cf, float[][][] r) {
+      float[][][] t = new float[30][30][30];
+      t[1][1][1] = 1.0f;
+      cf.apply(t,t);
+      cf.applyTranspose(t,t);
+      float[][][] s = Array.copy(3,3,3,t);
+      Array.dump(r);
+      Array.dump(s);
     }
 
     FactoredFilter3(Type type, String ffile) {
@@ -489,6 +499,12 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
         for (int j=0; j<n; ++j)
           a[j] = s0*(wa*a0a[j]+wb*a0b[j]+wc*a0c[j]) +
                  s1*(wa*a1a[j]+wb*a1b[j]+wc*a1c[j]);
+        if (i1==52 && i2==52 && i3==52) {
+          trace("iw="+iw);
+          trace("ia="+ia+" ib="+ib+" ic="+ic);
+          trace("wa="+wa+" wb="+wb+" wc="+wc);
+          dumpA(a);
+        }
       }
       private float _sigma;
       private float[][][] _at;
@@ -499,7 +515,8 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     // Sampling of sigma for tabulated filter coefficients.
     private static final float _sigmaMin =  0.1f;
     private static final float _sigmaMax = 16.0f;
-    private static final int _nsigma = 17;
+    private static final int _nsigma = 2;
+    //private static final int _nsigma = 17;
     private static final float _fsigma = _sigmaMin;
     private static final float _dsigma = (_sigmaMax-_sigmaMin) /
                                          (float)(_nsigma-1);
@@ -508,7 +525,8 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     // Sampling of the unit sphere for tabulated filter coefficients.
     // This sampling must be coarser (using fewer bits) than the 16-bit
     // sampling used to encode unit vectors.
-    private static final UnitSphereSampling _uss = new UnitSphereSampling(10);
+    private static final UnitSphereSampling _uss = new UnitSphereSampling(5);
+    //private static final UnitSphereSampling _uss = new UnitSphereSampling(10);
     private static final int _nvec = _uss.getMaxIndex();
 
     // Tables of coefficients for both inline and normal filters.
@@ -539,8 +557,13 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     //                    -1: x  x  x  x  x  x  x  x  x
     //                     0:          x  x  x  x  x  x
     //                     1:          x  x  x  x  x  x
+    /*
     private static int _mlag = 4;
     private static int _nlag = 2+3*(2+_mlag)+_mlag*(_mlag+1+_mlag); // = 56
+    */
+    private static int _mlag = 4;
+    private static int _nlag = 1+_mlag+_mlag*(1+2*_mlag) +
+                               2+_mlag+(1+_mlag)*(1+2*_mlag);
     private static int[] _lag1 = new int[_nlag];
     private static int[] _lag2 = new int[_nlag];
     private static int[] _lag3 = new int[_nlag];
@@ -548,7 +571,8 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
 
     // Initialization of static fields.
     static {
-      //trace("nlag="+_nlag);
+      trace("nlag="+_nlag);
+      /*
       for (int ilag3=0,ilag=0; ilag3<2; ++ilag3) {
         int jlag2 = (ilag3==0)?0:-_mlag;
         int klag2 = 1;
@@ -560,6 +584,20 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
             _lag2[ilag] = ilag2;
             _lag3[ilag] = ilag3;
             //trace("ilag="+ilag+" lag1="+ilag1+" ilag2="+ilag2+" ilag3="+ilag3);
+          }
+        }
+      }
+      */
+      for (int ilag3=0,ilag=0; ilag3<2; ++ilag3) {
+        int jlag2 = (ilag3==0)?0:-_mlag;
+        int klag2 = (ilag3==0)?_mlag:1;
+        for (int ilag2=jlag2; ilag2<=klag2; ++ilag2) {
+          int jlag1 = (ilag3==0 && ilag2==0)?0:-_mlag;
+          int klag1 = (ilag3==1 && ilag2>0)?1:_mlag;
+          for (int ilag1=jlag1; ilag1<=klag1; ++ilag1,++ilag) {
+            _lag1[ilag] = ilag1;
+            _lag2[ilag] = ilag2;
+            _lag3[ilag] = ilag3;
           }
         }
       }

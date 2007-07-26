@@ -46,6 +46,12 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
     solveInlineSimple(ds,iw,x,y);
   }
 
+  protected void solveNormal(
+    float[][][] ds, short[][][] iu, float[][][] x, float[][][] y) 
+  {
+    solveNormalSimple(ds,iu,x,y);
+  }
+
   ///////////////////////////////////////////////////////////////////////////
   // private
 
@@ -93,6 +99,22 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
     }
     private float[][][] _ds;
     private short[][][] _iw;
+    private DirectionalLaplacianFilter _dlf;
+  }
+  private static class NormalOperator3 implements Operator3 {
+    NormalOperator3(
+      DirectionalLaplacianFilter dlf, float[][][] ds, short[][][] iu) 
+    {
+      _dlf = dlf;
+      _ds = ds;
+      _iu = iu;
+    }
+    public void apply(float[][][] x, float[][][] y) {
+      Array.copy(x,y);
+      _dlf.applyNormal(_ds,_iu,x,y);
+    }
+    private float[][][] _ds;
+    private short[][][] _iu;
     private DirectionalLaplacianFilter _dlf;
   }
 
@@ -165,6 +187,12 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
     float[][][] ds, short[][][] iw, float[][][] x, float[][][] y) 
   {
     Operator3 a = new InlineOperator3(_dlf,ds,iw);
+    solve(a,x,y);
+  }
+  private void solveNormalSimple(
+    float[][][] ds, short[][][] iu, float[][][] x, float[][][] y) 
+  {
+    Operator3 a = new NormalOperator3(_dlf,ds,iu);
     solve(a,x,y);
   }
 

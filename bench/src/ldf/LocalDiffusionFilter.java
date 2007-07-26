@@ -25,9 +25,9 @@ public class LocalDiffusionFilter {
   }
 
   /**
-   * Applies an inline filter that enhances (passes) features that are
-   * constant in the direction of the unit vectors v.
-   * @param ds scale factors for diffusivity in direction of unit vectors v;
+   * Applies a filter that enhances (passes) features that are locally 
+   * linear with inline vectors v.
+   * @param ds scale factors for diffusivity inline with unit vectors v;
    *  if null, this method uses constant ds = 1.
    * @param v1 array of 1st components of inline unit vectors.
    * @param x array with input image; must be distinct from y.
@@ -40,9 +40,9 @@ public class LocalDiffusionFilter {
   }
 
   /**
-   * Applies an inline filter that attenuates (kills) features that are
-   * constant in the direction of the unit vectors v.
-   * @param ds scale factors for diffusivity in direction of unit vectors v;
+   * Applies a filter that attenuates (kills) features that are locally 
+   * linear with inline vectors v.
+   * @param ds scale factors for diffusivity inline with unit vectors v;
    *  if null, this method uses constant ds = 1.
    * @param v1 array of 1st components of inline unit vectors.
    * @param x array with input image; must be distinct from y.
@@ -56,11 +56,11 @@ public class LocalDiffusionFilter {
   }
 
   /**
-   * Applies an inline filter that enhances (passes) features that are
-   * constant in the direction of the unit vectors w.
-   * Unit vectors w are specified by short indices iw that correspond to a 
-   * 16-bit sampling of the unit-sphere.
-   * @param ds scale factors for diffusivity in direction of unit vectors w;
+   * Applies a filter that enhances (passes) features that are locally 
+   * linear with inline vectors w.
+   * The unit vectors w are specified by short indices iw that correspond 
+   * to a 16-bit sampling of the unit-sphere.
+   * @param ds scale factors for diffusivity inline with unit vectors w;
    *  if null, this method uses constant ds = 1.
    * @param iw unit-sphere sample indices of unit vectors w.
    * @param x input image. Must be distinct from the array y.
@@ -70,6 +70,23 @@ public class LocalDiffusionFilter {
     float[][][] ds, short[][][] iw, float[][][] x, float[][][] y) 
   {
     solveInline(ds,iw,x,y);
+  }
+
+  /**
+   * Applies a filter that enhances (passes) features that are locally 
+   * planar with normal vectors u.
+   * The unit vectors u are specified by short indices iu that correspond 
+   * to a 16-bit sampling of the unit-sphere.
+   * @param ds scale factors for diffusivity normal to unit vectors u;
+   *  if null, this method uses constant ds = 1.
+   * @param iu unit-sphere sample indices of unit vectors u.
+   * @param x input image. Must be distinct from the array y.
+   * @param y input/output image. Must be distinct from the array x.
+   */
+  public void applyNormalPass(
+    float[][][] ds, short[][][] iu, float[][][] x, float[][][] y) 
+  {
+    solveNormal(ds,iu,x,y);
   }
 
   ///////////////////////////////////////////////////////////////////////////
@@ -127,7 +144,13 @@ public class LocalDiffusionFilter {
   protected void solveInline(
     float[][][] ds, short[][][] iw, float[][][] x, float[][][] y) 
   {
-    Check.state(false,"method implemented");
+    Check.state(false,"method implemented in subclass");
+  }
+
+  protected void solveNormal(
+    float[][][] ds, short[][][] iu, float[][][] x, float[][][] y) 
+  {
+    Check.state(false,"method implemented in subclass");
   }
 
   ///////////////////////////////////////////////////////////////////////////

@@ -31,8 +31,8 @@ niter = 80
 # functions
 
 def main(args):
-  makeFilters()
-  #doAmp(85,37)
+  ###makeFilters()
+  doAmp(0,0)
   return
 
 def makeFilters():
@@ -56,13 +56,15 @@ def makeVectors(theta,phi,n1,n2,n3):
   return Array.fillshort(kv,n1,n2,n3);
 
 def doAmp(theta,phi):
-  ldf = LocalDiffusionFilterMp(sigma,ffile)
+  ldf = LocalDiffusionFilterMp(sigma)
+  #ldf = LocalDiffusionFilterMp(sigma,ffile)
   #ldf = LocalDiffusionFilterCg(sigma,small,niter)
   x = makeImpulse(n1,n2,n3)
   ds = None
   iv = makeVectors(theta,phi,n1,n2,n3)
   h = Array.zerofloat(n1,n2,n3)
-  ldf.applyInlinePass(ds,iv,x,h)
+  #ldf.applyInlinePass(ds,iv,x,h)
+  ldf.applyNormalPass(ds,iv,x,h)
   ah = frequencyResponse(h)
   plot3d(ah)
 
