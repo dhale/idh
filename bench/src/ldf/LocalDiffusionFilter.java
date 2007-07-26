@@ -27,8 +27,7 @@ public class LocalDiffusionFilter {
   /**
    * Applies a filter that enhances (passes) features that are locally 
    * linear with inline vectors v.
-   * @param ds scale factors for diffusivity inline with unit vectors v;
-   *  if null, this method uses constant ds = 1.
+   * @param ds diffusivity scale factors; null, for constant = 1.
    * @param v1 array of 1st components of inline unit vectors.
    * @param x array with input image; must be distinct from y.
    * @param y array with output image; must be distinct from x.
@@ -42,8 +41,7 @@ public class LocalDiffusionFilter {
   /**
    * Applies a filter that attenuates (kills) features that are locally 
    * linear with inline vectors v.
-   * @param ds scale factors for diffusivity inline with unit vectors v;
-   *  if null, this method uses constant ds = 1.
+   * @param ds diffusivity scale factors; null, for constant = 1.
    * @param v1 array of 1st components of inline unit vectors.
    * @param x array with input image; must be distinct from y.
    * @param y array with output image; must be distinct from x.
@@ -60,8 +58,7 @@ public class LocalDiffusionFilter {
    * linear with inline vectors w.
    * The unit vectors w are specified by short indices iw that correspond 
    * to a 16-bit sampling of the unit-sphere.
-   * @param ds scale factors for diffusivity inline with unit vectors w;
-   *  if null, this method uses constant ds = 1.
+   * @param ds diffusivity scale factors; null, for constant = 1.
    * @param iw unit-sphere sample indices of unit vectors w.
    * @param x input image. Must be distinct from the array y.
    * @param y input/output image. Must be distinct from the array x.
@@ -77,8 +74,7 @@ public class LocalDiffusionFilter {
    * planar with normal vectors u.
    * The unit vectors u are specified by short indices iu that correspond 
    * to a 16-bit sampling of the unit-sphere.
-   * @param ds scale factors for diffusivity normal to unit vectors u;
-   *  if null, this method uses constant ds = 1.
+   * @param ds diffusivity scale factors; null, for constant = 1.
    * @param iu unit-sphere sample indices of unit vectors u.
    * @param x input image. Must be distinct from the array y.
    * @param y input/output image. Must be distinct from the array x.
@@ -94,8 +90,7 @@ public class LocalDiffusionFilter {
 
   /**
    * Solves (I+G'DG)y = x for inline diffusion tensors D = dvv'.
-   * @param ds scale factors for diffusivity in direction of unit vectors v;
-   *  if null, this method uses constant ds = 1.
+   * @param ds diffusivity scale factors; null, for constant = 1.
    * @param v1 array of 1st components of inline unit vectors.
    * @param x array with input image; must be distinct from y.
    * @param y array with output image; must be distinct from x.

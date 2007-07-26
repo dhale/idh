@@ -32,7 +32,7 @@ niter = 80
 
 def main(args):
   ###makeFilters()
-  doAmp(0,0)
+  doAmp(85,37)
   return
 
 def makeFilters():
@@ -56,9 +56,9 @@ def makeVectors(theta,phi,n1,n2,n3):
   return Array.fillshort(kv,n1,n2,n3);
 
 def doAmp(theta,phi):
-  ldf = LocalDiffusionFilterMp(sigma)
+  #ldf = LocalDiffusionFilterMp(sigma)
   #ldf = LocalDiffusionFilterMp(sigma,ffile)
-  #ldf = LocalDiffusionFilterCg(sigma,small,niter)
+  ldf = LocalDiffusionFilterCg(sigma,small,niter)
   x = makeImpulse(n1,n2,n3)
   ds = None
   iv = makeVectors(theta,phi,n1,n2,n3)
