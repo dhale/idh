@@ -54,12 +54,12 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
    */
   public void save(String ffile) {
     try {
-      ensureInlineFilter3();
-      ensureNormalFilter3();
       ArrayFile af = new ArrayFile(ffile,"rw");
       af.writeInt(_fileFormat);
-      _fif3.save(af);
+      ensureNormalFilter3();
       _fnf3.save(af);
+      ensureInlineFilter3();
+      _fif3.save(af);
       af.close();
     } catch (IOException ioe) {
       Check.state(false,"no exception "+ioe);
@@ -293,7 +293,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     private static float[][][] _atableInline = new float[_nsigma][_ntheta][];
     private static float[][][] _atableNormal = new float[_nsigma][_ntheta][];
 
-    // Lags for minimum-phase factors, with the following stencil:
+    // Lags for minimum-phase factors with the following stencil:
     //   lag1 =    1  0 -1 -2 -3 -4
     //   --------------------------
     //   lag2 = 0: x  x
@@ -365,7 +365,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
           } else {
             dlf.applyNormal(1.0f,v1,v2,v3,t,r);
           }
-          trace("  v1="+v1+" v2="+v2+" v3="+v3);
+          trace("  sigma="+sigma+" v1="+v1+" v2="+v2+" v3="+v3);
           cf.factorWilsonBurg(100,0.000001f,r);
           atable[isigma][ivec] = cf.getA();
           //dumpA(atable[isigma][ivec]);
@@ -511,8 +511,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     // Sampling of sigma for tabulated filter coefficients.
     private static final float _sigmaMin =  0.1f;
     private static final float _sigmaMax = 16.0f;
-    private static final int _nsigma = 2;
-    //private static final int _nsigma = 17;
+    private static final int _nsigma = 9;
     private static final float _fsigma = _sigmaMin;
     private static final float _dsigma = (_sigmaMax-_sigmaMin) /
                                          (float)(_nsigma-1);
@@ -521,8 +520,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     // Sampling of the unit sphere for tabulated filter coefficients.
     // This sampling must be coarser (using fewer bits) than the 16-bit
     // sampling used to encode unit vectors.
-    private static final UnitSphereSampling _uss = new UnitSphereSampling(4);
-    //private static final UnitSphereSampling _uss = new UnitSphereSampling(10);
+    private static final UnitSphereSampling _uss = new UnitSphereSampling(10);
     private static final int _nvec = _uss.getMaxIndex();
 
     // Tables of coefficients for both inline and normal filters.
