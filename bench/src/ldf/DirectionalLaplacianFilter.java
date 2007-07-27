@@ -383,7 +383,7 @@ public class DirectionalLaplacianFilter {
 
     // i3 = 1, 3, 5, ...
     final AtomicInteger a1 = new AtomicInteger(1);
-    Thread[] thread1 = newThreads();
+    Thread[] thread1 = Threads.makeArray();
     for (int ithread=0; ithread<thread1.length; ++ithread) {
       thread1[ithread] = new Thread(new Runnable() {
         public void run() {
@@ -392,11 +392,11 @@ public class DirectionalLaplacianFilter {
         }
       });
     }
-    startAndJoin(thread1);
+    Threads.startAndJoin(thread1);
 
     // i3 = 2, 4, 6, ...
     final AtomicInteger a2 = new AtomicInteger(2);
-    Thread[] thread2 = newThreads();
+    Thread[] thread2 = Threads.makeArray();
     for (int ithread=0; ithread<thread2.length; ++ithread) {
       thread2[ithread] = new Thread(new Runnable() {
         public void run() {
@@ -405,7 +405,7 @@ public class DirectionalLaplacianFilter {
         }
       });
     }
-    startAndJoin(thread2);
+    Threads.startAndJoin(thread2);
   }
 
   // Computes y = y+G'DGx for one constant-i3 slice.
@@ -650,24 +650,6 @@ public class DirectionalLaplacianFilter {
       }
     }
   }
-
-  private static Thread[] newThreads() {
-    int nthread = 2*Runtime.getRuntime().availableProcessors();
-    return new Thread[nthread];
-  }
-
-
-  private static void startAndJoin(Thread[] threads) {
-    for (int ithread=0; ithread<threads.length; ++ithread)
-      threads[ithread].start();
-    try {
-      for (int ithread=0; ithread<threads.length; ++ithread)
-        threads[ithread].join();
-    } catch (InterruptedException ie) {
-      throw new RuntimeException(ie);
-    }
-  }
-
 
   ///////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////////////
