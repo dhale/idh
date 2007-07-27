@@ -6,6 +6,9 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package ldf;
 
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import edu.mines.jtk.util.*;
 import static edu.mines.jtk.util.MathPlus.*;
 
@@ -191,24 +194,7 @@ public class DirectionalLaplacianFilter {
     float ds, float w1, float w2, float w3, 
     float[][][] x, float[][][] y) 
   {
-    float ss = ds*_sigma;
-    float sw = 0.5f*ss*ss;
-    float d11 = sw*w1*w1;
-    float d12 = sw*w1*w2;
-    float d13 = sw*w1*w3;
-    float d22 = sw*w2*w2;
-    float d23 = sw*w2*w3;
-    float d33 = sw*w3*w3;
-    int n1 = x[0][0].length;
-    int n2 = x[0].length;
-    int n3 = x.length;
-    for (int i3=1; i3<n3; ++i3) {
-      for (int i2=1; i2<n2; ++i2) {
-        for (int i1=1; i1<n1; ++i1) {
-          apply(d11,d12,d13,d22,d23,d33,i1,i2,i3,x,y);
-        }
-      }
-    }
+    apply(Type.INLINE,ds,w1,w2,w3,x,y);
   }
 
   /**
@@ -224,24 +210,7 @@ public class DirectionalLaplacianFilter {
     float ds, float u1, float u2, float u3, 
     float[][][] x, float[][][] y) 
   {
-    float ss = ds*_sigma;
-    float su = 0.5f*ss*ss;
-    float d11 = su*(1.0f-u1*u1);
-    float d22 = su*(1.0f-u2*u2);
-    float d33 = su*(1.0f-u3*u3);
-    float d12 = su*(    -u1*u2);
-    float d13 = su*(    -u1*u3);
-    float d23 = su*(    -u2*u3);
-    int n1 = x[0][0].length;
-    int n2 = x[0].length;
-    int n3 = x.length;
-    for (int i3=1; i3<n3; ++i3) {
-      for (int i2=1; i2<n2; ++i2) {
-        for (int i1=1; i1<n1; ++i1) {
-          apply(d11,d12,d13,d22,d23,d33,i1,i2,i3,x,y);
-        }
-      }
-    }
+    apply(Type.NORMAL,ds,u1,u2,u3,x,y);
   }
 
   /**
@@ -258,30 +227,8 @@ public class DirectionalLaplacianFilter {
     float[][][] ds, short[][][] iw, 
     float[][][] x, float[][][] y) 
   {
-    if (_uss16==null)
-      _uss16 = new UnitSphereSampling(16);
-    int n1 = x[0][0].length;
-    int n2 = x[0].length;
-    int n3 = x.length;
-    for (int i3=1; i3<n3; ++i3) {
-      for (int i2=1; i2<n2; ++i2) {
-        for (int i1=1; i1<n1; ++i1) {
-          float ssi = (ds!=null)?_sigma*ds[i3][i2][i1]:_sigma;
-          float swi = 0.5f*ssi*ssi;
-          float[] wi = _uss16.getPoint(iw[i3][i2][i1]); // {wx,wy,wz}
-          float w1i = wi[2]; // w1 = wz
-          float w2i = wi[1]; // w2 = wy
-          float w3i = wi[0]; // w3 = wx
-          float d11 = swi*w1i*w1i;
-          float d12 = swi*w1i*w2i;
-          float d13 = swi*w1i*w3i;
-          float d22 = swi*w2i*w2i;
-          float d23 = swi*w2i*w3i;
-          float d33 = swi*w3i*w3i;
-          apply(d11,d12,d13,d22,d23,d33,i1,i2,i3,x,y);
-        }
-      }
-    }
+    //applySerial(Type.INLINE,ds,iw,x,y);
+    applyParallel(Type.INLINE,ds,iw,x,y);
   }
 
   /**
@@ -298,34 +245,12 @@ public class DirectionalLaplacianFilter {
     float[][][] ds, short[][][] iu, 
     float[][][] x, float[][][] y) 
   {
-    if (_uss16==null)
-      _uss16 = new UnitSphereSampling(16);
-    int n1 = x[0][0].length;
-    int n2 = x[0].length;
-    int n3 = x.length;
-    for (int i3=1; i3<n3; ++i3) {
-      for (int i2=1; i2<n2; ++i2) {
-        for (int i1=1; i1<n1; ++i1) {
-          float ssi = (ds!=null)?_sigma*ds[i3][i2][i1]:_sigma;
-          float sui = 0.5f*ssi*ssi;
-          float[] ui = _uss16.getPoint(iu[i3][i2][i1]); // {ux,uy,uz}
-          float u1i = ui[2]; // u1 = uz
-          float u2i = ui[1]; // u2 = uy
-          float u3i = ui[0]; // u3 = ux
-          float d11 = sui*(1.0f-u1i*u1i);
-          float d22 = sui*(1.0f-u2i*u2i);
-          float d33 = sui*(1.0f-u3i*u3i);
-          float d12 = sui*(    -u1i*u2i);
-          float d13 = sui*(    -u1i*u3i);
-          float d23 = sui*(    -u2i*u3i);
-          apply(d11,d12,d13,d22,d23,d33,i1,i2,i3,x,y);
-        }
-      }
-    }
+    //applySerial(Type.NORMAL,ds,iu,x,y);
+    applyParallel(Type.NORMAL,ds,iu,x,y);
   }
 
   /**
-   * A 2-D directional Laplacian filters with a 3 x 3 (9-point) stencil.
+   * 2-D directional Laplacian filters with a 3 x 3 (9-point) stencil.
    * Note that filters need not use these stencils when applied. Rather,
    * stencils are used in certain iterative methods for solving sparse 
    * positive-definite systems of equations such as (I+G'DG)y = x.
@@ -368,7 +293,7 @@ public class DirectionalLaplacianFilter {
   private float _sigma; // nominal filter half-width
 
   // Computes y = y+G'DGx for one sample.
-  private void apply(
+  private static void apply(
    float d11, float d12, float d22,
    int i1, int i2, float[][] x, float[][] y) 
   {
@@ -390,25 +315,166 @@ public class DirectionalLaplacianFilter {
     y[i2-1][i1-1] -= ya;
   }
 
+  private enum Type {
+    INLINE,
+    NORMAL
+  };
+
+  private void apply(
+    Type type, float ds, float v1, float v2, float v3, 
+    float[][][] x, float[][][] y) 
+  {
+    float ss = ds*_sigma;
+    float sv = 0.5f*ss*ss;
+    float d11,d22,d33,d12,d13,d23;
+    if (type==Type.INLINE) {
+      d11 = sv*v1*v1;
+      d22 = sv*v2*v2;
+      d33 = sv*v3*v3;
+      d12 = sv*v1*v2;
+      d13 = sv*v1*v3;
+      d23 = sv*v2*v3;
+    } else {
+      d11 = sv-sv*v1*v1;
+      d22 = sv-sv*v2*v2;
+      d33 = sv-sv*v3*v3;
+      d12 =   -sv*v1*v2;
+      d13 =   -sv*v1*v3;
+      d23 =   -sv*v2*v3;
+    }
+    int n1 = x[0][0].length;
+    int n2 = x[0].length;
+    int n3 = x.length;
+    for (int i3=1; i3<n3; ++i3) {
+      for (int i2=1; i2<n2; ++i2) {
+        float[] x00 = x[i3  ][i2  ];
+        float[] x01 = x[i3  ][i2-1];
+        float[] x10 = x[i3-1][i2  ];
+        float[] x11 = x[i3-1][i2-1];
+        float[] y00 = y[i3  ][i2  ];
+        float[] y01 = y[i3  ][i2-1];
+        float[] y10 = y[i3-1][i2  ];
+        float[] y11 = y[i3-1][i2-1];
+        for (int i1=1; i1<n1; ++i1) {
+          apply(i1,d11,d12,d13,d22,d23,d33,x00,x01,x10,x11,y00,y01,y10,y11);
+        }
+      }
+    }
+  }
+
+  private void applySerial(Type type,
+    float[][][] ds, short[][][] iw, 
+    float[][][] x, float[][][] y) 
+  {
+    if (_uss16==null)
+      _uss16 = new UnitSphereSampling(16);
+    int n3 = x.length;
+    for (int i3=1; i3<n3; ++i3)
+      applySlice3(type,i3,_uss16,_sigma,ds,iw,x,y);
+  }
+
+  private void applyParallel(final Type type,
+    final float[][][] ds, final short[][][] iw, 
+    final float[][][] x, final float[][][] y) 
+  {
+    if (_uss16==null)
+      _uss16 = new UnitSphereSampling(16);
+    final int n3 = x.length;
+
+    // i3 = 1, 3, 5, ...
+    final AtomicInteger a1 = new AtomicInteger(1);
+    Thread[] thread1 = newThreads();
+    for (int ithread=0; ithread<thread1.length; ++ithread) {
+      thread1[ithread] = new Thread(new Runnable() {
+        public void run() {
+          for (int i3=a1.getAndAdd(2); i3<n3; i3=a1.getAndAdd(2))
+            applySlice3(type,i3,_uss16,_sigma,ds,iw,x,y);
+        }
+      });
+    }
+    startAndJoin(thread1);
+
+    // i3 = 2, 4, 6, ...
+    final AtomicInteger a2 = new AtomicInteger(2);
+    Thread[] thread2 = newThreads();
+    for (int ithread=0; ithread<thread2.length; ++ithread) {
+      thread2[ithread] = new Thread(new Runnable() {
+        public void run() {
+          for (int i3=a2.getAndAdd(2); i3<n3; i3=a2.getAndAdd(2))
+            applySlice3(type,i3,_uss16,_sigma,ds,iw,x,y);
+        }
+      });
+    }
+    startAndJoin(thread2);
+  }
+
+  // Computes y = y+G'DGx for one constant-i3 slice.
+  private static void applySlice3(
+    Type type, int i3, UnitSphereSampling uss, float sigma,
+    float[][][] ds, short[][][] iv, float[][][] x, float[][][] y) 
+  {
+    int n1 = x[0][0].length;
+    int n2 = x[0].length;
+    for (int i2=1; i2<n2; ++i2) {
+      float[] x00 = x[i3  ][i2  ];
+      float[] x01 = x[i3  ][i2-1];
+      float[] x10 = x[i3-1][i2  ];
+      float[] x11 = x[i3-1][i2-1];
+      float[] y00 = y[i3  ][i2  ];
+      float[] y01 = y[i3  ][i2-1];
+      float[] y10 = y[i3-1][i2  ];
+      float[] y11 = y[i3-1][i2-1];
+      float[] d32 = (ds!=null)?ds[i3][i2]:null;
+      for (int i1=1,i1m=0; i1<n1; ++i1,++i1m) {
+        float ssi = (ds!=null)?sigma*d32[i1]:sigma;
+        float svi = 0.5f*ssi*ssi;
+        float[] vi = uss.getPoint(iv[i3][i2][i1]); // {vx,vy,vz}
+        float v1i = vi[2]; // v1 = vz
+        float v2i = vi[1]; // v2 = vy
+        float v3i = vi[0]; // v3 = vx
+        float sv1i = svi*v1i;
+        float sv2i = svi*v2i;
+        float sv3i = svi*v3i;
+        float d11,d22,d33,d12,d13,d23;
+        if (type==Type.INLINE) {
+          d11 = sv1i*v1i;
+          d22 = sv2i*v2i;
+          d33 = sv3i*v3i;
+          d12 = sv1i*v2i;
+          d13 = sv1i*v3i;
+          d23 = sv2i*v3i;
+        } else {
+          d11 = svi-sv1i*v1i;
+          d22 = svi-sv2i*v2i;
+          d33 = svi-sv3i*v3i;
+          d12 =    -sv1i*v2i;
+          d13 =    -sv1i*v3i;
+          d23 =    -sv2i*v3i;
+        }
+        apply(i1,d11,d12,d13,d22,d23,d33,x00,x01,x10,x11,y00,y01,y10,y11);
+      }
+    }
+  }
   // Computes y = y+G'DGx for one sample.
   // Operations per sample for this method:
   //    16 loads + 8 stores + 4+12+6+8 adds + 3+9+4 muls
   //  = 16 loads + 8 stores +       30 adds +    16 muls
   // For alternative (more complicated) method with 27-point stencil:
   //    28 loads + 1 store  +       27 adds +    27 muls
-  //    (does not include the cost of computing the 27 coefficients!)
-  private void apply(
+  private static void apply(int i1,
    float d11, float d12, float d13, float d22, float d23, float d33,
-   int i1, int i2, int i3, float[][][] x, float[][][] y) 
+   float[] x00, float[] x01, float[] x10, float[] x11,
+   float[] y00, float[] y01, float[] y10, float[] y11)
   {
-    float x000 = x[i3  ][i2  ][i1  ];
-    float x001 = x[i3  ][i2  ][i1-1];
-    float x010 = x[i3  ][i2-1][i1  ];
-    float x100 = x[i3-1][i2  ][i1  ];
-    float x011 = x[i3  ][i2-1][i1-1];
-    float x101 = x[i3-1][i2  ][i1-1];
-    float x110 = x[i3-1][i2-1][i1  ];
-    float x111 = x[i3-1][i2-1][i1-1];
+    int i1m = i1-1;
+    float x000 = x00[i1 ];
+    float x001 = x00[i1m];
+    float x010 = x01[i1 ];
+    float x100 = x10[i1 ];
+    float x011 = x01[i1m];
+    float x101 = x10[i1m];
+    float x110 = x11[i1 ];
+    float x111 = x11[i1m];
     //float x1 = 0.25f*(x000+x010+x100+x110-x001-x011-x101-x111);
     //float x2 = 0.25f*(x000+x001+x100+x101-x010-x011-x110-x111);
     //float x3 = 0.25f*(x000+x001+x010+x011-x100-x101-x110-x111);
@@ -426,14 +492,14 @@ public class DirectionalLaplacianFilter {
     float yb = 0.25f*(y1-y2+y3);
     float yc = 0.25f*(y1+y2-y3);
     float yd = 0.25f*(y1-y2-y3);
-    y[i3  ][i2  ][i1  ] += ya;
-    y[i3  ][i2  ][i1-1] -= yd;
-    y[i3  ][i2-1][i1  ] += yb;
-    y[i3-1][i2  ][i1  ] += yc;
-    y[i3  ][i2-1][i1-1] -= yc;
-    y[i3-1][i2  ][i1-1] -= yb;
-    y[i3-1][i2-1][i1  ] += yd;
-    y[i3-1][i2-1][i1-1] -= ya;
+    y00[i1 ] += ya;
+    y00[i1m] -= yd;
+    y01[i1 ] += yb;
+    y10[i1 ] += yc;
+    y01[i1m] -= yc;
+    y10[i1m] -= yb;
+    y11[i1 ] += yd;
+    y11[i1m] -= ya;
   }
 
   /**
@@ -585,6 +651,26 @@ public class DirectionalLaplacianFilter {
     }
   }
 
+  private static Thread[] newThreads() {
+    int nthread = 2*Runtime.getRuntime().availableProcessors();
+    return new Thread[nthread];
+  }
+
+
+  private static void startAndJoin(Thread[] threads) {
+    for (int ithread=0; ithread<threads.length; ++ithread)
+      threads[ithread].start();
+    try {
+      for (int ithread=0; ithread<threads.length; ++ithread)
+        threads[ithread].join();
+    } catch (InterruptedException ie) {
+      throw new RuntimeException(ie);
+    }
+  }
+
+
+  ///////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////
   // Tests y'(Ax) = (y'Ax)' = x'(A'y) = x'(Ay)
   public static void main(String[] args) {
     testStencil();
