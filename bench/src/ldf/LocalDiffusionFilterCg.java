@@ -83,7 +83,7 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
       _v1 = v1;
     }
     public void apply(float[][] x, float[][] y) {
-      Array.copy(x,y);
+      scopy(x,y);
       _dlf.applyInline(_ds,_v1,x,y);
     }
     private float[][] _ds,_v1;
@@ -98,7 +98,7 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
       _iw = iw;
     }
     public void apply(float[][][] x, float[][][] y) {
-      Array.copy(x,y);
+      scopy(x,y);
       _dlf.applyInline(_ds,_iw,x,y);
     }
     private float[][][] _ds;
@@ -114,7 +114,7 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
       _iu = iu;
     }
     public void apply(float[][][] x, float[][][] y) {
-      Array.copy(x,y);
+      scopy(x,y);
       _dlf.applyNormal(_ds,_iu,x,y);
     }
     private float[][][] _ds;
@@ -218,10 +218,10 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
     float[][] d = new float[n2][n1];
     float[][] q = new float[n2][n1];
     float[][] r = new float[n2][n1];
-    Array.copy(b,r);
+    scopy(b,r);
     a.apply(x,q);
     saxpy(-1.0f,r,q); // q = b-Ax
-    Array.copy(r,d);
+    scopy(r,d);
     float delta = sdot(r,r);
     float deltaBegin = delta;
     float deltaSmall = sdot(b,b)*_small*_small;
@@ -247,10 +247,10 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
     float[][][] d = new float[n3][n2][n1];
     float[][][] q = new float[n3][n2][n1];
     float[][][] r = new float[n3][n2][n1];
-    Array.copy(b,r);
+    scopy(b,r);
     a.apply(x,q);
     saxpy(-1.0f,r,q); // q = b-Ax
-    Array.copy(r,d);
+    scopy(r,d);
     float delta = sdot(r,r);
     float deltaBegin = delta;
     float deltaSmall = sdot(b,b)*_small*_small;
@@ -281,7 +281,7 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
     float[][] q = new float[n2][n1];
     float[][] r = new float[n2][n1];
     float[][] s = new float[n2][n1];
-    Array.copy(b,r);
+    scopy(b,r);
     a.apply(x,q);
     saxpy(-1.0f,r,q); // q = b-Ax
     m.apply(r,d);
@@ -313,7 +313,7 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
     float[][][] q = new float[n3][n2][n1];
     float[][][] r = new float[n3][n2][n1];
     float[][][] s = new float[n3][n2][n1];
-    Array.copy(b,r);
+    scopy(b,r);
     a.apply(x,q);
     saxpy(-1.0f,r,q); // q = b-Ax
     m.apply(r,d);
@@ -338,6 +338,36 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
     trace("  iter="+iter+" delta="+delta+" ratio="+delta/deltaBegin);
   }
 
+  private static void scopy(float[][] x, float[][] y) {
+    Array.copy(x,y);
+  }
+  private static void scopy(float[][][] x, float[][][] y) {
+    if (PARALLEL) {
+      scopyP(x,y);
+    } else {
+      scopyS(x,y);
+    }
+  }
+  private static void scopyS(float[][][] x, float[][][] y) {
+    int n3 = x.length;
+    for (int i3=0; i3<n3; ++i3)
+      scopy(x[i3],y[i3]);
+  }
+  private static void scopyP(final float[][][] x, final float[][][] y) {
+    final int n3 = x.length;
+    final AtomicInteger a3 = new AtomicInteger(0);
+    Thread[] threads = Threads.makeArray();
+    for (int ithread=0; ithread<threads.length; ++ithread) {
+      threads[ithread] = new Thread(new Runnable() {
+        public void run() {
+          for (int i3=a3.getAndIncrement(); i3<n3; i3=a3.getAndIncrement())
+            scopy(x[i3],y[i3]);
+        }
+      });
+    }
+    Threads.startAndJoin(threads);
+  }
+
   // Returns the dot product x'y.
   private static float sdot(float[][] x, float[][] y) {
     int n1 = x[0].length;
@@ -358,9 +388,14 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
       return sdotS(x,y);
     }
   }
+  private static float sdotS(float[][][] x, float[][][] y) {
+    int n3 = x.length;
+    float d = 0.0f;
+    for (int i3=0; i3<n3; ++i3)
+      d += sdot(x[i3],y[i3]);
+    return d;
+  }
   private static float sdotP(final float[][][] x, final float[][][] y) {
-    final int n1 = x[0][0].length;
-    final int n2 = x[0].length;
     final int n3 = x.length;
     final AtomicFloat ad = new AtomicFloat(0.0f);
     final AtomicInteger a3 = new AtomicInteger(0);
@@ -369,35 +404,14 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
       threads[ithread] = new Thread(new Runnable() {
         public void run() {
           float d = 0.0f;
-          for (int i3=a3.getAndIncrement(); i3<n3; i3=a3.getAndIncrement()) {
-            for (int i2=0; i2<n2; ++i2) {
-              float[] x32 = x[i3][i2], y32 = y[i3][i2];
-              for (int i1=0; i1<n1; ++i1) {
-                d += x32[i1]*y32[i1];
-              }
-            }
-          }
+          for (int i3=a3.getAndIncrement(); i3<n3; i3=a3.getAndIncrement())
+            d += sdot(x[i3],y[i3]);
           ad.getAndAdd(d);
         }
       });
     }
     Threads.startAndJoin(threads);
     return ad.get();
-  }
-  private static float sdotS(float[][][] x, float[][][] y) {
-    int n1 = x[0][0].length;
-    int n2 = x[0].length;
-    int n3 = x.length;
-    float d = 0.0f;
-    for (int i3=0; i3<n3; ++i3) {
-      for (int i2=0; i2<n2; ++i2) {
-        float[] x32 = x[i3][i2], y32 = y[i3][i2];
-        for (int i1=0; i1<n1; ++i1) {
-          d += x32[i1]*y32[i1];
-        }
-      }
-    }
-    return d;
   }
 
   // Computes y = y + ax.
@@ -418,42 +432,26 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
       saxpyS(a,x,y);
     }
   }
+  private static void saxpyS(float a, float[][][] x, float[][][] y) {
+    int n3 = x.length;
+    for (int i3=0; i3<n3; ++i3)
+      saxpy(a,x[i3],y[i3]);
+  }
   private static void saxpyP(
     final float a, final float[][][] x, final float[][][] y)
   {
-    final int n1 = x[0][0].length;
-    final int n2 = x[0].length;
     final int n3 = x.length;
     final AtomicInteger a3 = new AtomicInteger(0);
     Thread[] threads = Threads.makeArray();
     for (int ithread=0; ithread<threads.length; ++ithread) {
       threads[ithread] = new Thread(new Runnable() {
         public void run() {
-          for (int i3=a3.getAndIncrement(); i3<n3; i3=a3.getAndIncrement()) {
-            for (int i2=0; i2<n2; ++i2) {
-              float[] x32 = x[i3][i2], y32 = y[i3][i2];
-              for (int i1=0; i1<n1; ++i1) {
-                y32[i1] += a*x32[i1];
-              }
-            }
-          }
+          for (int i3=a3.getAndIncrement(); i3<n3; i3=a3.getAndIncrement())
+            saxpy(a,x[i3],y[i3]);
         }
       });
     }
     Threads.startAndJoin(threads);
-  }
-  private static void saxpyS(float a, float[][][] x, float[][][] y) {
-    int n1 = x[0][0].length;
-    int n2 = x[0].length;
-    int n3 = x.length;
-    for (int i3=0; i3<n3; ++i3) {
-      for (int i2=0; i2<n2; ++i2) {
-        float[] x32 = x[i3][i2], y32 = y[i3][i2];
-        for (int i1=0; i1<n1; ++i1) {
-          y32[i1] += a*x32[i1];
-        }
-      }
-    }
   }
 
   // Computes y = x + ay.
@@ -474,42 +472,26 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
       sxpayS(a,x,y);
     }
   }
+  private static void sxpayS(float a, float[][][] x, float[][][] y) {
+    int n3 = x.length;
+    for (int i3=0; i3<n3; ++i3)
+      sxpay(a,x[i3],y[i3]);
+  }
   private static void sxpayP(
     final float a, final float[][][] x, final float[][][] y)
   {
-    final int n1 = x[0][0].length;
-    final int n2 = x[0].length;
     final int n3 = x.length;
     final AtomicInteger a3 = new AtomicInteger(0);
     Thread[] threads = Threads.makeArray();
     for (int ithread=0; ithread<threads.length; ++ithread) {
       threads[ithread] = new Thread(new Runnable() {
         public void run() {
-          for (int i3=a3.getAndIncrement(); i3<n3; i3=a3.getAndIncrement()) {
-            for (int i2=0; i2<n2; ++i2) {
-              float[] x32 = x[i3][i2], y32 = y[i3][i2];
-              for (int i1=0; i1<n1; ++i1) {
-                y32[i1] = a*y32[i1]+x32[i1];
-              }
-            }
-          }
+          for (int i3=a3.getAndIncrement(); i3<n3; i3=a3.getAndIncrement())
+            sxpay(a,x[i3],y[i3]);
         }
       });
     }
     Threads.startAndJoin(threads);
-  }
-  private static void sxpayS(float a, float[][][] x, float[][][] y) {
-    int n1 = x[0][0].length;
-    int n2 = x[0].length;
-    int n3 = x.length;
-    for (int i3=0; i3<n3; ++i3) {
-      for (int i2=0; i2<n2; ++i2) {
-        float[] x32 = x[i3][i2], y32 = y[i3][i2];
-        for (int i1=0; i1<n1; ++i1) {
-          y32[i1] = a*y32[i1]+x32[i1];
-        }
-      }
-    }
   }
 
   private static final boolean TRACE = true;
