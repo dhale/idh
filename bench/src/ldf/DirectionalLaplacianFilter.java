@@ -77,8 +77,7 @@ public class DirectionalLaplacianFilter {
    * @param y input/output image. Must be distinct from the array x.
    */
   public void applyInline(
-    float ds, float v1, float v2,
-    float[][] x, float[][] y) 
+    float ds, float v1, float v2, float[][] x, float[][] y) 
   {
     float ss = ds*_sigma;
     float sv = 0.5f*ss*ss;
@@ -103,14 +102,13 @@ public class DirectionalLaplacianFilter {
    * @param y input/output image. Must be distinct from the array x.
    */
   public void applyNormal(
-    float ds, float u1, float u2,
-    float[][] x, float[][] y) 
+    float ds, float u1, float u2, float[][] x, float[][] y) 
   {
     float ss = ds*_sigma;
     float su = 0.5f*ss*ss;
-    float d11 = su*(1.0f-u1*u1);
-    float d22 = su*(1.0f-u2*u2);
-    float d12 = su*(    -u1*u2);
+    float d11 = su-su*u1*u1;
+    float d22 = su-su*u2*u2;
+    float d12 =   -su*u1*u2;
     int n1 = x[0].length;
     int n2 = x.length;
     for (int i2=1; i2<n2; ++i2) {
@@ -170,9 +168,9 @@ public class DirectionalLaplacianFilter {
         float sui = 0.5f*ssi*ssi;
         float u2i = u2[i2][i1];
         float u1i = sqrt(1.0f-u2i*u2i);
-        float d11 = sui*(1.0f-u1i*u1i);
-        float d22 = sui*(1.0f-u2i*u2i);
-        float d12 = sui*(    -u1i*u2i);
+        float d11 = sui-sui*u1i*u1i;
+        float d22 = sui-sui*u2i*u2i;
+        float d12 =    -sui*u1i*u2i;
         apply(d11,d12,d22,i1,i2,x,y);
       }
     }
@@ -191,8 +189,7 @@ public class DirectionalLaplacianFilter {
    * @param y input/output image. Must be distinct from the array x.
    */
   public void applyInline(
-    float ds, float w1, float w2, float w3, 
-    float[][][] x, float[][][] y) 
+    float ds, float w1, float w2, float w3, float[][][] x, float[][][] y) 
   {
     apply(Type.INLINE,ds,w1,w2,w3,x,y);
   }
@@ -207,8 +204,7 @@ public class DirectionalLaplacianFilter {
    * @param y input/output image. Must be distinct from the array x.
    */
   public void applyNormal(
-    float ds, float u1, float u2, float u3, 
-    float[][][] x, float[][][] y) 
+    float ds, float u1, float u2, float u3, float[][][] x, float[][][] y) 
   {
     apply(Type.NORMAL,ds,u1,u2,u3,x,y);
   }
@@ -224,8 +220,7 @@ public class DirectionalLaplacianFilter {
    * @param y input/output image. Must be distinct from the array x.
    */
   public void applyInline(
-    float[][][] ds, short[][][] iw, 
-    float[][][] x, float[][][] y) 
+    float[][][] ds, short[][][] iw, float[][][] x, float[][][] y) 
   {
     //applySerial(Type.INLINE,ds,iw,x,y);
     applyParallel(Type.INLINE,ds,iw,x,y);
@@ -242,8 +237,7 @@ public class DirectionalLaplacianFilter {
    * @param y input/output image. Must be distinct from the array x.
    */
   public void applyNormal(
-    float[][][] ds, short[][][] iu, 
-    float[][][] x, float[][][] y) 
+    float[][][] ds, short[][][] iu, float[][][] x, float[][][] y) 
   {
     //applySerial(Type.NORMAL,ds,iu,x,y);
     applyParallel(Type.NORMAL,ds,iu,x,y);

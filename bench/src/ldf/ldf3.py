@@ -20,10 +20,10 @@ False = 0
 
 #############################################################################
 # parameters
-#n1,n2,n3 = 105,105,105
-n1,n2,n3 = 315,315,315
+n1,n2,n3 = 105,105,105
+#n1,n2,n3 = 315,315,315
 sigma = 16
-ffile = "filters.dat"
+ffile = "filtersBoth.dat"
 small = 0.01
 niter = 100
 
@@ -33,7 +33,7 @@ niter = 100
 
 def main(args):
   #makeFilters()
-  doAmp(85,37)
+  doAmp(0,0)
   return
 
 def makeFilters():
@@ -58,8 +58,8 @@ def makeVectors(theta,phi,n1,n2,n3):
 
 def doAmp(theta,phi):
   #ldf = LocalDiffusionFilterMp(sigma)
-  #ldf = LocalDiffusionFilterMp(sigma,ffile)
-  ldf = LocalDiffusionFilterCg(sigma,small,niter)
+  ldf = LocalDiffusionFilterMp(sigma,ffile)
+  #ldf = LocalDiffusionFilterCg(sigma,small,niter)
   x = makeImpulse(n1,n2,n3)
   ds = None
   iv = makeVectors(theta,phi,n1,n2,n3)

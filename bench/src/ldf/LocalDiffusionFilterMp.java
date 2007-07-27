@@ -389,6 +389,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
         // Find filter with specified type.
         int itype = itype(type);
         int nbyte = nbyte(type);
+        trace("  nbyte="+nbyte);
         boolean found = false;
         while (!found) {
           int itypeRead = af.readInt();
