@@ -703,8 +703,8 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
   ///////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////////////
   // FOR EXPERIMENTS ONLY.
-  //
-  // Current status:
+  // 2-D filters are efficient and accurate enough for practical use.
+  // Current status for 3-D filters:
   // Approximations to normal filters require too many lags to be useful. 
   // Line filters seem to require fewer lags, although these too show
   // errors. For example the width of the notch is too large, and amplitudes
