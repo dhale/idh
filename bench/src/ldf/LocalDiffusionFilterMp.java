@@ -13,6 +13,12 @@ import edu.mines.jtk.io.*;
 import edu.mines.jtk.util.*;
 import static edu.mines.jtk.util.MathPlus.*;
 
+// FOR EXPERIMENTS ONLY!
+import edu.mines.jtk.awt.*;
+import edu.mines.jtk.mosaic.*;
+import edu.mines.jtk.sgl.*;
+import edu.mines.jtk.sgl.test.*;
+
 /**
  * Local anisotropic diffusion filter via minimum-phase factors.
  * @author Dave Hale, Colorado School of Mines
@@ -105,6 +111,13 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     _dlf.applyNormal(null,iu,x,t);
     _fnf3.applyInverse(_sigma,ds,iu,t,y);
     Array.sub(x,y,y);
+    float[][][] s = new float[3][3][3];
+    float[][][] r = new float[3][3][3];
+    r[1][1][1] = 1.0f;
+    short[][][] ju = Array.copy(3,3,3,iu);
+    _dlf.applyNormal(null,ju,r,s);
+    trace("solveNormal: iu="+ju[0][0][0]);
+    Array.dump(s);
   }
 
   ///////////////////////////////////////////////////////////////////////////
@@ -368,8 +381,8 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
           trace("  sigma="+sigma+" v1="+v1+" v2="+v2+" v3="+v3);
           cf.factorWilsonBurg(100,0.000001f,r);
           atable[isigma][ivec] = cf.getA();
-          //dumpA(atable[isigma][ivec]);
-          //checkA(cf,r);
+          dumpA(atable[isigma][ivec]);
+          checkA(cf,r);
         }
       }
       trace("...  done.");
@@ -449,10 +462,16 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
       float[][][] x, float[][][] y) 
     {
       float[][][] atable = (_type==Type.INLINE)?_atableInline:_atableNormal;
+      /*
       LocalCausalFilter lcf = (_type==Type.INLINE)?_lcfi:_lcfn;
       A3 a3 = new A3(atable,sigma,ds,iw);
       lcf.applyInverseTranspose(a3,x,y);
       lcf.applyInverse(a3,y,y);
+      */
+      CausalFilter cf = new CausalFilter(_lag1n,_lag2n,_lag3n,atable[8][240]);
+      cf.applyInverseTranspose(x,y);
+      cf.applyInverse(y,y);
+      checkA(cf,new float[3][3][3]);
     }
 
     private Type _type; // filter type, inline or normal
@@ -494,14 +513,19 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
         for (int j=0; j<n; ++j)
           a[j] = s0*(wa*a0a[j]+wb*a0b[j]+wc*a0c[j]) +
                  s1*(wa*a1a[j]+wb*a1b[j]+wc*a1c[j]);
-        /*
+        //
         if (i1==52 && i2==52 && i3==52) {
-          trace("iw="+iw);
+          trace("iw="+iw+" n="+n);
+          trace("s0="+s0+" s1="+s1);
           trace("ia="+ia+" ib="+ib+" ic="+ic);
           trace("wa="+wa+" wb="+wb+" wc="+wc);
+          Array.dump(_uss.getPoint(ia+1));
           dumpA(a);
+          CausalFilter cf = new CausalFilter(_lag1n,_lag2n,_lag3n,a1a);
+          float[][][] r = new float[3][3][3];
+          checkA(cf,r);
         }
-        */
+        //
       }
       private float _sigma;
       private float[][][] _at;
@@ -658,19 +682,17 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
       edu.mines.jtk.mosaic.SimplePlot.asPixels(b);
     }
 
-    private void checkA(CausalFilter cf, float[][][] r) {
-      float[][][] t = new float[30][30][30];
-      t[1][1][1] = 1.0f;
-      cf.apply(t,t);
-      cf.applyTranspose(t,t);
-      float[][][] s = Array.copy(3,3,3,t);
+    private static void checkA(CausalFilter cf, float[][][] r) {
+      float[][][] t = new float[21][21][21];
+      float[][][] t2 = new float[21][21][21];
+      t[10][10][10] = 1.0f;
+      cf.apply(t,t2);
+      cf.applyTranspose(t2,t);
+      float[][][] s = Array.copy(3,3,3,9,9,9,t);
       Array.dump(r);
       Array.dump(s);
     }
   }
-
-  ///////////////////////////////////////////////////////////////////////////
-  ///////////////////////////////////////////////////////////////////////////
 
   private static final boolean TRACE = true;
   private static void trace(String s) {
@@ -678,41 +700,310 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
       System.out.println(s);
   }
 
+  ///////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////
+  // FOR EXPERIMENTS ONLY.
+  //
+  // Current status:
+  // Approximations to normal filters require too many lags to be useful. 
+  // Line filters seem to require fewer lags, although these too show
+  // errors. For example the width of the notch is too large, and amplitudes
+  // away from the notch are not constant. They exhibit oscillations.
+  // Increasing the number of lags improves the accuracy of these filters,
+  // but makes them more costly.
+
   public static void main(String[] args) {
-    //testFactoredFilter3();
-    test3();
+    testFactorizations();
   }
 
-  private static void testFactoredFilter3() {
-    String ffile = "filters.dat";
-    //FactoredFilter2 ff2 = new FactoredFilter2(FactoredFilter2.Type.INLINE);
-    //FactoredFilter3 ff3 = new FactoredFilter3(FactoredFilter3.Type.INLINE);
-    FactoredFilter3 ff3 = new FactoredFilter3(
-      FactoredFilter3.Type.INLINE,ffile);
-    try {
-      ArrayFile af = new ArrayFile(ffile,"rw");
-      af.writeInt(_fileFormat);
-      ff3.save(af);
-      af.close();
-    } catch (IOException ioe) {
-      Check.state(false,"no exception "+ioe);
+  // Test harness for experimenting with minimum-phase factors. 
+  private static void testFactorizations() {
+    int n = 105; // number of samples
+    int k = n/2; // index of central sample
+    float[][][] x = new float[n][n][n];
+    float[][][] y = new float[n][n][n];
+    float[][][] z = new float[n][n][n];
+    x[k][k][k] = 1.0f; // input is unit impulse
+
+    // Unit vector.
+    float v1 = sqrt(1.0f)/1.0f;
+    float v2 = sqrt(0.0f)/1.0f;
+    float v3 = sqrt(0.0f)/1.0f;
+
+    // Normal filter.
+    float d11 = 1.0f-v1*v1;
+    float d22 = 1.0f-v2*v2;
+    float d33 = 1.0f-v3*v3;
+    float d12 =     -v1*v2;
+    float d13 =     -v1*v3;
+    float d23 =     -v2*v3;
+    //
+    /* Inline filter.
+    float d11 = v1*v1;
+    float d22 = v2*v2;
+    float d33 = v3*v3;
+    float d12 = v1*v2;
+    float d13 = v1*v3;
+    float d23 = v2*v3;
+    */
+    
+    // Numerator y = A'Ax.
+    applyDiffusionFilter3(d11,d12,d13,d22,d23,d33,x,y);
+
+    // Denominator z = (eps*I+A'A)x.
+    Array.mul(0.01f,x,z);
+    applyDiffusionFilter3(d11,d12,d13,d22,d23,d33,x,z);
+
+    // Print eps*I+A'A.
+    float[][][] r = Array.copy(3,3,3,k-1,k-1,k-1,z);
+    Array.dump(r);
+
+    // Plot ratio Ay/Az which equals the desired amplitude spectrum.
+    float[][][] ay = amplitude(y);
+    float[][][] az = amplitude(z);
+    plot3d(Array.div(ay,az));
+
+    // Minimum-phase causal filter.
+    int[][] lags = makeLags();
+    int[] lag1 = lags[0], lag2 = lags[1], lag3 = lags[2];
+    CausalFilter cf = new CausalFilter(lag1,lag2,lag3);
+    cf.factorWilsonBurg(100,0.000001f,r);
+    float[] a = cf.getA();
+    int nlag = lag1.length;
+    for (int ilag=0; ilag<nlag; ++ilag) {
+      System.out.println(
+        "l1="+lag1[ilag]+" l2="+lag2[ilag]+" l3="+lag3[ilag]+" a="+a[ilag]);
+    }
+
+    // Use minimum-phase factors to recompute denominator z.
+    cf.apply(x,z);
+    cf.applyTranspose(z,z);
+
+    // Plot amplitude spectrum.
+    az = amplitude(z);
+    plot3d(Array.div(ay,az));
+
+    // Print approximation to eps*I+A'A implied by causal filter.
+    r = Array.copy(7,7,7,k-3,k-3,k-3,z);
+    Array.dump(r);
+  }
+
+  // Simple filter y += G'DGx based on 8-sample 1st-derivative stencil for G.
+  private static void applyDiffusionFilter3(
+   float d11, float d12, float d13, float d22, float d23, float d33,
+   float[][][] x, float[][][] y)
+  {
+    int n1 = x[0][0].length;
+    int n2 = x[0].length;
+    int n3 = x.length;
+    for (int i3=1; i3<n3; ++i3) {
+      for (int i2=1; i2<n2; ++i2) {
+        for (int i1=1; i1<n1; ++i1) {
+          float x000 = x[i3  ][i2  ][i1  ];
+          float x001 = x[i3  ][i2  ][i1-1];
+          float x010 = x[i3  ][i2-1][i1  ];
+          float x100 = x[i3-1][i2  ][i1  ];
+          float x011 = x[i3  ][i2-1][i1-1];
+          float x101 = x[i3-1][i2  ][i1-1];
+          float x110 = x[i3-1][i2-1][i1  ];
+          float x111 = x[i3-1][i2-1][i1-1];
+          //float x1 = 0.25f*(x000+x010+x100+x110-x001-x011-x101-x111);
+          //float x2 = 0.25f*(x000+x001+x100+x101-x010-x011-x110-x111);
+          //float x3 = 0.25f*(x000+x001+x010+x011-x100-x101-x110-x111);
+          float xa = x000-x111;
+          float xb = x001-x110;
+          float xc = x010-x101;
+          float xd = x100-x011;
+          float x1 = 0.25f*(xa-xb+xc+xd);
+          float x2 = 0.25f*(xa+xb-xc+xd);
+          float x3 = 0.25f*(xa+xb+xc-xd);
+          float y1 = d11*x1+d12*x2+d13*x3;
+          float y2 = d12*x1+d22*x2+d23*x3;
+          float y3 = d13*x1+d23*x2+d33*x3;
+          float ya = 0.25f*(y1+y2+y3);
+          float yb = 0.25f*(y1-y2+y3);
+          float yc = 0.25f*(y1+y2-y3);
+          float yd = 0.25f*(y1-y2-y3);
+          y[i3  ][i2  ][i1  ] += ya;
+          y[i3  ][i2  ][i1-1] -= yd;
+          y[i3  ][i2-1][i1  ] += yb;
+          y[i3-1][i2  ][i1  ] += yc;
+          y[i3  ][i2-1][i1-1] -= yc;
+          y[i3-1][i2  ][i1-1] -= yb;
+          y[i3-1][i2-1][i1  ] += yd;
+          y[i3-1][i2-1][i1-1] -= ya;
+        }
+      }
     }
   }
 
-  private static void test3() {
-    float sigma = 20.0f;
-    String ffile = "filters.dat";
+  // Experimental filter y += G'DGx composed of three 2-D stencils.
+  private static void applyDiffusionFilter32(
+   float d11, float d12, float d13, float d22, float d23, float d33,
+   float[][][] x, float[][][] y)
+  {
+    int n1 = x[0][0].length;
+    int n2 = x[0].length;
+    int n3 = x.length;
+    float e11 = 0.5f*d11;
+    float e22 = 0.5f*d22;
+    float e33 = 0.5f*d33;
+    for (int i3=1; i3<n3; ++i3) {
+      for (int i2=1; i2<n2; ++i2) {
+        for (int i1=1; i1<n1; ++i1) {
+          float x000 = x[i3  ][i2  ][i1  ];
+          float x001 = x[i3  ][i2  ][i1-1];
+          float x010 = x[i3  ][i2-1][i1  ];
+          float x100 = x[i3-1][i2  ][i1  ];
+          float x011 = x[i3  ][i2-1][i1-1];
+          float x101 = x[i3-1][i2  ][i1-1];
+          float x110 = x[i3-1][i2-1][i1  ];
+          float x111 = x[i3-1][i2-1][i1-1];
+          float x12 = 0.5f*(x000-x001+x010-x011);
+          float x21 = 0.5f*(x000-x010+x001-x011);
+          float x13 = 0.5f*(x000-x001+x100-x101);
+          float x31 = 0.5f*(x000-x100+x001-x101);
+          float x23 = 0.5f*(x000-x010+x100-x110);
+          float x32 = 0.5f*(x000-x100+x010-x110);
+          float y12 = e11*x12+d12*x21;
+          float y21 = d12*x12+e22*x21;
+          float y13 = e11*x13+d13*x31;
+          float y31 = d13*x13+e33*x31;
+          float y23 = e22*x23+d23*x32;
+          float y32 = d23*x23+e33*x32;
+          float y000 = 0.5f*( y12+y21+y13+y31+y23+y32);
+          float y001 = 0.5f*(-y12+y21-y13+y31        );
+          float y010 = 0.5f*( y12-y21        -y23+y32);
+          float y100 = 0.5f*(         y13-y31+y23-y32);
+          float y011 = 0.5f*(-y12-y21                );
+          float y101 = 0.5f*(        -y13-y31        );
+          float y110 = 0.5f*(                -y23-y32);
+          y[i3  ][i2  ][i1  ] += y000;
+          y[i3  ][i2  ][i1-1] += y001;
+          y[i3  ][i2-1][i1  ] += y010;
+          y[i3-1][i2  ][i1  ] += y100;
+          y[i3  ][i2-1][i1-1] += y011;
+          y[i3-1][i2  ][i1-1] += y101;
+          y[i3-1][i2-1][i1  ] += y110;
+        }
+      }
+    }
+  }
+
+  // Makes lags for various 3-D recursive filter factors.
+  private static int[][] makeLags() {
+    // For plane filters with 8-point 1st-derivative stencil.
+    int mlag = 4;
+    int nlag = 3+2*mlag+(1+2*mlag)*(1+2*mlag);
+    int[] lag1 = new int[nlag];
+    int[] lag2 = new int[nlag];
+    int[] lag3 = new int[nlag];
+    for (int ilag3=0,ilag=0; ilag3<2; ++ilag3) {
+      int jlag2 = (ilag3==0)?0:-mlag;
+      int klag2 = (ilag3==0)?mlag:1;
+      for (int ilag2=jlag2; ilag2<=klag2; ++ilag2) {
+        int jlag1 = (ilag3==0 && ilag2==0)?0:-mlag;
+        int klag1 = (ilag3==1 && ilag2>0)?1:mlag;
+        for (int ilag1=jlag1; ilag1<=klag1; ++ilag1,++ilag) {
+          lag1[ilag] = ilag1;
+          lag2[ilag] = ilag2;
+          lag3[ilag] = ilag3;
+        }
+      }
+    }
     /*
-    LocalDiffusionFilterMp ldf = new LocalDiffusionFilterMp(sigma);
-    ldf.save(ffile);
+    // For plane filters composed of three 2-D filters.
+    int mlag = 4;
+    int nlag = 1+mlag+mlag*(mlag+1+mlag)+1+mlag+(1+mlag)*(mlag+1+mlag);
+    int[] lag1 = new int[nlag];
+    int[] lag2 = new int[nlag];
+    int[] lag3 = new int[nlag];
+    for (int ilag3=0,ilag=0; ilag3<2; ++ilag3) {
+      int jlag2 = (ilag3==0)?0:-mlag;
+      int klag2 = (ilag3==0)?mlag:1;
+      for (int ilag2=jlag2; ilag2<=klag2; ++ilag2) {
+        int jlag1 = (ilag3==0 && ilag2==0)?0:-mlag;
+        int klag1 = (ilag3==1 && ilag2==1)?0:mlag;
+        for (int ilag1=jlag1; ilag1<=klag1; ++ilag1,++ilag) {
+          lag1[ilag] = ilag1;
+          lag2[ilag] = ilag2;
+          lag3[ilag] = ilag3;
+        }
+      }
+    }
     */
-    LocalDiffusionFilterMp ldf = new LocalDiffusionFilterMp(sigma,ffile);
-    int n1 = 101;
-    int n2 = 101;
-    int n3 = 101;
-    float[][][] x = Array.randfloat(n1,n2,n3);
-    float[][][] y = Array.zerofloat(n1,n2,n3);
-    short[][][] iw = Array.fillshort((short)1,n1,n2,n3);
-    ldf.applyInlinePass(null,iw,x,y);
+    /*
+    // Big NSHP stencil for testing to determine a smaller stencil.
+    int mlag = 3;
+    int nlag = 1+mlag+mlag*(mlag+1+mlag)+(mlag+1+mlag)*(mlag+1+mlag);
+    int[] lag1 = new int[nlag];
+    int[] lag2 = new int[nlag];
+    int[] lag3 = new int[nlag];
+    for (int ilag3=0,ilag=0; ilag3<2; ++ilag3) {
+      int jlag2 = (ilag3==0)?0:-mlag;
+      int klag2 = mlag;
+      for (int ilag2=jlag2; ilag2<=klag2; ++ilag2) {
+        int jlag1 = (ilag3==0 && ilag2==0)?0:-mlag;
+        int klag1 = mlag;
+        for (int ilag1=jlag1; ilag1<=klag1; ++ilag1,++ilag) {
+          lag1[ilag] = ilag1;
+          lag2[ilag] = ilag2;
+          lag3[ilag] = ilag3;
+        }
+      }
+    }
+    */
+    return new int[][]{lag1,lag2,lag3};
+  }
+
+  // Computes 3-D Fourier amplitude spectrum.
+  private static float[][][] amplitude(float[][][] x) {
+    int n1 = x[0][0].length;
+    int n2 = x[0].length;
+    int n3 = x.length;
+    n1 = FftComplex.nfftSmall(n1);
+    n2 = FftComplex.nfftSmall(n2);
+    n3 = FftComplex.nfftSmall(n3);
+    float[][][] xr = Array.copy(n1,n2,n3,x);
+    float[][][] xi = Array.zerofloat(n1,n2,n3);
+    float[][][] cx = Array.cmplx(xr,xi);
+    FftComplex fft1 = new FftComplex(n1);
+    FftComplex fft2 = new FftComplex(n2);
+    FftComplex fft3 = new FftComplex(n3);
+    fft1.complexToComplex1(1,n2,n3,cx,cx);
+    fft2.complexToComplex2(1,n1,n3,cx,cx);
+    fft3.complexToComplex3(1,n1,n2,cx,cx);
+    float[][][] ax = Array.cabs(cx);
+    float[][][] a = Array.zerofloat(n1,n2,n3);
+    int j1 = n1/2;
+    int j2 = n2/2;
+    int j3 = n3/2;
+    Array.copy(n1-j1,n2-j2,n3-j3,0,0,0,ax,j1,j2,j3,a);
+    Array.copy(j1,n2-j2,n3-j3,n1-j1,0,0,ax,0,j2,j3,a);
+    Array.copy(n1-j1,j2,n3-j3,0,n2-j2,0,ax,j1,0,j3,a);
+    Array.copy(n1-j1,n2-j2,j3,0,0,n3-j3,ax,j1,j2,0,a);
+    Array.copy(j1,j2,n3-j3,n1-j1,n2-j2,0,ax,0,0,j3,a);
+    Array.copy(n1-j1,j2,j3,0,n2-j2,n3-j3,ax,j1,0,0,a);
+    Array.copy(j1,n2-j2,j3,n1-j1,0,n3-j3,ax,0,j2,0,a);
+    Array.copy(j1,j2,j3,n1-j1,n2-j2,n3-j3,ax,0,0,0,a);
+    return a;
+  }
+
+  // Plots a 3-D array.
+  public static void plot3d(float[][][] x) {
+    System.out.println("x min="+Array.min(x)+" max="+Array.max(x));
+    int n1 = x[0][0].length;
+    int n2 = x[0].length;
+    int n3 = x.length;
+    Sampling s1 = new Sampling(n1);
+    Sampling s2 = new Sampling(n2);
+    Sampling s3 = new Sampling(n3);
+    ImagePanelGroup ipg = new ImagePanelGroup(s1,s2,s3,new SimpleFloat3(x));
+    ipg.setClips(0.0f,1.0f);
+    ipg.setColorModel(ColorMap.JET);
+    World world = new World();
+    world.addChild(ipg);
+    TestFrame frame = new TestFrame(world);
+    frame.setVisible(true);
   }
 }

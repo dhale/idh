@@ -21,6 +21,7 @@ False = 0
 #############################################################################
 # parameters
 n1,n2,n3 = 105,105,105
+#n1,n2,n3 = 195,195,195
 #n1,n2,n3 = 315,315,315
 sigma = 16
 ffile = "filtersBoth.dat"
@@ -34,7 +35,6 @@ niter = 100
 def main(args):
   #makeFilters()
   doAmp(0,0)
-  return
 
 def makeFilters():
   ldf = LocalDiffusionFilterMp(sigma)
@@ -64,8 +64,8 @@ def doAmp(theta,phi):
   ds = None
   iv = makeVectors(theta,phi,n1,n2,n3)
   h = Array.zerofloat(n1,n2,n3)
-  ldf.applyInlinePass(ds,iv,x,h)
-  #ldf.applyNormalPass(ds,iv,x,h)
+  #ldf.applyInlinePass(ds,iv,x,h)
+  ldf.applyNormalPass(ds,iv,x,h)
   ah = frequencyResponse(h)
   plot3d(ah)
 
