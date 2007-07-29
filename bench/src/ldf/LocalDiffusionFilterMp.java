@@ -751,7 +751,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     applyDiffusionFilter3(d11,d12,d13,d22,d23,d33,x,y);
 
     // Denominator z = (eps*I+A'A)x.
-    Array.mul(0.01f,x,z);
+    Array.mul(0.125f,x,z);
     applyDiffusionFilter3(d11,d12,d13,d22,d23,d33,x,z);
 
     // Print eps*I+A'A.

@@ -220,7 +220,7 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
     float[][] r = new float[n2][n1];
     scopy(b,r);
     a.apply(x,q);
-    saxpy(-1.0f,r,q); // q = b-Ax
+    saxpy(-1.0f,q,r); // r = b-Ax
     scopy(r,d);
     float delta = sdot(r,r);
     float deltaBegin = delta;
@@ -249,7 +249,7 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
     float[][][] r = new float[n3][n2][n1];
     scopy(b,r);
     a.apply(x,q);
-    saxpy(-1.0f,r,q); // q = b-Ax
+    saxpy(-1.0f,q,r); // r = b-Ax
     scopy(r,d);
     float delta = sdot(r,r);
     float deltaBegin = delta;
@@ -283,7 +283,7 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
     float[][] s = new float[n2][n1];
     scopy(b,r);
     a.apply(x,q);
-    saxpy(-1.0f,r,q); // q = b-Ax
+    saxpy(-1.0f,q,r); // r = b-Ax
     m.apply(r,d);
     m.apply(b,s);
     float delta = sdot(r,d);
@@ -315,7 +315,7 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
     float[][][] s = new float[n3][n2][n1];
     scopy(b,r);
     a.apply(x,q);
-    saxpy(-1.0f,r,q); // q = b-Ax
+    saxpy(-1.0f,q,r); // r = b-Ax
     m.apply(r,d);
     m.apply(b,s);
     float delta = sdot(r,d);
