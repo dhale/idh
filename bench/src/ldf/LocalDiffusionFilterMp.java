@@ -726,33 +726,39 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     x[k][k][k] = 1.0f; // input is unit impulse
 
     // Unit vector.
-    float v1 = sqrt(1.0f)/1.0f;
-    float v2 = sqrt(0.0f)/1.0f;
-    float v3 = sqrt(0.0f)/1.0f;
+    float theta = 90.0f*FLT_PI/180.0f;
+    float   phi = 30.0f*FLT_PI/180.0f;
+    float v1 = cos(theta);
+    float v2 = sin(phi)*sin(theta);
+    float v3 = cos(phi)*sin(theta);
 
-    // Normal filter.
-    float d11 = 1.0f-v1*v1;
-    float d22 = 1.0f-v2*v2;
-    float d33 = 1.0f-v3*v3;
-    float d12 =     -v1*v2;
-    float d13 =     -v1*v3;
-    float d23 =     -v2*v3;
-    //
-    /* Inline filter.
-    float d11 = v1*v1;
-    float d22 = v2*v2;
-    float d33 = v3*v3;
-    float d12 = v1*v2;
-    float d13 = v1*v3;
-    float d23 = v2*v3;
-    */
+    // Diffusion coefficients for inline or normal filter.
+    boolean inline = true;
+    float d11,d22,d33,d12,d13,d23;
+    if (inline) {
+      d11 = v1*v1;
+      d22 = v2*v2;
+      d33 = v3*v3;
+      d12 = v1*v2;
+      d13 = v1*v3;
+      d23 = v2*v3;
+    } else {
+      d11 = 1.0f-v1*v1;
+      d22 = 1.0f-v2*v2;
+      d33 = 1.0f-v3*v3;
+      d12 =     -v1*v2;
+      d13 =     -v1*v3;
+      d23 =     -v2*v3;
+    }
     
     // Numerator y = A'Ax.
-    applyDiffusionFilter3(d11,d12,d13,d22,d23,d33,x,y);
+    applyDiffusionFilter27(d11,d12,d13,d22,d23,d33,x,y);
 
     // Denominator z = (eps*I+A'A)x.
-    Array.mul(0.125f,x,z);
-    applyDiffusionFilter3(d11,d12,d13,d22,d23,d33,x,z);
+    float sigma = 16.0f;
+    float eps = 2.0f/(sigma*sigma);
+    Array.mul(eps,x,z);
+    applyDiffusionFilter27(d11,d12,d13,d22,d23,d33,x,z);
 
     // Print eps*I+A'A.
     float[][][] r = Array.copy(3,3,3,k-1,k-1,k-1,z);
@@ -764,7 +770,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     plot3d(Array.div(ay,az));
 
     // Minimum-phase causal filter.
-    int[][] lags = makeLags();
+    int[][] lags = (inline)?makeLagsInline27():makeLagsNormal27();
     int[] lag1 = lags[0], lag2 = lags[1], lag3 = lags[2];
     CausalFilter cf = new CausalFilter(lag1,lag2,lag3);
     cf.factorWilsonBurg(100,0.000001f,r);
@@ -788,8 +794,8 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     Array.dump(r);
   }
 
-  // Simple filter y += G'DGx based on 8-sample 1st-derivative stencil for G.
-  private static void applyDiffusionFilter3(
+  // Simple filter y += G'DGx with 27-point stencil.
+  private static void applyDiffusionFilter27(
    float d11, float d12, float d13, float d22, float d23, float d33,
    float[][][] x, float[][][] y)
   {
@@ -837,8 +843,8 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     }
   }
 
-  // Experimental filter y += G'DGx composed of three 2-D stencils.
-  private static void applyDiffusionFilter32(
+  // Experimental filter y += G'DGx with 19-point stencil.
+  private static void applyDiffusionFilter19(
    float d11, float d12, float d13, float d22, float d23, float d33,
    float[][][] x, float[][][] y)
   {
@@ -890,9 +896,31 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     }
   }
 
-  // Makes lags for various 3-D recursive filter factors.
-  private static int[][] makeLags() {
-    // For plane filters with 8-point 1st-derivative stencil.
+  // Makes lags for inline filters with 27-point stencil.
+  private static int[][] makeLagsInline27() {
+    int mlag = 4;
+    int nlag = 2+3*(2+mlag)+mlag*(1+2*mlag); // = 56
+    int[] lag1 = new int[nlag];
+    int[] lag2 = new int[nlag];
+    int[] lag3 = new int[nlag];
+    for (int ilag3=0,ilag=0; ilag3<2; ++ilag3) {
+      int jlag2 = (ilag3==0)?0:-mlag;
+      int klag2 = 1;
+      for (int ilag2=jlag2; ilag2<=klag2; ++ilag2) {
+        int jlag1 = (ilag3==0 && ilag2==0)?0:-mlag;
+        int klag1 = (ilag3==1 && ilag2<0)?mlag:1;
+        for (int ilag1=jlag1; ilag1<=klag1; ++ilag1,++ilag) {
+          lag1[ilag] = ilag1;
+          lag2[ilag] = ilag2;
+          lag3[ilag] = ilag3;
+        }
+      }
+    }
+    return new int[][]{lag1,lag2,lag3};
+  }
+
+  // Makes lags for normal filters with 27-point stencil.
+  private static int[][] makeLagsNormal27() {
     int mlag = 4;
     int nlag = 3+2*mlag+(1+2*mlag)*(1+2*mlag);
     int[] lag1 = new int[nlag];
@@ -911,8 +939,11 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
         }
       }
     }
-    /*
-    // For plane filters composed of three 2-D filters.
+    return new int[][]{lag1,lag2,lag3};
+  }
+
+  // Makes lags for normal filters with 19-point stencil.
+  private static int[][] makeLagsNormal19() {
     int mlag = 4;
     int nlag = 1+mlag+mlag*(mlag+1+mlag)+1+mlag+(1+mlag)*(mlag+1+mlag);
     int[] lag1 = new int[nlag];
@@ -931,10 +962,12 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
         }
       }
     }
-    */
-    /*
-    // Big NSHP stencil for testing to determine a smaller stencil.
-    int mlag = 3;
+    return new int[][]{lag1,lag2,lag3};
+  }
+
+  // Makes lags for entire NSHP stencil used to find a smaller stencil.
+  private static int[][] makeLagsAll() {
+    int mlag = 4;
     int nlag = 1+mlag+mlag*(mlag+1+mlag)+(mlag+1+mlag)*(mlag+1+mlag);
     int[] lag1 = new int[nlag];
     int[] lag2 = new int[nlag];
@@ -952,7 +985,6 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
         }
       }
     }
-    */
     return new int[][]{lag1,lag2,lag3};
   }
 
