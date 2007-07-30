@@ -713,7 +713,8 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
   // but makes them more costly.
 
   public static void main(String[] args) {
-    testFactorizations();
+    //testFactorizations();
+    testFactorizations2();
   }
 
   // Test harness for experimenting with minimum-phase factors. 
@@ -792,6 +793,97 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     // Print approximation to eps*I+A'A implied by causal filter.
     r = Array.copy(7,7,7,k-3,k-3,k-3,z);
     Array.dump(r);
+  }
+
+  // Another test harness for experimenting with minimum-phase factors. 
+  // This one approximates a planar filter by cascading two inline filters.
+  private static void testFactorizations2() {
+    int n = 105; // number of samples
+    int k = n/2; // index of central sample
+    float[][][] x = new float[n][n][n];
+    float[][][] y1 = new float[n][n][n];
+    float[][][] y2 = new float[n][n][n];
+    float[][][] za1 = new float[n][n][n];
+    float[][][] za2 = new float[n][n][n];
+    float[][][] zb1 = new float[n][n][n];
+    float[][][] zb2 = new float[n][n][n];
+    x[k][k][k] = 1.0f; // input is unit impulse
+
+    // Filter epsilon.
+    float sigma = 16.0f;
+    float eps = 2.0f/(sigma*sigma);
+
+    // Unit vector.
+    float theta = 90.0f*FLT_PI/180.0f;
+    float   phi = 30.0f*FLT_PI/180.0f;
+    float u1 = cos(theta);
+    float u2 = sin(phi)*sin(theta);
+    float u3 = cos(phi)*sin(theta);
+    float v1,v2,v3;
+    float u12 = sqrt(u1*u1+u2*u2);
+    if (u12>0.0f) {
+      v1 = -u2/u12;
+      v2 =  u1/u12;
+    } else {
+      v1 = 0.0f;
+      v2 = 1.0f;
+    }
+    v3 = 0.0f;
+    float w1 = -v2*u3;
+    float w2 =  v1*u3;
+    float w3 =  u12;
+
+    // 1st (v) inline filter.
+    float d11,d22,d33,d12,d13,d23;
+    d11 = v1*v1;
+    d22 = v2*v2;
+    d33 = v3*v3;
+    d12 = v1*v2;
+    d13 = v1*v3;
+    d23 = v2*v3;
+    applyDiffusionFilter27(d11,d12,d13,d22,d23,d33,x,y1);
+    Array.mul(eps,x,za1);
+    applyDiffusionFilter27(d11,d12,d13,d22,d23,d33,x,za1);
+    int[][] lags = makeLagsInline9();
+    int[] lag1,lag2,lag3;
+    lag1 = lags[0];
+    lag2 = lags[1];
+    CausalFilter cf = new CausalFilter(lag1,lag2);
+    float[][] r1 = Array.copy(3,3,k-1,k-1,za1[k]);
+    Array.dump(r1);
+    cf.factorWilsonBurg(100,0.000001f,r1);
+    float[] a1 = cf.getA();
+    for (int i3=0; i3<n; ++i3) {
+      cf.apply(x[i3],zb1[i3]);
+      cf.applyTranspose(zb1[i3],zb1[i3]);
+    }
+
+    // 2nd (w) inline filter exact.
+    d11 = w1*w1;
+    d22 = w2*w2;
+    d33 = w3*w3;
+    d12 = w1*w2;
+    d13 = w1*w3;
+    d23 = w2*w3;
+    applyDiffusionFilter27(d11,d12,d13,d22,d23,d33,y1,y2);
+    Array.mul(eps,za1,za2);
+    applyDiffusionFilter27(d11,d12,d13,d22,d23,d33,za1,za2);
+    lags = makeLagsInline27();
+    lag1 = lags[0];
+    lag2 = lags[1];
+    lag3 = lags[2];
+    cf = new CausalFilter(lag1,lag2,lag3);
+    float[][][] r2 = Array.copy(3,3,3,k-1,k-1,k-1,za2);
+    cf.factorWilsonBurg(100,0.000001f,r2);
+    float[] a2 = cf.getA();
+    cf.apply(zb1,zb2);
+    cf.applyTranspose(zb2,zb2);
+
+    // Amplitude spectra.
+    float[][][] aa = Array.div(amplitude(y2),amplitude(za2));
+    float[][][] ab = Array.div(amplitude(y2),amplitude(zb2));
+    plot3d(aa);
+    plot3d(ab);
   }
 
   // Simple filter y += G'DGx with 27-point stencil.
@@ -894,6 +986,19 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
         }
       }
     }
+  }
+
+  // Makes lags for 2-D inline filters with 9-point stencil.
+  private static int[][] makeLagsInline9() {
+    int mlag = 4;
+    int nlag = 4+mlag;
+    int[] lag1 = new int[nlag];
+    int[] lag2 = new int[nlag];
+    for (int ilag=0; ilag<nlag; ++ilag) {
+      lag1[ilag] = (ilag<=1)?ilag:ilag-2-mlag;
+      lag2[ilag] = (ilag<=1)?0:1;
+    }
+    return new int[][]{lag1,lag2};
   }
 
   // Makes lags for inline filters with 27-point stencil.
