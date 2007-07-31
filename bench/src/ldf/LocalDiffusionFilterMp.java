@@ -842,6 +842,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     d12 = v1*v2;
     d13 = v1*v3; // = 0
     d23 = v2*v3; // = 0
+    Array.mul(eps,x,y1);
     applyDiffusionFilter9(d11,d12,d22,x[k],y1[k]);
     Array.mul(eps,x,za1);
     applyDiffusionFilter9(d11,d12,d22,x[k],za1[k]);
@@ -864,6 +865,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     d12 = w1*w2;
     d13 = w1*w3;
     d23 = w2*w3;
+    Array.mul(eps,y1,y2);
     applyDiffusionFilter27(d11,d12,d13,d22,d23,d33,y1,y2);
     Array.mul(eps,za1,za2);
     applyDiffusionFilter27(d11,d12,d13,d22,d23,d33,za1,za2);
@@ -881,15 +883,18 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     cf.apply(zb1,zb2);
     cf.applyTranspose(zb2,zb2);
 
+    // Numerator same for both filters A and B.
+    float[][][] y = Array.sub(y2,Array.mul(eps*eps,x));
+
     // Amplitude spectra.
-    float[][][] aa = Array.div(amplitude(y2),amplitude(za2));
-    float[][][] ab = Array.div(amplitude(y2),amplitude(zb2));
+    float[][][] aa = Array.div(amplitude(y),amplitude(za2));
+    float[][][] ab = Array.div(amplitude(y),amplitude(zb2));
     plot3d(aa);
     plot3d(ab);
-    plot3d(amplitude(za1));
-    plot3d(amplitude(za2));
-    plot3d(amplitude(zb1));
-    plot3d(amplitude(zb2));
+    //plot3d(amplitude(za1));
+    //plot3d(amplitude(za2));
+    //plot3d(amplitude(zb1));
+    //plot3d(amplitude(zb2));
   }
 
   // Computes y = y+G'DGx with 9-point (2-D) stencil.
