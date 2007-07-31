@@ -768,7 +768,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     // Plot ratio Ay/Az which equals the desired amplitude spectrum.
     float[][][] ay = amplitude(y);
     float[][][] az = amplitude(z);
-    plot3d(Array.div(ay,az));
+    plot3d(Array.sub(1.0f,Array.div(ay,az)));
 
     // Minimum-phase causal filter.
     int[][] lags = (inline)?makeLagsInline27():makeLagsNormal27();
@@ -788,7 +788,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
 
     // Plot amplitude spectrum.
     az = amplitude(z);
-    plot3d(Array.div(ay,az));
+    plot3d(Array.sub(1.0f,Array.div(ay,az)));
 
     // Print approximation to eps*I+A'A implied by causal filter.
     r = Array.copy(7,7,7,k-3,k-3,k-3,z);
