@@ -713,7 +713,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
   // but makes them more costly.
 
   public static void main(String[] args) {
-    //testFactorizations();
+    testFactorizations();
     testFactorizations2();
   }
 
@@ -727,14 +727,14 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     x[k][k][k] = 1.0f; // input is unit impulse
 
     // Unit vector.
-    float theta = 90.0f*FLT_PI/180.0f;
-    float   phi = 30.0f*FLT_PI/180.0f;
+    float theta = 0.0f*FLT_PI/180.0f;
+    float   phi = 0.0f*FLT_PI/180.0f;
     float v1 = cos(theta);
     float v2 = sin(phi)*sin(theta);
     float v3 = cos(phi)*sin(theta);
 
     // Diffusion coefficients for inline or normal filter.
-    boolean inline = true;
+    boolean inline = false;
     float d11,d22,d33,d12,d13,d23;
     if (inline) {
       d11 = v1*v1;
@@ -814,8 +814,8 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     float eps = 2.0f/(sigma*sigma);
 
     // Unit vector.
-    float theta = 90.0f*FLT_PI/180.0f;
-    float   phi = 30.0f*FLT_PI/180.0f;
+    float theta =  0.0f*FLT_PI/180.0f;
+    float   phi =  0.0f*FLT_PI/180.0f;
     float u1 = cos(theta);
     float u2 = sin(phi)*sin(theta);
     float u3 = cos(phi)*sin(theta);
@@ -888,10 +888,10 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     float[][][] bb = Array.mul(b1,b2);
     plot3d(aa);
     plot3d(bb);
-    plot3d(amplitude(za1));
-    plot3d(amplitude(zb1));
-    plot3d(amplitude(za2));
-    plot3d(amplitude(zb2));
+    //plot3d(amplitude(za1));
+    //plot3d(amplitude(zb1));
+    //plot3d(amplitude(za2));
+    //plot3d(amplitude(zb2));
   }
 
   // Computes y = y+G'DGx with 9-point (2-D) stencil.
