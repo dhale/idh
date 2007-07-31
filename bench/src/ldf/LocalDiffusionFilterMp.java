@@ -814,8 +814,8 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     float eps = 2.0f/(sigma*sigma);
 
     // Unit vector.
-    float theta = 0.0f*FLT_PI/180.0f;
-    float   phi = 0.0f*FLT_PI/180.0f;
+    float theta = 90.0f*FLT_PI/180.0f;
+    float   phi = 30.0f*FLT_PI/180.0f;
     float u1 = cos(theta);
     float u2 = sin(phi)*sin(theta);
     float u3 = cos(phi)*sin(theta);
@@ -842,7 +842,6 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     d12 = v1*v2;
     d13 = v1*v3; // = 0
     d23 = v2*v3; // = 0
-    Array.mul(eps,x,y1);
     applyDiffusionFilter9(d11,d12,d22,x[k],y1[k]);
     Array.mul(eps,x,za1);
     applyDiffusionFilter9(d11,d12,d22,x[k],za1[k]);
@@ -854,9 +853,10 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     float[][] r1 = Array.copy(3,3,k-1,k-1,za1[k]);
     Array.dump(r1);
     cf.factorWilsonBurg(100,0.000001f,r1);
-    float[] a1 = cf.getA();
     cf.apply(x[k],zb1[k]);
     cf.applyTranspose(zb1[k],zb1[k]);
+    float[][][] a1 = Array.sub(1.0f,Array.div(amplitude(y1),amplitude(za1)));
+    float[][][] b1 = Array.sub(1.0f,Array.div(amplitude(y1),amplitude(zb1)));
 
     // 2nd (w) inline filter.
     d11 = w1*w1;
@@ -865,10 +865,9 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     d12 = w1*w2;
     d13 = w1*w3;
     d23 = w2*w3;
-    Array.mul(eps,y1,y2);
-    applyDiffusionFilter27(d11,d12,d13,d22,d23,d33,y1,y2);
-    Array.mul(eps,za1,za2);
-    applyDiffusionFilter27(d11,d12,d13,d22,d23,d33,za1,za2);
+    applyDiffusionFilter27(d11,d12,d13,d22,d23,d33,x,y2);
+    Array.mul(eps,x,za2);
+    applyDiffusionFilter27(d11,d12,d13,d22,d23,d33,x,za2);
     lags = makeLagsInline27();
     lag1 = lags[0];
     lag2 = lags[1];
@@ -879,22 +878,20 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     float[][][] r2 = Array.copy(3,3,3,k-1,k-1,k-1,zb2);
     Array.dump(r2);
     cf.factorWilsonBurg(100,0.000001f,r2);
-    float[] a2 = cf.getA();
-    cf.apply(zb1,zb2);
+    cf.apply(x,zb2);
     cf.applyTranspose(zb2,zb2);
-
-    // Numerator same for both filters A and B.
-    float[][][] y = Array.sub(y2,Array.mul(eps*eps,x));
+    float[][][] a2 = Array.sub(1.0f,Array.div(amplitude(y2),amplitude(za2)));
+    float[][][] b2 = Array.sub(1.0f,Array.div(amplitude(y2),amplitude(zb2)));
 
     // Amplitude spectra.
-    float[][][] aa = Array.div(amplitude(y),amplitude(za2));
-    float[][][] ab = Array.div(amplitude(y),amplitude(zb2));
+    float[][][] aa = Array.mul(a1,a2);
+    float[][][] bb = Array.mul(b1,b2);
     plot3d(aa);
-    plot3d(ab);
-    //plot3d(amplitude(za1));
-    //plot3d(amplitude(za2));
-    //plot3d(amplitude(zb1));
-    //plot3d(amplitude(zb2));
+    plot3d(bb);
+    plot3d(amplitude(za1));
+    plot3d(amplitude(zb1));
+    plot3d(amplitude(za2));
+    plot3d(amplitude(zb2));
   }
 
   // Computes y = y+G'DGx with 9-point (2-D) stencil.
