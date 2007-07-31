@@ -814,8 +814,8 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     float eps = 2.0f/(sigma*sigma);
 
     // Unit vector.
-    float theta = 90.0f*FLT_PI/180.0f;
-    float   phi = 30.0f*FLT_PI/180.0f;
+    float theta = 0.0f*FLT_PI/180.0f;
+    float   phi = 0.0f*FLT_PI/180.0f;
     float u1 = cos(theta);
     float u2 = sin(phi)*sin(theta);
     float u3 = cos(phi)*sin(theta);
@@ -832,18 +832,19 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     float w1 = -v2*u3;
     float w2 =  v1*u3;
     float w3 =  u12;
+    trace("u1="+u1+" v2="+v2+" w3="+w3);
 
     // 1st (v) inline filter.
     float d11,d22,d33,d12,d13,d23;
     d11 = v1*v1;
     d22 = v2*v2;
-    d33 = v3*v3;
+    d33 = v3*v3; // = 0
     d12 = v1*v2;
-    d13 = v1*v3;
-    d23 = v2*v3;
-    applyDiffusionFilter27(d11,d12,d13,d22,d23,d33,x,y1);
+    d13 = v1*v3; // = 0
+    d23 = v2*v3; // = 0
+    applyDiffusionFilter9(d11,d12,d22,x[k],y1[k]);
     Array.mul(eps,x,za1);
-    applyDiffusionFilter27(d11,d12,d13,d22,d23,d33,x,za1);
+    applyDiffusionFilter9(d11,d12,d22,x[k],za1[k]);
     int[][] lags = makeLagsInline9();
     int[] lag1,lag2,lag3;
     lag1 = lags[0];
@@ -853,12 +854,10 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     Array.dump(r1);
     cf.factorWilsonBurg(100,0.000001f,r1);
     float[] a1 = cf.getA();
-    for (int i3=0; i3<n; ++i3) {
-      cf.apply(x[i3],zb1[i3]);
-      cf.applyTranspose(zb1[i3],zb1[i3]);
-    }
+    cf.apply(x[k],zb1[k]);
+    cf.applyTranspose(zb1[k],zb1[k]);
 
-    // 2nd (w) inline filter exact.
+    // 2nd (w) inline filter.
     d11 = w1*w1;
     d22 = w2*w2;
     d33 = w3*w3;
@@ -873,7 +872,10 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     lag2 = lags[1];
     lag3 = lags[2];
     cf = new CausalFilter(lag1,lag2,lag3);
-    float[][][] r2 = Array.copy(3,3,3,k-1,k-1,k-1,za2);
+    Array.mul(eps,x,zb2);
+    applyDiffusionFilter27(d11,d12,d13,d22,d23,d33,x,zb2);
+    float[][][] r2 = Array.copy(3,3,3,k-1,k-1,k-1,zb2);
+    Array.dump(r2);
     cf.factorWilsonBurg(100,0.000001f,r2);
     float[] a2 = cf.getA();
     cf.apply(zb1,zb2);
@@ -884,6 +886,39 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     float[][][] ab = Array.div(amplitude(y2),amplitude(zb2));
     plot3d(aa);
     plot3d(ab);
+    plot3d(amplitude(za1));
+    plot3d(amplitude(za2));
+    plot3d(amplitude(zb1));
+    plot3d(amplitude(zb2));
+  }
+
+  // Computes y = y+G'DGx with 9-point (2-D) stencil.
+  private static void applyDiffusionFilter9(
+   float d11, float d12, float d22,
+   float[][] x, float[][] y) 
+  {
+    int n1 = x[0].length;
+    int n2 = x.length;
+    for (int i2=1; i2<n2; ++i2) {
+      for (int i1=1; i1<n1; ++i1) {
+        float x00 = x[i2  ][i1  ];
+        float x01 = x[i2  ][i1-1];
+        float x10 = x[i2-1][i1  ];
+        float x11 = x[i2-1][i1-1];
+        float xa = x00-x11;
+        float xb = x01-x10;
+        float x1 = 0.5f*(xa-xb);
+        float x2 = 0.5f*(xa+xb);
+        float y1 = d11*x1+d12*x2;
+        float y2 = d12*x1+d22*x2;
+        float ya = 0.5f*(y1+y2);
+        float yb = 0.5f*(y1-y2);
+        y[i2  ][i1  ] += ya;
+        y[i2  ][i1-1] -= yb;
+        y[i2-1][i1  ] += yb;
+        y[i2-1][i1-1] -= ya;
+      }
+    }
   }
 
   // Simple filter y += G'DGx with 27-point stencil.
