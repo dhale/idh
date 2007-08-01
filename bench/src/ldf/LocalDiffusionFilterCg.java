@@ -35,23 +35,23 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
   ///////////////////////////////////////////////////////////////////////////
   // protected
 
-  protected void solveInline(
+  protected void solveLinear(
     float[][] ds, float[][] v1, float[][] x, float[][] y) 
   {
-    solveInlineSimple(ds,v1,x,y);
-    //solveInlineSsor(ds,v1,x,y);
+    solveLinearSimple(ds,v1,x,y);
+    //solveLinearSsor(ds,v1,x,y);
   }
 
-  protected void solveInline(
-    float[][][] ds, short[][][] iw, float[][][] x, float[][][] y) 
+  protected void solveLinear(
+    byte[][][] is, short[][][] iw, float[][][] x, float[][][] y) 
   {
-    solveInlineSimple(ds,iw,x,y);
+    solveLinearSimple(is,iw,x,y);
   }
 
-  protected void solveNormal(
-    float[][][] ds, short[][][] iu, float[][][] x, float[][][] y) 
+  protected void solvePlanar(
+    byte[][][] is, short[][][] iu, float[][][] x, float[][][] y) 
   {
-    solveNormalSimple(ds,iu,x,y);
+    solvePlanarSimple(is,iu,x,y);
   }
 
   ///////////////////////////////////////////////////////////////////////////
@@ -74,8 +74,8 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
     public void apply(float[][][] x, float[][][] y);
   }
 
-  private static class InlineOperator2 implements Operator2 {
-    InlineOperator2(
+  private static class LinearOperator2 implements Operator2 {
+    LinearOperator2(
       DirectionalLaplacianFilter dlf, float[][] ds, float[][] v1) 
     {
       _dlf = dlf;
@@ -84,49 +84,49 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
     }
     public void apply(float[][] x, float[][] y) {
       scopy(x,y);
-      _dlf.applyInline(_ds,_v1,x,y);
+      _dlf.applyLinear(_ds,_v1,x,y);
     }
     private float[][] _ds,_v1;
     private DirectionalLaplacianFilter _dlf;
   }
-  private static class InlineOperator3 implements Operator3 {
-    InlineOperator3(
-      DirectionalLaplacianFilter dlf, float[][][] ds, short[][][] iw) 
+  private static class LinearOperator3 implements Operator3 {
+    LinearOperator3(
+      DirectionalLaplacianFilter dlf, byte[][][] is, short[][][] iw) 
     {
       _dlf = dlf;
-      _ds = ds;
+      _is = is;
       _iw = iw;
     }
     public void apply(float[][][] x, float[][][] y) {
       scopy(x,y);
-      _dlf.applyInline(_ds,_iw,x,y);
+      _dlf.applyLinear(_is,_iw,x,y);
     }
-    private float[][][] _ds;
+    private byte[][][] _is;
     private short[][][] _iw;
     private DirectionalLaplacianFilter _dlf;
   }
-  private static class NormalOperator3 implements Operator3 {
-    NormalOperator3(
-      DirectionalLaplacianFilter dlf, float[][][] ds, short[][][] iu) 
+  private static class PlanarOperator3 implements Operator3 {
+    PlanarOperator3(
+      DirectionalLaplacianFilter dlf, byte[][][] is, short[][][] iu) 
     {
       _dlf = dlf;
-      _ds = ds;
+      _is = is;
       _iu = iu;
     }
     public void apply(float[][][] x, float[][][] y) {
       scopy(x,y);
-      _dlf.applyNormal(_ds,_iu,x,y);
+      _dlf.applyPlanar(_is,_iu,x,y);
     }
-    private float[][][] _ds;
+    private byte[][][] _is;
     private short[][][] _iu;
     private DirectionalLaplacianFilter _dlf;
   }
 
-  private static class InlineSsorOperator2 implements Operator2 {
-    InlineSsorOperator2(
+  private static class LinearSsorOperator2 implements Operator2 {
+    LinearSsorOperator2(
       DirectionalLaplacianFilter dlf, float[][] ds, float[][] v1) 
     {
-      _s33 = dlf.makeInlineStencil33(ds,v1);
+      _s33 = dlf.makeLinearStencil33(ds,v1);
     }
     public void apply(float[][] x, float[][] y) {
       // y = (2-w) * inv(D/w+L') * D/w * inv(D/w+L) * x
@@ -181,31 +181,30 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
     private DirectionalLaplacianFilter.Stencil33 _s33;
   }
 
-  private void solveInlineSimple(
+  private void solveLinearSimple(
     float[][] ds, float[][] v1, float[][] x, float[][] y) 
   {
-    Operator2 a = new InlineOperator2(_dlf,ds,v1);
+    Operator2 a = new LinearOperator2(_dlf,ds,v1);
     solve(a,x,y);
   }
-  private void solveInlineSimple(
-    float[][][] ds, short[][][] iw, float[][][] x, float[][][] y) 
-  {
-    Operator3 a = new InlineOperator3(_dlf,ds,iw);
-    solve(a,x,y);
-  }
-  private void solveNormalSimple(
-    float[][][] ds, short[][][] iu, float[][][] x, float[][][] y) 
-  {
-    Operator3 a = new NormalOperator3(_dlf,ds,iu);
-    solve(a,x,y);
-  }
-
-  private void solveInlineSsor(
+  private void solveLinearSsor(
     float[][] ds, float[][] v1, float[][] x, float[][] y) 
   {
-    Operator2 a = new InlineOperator2(_dlf,ds,v1);
-    Operator2 m = new InlineSsorOperator2(_dlf,ds,v1);
+    Operator2 a = new LinearOperator2(_dlf,ds,v1);
+    Operator2 m = new LinearSsorOperator2(_dlf,ds,v1);
     solve(a,m,x,y);
+  }
+  private void solveLinearSimple(
+    byte[][][] is, short[][][] iw, float[][][] x, float[][][] y) 
+  {
+    Operator3 a = new LinearOperator3(_dlf,is,iw);
+    solve(a,x,y);
+  }
+  private void solvePlanarSimple(
+    byte[][][] is, short[][][] iu, float[][][] x, float[][][] y) 
+  {
+    Operator3 a = new PlanarOperator3(_dlf,is,iu);
+    solve(a,x,y);
   }
 
   /**
@@ -513,8 +512,8 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
     DirectionalLaplacianFilter dlf = new DirectionalLaplacianFilter(1.0);
     float[][] ds = Array.randfloat(n1,n2);
     float[][] v1 = Array.randfloat(n1,n2);
-    Operator2 a = new InlineOperator2(dlf,ds,v1);
-    Operator2 m = new InlineSsorOperator2(dlf,ds,v1);
+    Operator2 a = new LinearOperator2(dlf,ds,v1);
+    Operator2 m = new LinearSsorOperator2(dlf,ds,v1);
     testSpd(n1,n2,a);
     testSpd(n1,n2,m);
   }

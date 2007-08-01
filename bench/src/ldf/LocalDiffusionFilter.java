@@ -27,62 +27,66 @@ public class LocalDiffusionFilter {
   /**
    * Applies a filter that enhances (passes) features that are locally 
    * linear with inline vectors v.
-   * @param ds diffusivity scale factors; null, for constant = 1.
+   * @param ds diffusivity scale factors; null, for no scaling.
    * @param v1 array of 1st components of inline unit vectors.
    * @param x array with input image; must be distinct from y.
    * @param y array with output image; must be distinct from x.
    */
-  public void applyInlinePass(
+  public void applyLinearPass(
     float[][] ds, float[][] v1, float[][] x, float[][] y) 
   {
-    solveInline(ds,v1,x,y);
+    solveLinear(ds,v1,x,y);
   }
 
   /**
    * Applies a filter that attenuates (kills) features that are locally 
    * linear with inline vectors v.
-   * @param ds diffusivity scale factors; null, for constant = 1.
+   * @param ds diffusivity scale factors; null, for no scaling.
    * @param v1 array of 1st components of inline unit vectors.
    * @param x array with input image; must be distinct from y.
    * @param y array with output image; must be distinct from x.
    */
-  public void applyInlineKill(
+  public void applyLinearKill(
     float[][] ds, float[][] v1, float[][] x, float[][] y) 
   {
-    solveInline(ds,v1,x,y);
+    solveLinear(ds,v1,x,y);
     Array.sub(x,y,y);
   }
 
   /**
    * Applies a filter that enhances (passes) features that are locally 
    * linear with inline vectors w.
-   * The unit vectors w are specified by short indices iw that correspond 
-   * to a 16-bit sampling of the unit-sphere.
-   * @param ds diffusivity scale factors; null, for constant = 1.
-   * @param iw unit-sphere sample indices of unit vectors w.
+   * Diffusivities d depend on a percentage of the nominal filter half-width 
+   * sigma; these percentages are specified by byte values in the array is.
+   * Inline vectors w are specified by short indices in the array iw that 
+   * correspond to a 16-bit sampling of the unit-sphere.
+   * @param is diffusivity scaling percentages; null for no scaling.
+   * @param iw unit-sphere 16-bit sample indices for unit vectors w.
    * @param x input image. Must be distinct from the array y.
    * @param y input/output image. Must be distinct from the array x.
    */
-  public void applyInlinePass(
-    float[][][] ds, short[][][] iw, float[][][] x, float[][][] y) 
+  public void applyLinearPass(
+    byte[][][] is, short[][][] iw, float[][][] x, float[][][] y) 
   {
-    solveInline(ds,iw,x,y);
+    solveLinear(is,iw,x,y);
   }
 
   /**
    * Applies a filter that enhances (passes) features that are locally 
    * planar with normal vectors u.
-   * The unit vectors u are specified by short indices iu that correspond 
-   * to a 16-bit sampling of the unit-sphere.
-   * @param ds diffusivity scale factors; null, for constant = 1.
-   * @param iu unit-sphere sample indices of unit vectors u.
+   * Diffusivities d depend on a percentage of the nominal filter half-width 
+   * sigma; these percentages are specified by byte values in the array is.
+   * Normal vectors u are specified by short indices in the array iu that 
+   * correspond to a 16-bit sampling of the unit-sphere.
+   * @param is diffusivity scaling percentages; null for no scaling.
+   * @param iu unit-sphere 16-bit sample indices for unit vectors u.
    * @param x input image. Must be distinct from the array y.
    * @param y input/output image. Must be distinct from the array x.
    */
-  public void applyNormalPass(
-    float[][][] ds, short[][][] iu, float[][][] x, float[][][] y) 
+  public void applyPlanarPass(
+    byte[][][] is, short[][][] iu, float[][][] x, float[][][] y) 
   {
-    solveNormal(ds,iu,x,y);
+    solvePlanar(is,iu,x,y);
   }
 
   ///////////////////////////////////////////////////////////////////////////
@@ -95,7 +99,7 @@ public class LocalDiffusionFilter {
    * @param x array with input image; must be distinct from y.
    * @param y array with output image; must be distinct from x.
    */
-  protected void solveInline(
+  protected void solveLinear(
     float[][] ds, float[][] v1, float[][] x, float[][] y) 
   {
     int n1 = x[0].length;
@@ -136,14 +140,14 @@ public class LocalDiffusionFilter {
     }
   }
 
-  protected void solveInline(
-    float[][][] ds, short[][][] iw, float[][][] x, float[][][] y) 
+  protected void solveLinear(
+    byte[][][] is, short[][][] iw, float[][][] x, float[][][] y) 
   {
     Check.state(false,"method implemented in subclass");
   }
 
-  protected void solveNormal(
-    float[][][] ds, short[][][] iu, float[][][] x, float[][][] y) 
+  protected void solvePlanar(
+    byte[][][] is, short[][][] iu, float[][][] x, float[][][] y) 
   {
     Check.state(false,"method implemented in subclass");
   }

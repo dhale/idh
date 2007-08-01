@@ -70,13 +70,13 @@ public class DirectionalLaplacianFilter {
 
   /**
    * Computes y = y+G'DGx, where D = dvv' and G is the gradient operator. 
-   * @param ds scale factor for diffusivity in direction of unit vector v.
+   * @param ds scale factor for diffusivity inline with unit vector v.
    * @param v1 1st component of unit vector v.
    * @param v2 2nd component of unit vector v.
    * @param x input image. Must be distinct from the array y.
    * @param y input/output image. Must be distinct from the array x.
    */
-  public void applyInline(
+  public void applyLinear(
     float ds, float v1, float v2, float[][] x, float[][] y) 
   {
     float ss = ds*_sigma;
@@ -94,41 +94,16 @@ public class DirectionalLaplacianFilter {
   }
 
   /**
-   * Computes y = y+G'DGx, where D = d(I-uu') and G is the gradient operator. 
-   * @param ds scale factor for diffusivity orthogonal to unit vector u.
-   * @param u1 1st component of unit vector u.
-   * @param u2 2nd component of unit vector u.
-   * @param x input image. Must be distinct from the array y.
-   * @param y input/output image. Must be distinct from the array x.
-   */
-  public void applyNormal(
-    float ds, float u1, float u2, float[][] x, float[][] y) 
-  {
-    float ss = ds*_sigma;
-    float su = 0.5f*ss*ss;
-    float d11 = su-su*u1*u1;
-    float d22 = su-su*u2*u2;
-    float d12 =   -su*u1*u2;
-    int n1 = x[0].length;
-    int n2 = x.length;
-    for (int i2=1; i2<n2; ++i2) {
-      for (int i1=1; i1<n1; ++i1) {
-        apply(d11,d12,d22,i1,i2,x,y);
-      }
-    }
-  }
-
-  /**
    * Computes y = y+G'DGx, where D = dvv' and G is the gradient operator. 
-   * Only components v1 of the inline vectors v are specified; all components 
-   * v2 = sqrt(1-v1*v1) are assumed to be non-negative.
-   * @param ds scale factors for diffusivity in direction of unit vectors v;
+   * Only components v1 of the inline vectors v are specified; 
+   * computed components v2 = sqrt(1-v1*v1) are non-negative.
+   * @param ds scale factors for diffusivity inline with unit vectors v;
    *  if null, this method uses constant ds = 1.
    * @param v1 array of 1st components of inline unit vectors.
    * @param x input image. Must be distinct from the array y.
    * @param y input/output image. Must be distinct from the array x.
    */
-  public void applyInline(
+  public void applyLinear(
     float[][] ds, float[][] v1, float[][] x, float[][] y) 
   {
     int n1 = x[0].length;
@@ -147,48 +122,19 @@ public class DirectionalLaplacianFilter {
     }
   }
 
-  /**
-   * Computes y = y+G'DGx, where D = d(I-uu') and G is the gradient operator. 
-   * Only components u2 of the normal vectors u are specified; all components 
-   * u1 = sqrt(1-u2*u2) are assumed to be non-negative.
-   * @param ds scale factors for diffusivity in directions orthogonal to
-   *  unit vectors u; if null, this method uses constant ds = 1.
-   * @param u2 array of 2nd components of normal unit vectors.
-   * @param x input image. Must be distinct from the array y.
-   * @param y input/output image. Must be distinct from the array x.
-   */
-  public void applyNormal(
-    float[][] ds, float[][] u2, float[][] x, float[][] y) 
-  {
-    int n1 = x[0].length;
-    int n2 = x.length;
-    for (int i2=1; i2<n2; ++i2) {
-      for (int i1=1; i1<n1; ++i1) {
-        float ssi = (ds!=null)?_sigma*ds[i2][i1]:_sigma;
-        float sui = 0.5f*ssi*ssi;
-        float u2i = u2[i2][i1];
-        float u1i = sqrt(1.0f-u2i*u2i);
-        float d11 = sui-sui*u1i*u1i;
-        float d22 = sui-sui*u2i*u2i;
-        float d12 =    -sui*u1i*u2i;
-        apply(d11,d12,d22,i1,i2,x,y);
-      }
-    }
-  }
-
   ///////////////////////////////////////////////////////////////////////////
   // 3-D
 
   /**
    * Computes y = y+G'DGx, where D = dww' and G is the gradient operator. 
-   * @param ds scale factor for diffusivity in direction of unit vector w.
+   * @param ds scale factor for diffusivity inline with unit vector w.
    * @param w1 1st component of unit vector w.
    * @param w2 2nd component of unit vector w.
    * @param w3 3rd component of unit vector w.
    * @param x input image. Must be distinct from the array y.
    * @param y input/output image. Must be distinct from the array x.
    */
-  public void applyInline(
+  public void applyLinear(
     float ds, float w1, float w2, float w3, float[][][] x, float[][][] y) 
   {
     apply(Type.INLINE,ds,w1,w2,w3,x,y);
@@ -196,14 +142,14 @@ public class DirectionalLaplacianFilter {
 
   /**
    * Computes y = y+G'DGx, where D = d(I-uu') and G is the gradient operator. 
-   * @param ds scale factor for diffusivity orthogonal to unit vector u.
+   * @param ds scale factor for diffusivity normal to unit vector u.
    * @param u1 1st component of unit vector u.
    * @param u2 2nd component of unit vector u.
    * @param u3 3rd component of unit vector u.
    * @param x input image. Must be distinct from the array y.
    * @param y input/output image. Must be distinct from the array x.
    */
-  public void applyNormal(
+  public void applyPlanar(
     float ds, float u1, float u2, float u3, float[][][] x, float[][][] y) 
   {
     apply(Type.NORMAL,ds,u1,u2,u3,x,y);
@@ -211,36 +157,38 @@ public class DirectionalLaplacianFilter {
 
   /**
    * Computes y = y+G'DGx, where D = dww' and G is the gradient operator. 
-   * Unit vectors w are specified by short indices iw that correspond to a 
-   * 16-bit sampling of the unit-sphere.
-   * @param ds scale factors for diffusivity in direction of unit vectors w;
-   *  if null, this method uses constant ds = 1.
-   * @param iw unit-sphere sample indices of unit vectors w.
+   * Diffusivities d depend on a percentage of the nominal filter half-width 
+   * sigma; these percentages are specified by byte values in the array is.
+   * Inline vectors w are specified by short indices in the array iw that 
+   * correspond to a 16-bit sampling of the unit-sphere.
+   * @param is diffusivity scaling percentages; null for no scaling.
+   * @param iw unit-sphere 16-bit sample indices for unit vectors w.
    * @param x input image. Must be distinct from the array y.
    * @param y input/output image. Must be distinct from the array x.
    */
-  public void applyInline(
-    float[][][] ds, short[][][] iw, float[][][] x, float[][][] y) 
+  public void applyLinear(
+    byte[][][] is, short[][][] iw, float[][][] x, float[][][] y) 
   {
-    //applySerial(Type.INLINE,ds,iw,x,y);
-    applyParallel(Type.INLINE,ds,iw,x,y);
+    //applySerial(Type.INLINE,is,iw,x,y);
+    applyParallel(Type.INLINE,is,iw,x,y);
   }
 
   /**
    * Computes y = y+G'DGx, where D = d(I-uu') and G is the gradient operator. 
-   * Unit vectors u are specified by short indices iu that correspond to a 
-   * 16-bit sampling of the unit-sphere.
-   * @param ds scale factor for diffusivity orthogonal to unit vectors u;
-   *  if null, this method uses constant ds = 1.
-   * @param iu unit-sphere sample indices of unit vectors u.
+   * Diffusivities d depend on a percentage of the nominal filter half-width 
+   * sigma; these percentages are specified by byte values in the array is.
+   * Normal vectors u are specified by short indices in the array iu that 
+   * correspond to a 16-bit sampling of the unit-sphere.
+   * @param is diffusivity scaling percentages; null for no scaling.
+   * @param iu unit-sphere 16-bit sample indices for unit vectors u.
    * @param x input image. Must be distinct from the array y.
    * @param y input/output image. Must be distinct from the array x.
    */
-  public void applyNormal(
-    float[][][] ds, short[][][] iu, float[][][] x, float[][][] y) 
+  public void applyPlanar(
+    byte[][][] is, short[][][] iu, float[][][] x, float[][][] y) 
   {
-    //applySerial(Type.NORMAL,ds,iu,x,y);
-    applyParallel(Type.NORMAL,ds,iu,x,y);
+    //applySerial(Type.NORMAL,is,iu,x,y);
+    applyParallel(Type.NORMAL,is,iu,x,y);
   }
 
   /**
@@ -274,8 +222,8 @@ public class DirectionalLaplacianFilter {
    * @param v1 array of 1st components of inline unit vectors.
    * @return the stencil.
    */
-  public Stencil33 makeInlineStencil33(float[][] ds, float[][] v1) {
-    return new InlineStencil33(_sigma,ds,v1);
+  public Stencil33 makeLinearStencil33(float[][] ds, float[][] v1) {
+    return new LinearStencil33(_sigma,ds,v1);
   }
 
 
@@ -357,18 +305,18 @@ public class DirectionalLaplacianFilter {
   }
 
   private void applySerial(Type type,
-    float[][][] ds, short[][][] iw, 
+    byte[][][] is, short[][][] iw, 
     float[][][] x, float[][][] y) 
   {
     if (_uss16==null)
       _uss16 = new UnitSphereSampling(16);
     int n3 = x.length;
     for (int i3=1; i3<n3; ++i3)
-      applySlice3(type,i3,_uss16,_sigma,ds,iw,x,y);
+      applySlice3(type,i3,_uss16,_sigma,is,iw,x,y);
   }
 
   private void applyParallel(final Type type,
-    final float[][][] ds, final short[][][] iw, 
+    final byte[][][] is, final short[][][] iw, 
     final float[][][] x, final float[][][] y) 
   {
     if (_uss16==null)
@@ -382,7 +330,7 @@ public class DirectionalLaplacianFilter {
       thread1[ithread] = new Thread(new Runnable() {
         public void run() {
           for (int i3=a1.getAndAdd(2); i3<n3; i3=a1.getAndAdd(2))
-            applySlice3(type,i3,_uss16,_sigma,ds,iw,x,y);
+            applySlice3(type,i3,_uss16,_sigma,is,iw,x,y);
         }
       });
     }
@@ -395,7 +343,7 @@ public class DirectionalLaplacianFilter {
       thread2[ithread] = new Thread(new Runnable() {
         public void run() {
           for (int i3=a2.getAndAdd(2); i3<n3; i3=a2.getAndAdd(2))
-            applySlice3(type,i3,_uss16,_sigma,ds,iw,x,y);
+            applySlice3(type,i3,_uss16,_sigma,is,iw,x,y);
         }
       });
     }
@@ -405,7 +353,7 @@ public class DirectionalLaplacianFilter {
   // Computes y = y+G'DGx for one constant-i3 slice.
   private static void applySlice3(
     Type type, int i3, UnitSphereSampling uss, float sigma,
-    float[][][] ds, short[][][] iv, float[][][] x, float[][][] y) 
+    byte[][][] is, short[][][] iv, float[][][] x, float[][][] y) 
   {
     int n1 = x[0][0].length;
     int n2 = x[0].length;
@@ -418,9 +366,9 @@ public class DirectionalLaplacianFilter {
       float[] y01 = y[i3  ][i2-1];
       float[] y10 = y[i3-1][i2  ];
       float[] y11 = y[i3-1][i2-1];
-      float[] d32 = (ds!=null)?ds[i3][i2]:null;
+      byte[] is32 = (is!=null)?is[i3][i2]:null;
       for (int i1=1,i1m=0; i1<n1; ++i1,++i1m) {
-        float ssi = (ds!=null)?sigma*d32[i1]:sigma;
+        float ssi = (is!=null)?sigma*0.01f*(float)(is32[i1]):sigma;
         float svi = 0.5f*ssi*ssi;
         float[] vi = uss.getPoint(iv[i3][i2][i1]); // {vx,vy,vz}
         float v1i = vi[2]; // v1 = vz
@@ -499,8 +447,8 @@ public class DirectionalLaplacianFilter {
   /**
    * Implements 3 x 3 stencil for inline filters.
    */
-  private static class InlineStencil33 implements Stencil33 {
-    InlineStencil33(float sigma, float[][] ds, float[][] v1) {
+  private static class LinearStencil33 implements Stencil33 {
+    LinearStencil33(float sigma, float[][] ds, float[][] v1) {
       _i2 = new int[]{-1,-1};
       _n1 = v1[0].length;
       _n2 = v1.length;
@@ -591,7 +539,7 @@ public class DirectionalLaplacianFilter {
     }
   }
 
-  private void applyInlineStencil33(
+  private void applyLinearStencil33(
     float[][] ds, float[][] v1, float[][] x, float[][] y) 
   {
     int n1 = x[0].length;
@@ -599,7 +547,7 @@ public class DirectionalLaplacianFilter {
     int n1m = n1-1;
     int n2m = n2-1;
     float[][] a = new float[n1][9];
-    Stencil33 s33 = new InlineStencil33(_sigma,ds,v1);
+    Stencil33 s33 = new LinearStencil33(_sigma,ds,v1);
     for (int i2=0; i2<n2; ++i2) {
       int i2m = max(i2-1,0);
       int i2p = min(i2+1,n2m);
@@ -618,7 +566,7 @@ public class DirectionalLaplacianFilter {
     }
   }
 
-  private void applyInlineStencil33Reverse(
+  private void applyLinearStencil33Reverse(
     float[][] ds, float[][] v1, float[][] x, float[][] y) 
   {
     int n1 = x[0].length;
@@ -626,7 +574,7 @@ public class DirectionalLaplacianFilter {
     int n1m = n1-1;
     int n2m = n2-1;
     float[][] a = new float[n1][9];
-    Stencil33 s33 = new InlineStencil33(_sigma,ds,v1);
+    Stencil33 s33 = new LinearStencil33(_sigma,ds,v1);
     for (int i2=n2-1; i2>=0; --i2) {
       int i2m = max(i2-1,0);
       int i2p = min(i2+1,n2m);
@@ -661,8 +609,8 @@ public class DirectionalLaplacianFilter {
     float[][] y = Array.zerofloat(n1,n2);
     float[][] z = Array.zerofloat(n1,n2);
     DirectionalLaplacianFilter dlf = new DirectionalLaplacianFilter(1.0);
-    dlf.applyInline(ds,v1,x,y);
-    dlf.applyInlineStencil33Reverse(ds,v1,x,z);
+    dlf.applyLinear(ds,v1,x,y);
+    dlf.applyLinearStencil33Reverse(ds,v1,x,z);
     //edu.mines.jtk.mosaic.SimplePlot.asPixels(y);
     //edu.mines.jtk.mosaic.SimplePlot.asPixels(z);
     //Array.dump(x);
@@ -686,14 +634,14 @@ public class DirectionalLaplacianFilter {
     sw.restart();
     for (napply=0; sw.time()<maxtime; ++napply) {
       Array.zero(y);
-      dlf.applyInline(ds,v1,x,y);
+      dlf.applyLinear(ds,v1,x,y);
     }
     sw.stop();
     System.out.println(" simple rate = "+napply/sw.time());
     sw.restart();
     for (napply=0; sw.time()<maxtime; ++napply) {
       Array.zero(z);
-      dlf.applyInlineStencil33(ds,v1,x,z);
+      dlf.applyLinearStencil33(ds,v1,x,z);
     }
     sw.stop();
     System.out.println("stencil rate = "+napply/sw.time());
