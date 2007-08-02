@@ -20,11 +20,11 @@ False = 0
 
 #############################################################################
 # parameters
-#n1,n2,n3 = 105,105,105
-n1,n2,n3 = 195,195,195
+n1,n2,n3 = 105,105,105
+#n1,n2,n3 = 195,195,195
 #n1,n2,n3 = 315,315,315
 sigma = 16
-ffile = "filtersNew.dat"
+ffile = "filters.dat"
 small = 0.01
 niter = 100
 
@@ -33,14 +33,10 @@ niter = 100
 # functions
 
 def main(args):
-  makeFilters()
+  #combineFilters()
   #doAmp(0,0)
-  #x = smooth(makeRandom(n1,n2,n3))
-  #doDiff(x)
-
-def makeFilters():
-  ldf = LocalDiffusionFilterMp(sigma)
-  ldf.save(ffile)
+  x = smooth(makeRandom(n1,n2,n3))
+  doDiff(x)
 
 def makeImpulse(n1,n2,n3):
   x = Array.zerofloat(n1,n2,n3)
@@ -89,10 +85,13 @@ def makeVectorsRadial(n1,n2,n3):
 def doDiff(x):
   ds = None
   iv = makeVectorsRadial(n1,n2,n3)
+  #iv = makeVectorsConstant(90,0,n1,n2,n3)
   y = Array.copy(x)
+  #LocalDiffusionFilterMp.setFiltersFile(ffile)
+  #ldf = LocalDiffusionFilterMp(sigma)
   ldf = LocalDiffusionFilterCg(sigma,small,niter)
-  #ldf.applyInlinePass(ds,iv,x,y)
-  ldf.applyNormalPass(ds,iv,x,y)
+  ldf.applyLinearPass(ds,iv,x,y)
+  #ldf.applyPlanarPass(ds,iv,x,y)
   plot3d(x)
   plot3d(y)
   
@@ -141,6 +140,35 @@ def frequencyResponse(x):
   Array.copy(j1,j2,j3,n1-j1,n2-j2,n3-j3,ax,0,0,0,a)
   return a
 
+def combineFilters():
+  n2 = 4*8*21*9
+  d2 = Array.zerofloat(n2/4)
+  af2 = ArrayFile("filters2.dat","r")
+  af2.readInt()
+  af2.readInt()
+  af2.readInt()
+  af2.readFloats(d2)
+  af2.close()
+  n3 = 4*56*481*9
+  d3 = Array.zerofloat(n3/4)
+  af3 = ArrayFile("filters3.dat","r")
+  af3.readInt()
+  af3.readFloats(d3)
+  af3.close()
+  af = ArrayFile("filters.dat","rw")
+  af.writeInt(1)
+  af.writeInt(2)
+  af.writeInt(n2)
+  af.writeFloats(d2)
+  af.writeInt(3)
+  af.writeInt(n3)
+  af.writeFloats(d3)
+  af.close()
+
+def makeFilters():
+  ldf = LocalDiffusionFilterMp(sigma)
+  ldf.save(ffile)
+
 #############################################################################
 # plot
 
@@ -151,6 +179,7 @@ def plot3d(x):
   ipg = ImagePanelGroup(s1,s2,s3,SimpleFloat3(x))
   #ipg.setColorModel(ColorMap.JET)
   ipg.setColorModel(ColorMap.GRAY)
+  ipg.setClips(-0.1,0.1)
   world = World()
   world.addChild(ipg)
   frame = TestFrame(world)

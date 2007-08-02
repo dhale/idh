@@ -125,7 +125,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
         short[] iu32 = iu[i3][i2];
         float[] v132 = v1[i2];
         for (int i1=0; i1<n1; ++i1) {
-          int iv = _iv[iu32[i1]];
+          int iv = _iv[abs(iu32[i1])];
           float[] vi = _uss16.getPoint(iv);
           v132[i1] = vi[2];
         }
@@ -176,8 +176,8 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
       float w1 = -u3*v2;
       float w2 =  u3*v1;
       float w3 = u12;
-      _iv[iu] = _uss16.getIndex(v3,v2,v1);
-      _iw[iu] = _uss16.getIndex(w3,w2,w1);
+      _iv[iu] = abs(_uss16.getIndex(v3,v2,v1));
+      _iw[iu] = abs(_uss16.getIndex(w3,w2,w1));
     }
   }
 
@@ -193,37 +193,41 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
   }
 
   private static void loadFactoredFilter2() {
-    if (_ffile==null) {
-      _ff2 = new FactoredFilter2();
-    } else {
-      try {
-        ArrayFile af = new ArrayFile(_ffile,"r");
-        af.readInt(); // skip file version number, already checked
-        while (af.readInt()!=2)
-          af.skipBytes(af.readInt());
-        af.readInt(); // skip number of bytes
-        _ff2 = new FactoredFilter2(af);
-        af.close();
-      } catch (IOException ioe) {
-        throw new RuntimeException("cannot read 2-D filters: "+ioe);
+    if (_ff2==null) {
+      if (_ffile==null) {
+        _ff2 = new FactoredFilter2();
+      } else {
+        try {
+          ArrayFile af = new ArrayFile(_ffile,"r");
+          af.readInt(); // skip file version number, already checked
+          while (af.readInt()!=2)
+            af.skipBytes(af.readInt());
+          af.readInt(); // skip number of bytes
+          _ff2 = new FactoredFilter2(af);
+          af.close();
+        } catch (IOException ioe) {
+          throw new RuntimeException("cannot read 2-D filters: "+ioe);
+        }
       }
     }
   }
 
   private static void loadFactoredFilter3() {
-    if (_ffile==null) {
-      _ff3 = new FactoredFilter3();
-    } else {
-      try {
-        ArrayFile af = new ArrayFile(_ffile,"r");
-        af.readInt(); // skip file version number, already checked
-        while (af.readInt()!=3)
-          af.skipBytes(af.readInt());
-        af.readInt(); // skip number of bytes
-        _ff3 = new FactoredFilter3(af);
-        af.close();
-      } catch (IOException ioe) {
-        throw new RuntimeException("cannot read 3-D filters: "+ioe);
+    if (_ff3==null) {
+      if (_ffile==null) {
+        _ff3 = new FactoredFilter3();
+      } else {
+        try {
+          ArrayFile af = new ArrayFile(_ffile,"r");
+          af.readInt(); // skip file version number, already checked
+          while (af.readInt()!=3)
+            af.skipBytes(af.readInt());
+          af.readInt(); // skip number of bytes
+          _ff3 = new FactoredFilter3(af);
+          af.close();
+        } catch (IOException ioe) {
+          throw new RuntimeException("cannot read 3-D filters: "+ioe);
+        }
       }
     }
   }
@@ -494,6 +498,12 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
         int is = (int)s;
         float s1 = s-(float)is;
         float s0 = 1.0f-s1;
+        float[][] as = (s0>s1)?_at[is  ]:_at[is+1];
+        float[] asv = as[ia];
+        if (wa<wb && wc<wb) asv = as[ib];
+        if (wb<wc && wa<wc) asv = as[ic];
+        Array.copy(asv,a);
+        /*
         float[][] a0 = _at[is  ];
         float[][] a1 = _at[is+1];
         float[] a0a = a0[ia];
@@ -502,10 +512,12 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
         float[] a1a = a1[ia];
         float[] a1b = a1[ib];
         float[] a1c = a1[ic];
+        float[] ai = a0a;
         int n = a0a.length;
         for (int j=0; j<n; ++j)
           a[j] = s0*(wa*a0a[j]+wb*a0b[j]+wc*a0c[j]) +
                  s1*(wa*a1a[j]+wb*a1b[j]+wc*a1c[j]);
+        */
       }
       private boolean _mapuw;
       private float _sigma;
