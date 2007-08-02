@@ -21,48 +21,52 @@ import edu.mines.jtk.sgl.test.*;
 
 /**
  * Local anisotropic diffusion filter via minimum-phase factors.
+ * Uses tables of minimum-phase filters that are applied recursively.
+ * These filters require no iteration, but cannot be parallelized.
  * @author Dave Hale, Colorado School of Mines
- * @version 2007.07.23
+ * @version 2007.08.02
  */
 public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
+
+  /**
+   * Sets the name of the file from which to read pre-computed filters.
+   * This method checks the version number of the specified file (and 
+   * ensures that the file is readable), but does not actually read any 
+   * filters. Filters are read from the file only when needed.
+   * <p>
+   * This method is static and is typically called only once if at all. 
+   * Tables of pre-computed filters are shared for all instances of this 
+   * class. Therefore, this method forgets any previously read filters,
+   * and filters will then be read again when needed.
+   * @param ffile name of file containing filters.
+   */
+  public static void setFiltersFile(String fileName) {
+    checkFileVersionNumber(fileName);
+    _ffile = fileName;
+    _ff2 = null;
+    _ff3 = null;
+  }
 
   /**
    * Constructs a local diffusion filter.
    * @param sigma the nominal half-width for this filter.
    */
   public LocalDiffusionFilterMp(double sigma) {
-    this(sigma,null);
-  }
-
-  /**
-   * Constructs a local diffusion filter with pre-computed coefficients.
-   * Coefficients are stored in a file with specified name.
-   * @param sigma the nominal half-width for this filter.
-   * @param ffile name of file containing pre-computed filters.
-   *  If null, filters will be computed on-the-fly as necessary.
-   */
-  public LocalDiffusionFilterMp(double sigma, String ffile) {
     super(sigma);
-    if (ffile!=null) {
-      File file = new File(ffile);
-      Check.argument(file.exists(),"file "+file+" exists");
-      Check.argument(file.canRead(),"file "+file+" is readable");
-      Check.argument(file.isFile(),"file "+file+" is a file");
-    }
-    _ffile = ffile;
     _sigma = (float)sigma;
-    _dlf = new DirectionalLaplacianFilter(sqrt(2.0f));
   }
 
   /**
    * Saves filter coefficients to a file with specified name.
-   * @param ffile name of file to contain pre-computed filters.
+   * @param ffile name of file to contain filter coefficents.
    */
   public void save(String ffile) {
+    loadFactoredFilter2();
+    loadFactoredFilter3();
     try {
       ArrayFile af = new ArrayFile(ffile,"rw");
-      af.writeInt(_versionNumber);
-      ensureFactoredFilter3();
+      af.writeInt(_ffileVersionNumber);
+      _ff2.save(af);
       _ff3.save(af);
       af.close();
     } catch (IOException ioe) {
@@ -76,7 +80,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
   protected void solveLinear(
     float[][] ds, float[][] v1, float[][] x, float[][] y) 
   {
-    ensureFactoredFilter2();
+    loadFactoredFilter2();
     int n1 = x[0].length;
     int n2 = x.length;
     float[][] t = new float[n2][n1];
@@ -88,7 +92,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
   protected void solveLinear(
     byte[][][] is, short[][][] iw, float[][][] x, float[][][] y) 
   {
-    ensureFactoredFilter3();
+    loadFactoredFilter3();
     int n1 = x[0][0].length;
     int n2 = x[0].length;
     int n3 = x.length;
@@ -101,12 +105,12 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
   protected void solvePlanar(
     byte[][][] is, short[][][] iu, float[][][] x, float[][][] y) 
   {
-    ensureFactoredFilter3();
+    loadFactoredFilter3();
     int n1 = x[0][0].length;
     int n2 = x[0].length;
     int n3 = x.length;
 
-    // For all constant-i3 slices, apply 2-D v filter.
+    // For all constant-i3 slices, apply 2-D filters for in-plane vectors v.
     float[][] v1 = new float[n2][n1];
     float[][] ds = (is!=null)?new float[n2][n1]:null;
     for (int i3=0; i3<n3; ++i3) {
@@ -129,7 +133,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
       solveLinear(ds,v1,x[i3],y[i3]);
     }
 
-    // Apply 3-D w filter.
+    // Apply 3-D filter for in-plane vectors w orthogonal to v.
     float[][][] t = new float[n3][n2][n1];
     _dlf.applyPlanar(null,iu,y,t);
     _ff3.applyInverse(true,_sigma,is,iu,t,y);
@@ -140,15 +144,23 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
   // private
 
   private float _sigma;
-  private String _ffile;
-  private DirectionalLaplacianFilter _dlf;
-  private static final int _versionNumber = 1;
-  private static FactoredFilter2 _ff2; // 2-D inline filter
-  private static FactoredFilter3 _ff3; // 3-D inline filter
+
+  // All instances of this class use a single directional Laplacian filter.
+  // The half-width sigma = sqrt(2) for this filter compensates for the 
+  // scaling by (sigma*sigma)/2 when it is applied.
+  private static DirectionalLaplacianFilter _dlf =
+    new DirectionalLaplacianFilter(sqrt(2.0f));
+
+  // Factored filters shared by all instances of this class. If the file 
+  // name is not null, filters will be read from that file when needed.
+  private static final int _ffileVersionNumber = 1;
+  private static String _ffile;
+  private static FactoredFilter2 _ff2;
+  private static FactoredFilter3 _ff3;
+
+  // Mapping of normal vectors u to orthogonal in-plane vectors v and w.
   private static UnitSphereSampling _uss16 = new UnitSphereSampling(16);
   private static int _nu = _uss16.getMaxIndex();
-
-  // Mapping of normal vectors u to in-plane vectors v and w.
   private static int[] _iv = new int[1+_nu]; // _iv[0] unused
   private static int[] _iw = new int[1+_nu]; // _iw[0] unused
   static {
@@ -169,17 +181,49 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     }
   }
 
-  private void ensureFactoredFilter2() {
-    if (_ff2==null)
-      _ff2 = new FactoredFilter2();
+  private static void checkFileVersionNumber(String ffile) {
+    try {
+      ArrayFile af = new ArrayFile(ffile,"r");
+      if (_ffileVersionNumber!=af.readInt())
+        throw new RuntimeException("bad version number in file "+ffile);
+      af.close();
+    } catch (IOException ioe) {
+      throw new RuntimeException("cannot read file "+ffile+": "+ioe);
+    }
   }
 
-  private void ensureFactoredFilter3() {
-    if (_ff3==null) {
-      if (_ffile==null) {
-        _ff3 = new FactoredFilter3();
-      } else {
-        _ff3 = new FactoredFilter3(_ffile);
+  private static void loadFactoredFilter2() {
+    if (_ffile==null) {
+      _ff2 = new FactoredFilter2();
+    } else {
+      try {
+        ArrayFile af = new ArrayFile(_ffile,"r");
+        af.readInt(); // skip file version number, already checked
+        while (af.readInt()!=2)
+          af.skipBytes(af.readInt());
+        af.readInt(); // skip number of bytes
+        _ff2 = new FactoredFilter2(af);
+        af.close();
+      } catch (IOException ioe) {
+        throw new RuntimeException("cannot read 2-D filters: "+ioe);
+      }
+    }
+  }
+
+  private static void loadFactoredFilter3() {
+    if (_ffile==null) {
+      _ff3 = new FactoredFilter3();
+    } else {
+      try {
+        ArrayFile af = new ArrayFile(_ffile,"r");
+        af.readInt(); // skip file version number, already checked
+        while (af.readInt()!=3)
+          af.skipBytes(af.readInt());
+        af.readInt(); // skip number of bytes
+        _ff3 = new FactoredFilter3(af);
+        af.close();
+      } catch (IOException ioe) {
+        throw new RuntimeException("cannot read 3-D filters: "+ioe);
       }
     }
   }
@@ -187,7 +231,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
   ///////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////////////
 
-  // A local inline filter approximated with minimum-phase factors.
+  // A local linear filter approximated with minimum-phase factors.
   // Factors are tabulated as a function of sigma and theta.
   private static class FactoredFilter2 {
 
@@ -202,12 +246,6 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
       float[][] t = new float[3][3];
       t[1][1] = 1.0f;
 
-      // A filter to compute the auto-correlations to be factored. 
-      // With sigma = sqrt(2.0), we compensate for the scaling by 
-      // sigma*sigma/2 performed by the directional Laplacian filter.
-      DirectionalLaplacianFilter dlf = 
-        new DirectionalLaplacianFilter(sqrt(2.0f));
-
       // Tabulated factors for all angles theta and half-widths sigma.
       for (int isigma=0; isigma<_nsigma; ++isigma) {
         float sigma = _fsigma+isigma*_dsigma;
@@ -217,7 +255,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
           Array.mul(scale,t,r);
           float v1 = sin(theta);
           float v2 = cos(theta);
-          dlf.applyLinear(1.0f,v1,v2,t,r);
+          _dlf.applyLinear(1.0f,v1,v2,t,r);
           cf.factorWilsonBurg(100,0.000001f,r);
           _atable[isigma][itheta] = cf.getA();
         }
@@ -226,12 +264,36 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
       trace("...  done.");
     }
 
-    void applyForward(
-      float sigma, float[][] ds, float[][] v1, float[][] x, float[][] y) 
-    {
-      A2 a2 = new A2(_atable,sigma,ds,v1);
-      _lcf.apply(a2,x,y);
-      _lcf.applyTranspose(a2,y,y);
+    FactoredFilter2(ArrayFile af) {
+      trace("FactoredFilter2: begin load ...");
+      try {
+        // Read arrays of filter coefficients.
+        for (int isigma=0; isigma<_nsigma; ++isigma) {
+          for (int itheta=0; itheta<_ntheta; ++itheta) {
+            _atable[isigma][itheta] = new float[_nlag];
+            af.readFloats(_atable[isigma][itheta]);
+          }
+        }
+      } catch (IOException ioe) {
+        Check.state(false,"loaded filters successfully: "+ioe);
+      }
+      trace("...  done.");
+    }
+
+    void save(ArrayFile af) {
+      trace("FactoredFilter2: begin save ...");
+      try {
+        af.writeInt(2); // filter type
+        af.writeInt(4*_nlag*_ntheta*_nsigma); // number of bytes
+        for (int isigma=0; isigma<_nsigma; ++isigma) {
+          for (int itheta=0; itheta<_ntheta; ++itheta) {
+            af.writeFloats(_atable[isigma][itheta]);
+          }
+        }
+      } catch (IOException ioe) {
+        Check.state(false,"saved filters successfully: "+ioe);
+      }
+      trace("...  done.");
     }
 
     void applyInverse(
@@ -242,11 +304,8 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
       _lcf.applyInverse(a2,y,y);
     }
 
-    // Provides filter coefficients for each sample index via
+    // Provides linear filter coefficients for each sample index via
     // bilinear interpolation of pre-computed filter coefficients.
-    // This class looks as if written for only inline filters, but it
-    // can also handle normal filters by passing an appropriate table 
-    // of coefficients to the constructor.
     private static class A2 implements LocalCausalFilter.A2 {
       A2(float[][][] atable, float sigma, float[][] ds, float[][] v1) {
         _at = atable;
@@ -300,7 +359,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
                                          (float)(_ntheta-1);
     private static final float _stheta = (1.0f-4.0f*FLT_EPSILON)/_dtheta;
 
-    // Tables of coefficients for inline filters.
+    // Tables of filter coefficients.
     private static float[][][] _atable = new float[_nsigma][_ntheta][];
 
     // Lags for minimum-phase factors with the following stencil:
@@ -340,12 +399,6 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
       float[][][] t = new float[3][3][3];
       t[1][1][1] = 1.0f;
 
-      // A filter to compute the auto-correlations to be factored. 
-      // With sigma = sqrt(2.0), we compensate for the scaling by 
-      // sigma*sigma/2 performed by the directional Laplacian filter.
-      DirectionalLaplacianFilter dlf = 
-        new DirectionalLaplacianFilter(sqrt(2.0f));
-
       // Filters for all half-widths sigma and unit-vector indices.
       trace("nsigma="+_nsigma+" nvec="+_nvec);
       //for (int isigma=0; isigma<_nsigma; ++isigma) {
@@ -359,7 +412,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
           float w1 = w[2]; // w1 = wz
           float w2 = w[1]; // w2 = wy
           float w3 = w[0]; // w3 = wx
-          dlf.applyLinear(1.0f,w1,w2,w3,t,r);
+          _dlf.applyLinear(1.0f,w1,w2,w3,t,r);
           trace("  sigma="+sigma+" w1="+w1+" w2="+w2+" w3="+w3);
           cf.factorWilsonBurg(100,0.000001f,r);
           _atable[isigma][ivec] = cf.getA();
@@ -368,16 +421,9 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
       trace("...  done.");
     }
 
-    FactoredFilter3(String ffile) {
+    FactoredFilter3(ArrayFile af) {
       trace("FactoredFilter3: begin load ...");
-
       try {
-        ArrayFile af = new ArrayFile(ffile,"r");
-
-        // Ensure known version number.
-        int versionNumber = af.readInt();
-        Check.state(_versionNumber==versionNumber,"known version number");
-
         // Read arrays of filter coefficients.
         for (int isigma=0; isigma<_nsigma; ++isigma) {
           for (int ivec=0; ivec<_nvec; ++ivec) {
@@ -385,8 +431,6 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
             af.readFloats(_atable[isigma][ivec]);
           }
         }
-
-        af.close();
       } catch (IOException ioe) {
         Check.state(false,"loaded filters successfully: "+ioe);
       }
@@ -396,6 +440,8 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     void save(ArrayFile af) {
       trace("FactoredFilter3: begin save ...");
       try {
+        af.writeInt(3); // filter type
+        af.writeInt(4*_nlag*_nvec*_nsigma); // number of bytes
         for (int isigma=0; isigma<_nsigma; ++isigma) {
           for (int ivec=0; ivec<_nvec; ++ivec) {
             af.writeFloats(_atable[isigma][ivec]);
@@ -483,10 +529,10 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     private static final UnitSphereSampling _uss = new UnitSphereSampling(10);
     private static final int _nvec = _uss.getMaxIndex();
 
-    // Tables of coefficients for both inline and normal filters.
+    // Table of filter coefficients.
     private static float[][][] _atable = new float[_nsigma][_nvec][];
 
-    // Lags for minimum-phase inline factors with the following stencil:
+    // Lags for minimum-phase factors with the following stencil:
     //                lag1 =  4  3  2  1  0 -1 -2 -3 -4
     //   ----------------------------------------------
     //   lag3 = 0, lag2 =  0:          x  x
@@ -520,7 +566,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     // Initialization of static fields.
     static {
 
-      // Lags for inline filters.
+      // Lags for filters.
       for (int ilag3=0,ilag=0; ilag3<2; ++ilag3) {
         int jlag2 = (ilag3==0)?0:-_mlag;
         int klag2 = 1;
@@ -585,12 +631,13 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
   // FOR EXPERIMENTS ONLY.
   // 2-D filters are efficient and accurate enough for practical use.
   // Current status for 3-D filters:
-  // Approximations to normal filters require too many lags to be useful. 
+  // Approximations to planar filters require too many lags to be useful. 
   // Line filters seem to require fewer lags, although these too show
   // errors. For example the width of the notch is too large, and amplitudes
   // away from the notch are not constant. They exhibit oscillations.
   // Increasing the number of lags improves the accuracy of these filters,
   // but makes them more costly.
+  // An alterna
 
   public static void main(String[] args) {
     testFactorizations();
@@ -613,10 +660,10 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     float v2 = sin(phi)*sin(theta);
     float v3 = cos(phi)*sin(theta);
 
-    // Diffusion coefficients for inline or normal filter.
-    boolean inline = false;
+    // Diffusion coefficients for linear or planar filter.
+    boolean linear = false;
     float d11,d22,d33,d12,d13,d23;
-    if (inline) {
+    if (linear) {
       d11 = v1*v1;
       d22 = v2*v2;
       d33 = v3*v3;
@@ -651,7 +698,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     plot3d(Array.sub(1.0f,Array.div(ay,az)));
 
     // Minimum-phase causal filter.
-    int[][] lags = (inline)?makeLagsLinear27():makeLagsPlanar27();
+    int[][] lags = (linear)?makeLagsLinear27():makeLagsPlanar27();
     int[] lag1 = lags[0], lag2 = lags[1], lag3 = lags[2];
     CausalFilter cf = new CausalFilter(lag1,lag2,lag3);
     cf.factorWilsonBurg(100,0.000001f,r);
@@ -676,7 +723,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
   }
 
   // Another test harness for experimenting with minimum-phase factors. 
-  // This one approximates a planar filter by cascading two inline filters.
+  // This one approximates a planar filter by cascading two linear filters.
   private static void testFactorizations2() {
     int n = 105; // number of samples
     int k = n/2; // index of central sample
@@ -714,7 +761,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     float w3 =  u12;
     trace("u1="+u1+" v2="+v2+" w3="+w3);
 
-    // 1st (v) inline filter.
+    // 1st (v) linear filter.
     float d11,d22,d33,d12,d13,d23;
     d11 = v1*v1;
     d22 = v2*v2;
@@ -738,7 +785,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     float[][][] a1 = Array.sub(1.0f,Array.div(amplitude(y1),amplitude(za1)));
     float[][][] b1 = Array.sub(1.0f,Array.div(amplitude(y1),amplitude(zb1)));
 
-    // 2nd (w) inline filter.
+    // 2nd (w) linear filter.
     d11 = w1*w1;
     d22 = w2*w2;
     d33 = w3*w3;
@@ -905,7 +952,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     }
   }
 
-  // Makes lags for 2-D inline filters with 9-point stencil.
+  // Makes lags for 2-D linear filters with 9-point stencil.
   private static int[][] makeLagsLinear9() {
     int mlag = 4;
     int nlag = 4+mlag;
@@ -918,7 +965,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     return new int[][]{lag1,lag2};
   }
 
-  // Makes lags for inline filters with 27-point stencil.
+  // Makes lags for filters with 27-point stencil.
   private static int[][] makeLagsLinear27() {
     int mlag = 4;
     int nlag = 2+3*(2+mlag)+mlag*(1+2*mlag); // = 56
@@ -941,7 +988,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     return new int[][]{lag1,lag2,lag3};
   }
 
-  // Makes lags for normal filters with 27-point stencil.
+  // Makes lags for planar filters with 27-point stencil.
   private static int[][] makeLagsPlanar27() {
     int mlag = 4;
     int nlag = 3+2*mlag+(1+2*mlag)*(1+2*mlag);
@@ -964,7 +1011,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     return new int[][]{lag1,lag2,lag3};
   }
 
-  // Makes lags for normal filters with 19-point stencil.
+  // Makes lags for planar filters with 19-point stencil.
   private static int[][] makeLagsPlanar19() {
     int mlag = 4;
     int nlag = 1+mlag+mlag*(mlag+1+mlag)+1+mlag+(1+mlag)*(mlag+1+mlag);
