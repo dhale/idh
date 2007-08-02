@@ -24,7 +24,7 @@ False = 0
 n1,n2,n3 = 195,195,195
 #n1,n2,n3 = 315,315,315
 sigma = 16
-ffile = "filtersBoth.dat"
+ffile = "filtersNew.dat"
 small = 0.01
 niter = 100
 
@@ -33,9 +33,10 @@ niter = 100
 # functions
 
 def main(args):
+  makeFilters()
   #doAmp(0,0)
-  x = smooth(makeRandom(n1,n2,n3))
-  doDiff(x)
+  #x = smooth(makeRandom(n1,n2,n3))
+  #doDiff(x)
 
 def makeFilters():
   ldf = LocalDiffusionFilterMp(sigma)
