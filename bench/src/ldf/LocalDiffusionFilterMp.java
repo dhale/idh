@@ -147,10 +147,11 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
   private static FactoredFilter3 _ff3; // 3-D inline filter
   private static UnitSphereSampling _uss16 = new UnitSphereSampling(16);
   private static int _nu = _uss16.getMaxIndex();
+
+  // Mapping of normal vectors u to in-plane vectors v and w.
   private static int[] _iv = new int[1+_nu]; // _iv[0] unused
   private static int[] _iw = new int[1+_nu]; // _iw[0] unused
   static {
-    // Mapping of normal vectors u to in-plane vectors v and w.
     for (int iu=1; iu<=_nu; ++iu) {
       float[] ui = _uss16.getPoint(iu);
       float u1 = ui[2];
