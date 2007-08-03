@@ -23,6 +23,7 @@ import edu.mines.jtk.sgl.test.*;
  * Local anisotropic diffusion filter via minimum-phase factors.
  * Uses tables of minimum-phase filters that are applied recursively.
  * These filters require no iteration, but cannot be parallelized.
+ * <em> WARNING: this filter may be unstable!</em>
  * @author Dave Hale, Colorado School of Mines
  * @version 2007.08.02
  */
@@ -256,9 +257,9 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
         float scale = 2.0f/(sigma*sigma);
         for (int itheta=0; itheta<_ntheta; ++itheta) {
           float theta = _ftheta+itheta*_dtheta;
-          Array.mul(scale,t,r);
           float v1 = sin(theta);
           float v2 = cos(theta);
+          Array.mul(scale,t,r);
           _dlf.applyLinear(1.0f,v1,v2,t,r);
           cf.factorWilsonBurg(100,0.000001f,r);
           _atable[isigma][itheta] = cf.getA();
@@ -337,7 +338,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
         float[] a11 = _at[is+1][it+1];
         int n = a00.length;
         for (int j=0; j<n; ++j)
-          a[j] = t0*(s0*a00[j]+s1*a01[j])+t1*(s0*a10[j]+s1*a11[j]);
+          a[j] = t0*(s0*a00[j]+s1*a10[j])+t1*(s0*a01[j]+s1*a11[j]);
       }
       private float[][][] _at;
       private float _sigma;

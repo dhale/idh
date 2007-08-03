@@ -83,9 +83,41 @@ def makeImpulse(angle):
   s = sin(a)
   x = Array.zerofloat(n1,n2)
   x[(n2-1)/2][(n1-1)/2] = 1.0
-  u1 = Array.fillfloat(c,n1,n2)
-  u2 = Array.fillfloat(-s,n1,n2)
-  return x,u1,u2
+  v1 = Array.fillfloat(s,n1,n2)
+  v2 = Array.fillfloat(c,n1,n2)
+  return x,v1,v2
+
+def makeVectorsRadial(n1,n2):
+  k1,k2 = n1/2,n2/2
+  v1 = Array.zerofloat(n1,n2)
+  v2 = Array.zerofloat(n1,n2)
+  for i2 in range(n2):
+    v2i = float(i2-k2)
+    for i1 in range(n1):
+      v1i = 0.1+float(i1-k1)
+      sv = 1.0/sqrt(v1i*v1i+v2i*v2i)
+      if v2i<0.0:
+        sv = -sv
+      v1[i2][i1] = sv*v1i
+      v2[i2][i1] = sv*v2i
+  return v1,v2
+
+def makeVectors45(n1,n2):
+  k1,k2 = n1/2,n2/2
+  v1 = Array.zerofloat(n1,n2)
+  v2 = Array.zerofloat(n1,n2)
+  for i2 in range(n2):
+    v2i = 0.1+float(i2-k2)
+    v2i = v2i/abs(v2i)
+    for i1 in range(n1):
+      v1i = 0.1+float(i1-k1)
+      v1i = v1i/abs(v1i)
+      sv = 1.0/sqrt(v1i*v1i+v2i*v2i)
+      if v2i<0.0:
+        sv = -sv
+      v1[i2][i1] = sv*v1i
+      v2[i2][i1] = sv*v2i
+  return v1,v2
 
 def doImage():
   x = readImage()
@@ -99,7 +131,7 @@ def doImage():
 
 def goAmpDiff():
   #for dip in [20,40,60,80]:
-  for dip in [20]:
+  for dip in [-20,20]:
     suffix = str(dip)
     doAmpDiff(dip,"ahs"+suffix)
 
@@ -121,7 +153,7 @@ def goDiff():
   x3 = makeTargetImage()
   #for x,s in [(x1,"_1"),(x2,"_2"),(x3,"_3")]:
   for x,s in [(x1,"_1")]:
-    x = bigger(bigger(x))
+    #x = bigger(bigger(x))
     plot(x,10.0,"x"+s)
     doDiff(x,"d"+s)
 
@@ -136,17 +168,19 @@ def doDiff(x,png):
   s = Array.zerofloat(n1,n2)
   r = makeRandom(n1,n2)
   r = smooth(r)
-  v1,v2 = getV(x)
+  #v1,v2 = getV(x)
+  #v1,v2 = makeVectorsRadial(n1,n2)
+  v1,v2 = makeVectors45(n1,n2)
   #ldf = LocalDiffusionFilter(sigma)
   ldf = LocalDiffusionFilterMp(sigma)
   #ldf = LocalDiffusionFilterCg(sigma,small,niter)
   #ldf = LocalDiffusionFilterMg(sigma,small,niter,nbefore,ncycle,nafter)
   ds = None
   #ds = makeBlock(n1,n2)
-  ldf.applyInlineKill(ds,v1,x,y)
-  ldf.applyInlinePass(ds,v1,x,z)
-  ldf.applyInlinePass(ds,v1,r,s)
-  plot(y, 2.0,"y"+png)
+  ldf.applyLinearKill(ds,v1,x,y)
+  ldf.applyLinearPass(ds,v1,x,z)
+  ldf.applyLinearPass(ds,v1,r,s)
+  plot(y,10.0,"y"+png)
   plot(z,10.0,"z"+png)
   plot(s, 0.0,"s"+png)
 
@@ -160,17 +194,11 @@ def makeBlock(n1,n2):
   return ds
 
 def doAmpDiff(dip,png=None):
-  x,u1,u2 = makeImpulse(dip)
+  #ldf = LocalDiffusionFilterCg(sigma,small,niter)
+  ldf = LocalDiffusionFilterMp(sigma)
+  x,v1,v2 = makeImpulse(dip)
   h = Array.copy(x)
-  su = Array.copy(x)
-  sv = Array.copy(x)
-  Array.fill(0.0,su)
-  Array.fill(1.0,sv)
-  sigma = 10
-  ldf = LocalDiffusionFilter(sigma)
-  #ldf.applyLineSmoothing(u2,x,h)
-  ldf.apply(su,sv,u2,x,h)
-  h = Array.sub(x,h)
+  ldf.applyLinearPass(None,v1,x,h)
   ah = frequencyResponse(h)
   plotf(ah,png)
 
