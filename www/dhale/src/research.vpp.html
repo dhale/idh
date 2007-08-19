@@ -13,6 +13,80 @@
 #content()
 
 <h3>
+A method for estimating apparent displacement
+vectors from time-lapse seismic images
+</h3>
+<dl class="img first">
+  <dt><img src="${base}/images/EstimatingApparentDisplacements.png" 
+       width="200" height="128" alt=""/>
+  </dt>
+  <dd>
+    Reliable estimates of vertical, inline and crossline components of 
+    apparent displacements in time-lapse seismic images are difficult to 
+    obtain for two reasons.
+    First, features in 3-D seismic images tend to be locally planar, and 
+    components of displacement within the planes of such features are poorly 
+    resolved. 
+    Second, searching directly for peaks in 3-D cross-correlations is less 
+    robust, more complicated, and computationally more costly than searching 
+    for peaks of 1-D cross-correlations.
+    We estimate all three components of displacement with a process designed 
+    to mitigate these two problems. 
+    We address the first problem by computing for each image sample a local 
+    phase-correlation instead of a local cross-correlation. 
+    We address the second problem with a cyclic sequence of searches for 
+    peaks of correlations computed for lags constrained to one of the three 
+    axes of our images.
+  </dd>
+  <dd>
+    <a href="http://www.mines.edu/~dhale">Hale</a>, D.,
+    2007,
+    <cite>
+      CWP Report 566.
+    </cite>
+  </dd>
+  <dd>
+    <a href="${base}/papers/Hale07EstimatingApparentDisplacements.pdf">
+      [Report]
+    </a>
+  </dd>
+</dl>
+
+<h3>
+Local dip filtering with directional Laplacians
+</h3>
+<dl class="img first">
+  <dt><img src="${base}/images/LocalDipFiltering.png" 
+       width="200" height="199" alt=""/>
+  </dt>
+  <dd>
+    Local dip filters attenuate or enhance features with a specified dip 
+    that may vary for each image sample. 
+    Because these multi-dimensional filters change with each sample, they 
+    should have a small number of coefficients that can be computed
+    efficiently from local dips. 
+    They should handle features that are vertical as well as horizontal. 
+    They should have efficient and stable inverses that facilitate
+    the design and application of more discriminate notch filters. 
+    Local dip filters constructed from approximations to directional 
+    Laplacians have these properties and are easily implemented in any 
+    number of dimensions.
+  </dd>
+  <dd>
+    <a href="http://www.mines.edu/~dhale">Hale</a>, D.,
+    2007,
+    <cite>
+      CWP Report 567.
+    </cite>
+  </dd>
+  <dd>
+    <a href="${base}/papers/Hale07LocalDipFiltering.pdf">
+      [Report]
+    </a>
+  </dd>
+</dl>
+
+<h3>
   An efficient method for computing local cross-correlations
   of multi-dimensional signals
 </h3>
