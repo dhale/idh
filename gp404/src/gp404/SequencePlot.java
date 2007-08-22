@@ -80,8 +80,9 @@ public class SequencePlot {
   public void setZero(final SequenceView.Zero zero) {
     SwingUtilities.invokeLater(new Runnable() {
       public void run() {
-        for (int is=0; is<_views.length; ++is)
-          _views[is].setZero(zero);
+        for (int is=0; is<_sviews.length; ++is)
+          if (_sviews[is]!=null)
+            _sviews[is].setZero(zero);
       }
     });
   }
@@ -91,22 +92,31 @@ public class SequencePlot {
 
   private PlotFrame _frame;
   private PlotPanel _panel;
-  private SequenceView[] _views;
+  private SequenceView[] _sviews;
+  private PointsView[] _pviews;
 
   private void makeFrame(final String[] al, final Sequence[] as) {
     Check.argument(al.length==as.length,"al.length==as.length");
     SwingUtilities.invokeLater(new Runnable() {
       public void run() {
         int ns = as.length;
-        _views = new SequenceView[ns];
+        _sviews = new SequenceView[ns];
+        _pviews = new PointsView[ns];
         _panel = new PlotPanel(ns,1);
         _panel.setHLabel("time");
         _panel.setHFormat("%1.6f");
         for (int is=0; is<ns; ++is) {
           Sequence s = as[is];
+          Sampling st = s.getSampling();
+          int nt = st.getCount();
+          float[] values = s.getValues();
           String l = al[is];
           _panel.setVLabel(is,l);
-          _views[is] = _panel.addSequence(is,0,s.getSampling(),s.getValues());
+          if (nt<=1001) {
+            _sviews[is] = _panel.addSequence(is,0,st,values);
+          } else {
+            _pviews[is] = _panel.addPoints(is,0,st,values);
+          }
         }
         _frame = new PlotFrame(_panel);
         addButtons();
