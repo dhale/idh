@@ -1,4 +1,5 @@
 import sys
+from jarray import *
 
 from java.awt import *
 from java.lang import *
@@ -13,7 +14,7 @@ from edu.mines.jtk.util import *
 from edu.mines.jtk.sgl import *
 from edu.mines.jtk.sgl.test import *
 
-from lcc import *
+from ldf import *
 from joe import *
 
 datadir = "/data/seis/joe/"
@@ -59,22 +60,28 @@ def main(args):
   #x = readFile("x.dat",n1,n2,n3)
   #plot3d(x)
   #xplanes()
-  #yplanes()
   #x = readFile("x.dat",n1,n2,n3)
-  #el = readFile("xel.dat",n1,n2,n3)
   #ep = readFile("xep.dat",n1,n2,n3)
+  #el = readFile("xel.dat",n1,n2,n3)
   #plotHistogram(el,ep)
-  #el = readFile("yel.dat",n1,n2,n3)
   #ep = readFile("yep.dat",n1,n2,n3)
+  #el = readFile("yel.dat",n1,n2,n3)
   #plotHistogram(el,ep)
   #plot3ds((x,el,ep))
   #ldf()
+  #yplanes()
+  #x = readFile("x.dat",n1,n2,n3)
   #y = readFile("y.dat",n1,n2,n3)
   #plot3ds((x,y))
   #ylines()
   #plot3ds((y,el))
   #llf()
   #emask()
+  #x = readFile("x.dat",n1,n2,n3)
+  #exz = readFile("exz.dat",n1,n2,n3)
+  #plot3ds((x,exz))
+  #eyz = readFile("eyz.dat",n1,n2,n3)
+  #plot3ds((x,eyz))
   plotAll()
   return
 
@@ -90,11 +97,15 @@ k2 = 48
 k3 = 65
 """
 def plotAll():
-  #x = readFile("x.dat",n1,n2,n3)
-  #exz = readFile("exz.dat",n1,n2,n3)
-  #plot3ds((x,exz))
-  """
   k1,k2,k3 = 174,48,65
+  x = readFile("x.dat",n1,n2,n3)
+  eyz = readFile("eyz.dat",n1,n2,n3)
+  plot3ds((x,eyz))
+  """
+  plot3dPli(k1,k2,k3,"xep.dat","xel.dat",(1.0,1.0,1.0),"xe111.png")
+  plot3dPli(k1,k2,k3,"yep.dat","yel.dat",(1.0,1.0,1.0),"ye111.png")
+  plot3dPli(k1,k2,k3,"xep.dat","xel.dat",(0.9,0.3,0.6),"xe936.png")
+  plot3dPli(k1,k2,k3,"yep.dat","yel.dat",(0.9,0.3,0.6),"ye936.png")
   plot3dPanels(k1,k2,k3,  "x.dat",0.0100,ColorMap.GRAY,  "x.png")
   plot3dPanels(k1,k2,k3, "xz.dat",0.0100,ColorMap.GRAY, "xz.png")
   plot3dPanels(k1,k2,k3,"exz.dat",0.0030,ColorMap.GRAY,"exz.png")
@@ -102,12 +113,14 @@ def plotAll():
   plot3dPanels(k1,k2,k3, "yz.dat",0.0050,ColorMap.GRAY, "yz.png")
   plot3dPanels(k1,k2,k3,"eyz.dat",0.0015,ColorMap.GRAY,"eyz.png")
   """
+  """
   xel = readFile("xel.dat",n1,n2,n3)
   xep = readFile("xep.dat",n1,n2,n3)
   plotHistogram(xel,xep,"xelp.png")
   yel = readFile("yel.dat",n1,n2,n3)
   yep = readFile("yep.dat",n1,n2,n3)
   plotHistogram(yel,yep,"yelp.png")
+  """
 
 def plotHistogram(el,ep,png=None):
   nl = 101
@@ -136,51 +149,49 @@ def plotHistogram(el,ep,png=None):
 
 def ldf():
   x = readFile("x.dat",n1,n2,n3)
-  u2 = readFile("xu2.dat",n1,n2,n3)
-  u3 = readFile("xu3.dat",n1,n2,n3)
-  ldf = LocalDipFilter()
+  iu = readFileShorts("xiu.dat",n1,n2,n3)
+  sigma = 14
+  small = 0.001
+  niter = 100
+  ldf = LocalDiffusionFilterCg(sigma,small,niter)
   y = Array.zerofloat(n1,n2,n3)
-  #ldf.applyDip(0.05,u2,u3,x,y)
-  ldf.applyNotch(0.01,u2,u3,x,y)
+  ldf.applyPlanarKill(None,iu,x,y)
   writeFile("y.dat",y)
-  plot3ds((x,y))
+
+def ewarp(e):
+  return Array.exp(Array.neg(Array.div(0.3,e)))
 
 def llf():
-  x = readFile("x.dat",n1,n2,n3)
-  y = readFile("y.dat",n1,n2,n3)
-  w1 = readFile("yw1.dat",n1,n2,n3)
-  w2 = readFile("yw2.dat",n1,n2,n3)
-  w3 = readFile("yw3.dat",n1,n2,n3)
+  iw = readFileShorts("yiw.dat",n1,n2,n3)
   el = readFile("yel.dat",n1,n2,n3)
-  print "w1 min/max =",Array.min(w1),Array.max(w1)
-  print "w2 min/max =",Array.min(w2),Array.max(w2)
-  print "w3 min/max =",Array.min(w3),Array.max(w3)
-  print "el min/max =",Array.min(el),Array.max(el)
-  el = Array.mul(1.00/0.44,el)
-  llf = LocalLineFilter()
+  il = LocalDiffusionFilter.encodeFractions(ewarp(el))
+  sigma = 14
+  small = 0.001
+  niter = 100
+  ldf = LocalDiffusionFilterCg(sigma,small,niter)
+  x = readFile("x.dat",n1,n2,n3)
+  #y = readFile("y.dat",n1,n2,n3)
   z = Array.zerofloat(n1,n2,n3)
-  #llf.applyLine(0.02,el,w1,w2,w3,x,z)
-  #z = Array.sub(x,z)
-  #writeFile("xz.dat",z)
-  #plot3ds((x,z))
-  llf.applyLine(0.02,el,w1,w2,w3,y,z)
-  z = Array.sub(y,z)
-  writeFile("yz.dat",z)
-  plot3ds((y,z))
+  ldf.applyLinearPass(il,iw,x,z)
+  #ldf.applyLinearPass(il,iw,y,z)
+  writeFile("xz.dat",z)
+  plot3ds((x,z))
+  #writeFile("yz.dat",z)
+  #plot3ds((y,z))
 
 def emask():
-  xz = readFile("xz.dat",n1,n2,n3)
-  yz = readFile("yz.dat",n1,n2,n3)
   el = readFile("yel.dat",n1,n2,n3)
-  el = Array.mul(1.00/0.44,el)
+  el = ewarp(el)
+  xz = readFile("xz.dat",n1,n2,n3)
   exz = Array.mul(el,xz) 
-  eyz = Array.mul(el,yz) 
   writeFile("exz.dat",exz)
-  writeFile("eyz.dat",eyz)
-  x = readFile("x.dat",n1,n2,n3)
-  y = readFile("y.dat",n1,n2,n3)
-  plot3ds((x,exz))
-  plot3ds((y,eyz))
+  #yz = readFile("yz.dat",n1,n2,n3)
+  #eyz = Array.mul(el,yz) 
+  #writeFile("eyz.dat",eyz)
+  #x = readFile("x.dat",n1,n2,n3)
+  #y = readFile("y.dat",n1,n2,n3)
+  #plot3ds((x,exz))
+  #plot3ds((y,eyz))
 
 def window():
   x = readFile("win34.dat",251,500,500)
@@ -194,17 +205,21 @@ def window():
 def xplanes():
   x = readFile("x.dat",n1,n2,n3)
   lof = LocalOrientFilter(6.0)
+  u1 = Array.zerofloat(n1,n2,n3)
   u2 = Array.zerofloat(n1,n2,n3)
   u3 = Array.zerofloat(n1,n2,n3)
   ep = Array.zerofloat(n1,n2,n3)
   el = Array.zerofloat(n1,n2,n3)
   lof.apply(x,
     None,None,
-    None,u2,u3,
+    u1,u2,u3,
     None,None,None,
     None,None,None,
     None,None,None,
     ep,el)
+  iu = LocalDiffusionFilter.encodeUnitVectors(u1,u2,u3)
+  writeFileShorts("xiu.dat",iu)
+  writeFile("xu1.dat",u1)
   writeFile("xu2.dat",u2)
   writeFile("xu3.dat",u3)
   writeFile("xep.dat",ep)
@@ -213,17 +228,21 @@ def xplanes():
 def yplanes():
   y = readFile("y.dat",n1,n2,n3)
   lof = LocalOrientFilter(6.0)
+  u1 = Array.zerofloat(n1,n2,n3)
   u2 = Array.zerofloat(n1,n2,n3)
   u3 = Array.zerofloat(n1,n2,n3)
   ep = Array.zerofloat(n1,n2,n3)
   el = Array.zerofloat(n1,n2,n3)
   lof.apply(y,
     None,None,
-    None,u2,u3,
+    u1,u2,u3,
     None,None,None,
     None,None,None,
     None,None,None,
     ep,el)
+  iu = LocalDiffusionFilter.encodeUnitVectors(u1,u2,u3)
+  writeFileShorts("yiu.dat",iu)
+  writeFile("yu1.dat",u1)
   writeFile("yu2.dat",u2)
   writeFile("yu3.dat",u3)
   writeFile("yep.dat",ep)
@@ -243,11 +262,12 @@ def ylines():
     w1,w2,w3,
     None,None,None,
     None,el)
+  iw = LocalDiffusionFilter.encodeUnitVectors(w1,w2,w3)
+  writeFileShorts("yiw.dat",iw)
   writeFile("yw1.dat",w1)
   writeFile("yw2.dat",w2)
   writeFile("yw3.dat",w3)
   writeFile("yel.dat",el)
-  return w1,w2,w3,el
 
 def plot12(i3):
   ais = ArrayInputStream(datadir+"win34.dat")
@@ -262,7 +282,7 @@ def plot12(i3):
   pv.setClips(-1.0e-6,1.0e-6)
   pv.setInterpolation(PixelsView.Interpolation.LINEAR)
 
-def plot3ds(xs):
+def plot3ds(xs,k=None):
   world = World()
   for x in xs:
     print "x min =",Array.min(x)," max =",Array.max(x)
@@ -290,6 +310,18 @@ def plot3d(x,cmin=-0.01,cmax=0.01):
   world.addChild(ipg)
   frame = TestFrame(world)
   frame.setVisible(True)
+
+def readFileShorts(file,n1,n2,n3):
+  ais = ArrayInputStream(datadir+file)
+  x = Array.zeroshort(n1,n2,n3)
+  ais.readShorts(x)
+  ais.close()
+  return x
+
+def writeFileShorts(file,x):
+  aos = ArrayOutputStream(datadir+file)
+  aos.writeShorts(x)
+  aos.close()
 
 def readFile(file,n1,n2,n3):
   ais = ArrayInputStream(datadir+file)
@@ -332,7 +364,66 @@ def slice23(f,i1):
       f23[i3][i2] = f[i3][i2][i1];
   return f23
 
+def makeFloat3(x1,x2,x3):
+  x = zeros(3,SimpleFloat3)
+  x[0] = SimpleFloat3(x1)
+  x[1] = SimpleFloat3(x2)
+  x[2] = SimpleFloat3(x3)
+  return x
+
+def plot3dPli(k1,k2,k3,epfile,elfile,clips=None,png=None):
+  orientation = PlotPanelPixels3.Orientation.X1DOWN
+  axesPlacement = PlotPanelPixels3.AxesPlacement.LEFT_BOTTOM
+  ep = readFile(epfile,n1,n2,n3)
+  el = readFile(elfile,n1,n2,n3)
+  ei = Array.sub(1.0,Array.add(ep,el))
+  e = makeFloat3(ep,el,ei)
+  panel = PlotPanelPixels3(orientation,axesPlacement,s1,s2,s3,e)
+  if clips==None:
+    clips = (1,1,1)
+  panel.setClips(0,0.00,clips[0])
+  panel.setClips(1,0.00,clips[1])
+  panel.setClips(2,0.00,clips[2])
+  #panel.setPercentiles(0,2,98)
+  #panel.setPercentiles(1,2,98)
+  #panel.setPercentiles(2,2,98)
+  print "ep clip min =",panel.getClipMin(0),"  max =",panel.getClipMax(0)
+  print "el clip min =",panel.getClipMin(1),"  max =",panel.getClipMax(1)
+  print "ei clip min =",panel.getClipMin(2),"  max =",panel.getClipMax(2)
+  panel.setSlices(k1,k2,k3)
+  panel.setHLabel(0,"inline (km)")
+  panel.setHLabel(1,"crossline (km)")
+  panel.setVLabel(0,"crossline (km)")
+  panel.setVLabel(1,"time (s)")
+  panel.setLineColor(Color.WHITE)
+  mosaic = panel.getMosaic()
+  mosaic.getTileAxisBottom(0).setInterval(2.0)
+  mosaic.getTileAxisBottom(1).setInterval(2.0)
+  mosaic.getTileAxisLeft(0).setInterval(2.0)
+  mosaic.getTileAxisLeft(1).setInterval(0.2)
+  return frame(panel,png)
+
 def plot3dPanels(k1,k2,k3,file,clip,cmod=ColorMap.GRAY,png=None):
+  orientation = PlotPanelPixels3.Orientation.X1DOWN
+  axesPlacement = PlotPanelPixels3.AxesPlacement.LEFT_BOTTOM
+  f = readFile(file,n1,n2,n3)
+  panel = PlotPanelPixels3(orientation,axesPlacement,s1,s2,s3,f)
+  panel.setClips(-clip,clip)
+  panel.setSlices(k1,k2,k3)
+  panel.setHLabel(0,"inline (km)")
+  panel.setHLabel(1,"crossline (km)")
+  panel.setVLabel(0,"crossline (km)")
+  panel.setVLabel(1,"time (s)")
+  if isGray(cmod):
+    panel.setLineColor(Color.YELLOW)
+  mosaic = panel.getMosaic()
+  mosaic.getTileAxisBottom(0).setInterval(2.0)
+  mosaic.getTileAxisBottom(1).setInterval(2.0)
+  mosaic.getTileAxisLeft(0).setInterval(2.0)
+  mosaic.getTileAxisLeft(1).setInterval(0.2)
+  return frame(panel,png)
+
+def xplot3dPanels(k1,k2,k3,file,clip,cmod=ColorMap.GRAY,png=None):
   f12 = readFloats12(file,k3)
   f13 = readFloats13(file,k2)
   f23 = readFloats23(file,k1)

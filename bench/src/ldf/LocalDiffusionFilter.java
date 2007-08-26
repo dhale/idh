@@ -72,6 +72,25 @@ public class LocalDiffusionFilter {
   }
 
   /**
+   * Applies a filter that attenuates (kills) features that are locally 
+   * linear with inline vectors w.
+   * Diffusivities d depend on a percentage of the nominal filter half-width 
+   * sigma; these percentages are specified by byte values in the array is.
+   * Inline vectors w are specified by short indices in the array iw that 
+   * correspond to a 16-bit sampling of the unit-sphere.
+   * @param is diffusivity scaling percentages; null for no scaling.
+   * @param iw unit-sphere 16-bit sample indices for unit vectors w.
+   * @param x input image. Must be distinct from the array y.
+   * @param y input/output image. Must be distinct from the array x.
+   */
+  public void applyLinearKill(
+    byte[][][] is, short[][][] iw, float[][][] x, float[][][] y) 
+  {
+    solveLinear(is,iw,x,y);
+    Array.sub(x,y,y);
+  }
+
+  /**
    * Applies a filter that enhances (passes) features that are locally 
    * planar with normal vectors u.
    * Diffusivities d depend on a percentage of the nominal filter half-width 
@@ -87,6 +106,114 @@ public class LocalDiffusionFilter {
     byte[][][] is, short[][][] iu, float[][][] x, float[][][] y) 
   {
     solvePlanar(is,iu,x,y);
+  }
+
+  /**
+   * Applies a filter that attenuates (kills) features that are locally 
+   * planar with normal vectors u.
+   * Diffusivities d depend on a percentage of the nominal filter half-width 
+   * sigma; these percentages are specified by byte values in the array is.
+   * Normal vectors u are specified by short indices in the array iu that 
+   * correspond to a 16-bit sampling of the unit-sphere.
+   * @param is diffusivity scaling percentages; null for no scaling.
+   * @param iu unit-sphere 16-bit sample indices for unit vectors u.
+   * @param x input image. Must be distinct from the array y.
+   * @param y input/output image. Must be distinct from the array x.
+   */
+  public void applyPlanarKill(
+    byte[][][] is, short[][][] iu, float[][][] x, float[][][] y) 
+  {
+    solvePlanar(is,iu,x,y);
+    Array.sub(x,y,y);
+  }
+
+  /**
+   * Encodes specified fractions as 8-bit byte percentages.
+   * Fractions are clipped to lie in the range [0,1].
+   * @param s array of fractions.
+   * @return array of 8-bit (byte) percentages.
+   */
+  public static byte[] encodeFractions(float[] s) {
+    int n = s.length;
+    byte[] b = new byte[n];
+    for (int i=0; i<n; ++i) {
+      float si = s[i];
+      if (si<0.0f) {
+        b[i] = 0;
+      } else if (si>1.0f) {
+        b[i] = 100;
+      } else {
+        b[i] = (byte)(si*100+0.5f);
+      }
+    }
+    return b;
+  }
+
+  /**
+   * Encodes specified fractions as 8-bit byte percentages.
+   * Fractions are clipped to lie in the range [0,1].
+   * @param s array of fractions.
+   * @return array of 8-bit (byte) percentages.
+   */
+  public static byte[][] encodeFractions(float[][] s) {
+    int n = s.length;
+    byte[][] b = new byte[n][];
+    for (int i=0; i<n; ++i) {
+      b[i] = encodeFractions(s[i]);
+    }
+    return b;
+  }
+
+  /**
+   * Encodes specified fractions as 8-bit byte percentages.
+   * Fractions are clipped to lie in the range [0,1].
+   * @param s array of fractions.
+   * @return array of 8-bit (byte) percentages.
+   */
+  public static byte[][][] encodeFractions(float[][][] s) {
+    int n = s.length;
+    byte[][][] b = new byte[n][][];
+    for (int i=0; i<n; ++i) {
+      b[i] = encodeFractions(s[i]);
+    }
+    return b;
+  }
+
+  /**
+   * Encodes specified unit vectors as 16-bit (short) indices.
+   * @param u1 array of u1-components of unit vectors.
+   * @param u2 array of u2-components of unit vectors.
+   * @param u3 array of u3-components of unit vectors.
+   * @return array of 16-bit (short) indices.
+   */
+  public static short[] encodeUnitVectors(float[] u1, float[] u2, float[] u3) {
+    return UnitSphereSampling.encode16(u3,u2,u1);
+  }
+
+  /**
+   * Encodes specified unit vectors as 16-bit (short) indices.
+   * @param u1 array of u1-components of unit vectors.
+   * @param u2 array of u2-components of unit vectors.
+   * @param u3 array of u3-components of unit vectors.
+   * @return array of 16-bit (short) indices.
+   */
+  public static short[][] encodeUnitVectors(
+    float[][] u1, float[][] u2, float[][] u3) 
+  {
+    return UnitSphereSampling.encode16(u3,u2,u1);
+  }
+
+  /**
+   * Encodes specified unit vectors as 16-bit (short) indices.
+   * @param u1 array of u1-components of unit vectors.
+   * @param u2 array of u2-components of unit vectors.
+   * @param u3 array of u3-components of unit vectors.
+   * @return array of 16-bit (short) indices.
+   */
+  public static short[][][] encodeUnitVectors(
+    float[][][] u1, float[][][] u2, float[][][] u3) 
+  {
+    return UnitSphereSampling.encode16(u3,u2,u1);
   }
 
   ///////////////////////////////////////////////////////////////////////////

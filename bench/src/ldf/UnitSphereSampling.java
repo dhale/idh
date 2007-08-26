@@ -321,6 +321,54 @@ public class UnitSphereSampling {
     return getWeights(xyz[0],xyz[1],xyz[2],iabc);
   }
 
+  /**
+   * Encodes specified points as 16-bit (short) indices.
+   * @param x array of x-coordinates of points.
+   * @param y array of y-coordinates of points.
+   * @param z array of z-coordinates of points.
+   * @return array of 16-bit (short) indices.
+   */
+  public static short[] encode16(float[] x, float[] y, float[] z) {
+    UnitSphereSampling uss = getUnitSphereSampling16();
+    int n = x.length;
+    short[] s = new short[n];
+    for (int j=0; j<n; ++j)
+      s[j] = (short)uss.getIndex(x[j],y[j],z[j]);
+    return s;
+  }
+
+  /**
+   * Encodes specified points as 16-bit (short) indices.
+   * @param x array of x-coordinates of points.
+   * @param y array of y-coordinates of points.
+   * @param z array of z-coordinates of points.
+   * @return array of 16-bit (short) indices.
+   */
+  public static short[][] encode16(float[][] x, float[][] y, float[][] z) {
+    int n = x.length;
+    short[][] s = new short[n][];
+    for (int j=0; j<n; ++j)
+      s[j] = encode16(x[j],y[j],z[j]);
+    return s;
+  }
+
+  /**
+   * Encodes specified points as 16-bit (short) indices.
+   * @param x array of x-coordinates of points.
+   * @param y array of y-coordinates of points.
+   * @param z array of z-coordinates of points.
+   * @return array of 16-bit (short) indices.
+   */
+  public static short[][][] encode16(
+    float[][][] x, float[][][] y, float[][][] z) 
+  {
+    int n = x.length;
+    short[][][] s = new short[n][][];
+    for (int j=0; j<n; ++j)
+      s[j] = encode16(x[j],y[j],z[j]);
+    return s;
+  }
+
   ///////////////////////////////////////////////////////////////////////////
   // private
 
@@ -387,6 +435,11 @@ public class UnitSphereSampling {
   private float[][] _pu; // table of points in upper hemisphere (z>=0)
   private float[][] _pl; // table of points in lower hemisphere (z<=0)
   private int[][] _ip; // table[n][n] of point indices
+
+  private static UnitSphereSampling _uss16;
+  private static UnitSphereSampling getUnitSphereSampling16() {
+    return (_uss16!=null)?_uss16:new UnitSphereSampling(16);
+  }
 
   private void initialize(int nbits) {
     Check.argument(nbits>=4,"nbits>=4");
