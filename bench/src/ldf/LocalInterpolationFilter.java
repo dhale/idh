@@ -20,17 +20,20 @@ public class LocalInterpolationFilter {
 
   /**
    * Constructs a local interpolation filter.
+   * @param aniso anisotropic-to-isotropic diffusion ratio.
    * @param small stop when L2 norm of residuals decreases by this factor.
    * @param niter stop when number of iterations exceeds this number.
    */
-  public LocalInterpolationFilter(double small, int niter) {
-    _dlf = new DirectionalLaplacianFilter(sqrt(2.0));
+  public LocalInterpolationFilter(double aniso, double small, int niter) {
+    double sigmad = (aniso<1.0)?1.0:aniso;
+    double sigmae = (aniso>1.0)?1.0:1.0/aniso;
+    _dlf = new DirectionalLaplacianFilter(sigmad,sigmae);
     _small = (float)small;
     _niter = niter;
   }
 
   public void applyLinear(
-    float[][] ds, float[][] v1, byte[][] xf, float[][] x) 
+    float[][] ds, float[][] es, float[][] v1, byte[][] xf, float[][] x) 
   {
     trace("x min="+Array.min(x)+" max="+Array.max(x));
     int n1 = x[0].length;
@@ -43,7 +46,7 @@ public class LocalInterpolationFilter {
       }
     }
     trace("t min="+Array.min(t)+" max="+Array.max(t));
-    _dlf.applyLinear(ds,v1,t,b);
+    _dlf.applyLinear(ds,es,v1,t,b);
     for (int i2=0; i2<n2; ++i2) {
       for (int i1=0; i1<n1; ++i1) {
         b[i2][i1] = (xf[i2][i1]!=0)?0.0f:b[i2][i1];
@@ -51,7 +54,7 @@ public class LocalInterpolationFilter {
     }
     t = null;
     trace("b min="+Array.min(b)+" max="+Array.max(b));
-    solveLinear(ds,v1,xf,b,x);
+    solveLinear(ds,es,v1,xf,b,x);
   }
 
   ///////////////////////////////////////////////////////////////////////////
@@ -64,9 +67,10 @@ public class LocalInterpolationFilter {
   private DirectionalLaplacianFilter _dlf;
 
   private void solveLinear(
-    float[][] ds, float[][] v1, byte[][] xf, float[][] x, float[][] y) 
+    float[][] ds, float[][] es, float[][] v1, 
+    byte[][] xf, float[][] x, float[][] y) 
   {
-    solveLinearSimple(ds,v1,xf,x,y);
+    solveLinearSimple(ds,es,v1,xf,x,y);
   }
 
   private void solveLinear(
@@ -94,10 +98,11 @@ public class LocalInterpolationFilter {
   private static class LinearOperator2 implements Operator2 {
     LinearOperator2(
       DirectionalLaplacianFilter dlf, 
-      float[][] ds, float[][] v1, byte[][] xf) 
+      float[][] ds, float[][] es, float[][] v1, byte[][] xf) 
     {
       _dlf = dlf;
       _ds = ds;
+      _es = es;
       _v1 = v1;
       _xf = xf;
     }
@@ -111,14 +116,14 @@ public class LocalInterpolationFilter {
         }
       }
       szero(y);
-      _dlf.applyLinear(_ds,_v1,t,y);
+      _dlf.applyLinear(_ds,_es,_v1,t,y);
       for (int i2=0; i2<n2; ++i2) {
         for (int i1=0; i1<n1; ++i1) {
           y[i2][i1] = (_xf[i2][i1]!=0)?0.0f:y[i2][i1];
         }
       }
     }
-    private float[][] _ds,_v1;
+    private float[][] _ds,_es,_v1;
     private byte[][] _xf;
     private DirectionalLaplacianFilter _dlf;
   }
@@ -156,9 +161,10 @@ public class LocalInterpolationFilter {
   }
 
   private void solveLinearSimple(
-    float[][] ds, float[][] v1, byte[][] xf, float[][] x, float[][] y) 
+    float[][] ds, float[][] es, float[][] v1, 
+    byte[][] xf, float[][] x, float[][] y) 
   {
-    Operator2 a = new LinearOperator2(_dlf,ds,v1,xf);
+    Operator2 a = new LinearOperator2(_dlf,ds,es,v1,xf);
     solve(a,x,y);
   }
   private void solveLinearSimple(
@@ -483,9 +489,10 @@ public class LocalInterpolationFilter {
     int n2 = 101;
     DirectionalLaplacianFilter dlf = new DirectionalLaplacianFilter(1.0);
     float[][] ds = Array.randfloat(n1,n2);
+    float[][] es = Array.randfloat(n1,n2);
     float[][] v1 = Array.randfloat(n1,n2);
     byte[][] xf = Array.zerobyte(n1,n2);
-    Operator2 a = new LinearOperator2(dlf,ds,v1,xf);
+    Operator2 a = new LinearOperator2(dlf,ds,es,v1,xf);
     testSpd(n1,n2,a);
   }
 

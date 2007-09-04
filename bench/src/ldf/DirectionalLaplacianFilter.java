@@ -24,14 +24,20 @@ import static edu.mines.jtk.util.MathPlus.*;
  * For example, if D = dvv' for local diffusivities d and unit vectors v,
  * then G'DGx is zero for image features that are constant in the direction 
  * of v. The diffusivities d depend on local scale factors ds multiplied by 
- * a nominal filter half-width sigma. Specifically, for each sample, 
- * diffusivities d = 0.5*(ds*sigma)*(ds*sigma). The scale factor 0.5 makes
- * the Fourier transform of this filter approximate that of a Gaussian 
- * for small wavenumbers.
+ * a maximum filter half-width sigma. Specifically, for each sample, 
+ * diffusivities d = 0.5*(ds*sigma)^2. The scaling by 0.5 makes the Fourier 
+ * transform of this filter approximate that of a Gaussian for small 
+ * wavenumbers.
  * <p>
  * Alternatively, if D = d(I-UU'), then the right-hand side G'DGx is zero
  * for image features that are constant in all directions orthogonal to the 
  * unit vectors u. 
+ * <p>
+ * Although this filter is intended for anisotropic diffusion, the tensor D
+ * may include an isotropic component; e.g., D = dvv'+eI. (Think of e as in
+ * "every" direction.) In this case, the local isotropic diffusivity is 
+ * e = 0.5*(es*sigmae)^2 for some specified maximum half-width sigmae and 
+ * local scale factors es.
  * <p>
  * Directional Laplacian filters are rarely used alone. While zeroing some 
  * features in images, they tend to attenuate many other features as well. 
@@ -58,11 +64,23 @@ import static edu.mines.jtk.util.MathPlus.*;
 public class DirectionalLaplacianFilter {
 
   /**
-   * Constructs a directional Laplacian filter with nominal half-width sigma.
-   * @param sigma the nominal half-width for this filter.
+   * Constructs a directional Laplacian filter.
+   * The diffusion tensors for this filter will have no isotropic component.
+   * @param sigmad maximum half-width for directional (anisotropic) diffusion.
    */
-  public DirectionalLaplacianFilter(double sigma) {
-    _sigma = (float)sigma;
+  public DirectionalLaplacianFilter(double sigmad) {
+    this(sigmad,0.0);
+  }
+
+  /**
+   * Constructs a directional Laplacian filter with an isotropic component.
+   * @param sigmad maximum half-width for directional (anisotropic) diffusion.
+   * @param sigmae maximum half-width for isotropic diffusion.
+   * *
+   */
+  public DirectionalLaplacianFilter(double sigmad, double sigmae) {
+    _sigmad = (float)sigmad;
+    _sigmae = (float)sigmae;
   }
 
   ///////////////////////////////////////////////////////////////////////////
@@ -79,11 +97,39 @@ public class DirectionalLaplacianFilter {
   public void applyLinear(
     float ds, float v1, float v2, float[][] x, float[][] y) 
   {
-    float ss = ds*_sigma;
+    float ss = ds*_sigmad;
     float sv = 0.5f*ss*ss;
     float d11 = sv*v1*v1;
     float d12 = sv*v1*v2;
     float d22 = sv*v2*v2;
+    int n1 = x[0].length;
+    int n2 = x.length;
+    for (int i2=1; i2<n2; ++i2) {
+      for (int i1=1; i1<n1; ++i1) {
+        apply(d11,d12,d22,i1,i2,x,y);
+      }
+    }
+  }
+
+  /**
+   * Computes y = y+G'DGx, where D = dvv'+eI and G is the gradient operator. 
+   * @param ds scale factor for diffusivity inline with unit vector v.
+   * @param es scale factor for isotropic diffusivity.
+   * @param v1 1st component of unit vector v.
+   * @param v2 2nd component of unit vector v.
+   * @param x input image. Must be distinct from the array y.
+   * @param y input/output image. Must be distinct from the array x.
+   */
+  public void applyLinear(
+    float ds, float es, float v1, float v2, float[][] x, float[][] y) 
+  {
+    float dss = ds*_sigmad;
+    float ess = es*_sigmae;
+    float sv = 0.5f*dss*dss;
+    float se = 0.5f*ess*ess;
+    float d11 = sv*v1*v1+se;
+    float d22 = sv*v2*v2+se;
+    float d12 = sv*v1*v2;
     int n1 = x[0].length;
     int n2 = x.length;
     for (int i2=1; i2<n2; ++i2) {
@@ -110,13 +156,46 @@ public class DirectionalLaplacianFilter {
     int n2 = x.length;
     for (int i2=1; i2<n2; ++i2) {
       for (int i1=1; i1<n1; ++i1) {
-        float ssi = (ds!=null)?_sigma*ds[i2][i1]:_sigma;
+        float ssi = (ds!=null)?_sigmad*ds[i2][i1]:_sigmad;
         float svi = 0.5f*ssi*ssi;
         float v1i = v1[i2][i1];
         float v2i = sqrt(1.0f-v1i*v1i);
-        float d11 = svi*v1i*v1i+0.01f;
+        float d11 = svi*v1i*v1i;
         float d12 = svi*v1i*v2i;
-        float d22 = svi*v2i*v2i+0.01f;
+        float d22 = svi*v2i*v2i;
+        apply(d11,d12,d22,i1,i2,x,y);
+      }
+    }
+  }
+
+  /**
+   * Computes y = y+G'DGx, where D = dvv' and G is the gradient operator. 
+   * Only components v1 of the inline vectors v are specified; 
+   * computed components v2 = sqrt(1-v1*v1) are non-negative.
+   * @param ds scale factors for diffusivity inline with unit vectors v;
+   *  if null, this method uses constant ds = 1.
+   * @param es scale factors for isotropic diffusivity;
+   *  if null, this method uses constant es = 1.
+   * @param v1 array of 1st components of inline unit vectors.
+   * @param x input image. Must be distinct from the array y.
+   * @param y input/output image. Must be distinct from the array x.
+   */
+  public void applyLinear(
+    float[][] ds, float[][] es, float[][] v1, float[][] x, float[][] y) 
+  {
+    int n1 = x[0].length;
+    int n2 = x.length;
+    for (int i2=1; i2<n2; ++i2) {
+      for (int i1=1; i1<n1; ++i1) {
+        float dssi = (ds!=null)?_sigmad*ds[i2][i1]:_sigmad;
+        float essi = (es!=null)?_sigmae*es[i2][i1]:_sigmae;
+        float svi = 0.5f*dssi*dssi;
+        float sei = 0.5f*essi*essi;
+        float v1i = v1[i2][i1];
+        float v2i = sqrt(1.0f-v1i*v1i);
+        float d11 = svi*v1i*v1i+sei;
+        float d22 = svi*v2i*v2i+sei;
+        float d12 = svi*v1i*v2i;
         apply(d11,d12,d22,i1,i2,x,y);
       }
     }
@@ -157,7 +236,7 @@ public class DirectionalLaplacianFilter {
 
   /**
    * Computes y = y+G'DGx, where D = dww' and G is the gradient operator. 
-   * Diffusivities d depend on a percentage of the nominal filter half-width 
+   * Diffusivities d depend on a percentage of the maximum filter half-width 
    * sigma; these percentages are specified by byte values in the array is.
    * Inline vectors w are specified by short indices in the array iw that 
    * correspond to a 16-bit sampling of the unit-sphere.
@@ -175,7 +254,7 @@ public class DirectionalLaplacianFilter {
 
   /**
    * Computes y = y+G'DGx, where D = d(I-uu') and G is the gradient operator. 
-   * Diffusivities d depend on a percentage of the nominal filter half-width 
+   * Diffusivities d depend on a percentage of the maximum filter half-width 
    * sigma; these percentages are specified by byte values in the array is.
    * Normal vectors u are specified by short indices in the array iu that 
    * correspond to a 16-bit sampling of the unit-sphere.
@@ -223,7 +302,7 @@ public class DirectionalLaplacianFilter {
    * @return the stencil.
    */
   public Stencil33 makeLinearStencil33(float[][] ds, float[][] v1) {
-    return new LinearStencil33(_sigma,ds,v1);
+    return new LinearStencil33(_sigmad,ds,v1);
   }
 
 
@@ -232,7 +311,8 @@ public class DirectionalLaplacianFilter {
 
   private static UnitSphereSampling _uss16; // maps indices to unit-vectors
 
-  private float _sigma; // nominal filter half-width
+  private float _sigmad; // maximum directional (anisotropic) half-width
+  private float _sigmae; // maximum isotropic half-width
 
   // Computes y = y+G'DGx for one sample.
   private static void apply(
@@ -266,7 +346,7 @@ public class DirectionalLaplacianFilter {
     Type type, float ds, float v1, float v2, float v3, 
     float[][][] x, float[][][] y) 
   {
-    float ss = ds*_sigma;
+    float ss = ds*_sigmad;
     float sv = 0.5f*ss*ss;
     float d11,d22,d33,d12,d13,d23;
     if (type==Type.INLINE) {
@@ -312,7 +392,7 @@ public class DirectionalLaplacianFilter {
       _uss16 = new UnitSphereSampling(16);
     int n3 = x.length;
     for (int i3=1; i3<n3; ++i3)
-      applySlice3(type,i3,_uss16,_sigma,is,iw,x,y);
+      applySlice3(type,i3,_uss16,_sigmad,is,iw,x,y);
   }
 
   private void applyParallel(final Type type,
@@ -330,7 +410,7 @@ public class DirectionalLaplacianFilter {
       thread1[ithread] = new Thread(new Runnable() {
         public void run() {
           for (int i3=a1.getAndAdd(2); i3<n3; i3=a1.getAndAdd(2))
-            applySlice3(type,i3,_uss16,_sigma,is,iw,x,y);
+            applySlice3(type,i3,_uss16,_sigmad,is,iw,x,y);
         }
       });
     }
@@ -343,7 +423,7 @@ public class DirectionalLaplacianFilter {
       thread2[ithread] = new Thread(new Runnable() {
         public void run() {
           for (int i3=a2.getAndAdd(2); i3<n3; i3=a2.getAndAdd(2))
-            applySlice3(type,i3,_uss16,_sigma,is,iw,x,y);
+            applySlice3(type,i3,_uss16,_sigmad,is,iw,x,y);
         }
       });
     }
@@ -547,7 +627,7 @@ public class DirectionalLaplacianFilter {
     int n1m = n1-1;
     int n2m = n2-1;
     float[][] a = new float[n1][9];
-    Stencil33 s33 = new LinearStencil33(_sigma,ds,v1);
+    Stencil33 s33 = new LinearStencil33(_sigmad,ds,v1);
     for (int i2=0; i2<n2; ++i2) {
       int i2m = max(i2-1,0);
       int i2p = min(i2+1,n2m);
@@ -574,7 +654,7 @@ public class DirectionalLaplacianFilter {
     int n1m = n1-1;
     int n2m = n2-1;
     float[][] a = new float[n1][9];
-    Stencil33 s33 = new LinearStencil33(_sigma,ds,v1);
+    Stencil33 s33 = new LinearStencil33(_sigmad,ds,v1);
     for (int i2=n2-1; i2>=0; --i2) {
       int i2m = max(i2-1,0);
       int i2p = min(i2+1,n2m);

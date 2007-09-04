@@ -29,9 +29,10 @@ pngDir = None
 
 n1 = 315
 n2 = 315
+aniso = 10
 small = 0.001
 niter = 1000
-lof = LocalOrientFilter(16)
+lof = LocalOrientFilter(8)
 
 #############################################################################
 # functions
@@ -44,11 +45,9 @@ def main(args):
 def doImage():
   x = readImage()
   #x = Array.transpose(x)
-  #x = makePlaneImage(63.435)
-  #x = makePlaneImage(30)
   #x = makeTargetImage()
   #x = flip2(x)
-  plot(x,10.0,"x")
+  plot(x,10.0,ColorMap.GRAY,"x")
   return x
 
 def goInterp():
@@ -58,7 +57,7 @@ def goInterp():
   #for x,s in [(x1,"_1"),(x2,"_2"),(x3,"_3")]:
   for x,s in [(x1,"_1")]:
     #x = bigger(bigger(x))
-    plot(x,10.0,"x"+s)
+    plot(x,10.0,ColorMap.GRAY,"x"+s)
     doInterp(x,"d"+s)
 
 def doInterp(x,png):
@@ -66,52 +65,24 @@ def doInterp(x,png):
   v1,v2 = getV(x)
   #v1,v2 = makeVectorsRadial(n1,n2)
   #v1,v2 = makeVectors45(n1,n2)
-  lif = LocalInterpolationFilter(small,niter)
+  lif = LocalInterpolationFilter(aniso,small,niter)
   ds = None
-  #ds = makeBlock(n1,n2)
+  es = None
   xf = Array.zerobyte(n1,n2)
   y = Array.zerofloat(n1,n2)
-  #for i2 in [1,1*n2/4,2*n2/4,3*n2/4,n2-2]:
+  z = Array.zerofloat(n1,n2)
+  #for i2 in [1,1*n2/6,2*n2/6,3*n2/6,4*n2/6,5*n2/6,n2-2]:
   for i2 in [2*n2/4]:
     for i1 in range(n1):
       xf[i2][i1] = 1
       #y[i2][i1] = x[i2][i1]
       y[i2][i1] = i1
-  plot(y,n1,"y"+png)
-  lif.applyLinear(ds,v1,xf,y)
-  plot(y,n1,"y"+png)
-
-def makeVectorsRadial(n1,n2):
-  k1,k2 = n1/2,n2/2
-  v1 = Array.zerofloat(n1,n2)
-  v2 = Array.zerofloat(n1,n2)
-  for i2 in range(n2):
-    v2i = float(i2-k2)
-    for i1 in range(n1):
-      v1i = 0.1+float(i1-k1)
-      sv = 1.0/sqrt(v1i*v1i+v2i*v2i)
-      if v2i<0.0:
-        sv = -sv
-      v1[i2][i1] = sv*v1i
-      v2[i2][i1] = sv*v2i
-  return v1,v2
-
-def makeVectors45(n1,n2):
-  k1,k2 = n1/2,n2/2
-  v1 = Array.zerofloat(n1,n2)
-  v2 = Array.zerofloat(n1,n2)
-  for i2 in range(n2):
-    v2i = 0.1+float(i2-k2)
-    v2i = v2i/abs(v2i)
-    for i1 in range(n1):
-      v1i = 0.1+float(i1-k1)
-      v1i = v1i/abs(v1i)
-      sv = 1.0/sqrt(v1i*v1i+v2i*v2i)
-      if v2i<0.0:
-        sv = -sv
-      v1[i2][i1] = sv*v1i
-      v2[i2][i1] = sv*v2i
-  return v1,v2
+  #plot(y,0.0,ColorMap.GRAY,"y"+png)
+  plot(y,0.0,ColorMap.JET,"y"+png)
+  z = Array.copy(y)
+  lif.applyLinear(ds,es,v1,xf,z)
+  #plot(z,0.0,ColorMap.GRAY,"z"+png)
+  plot(z,0.0,ColorMap.JET,"z"+png)
 
 def bigger(x):
   m1 = len(x[0])
@@ -164,13 +135,6 @@ def makeTargetImage():
       f[i2][i1] = 10.0*sin(k*sqrt(d1*d1+d2*d2))
   return f
 
-def makePlaneImage(angle):
-  a = angle*pi/180.0
-  k = 0.3
-  c = k*cos(a)
-  s = k*sin(a)
-  return Array.mul(10.0,Array.sin(Array.rampfloat(0.0,c,s,n1,n2)))
-
 def flip2(f):
   n1 = len(f[0])
   n2 = len(f)
@@ -191,7 +155,7 @@ def getV(x):
 #############################################################################
 # plot
 
-def plot(f,clip=0.0,png=None):
+def plot(f,clip=0.0,cmap=ColorMap.GRAY,png=None):
   n1 = len(f[0])
   n2 = len(f)
   p = panel()
@@ -202,21 +166,12 @@ def plot(f,clip=0.0,png=None):
     s2 = Sampling(n2,1,-(n2-1)/2)
   pv = p.addPixels(s1,s2,f)
   if clip!=0.0:
-    #pv.setClips(-clip,clip)
-    pv.setClips(0,clip)
+    pv.setClips(-clip,clip)
+    #pv.setClips(0,clip)
   else:
     pv.setPercentiles(0.0,100.0)
-  pv.setInterpolation(PixelsView.Interpolation.NEAREST)
-  pv.setColorModel(ColorMap.JET)
-  frame(p,png)
-
-def plotf(f,png=None):
-  n1 = len(f[0])
-  n2 = len(f)
-  p = panel()
-  pv = p.addPixels(f)
-  pv.setColorModel(ColorMap.JET)
   pv.setInterpolation(PixelsView.Interpolation.LINEAR)
+  pv.setColorModel(cmap)
   frame(p,png)
 
 def panel():
