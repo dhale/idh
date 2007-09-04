@@ -114,9 +114,9 @@ public class DirectionalLaplacianFilter {
         float svi = 0.5f*ssi*ssi;
         float v1i = v1[i2][i1];
         float v2i = sqrt(1.0f-v1i*v1i);
-        float d11 = svi*v1i*v1i;
+        float d11 = svi*v1i*v1i+0.01f;
         float d12 = svi*v1i*v2i;
-        float d22 = svi*v2i*v2i;
+        float d22 = svi*v2i*v2i+0.01f;
         apply(d11,d12,d22,i1,i2,x,y);
       }
     }

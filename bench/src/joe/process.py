@@ -77,12 +77,12 @@ def main(args):
   #plot3ds((y,el))
   #llf()
   #emask()
-  #x = readFile("x.dat",n1,n2,n3)
+  x = readFile("x.dat",n1,n2,n3)
   #exz = readFile("exz.dat",n1,n2,n3)
   #plot3ds((x,exz))
-  #eyz = readFile("eyz.dat",n1,n2,n3)
-  #plot3ds((x,eyz))
-  plotAll()
+  eyz = readFile("eyz.dat",n1,n2,n3)
+  plot3ds((x,eyz))
+  #plotAll()
   return
 
 """
