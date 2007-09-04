@@ -25,8 +25,9 @@ public class LocalInterpolationFilter {
    * @param niter stop when number of iterations exceeds this number.
    */
   public LocalInterpolationFilter(double aniso, double small, int niter) {
-    double sigmad = (aniso<1.0)?1.0:aniso;
-    double sigmae = (aniso>1.0)?1.0:1.0/aniso;
+    // aniso = sigmad/sigmae
+    double sigmad = (aniso>1.0)?1.0:aniso;
+    double sigmae = (aniso<1.0)?1.0:1.0/aniso;
     _dlf = new DirectionalLaplacianFilter(sigmad,sigmae);
     _small = (float)small;
     _niter = niter;

@@ -27,12 +27,20 @@ dataDir = "/data"
 #pngDir = "./png"
 pngDir = None
 
+gray = ColorMap.GRAY
+jet = ColorMap.JET
+prism = ColorMap.PRISM
+
+gray = ColorMap.getGray(0,1,0.5)
+jet = ColorMap.getJet(0.5)
+
 n1 = 315
 n2 = 315
-aniso = 10
+aniso = 1
 small = 0.001
 niter = 1000
-lof = LocalOrientFilter(8)
+lof = LocalOrientFilter(16)
+lof.setGradientSmoothing(2)
 
 #############################################################################
 # functions
@@ -47,7 +55,7 @@ def doImage():
   #x = Array.transpose(x)
   #x = makeTargetImage()
   #x = flip2(x)
-  plot(x,10.0,ColorMap.GRAY,"x")
+  plot(x,10.0,gray,"x")
   return x
 
 def goInterp():
@@ -57,7 +65,7 @@ def goInterp():
   #for x,s in [(x1,"_1"),(x2,"_2"),(x3,"_3")]:
   for x,s in [(x1,"_1")]:
     #x = bigger(bigger(x))
-    plot(x,10.0,ColorMap.GRAY,"x"+s)
+    plot(x,10.0,gray,"x"+s)
     doInterp(x,"d"+s)
 
 def doInterp(x,png):
@@ -77,12 +85,13 @@ def doInterp(x,png):
       xf[i2][i1] = 1
       #y[i2][i1] = x[i2][i1]
       y[i2][i1] = i1
-  #plot(y,0.0,ColorMap.GRAY,"y"+png)
-  plot(y,0.0,ColorMap.JET,"y"+png)
+  #plot(y,0.0,gray,"y"+png)
+  plot(y,0.0,jet,"y"+png)
   z = Array.copy(y)
   lif.applyLinear(ds,es,v1,xf,z)
-  #plot(z,0.0,ColorMap.GRAY,"z"+png)
-  plot(z,0.0,ColorMap.JET,"z"+png)
+  #plot(z,0.0,gray,"z"+png)
+  plot(z,0.0,jet,"z"+png)
+  plot2(x,z)
 
 def bigger(x):
   m1 = len(x[0])
@@ -161,9 +170,6 @@ def plot(f,clip=0.0,cmap=ColorMap.GRAY,png=None):
   p = panel()
   s1 = Sampling(n1,1.0,0.0)
   s2 = Sampling(n2,1.0,0.0)
-  if n1<50 and n2<50:
-    s1 = Sampling(n1,1,-(n1-1)/2)
-    s2 = Sampling(n2,1,-(n2-1)/2)
   pv = p.addPixels(s1,s2,f)
   if clip!=0.0:
     pv.setClips(-clip,clip)
@@ -172,6 +178,20 @@ def plot(f,clip=0.0,cmap=ColorMap.GRAY,png=None):
     pv.setPercentiles(0.0,100.0)
   pv.setInterpolation(PixelsView.Interpolation.LINEAR)
   pv.setColorModel(cmap)
+  frame(p,png)
+
+def plot2(f,g,png=None):
+  n1 = len(f[0])
+  n2 = len(f)
+  p = panel()
+  s1 = Sampling(n1,1.0,0.0)
+  s2 = Sampling(n2,1.0,0.0)
+  pv = p.addPixels(s1,s2,f)
+  pv.setInterpolation(PixelsView.Interpolation.LINEAR)
+  pv.setColorModel(gray)
+  pv = p.addPixels(s1,s2,g)
+  pv.setInterpolation(PixelsView.Interpolation.LINEAR)
+  pv.setColorModel(jet)
   frame(p,png)
 
 def panel():
