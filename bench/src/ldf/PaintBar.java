@@ -7,6 +7,7 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 package ldf;
 
 import java.awt.*;
+import java.awt.event.*;
 import java.util.EnumSet;
 
 import edu.mines.jtk.mosaic.*;
@@ -72,6 +73,7 @@ public class PaintBar extends ColorBar {
       return;
     Mosaic mosaic = super.getMosaic();
     Tile tile = mosaic.getTile(0,0);
+    tile.addMouseListener(new RangeAdjuster());
     Projector hp = tile.getHorizontalProjector();
     Projector vp = tile.getVerticalProjector();
     float h0 = (float)hp.v0();
@@ -90,6 +92,39 @@ public class PaintBar extends ColorBar {
       tile.addTiledView(_points);
     } else {
       _points.set(x1,x2);
+    }
+  }
+
+  private class RangeAdjuster extends MouseAdapter {
+    public void mousePressed(MouseEvent e) {
+      Tile tile = (Tile)e.getSource();
+      _adjusting = true;
+      _vbegin = _vmouse = getValue(e);
+      setRange(_vbegin,_vmouse);
+      tile.addMouseMotionListener(_mml);
+    }
+    public void mouseReleased(MouseEvent e) {
+      if (_adjusting) {
+        Tile tile = (Tile)e.getSource();
+        tile.removeMouseMotionListener(_mml);
+        _adjusting = false;
+      }
+    }
+    private boolean _adjusting;
+    private float _vbegin,_vmouse;
+    private MouseMotionListener _mml = new MouseMotionAdapter() {
+      public void mouseDragged(MouseEvent e) {
+        _vmouse = getValue(e);
+        setRange(_vbegin,_vmouse);
+      }
+    };
+    private float getValue(MouseEvent e) {
+      Tile tile = (Tile)e.getSource();
+      Transcaler ts = tile.getTranscaler();
+      Projector vp = tile.getVerticalProjector();
+      double y = ts.y(e.getY());
+      double v = vp.v(y);
+      return (float)v;
     }
   }
 }

@@ -32,7 +32,7 @@ paintBar = None
 
 n1 = 315
 n2 = 315
-aniso = 10
+aniso = 100
 small = 0.001
 niter = 1000
 lof = LocalOrientFilter(8)
@@ -78,20 +78,21 @@ def doInterp(x,png):
   f = Array.zerobyte(n1,n2)
   y = Array.zerofloat(n1,n2)
   z = Array.zerofloat(n1,n2)
-  for i2 in [1,n2/2,n2-2]:
+  #for i2 in [1,n2/2,n2-2]:
   #for i2 in [1,1*n2/6,2*n2/6,3*n2/6,4*n2/6,5*n2/6,n2-2]:
-  #for i2 in [2*n2/4]:
+  for i2 in [n2/2]:
     for i1 in range(n1):
       f[i2][i1] = 1
-      y[i2][i1] = i1
-      #y[i2][i1] = x[i2][i1]
+      #y[i2][i1] = i1
+      y[i2][i1] = x[i2][i1]
   #plot(y,0.0,gray,"y"+png)
   #plot(y,10.0,jet,"y"+png)
   z = Array.copy(y)
   lif.applyLinear(ds,es,v1,f,z)
   #plot(z,0.0,gray,"z"+png)
-  #plot(z,10.0,jet,"z"+png)
-  plot2(x,z,0,315,paintBar)
+  plot(z,10.0,jet,"z"+png)
+  #plot2(x,z,0,315,paintBar)
+  plot2(x,z,-10,10,paintBar)
 
 def bigger(x):
   m1 = len(x[0])
@@ -221,7 +222,7 @@ def panel():
   #  PlotPanel.AxesPlacement.NONE)
   p = PlotPanel(1,1,
     PlotPanel.Orientation.X1DOWN_X2RIGHT,
-    PlotPanel.AxesPlacement.LEFT_BOTTOM)
+    PlotPanel.AxesPlacement.LEFT_TOP)
   p.addColorBar()
   p.setColorBarWidthMinimum(widthColorBar)
   return p
