@@ -4,10 +4,12 @@ This program and accompanying materials are made available under the terms of
 the Common Public License - v1.0, which accompanies this distribution, and is
 available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
-package edu.mines.jtk.mosaic;
+package ldf;
 
 import java.awt.*;
 import java.util.EnumSet;
+
+import edu.mines.jtk.mosaic.*;
 
 /**
  * A color bar with a selected range of colors that can be used for painting.
