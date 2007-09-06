@@ -34,7 +34,7 @@ public class LocalInterpolationFilter {
   }
 
   public void applyLinear(
-    float[][] ds, float[][] es, float[][] v1, byte[][] xf, float[][] x) 
+    float[][] ds, float[][] es, float[][] v1, byte[][] f, float[][] x) 
   {
     trace("x min="+Array.min(x)+" max="+Array.max(x));
     int n1 = x[0].length;
@@ -43,19 +43,19 @@ public class LocalInterpolationFilter {
     float[][] b = new float[n2][n1];
     for (int i2=0; i2<n2; ++i2) {
       for (int i1=0; i1<n1; ++i1) {
-        t[i2][i1] = (xf[i2][i1]!=0)?-x[i2][i1]:0.0f;
+        t[i2][i1] = (f[i2][i1]!=0)?-x[i2][i1]:0.0f;
       }
     }
     trace("t min="+Array.min(t)+" max="+Array.max(t));
     _dlf.applyLinear(ds,es,v1,t,b);
     for (int i2=0; i2<n2; ++i2) {
       for (int i1=0; i1<n1; ++i1) {
-        b[i2][i1] = (xf[i2][i1]!=0)?0.0f:b[i2][i1];
+        b[i2][i1] = (f[i2][i1]!=0)?0.0f:b[i2][i1];
       }
     }
     t = null;
     trace("b min="+Array.min(b)+" max="+Array.max(b));
-    solveLinear(ds,es,v1,xf,b,x);
+    solveLinear(ds,es,v1,f,b,x);
   }
 
   ///////////////////////////////////////////////////////////////////////////
@@ -69,9 +69,9 @@ public class LocalInterpolationFilter {
 
   private void solveLinear(
     float[][] ds, float[][] es, float[][] v1, 
-    byte[][] xf, float[][] x, float[][] y) 
+    byte[][] f, float[][] x, float[][] y) 
   {
-    solveLinearSimple(ds,es,v1,xf,x,y);
+    solveLinearSimple(ds,es,v1,f,x,y);
   }
 
   private void solveLinear(
@@ -99,13 +99,13 @@ public class LocalInterpolationFilter {
   private static class LinearOperator2 implements Operator2 {
     LinearOperator2(
       DirectionalLaplacianFilter dlf, 
-      float[][] ds, float[][] es, float[][] v1, byte[][] xf) 
+      float[][] ds, float[][] es, float[][] v1, byte[][] f) 
     {
       _dlf = dlf;
       _ds = ds;
       _es = es;
       _v1 = v1;
-      _xf = xf;
+      _f = f;
     }
     public void apply(float[][] x, float[][] y) {
       int n1 = x[0].length;
@@ -113,19 +113,19 @@ public class LocalInterpolationFilter {
       float[][] t = new float[n2][n1];
       for (int i2=0; i2<n2; ++i2) {
         for (int i1=0; i1<n1; ++i1) {
-          t[i2][i1] = (_xf[i2][i1]!=0)?0.0f:x[i2][i1];
+          t[i2][i1] = (_f[i2][i1]!=0)?0.0f:x[i2][i1];
         }
       }
       szero(y);
       _dlf.applyLinear(_ds,_es,_v1,t,y);
       for (int i2=0; i2<n2; ++i2) {
         for (int i1=0; i1<n1; ++i1) {
-          y[i2][i1] = (_xf[i2][i1]!=0)?0.0f:y[i2][i1];
+          y[i2][i1] = (_f[i2][i1]!=0)?0.0f:y[i2][i1];
         }
       }
     }
     private float[][] _ds,_es,_v1;
-    private byte[][] _xf;
+    private byte[][] _f;
     private DirectionalLaplacianFilter _dlf;
   }
   private static class LinearOperator3 implements Operator3 {
@@ -163,9 +163,9 @@ public class LocalInterpolationFilter {
 
   private void solveLinearSimple(
     float[][] ds, float[][] es, float[][] v1, 
-    byte[][] xf, float[][] x, float[][] y) 
+    byte[][] f, float[][] x, float[][] y) 
   {
-    Operator2 a = new LinearOperator2(_dlf,ds,es,v1,xf);
+    Operator2 a = new LinearOperator2(_dlf,ds,es,v1,f);
     solve(a,x,y);
   }
   private void solveLinearSimple(
@@ -492,8 +492,8 @@ public class LocalInterpolationFilter {
     float[][] ds = Array.randfloat(n1,n2);
     float[][] es = Array.randfloat(n1,n2);
     float[][] v1 = Array.randfloat(n1,n2);
-    byte[][] xf = Array.zerobyte(n1,n2);
-    Operator2 a = new LinearOperator2(dlf,ds,es,v1,xf);
+    byte[][] f = Array.zerobyte(n1,n2);
+    Operator2 a = new LinearOperator2(dlf,ds,es,v1,f);
     testSpd(n1,n2,a);
   }
 

@@ -1,5 +1,6 @@
 import sys
 from math import *
+from java.awt import *
 from java.lang import *
 from java.util import *
 from java.nio import *
@@ -19,10 +20,6 @@ False = 0
 #############################################################################
 # parameters
 
-fontSize = 24
-width = 500
-height = 520
-widthColorBar = 80
 dataDir = "/data"
 #pngDir = "./png"
 pngDir = None
@@ -31,21 +28,22 @@ gray = ColorMap.GRAY
 jet = ColorMap.JET
 prism = ColorMap.PRISM
 
-gray = ColorMap.getGray(0,1,0.5)
-jet = ColorMap.getJet(0.5)
+paintBar = None
 
 n1 = 315
 n2 = 315
-aniso = 1
+aniso = 10
 small = 0.001
 niter = 1000
-lof = LocalOrientFilter(16)
-lof.setGradientSmoothing(2)
+lof = LocalOrientFilter(8)
+lof.setGradientSmoothing(1)
 
 #############################################################################
 # functions
 
 def main(args):
+  global paintBar
+  paintBar = makePaintBar()
   #doImage();
   goInterp()
   return
@@ -70,28 +68,30 @@ def goInterp():
 
 def doInterp(x,png):
   n1,n2 = len(x[0]),len(x)
-  v1,v2 = getV(x)
+  v1,v2,ds = getV(x)
+  #plot2(x,ds)
   #v1,v2 = makeVectorsRadial(n1,n2)
   #v1,v2 = makeVectors45(n1,n2)
   lif = LocalInterpolationFilter(aniso,small,niter)
   ds = None
   es = None
-  xf = Array.zerobyte(n1,n2)
+  f = Array.zerobyte(n1,n2)
   y = Array.zerofloat(n1,n2)
   z = Array.zerofloat(n1,n2)
+  for i2 in [1,n2/2,n2-2]:
   #for i2 in [1,1*n2/6,2*n2/6,3*n2/6,4*n2/6,5*n2/6,n2-2]:
-  for i2 in [2*n2/4]:
+  #for i2 in [2*n2/4]:
     for i1 in range(n1):
-      xf[i2][i1] = 1
-      #y[i2][i1] = x[i2][i1]
+      f[i2][i1] = 1
       y[i2][i1] = i1
+      #y[i2][i1] = x[i2][i1]
   #plot(y,0.0,gray,"y"+png)
-  plot(y,0.0,jet,"y"+png)
+  #plot(y,10.0,jet,"y"+png)
   z = Array.copy(y)
-  lif.applyLinear(ds,es,v1,xf,z)
+  lif.applyLinear(ds,es,v1,f,z)
   #plot(z,0.0,gray,"z"+png)
-  plot(z,0.0,jet,"z"+png)
-  plot2(x,z)
+  #plot(z,10.0,jet,"z"+png)
+  plot2(x,z,0,315,paintBar)
 
 def bigger(x):
   m1 = len(x[0])
@@ -157,10 +157,18 @@ def getV(x):
   n2 = len(x)
   v1 = Array.zerofloat(n1,n2)
   v2 = Array.zerofloat(n1,n2)
-  lof.applyForNormal(x,v2,v1)
-  Array.neg(v1,v1);
-  return v1,v2
-
+  el = Array.zerofloat(n1,n2)
+  lof.apply(x,None,None,None,v1,v2,None,None,el)
+  #clips = Clips(0,75,el)
+  #elmin = clips.getClipMin()
+  #elmax = clips.getClipMax()
+  #ds = Array.zerofloat(n1,n2)
+  #for i2 in range(n2):
+  #  for i1 in range(n1):
+  #    ds[i2][i1] = min(elmax,max(elmin,el[i2][i1]))
+  ds = el
+  return v1,v2,ds
+ 
 #############################################################################
 # plot
 
@@ -176,30 +184,46 @@ def plot(f,clip=0.0,cmap=ColorMap.GRAY,png=None):
     #pv.setClips(0,clip)
   else:
     pv.setPercentiles(0.0,100.0)
-  pv.setInterpolation(PixelsView.Interpolation.LINEAR)
+  pv.setInterpolation(PixelsView.Interpolation.NEAREST)
   pv.setColorModel(cmap)
   frame(p,png)
 
-def plot2(f,g,png=None):
+def plot2(f,g,cmin=0,cmax=0,pb=None,png=None):
   n1 = len(f[0])
   n2 = len(f)
   p = panel()
   s1 = Sampling(n1,1.0,0.0)
   s2 = Sampling(n2,1.0,0.0)
   pv = p.addPixels(s1,s2,f)
-  pv.setInterpolation(PixelsView.Interpolation.LINEAR)
-  pv.setColorModel(gray)
+  pv.setInterpolation(PixelsView.Interpolation.NEAREST)
+  pv.setColorModel(ColorMap.getGray())
+  pv.setClips(-10,10)
   pv = p.addPixels(s1,s2,g)
-  pv.setInterpolation(PixelsView.Interpolation.LINEAR)
-  pv.setColorModel(jet)
+  pv.setInterpolation(PixelsView.Interpolation.NEAREST)
+  if cmin!=cmax:
+    pv.setClips(cmin,cmax)
+  pv.setColorModel(ColorMap.getJet(0.3))
+  if pb:
+    pv.addColorMapListener(pb)
+  pb.setRange(cmin+0.25*(cmax-cmin),cmin+0.75*(cmax-cmin))
   frame(p,png)
 
+fontSize = 24
+#width = 500
+#height = 520
+width = 700
+height = 600
+widthColorBar = 80
+
 def panel():
+  #p = PlotPanel(1,1,
+  #  PlotPanel.Orientation.X1DOWN_X2RIGHT,
+  #  PlotPanel.AxesPlacement.NONE)
   p = PlotPanel(1,1,
     PlotPanel.Orientation.X1DOWN_X2RIGHT,
-    PlotPanel.AxesPlacement.NONE)
-  #p.addColorBar()
-  #p.setColorBarWidthMinimum(widthColorBar)
+    PlotPanel.AxesPlacement.LEFT_BOTTOM)
+  p.addColorBar()
+  p.setColorBarWidthMinimum(widthColorBar)
   return p
 
 def frame(panel,png=None):
@@ -211,6 +235,14 @@ def frame(panel,png=None):
   if png and pngDir:
     frame.paintToPng(100,6,pngDir+"/"+png+".png")
   return frame
+
+def makePaintBar():
+  pb = PaintBar()
+  frame = JFrame()
+  frame.add(pb,BorderLayout.CENTER)
+  frame.setSize(80,500)
+  frame.setVisible(True)
+  return pb
 
 #############################################################################
 # Do everything on Swing thread.
