@@ -15,31 +15,50 @@ import edu.mines.jtk.mosaic.*;
 import edu.mines.jtk.util.*;
 
 /**
- * A mode for editing points displayed in a PointsView.
+ * A mode for editing an image by drawing curves.
+ * <em>
+ * This class is a hack for testing diffusion/interpolation ideas.
+ * </em>
  * @author Dave Hale, Colorado School of Mines
  * @version 2007.09.06
  */
-public class PointsEditMode extends Mode {
+public class ImageEditMode extends Mode {
   private static final long serialVersionUID = 1L;
 
   /**
-   * Constructs a points edit mode with specified manager.
+   * Constructs an image edit mode with specified manager.
    * @param modeManager the mode manager for this mode.
    */
-  public PointsEditMode(
-    ModeManager modeManager, PointsView pv, float[][] x1, float[][] x2) 
+  public ImageEditMode(
+    ModeManager modeManager, PixelsView pixels, float vnull, float[][] v)
   {
     super(modeManager);
-    setName("PointsEdit");
-    //setIcon(loadIcon(PointsEditMode.class,"resources/PointsEdit16.gif"));
+    setName("ImageEdit");
+    //setIcon(loadIcon(ImageEditMode.class,"resources/ImageEdit16.gif"));
     setMnemonicKey(KeyEvent.VK_E);
     setAcceleratorKey(KeyStroke.getKeyStroke(KeyEvent.VK_E,0));
     setShortDescription("Edit points");
-    _pv = pv;
-    _x1 = x1;
-    _x2 = x2;
-    _ns = x1.length;
+    _tile = pixels.getTile();
+    _pixels = pixels;
+    Array.fill(vnull,v);
+    _vnull = vnull;
+    _n1 = v[0].length;
+    _n2 = v.length;
+    _v = v;
+    _is2 = new ImageSampler2(_v);
+    _ns = 0;
+    _x1 = new float[0][0];
+    _x2 = new float[0][0];
+    _vx = new float[0][0];
+    _points = new PointsView(_x1,_x2);
+    if (pixels.getOrientation()==PixelsView.Orientation.X1RIGHT_X2UP) {
+      _points.setOrientation(PointsView.Orientation.X1RIGHT_X2UP);
+    } else {
+      _points.setOrientation(PointsView.Orientation.X1DOWN_X2RIGHT);
+    }
+    _points.setStyle("w-o");
   }
+
 
   ///////////////////////////////////////////////////////////////////////////
   // protected
@@ -50,13 +69,23 @@ public class PointsEditMode extends Mode {
       InputMap im = tile.getInputMap();
       ActionMap am = tile.getActionMap();
       if (active) {
+        tile.addTiledView(_points);
         tile.addMouseListener(_ml);
         im.put(KS_BACK_SPACE,"backspace");
+        im.put(KS_UP,"up");
+        im.put(KS_DOWN,"down");
         am.put("backspace",_bsa);
+        am.put("up",_uaa);
+        am.put("down",_daa);
       } else {
+        tile.removeTiledView(_points);
         tile.removeMouseListener(_ml);
         im.remove(KS_BACK_SPACE);
+        im.remove(KS_UP);
+        im.remove(KS_DOWN);
         am.remove("backspace");
+        am.remove("up");
+        am.remove("down");
       }
     }
   }
@@ -64,26 +93,47 @@ public class PointsEditMode extends Mode {
   ///////////////////////////////////////////////////////////////////////////
   // private
 
-  private Tile _tile; // tile in which editing began; null, if not editing
-  private PointsView _pv; // points view to update as points are edited
+  private Tile _tile; // tile containing the pixels view
+  private PixelsView _pixels; // pixels view of image to edit
+  private PointsView _points; // points view of editing curves
   private int _isSelected = -1; // index of selected segment
   private int _ipSelected = -1; // index of selected point
   private boolean _creating; // true if in process of creating a segment
-  private int _ns; // number of segments.
+  float _vnull; // the null (unknown) image value
+  private int _n1; // number of samples in 1st dimension of image
+  private int _n2; // number of samples in 2nd dimension of image
+  float[][] _v; // array[n2][n1] of image values to edit
+  private int _ns; // number of segments
   float[][] _x1; // x1 coordinates of points in segments
   float[][] _x2; // x2 coordinates of points in segments
+  float[][] _vx; // values v(x1,x2)
   private int _xdown; // x coordinate where mouse down
   private int _ydown; // y coordinate where mouse down
   private int _xedit; // x coordinate of current edit
   private int _yedit; // y coordinate of current edit
   private boolean _hasMotionListener; // true if handling mouse drag
+  private ImageSampler2 _is2; // used to get/set image values
 
   // Event handlers.
   private static KeyStroke KS_BACK_SPACE = 
     KeyStroke.getKeyStroke(KeyEvent.VK_BACK_SPACE,0);
+  private static KeyStroke KS_DOWN = 
+    KeyStroke.getKeyStroke(KeyEvent.VK_DOWN,0);
+  private static KeyStroke KS_UP = 
+    KeyStroke.getKeyStroke(KeyEvent.VK_UP,0);
   private Action _bsa = new AbstractAction() {
     public void actionPerformed(ActionEvent e) {
       onBackSpace();
+    }
+  };
+  private Action _uaa = new AbstractAction() {
+    public void actionPerformed(ActionEvent e) {
+      onArrow(1.0f);
+    }
+  };
+  private Action _daa = new AbstractAction() {
+    public void actionPerformed(ActionEvent e) {
+      onArrow(-1.0f);
     }
   };
   private MouseListener _ml = new MouseAdapter() {;
@@ -92,6 +142,9 @@ public class PointsEditMode extends Mode {
     }
     public void mouseReleased(MouseEvent e) {
       onMouseUp(e);
+    }
+    public void mouseWheelMoved(MouseWheelEvent e) {
+      onMouseWheel(e);
     }
   };
   private MouseMotionListener _mml = new MouseMotionAdapter() {
@@ -106,14 +159,24 @@ public class PointsEditMode extends Mode {
     if (is>=0 && ip>=0) {
       removePoint(is,ip);
       deselect();
-      updatePointsView();
+      updateAll();
+    }
+  }
+
+  private void onArrow(float dv) {
+    int is = _isSelected;
+    int ip = _ipSelected;
+    if (is>=0 && ip>=0) {
+      _vx[is][ip] += dv;
+      trace("value="+_vx[is][ip]);
+      updateImage();
+      updatePixelsView();
     }
   }
 
   private void onMouseDown(MouseEvent e) {
-    if (!hasPointsView(getTile(e)))
+    if (_tile!=getTile(e))
       return;
-    _tile = getTile(e);
 
     // Remember mouse down location.
     int x = _xdown = e.getX();
@@ -124,7 +187,7 @@ public class PointsEditMode extends Mode {
     int icode = getSegmentAndPoint(x,y,i,p);
     int is = i[0], ip = i[1];
     int xp = p[0], yp = p[1];
-    trace("onMouseDown: is="+is+" ip="+ip);
+    //trace("onMouseDown: is="+is+" ip="+ip);
 
     // If currently in the process of creating a new segment, ...
     if (_creating) {
@@ -182,12 +245,12 @@ public class PointsEditMode extends Mode {
         }
       }
     }
-    updatePointsView();
+    updateAll();
   }
 
   private void onMouseDrag(MouseEvent e) {
     changeSelectedPoint(e.getX(),e.getY());
-    updatePointsView();
+    updateAll();
   }
 
   private void onMouseUp(MouseEvent e) {
@@ -195,8 +258,13 @@ public class PointsEditMode extends Mode {
       changeSelectedPoint(e.getX(),e.getY());
       removeMotionListener();
     }
-    _tile = null;
-    updatePointsView();
+    updateAll();
+  }
+
+  private void onMouseWheel(MouseWheelEvent e) {
+    float dv = (float)(-e.getWheelRotation());
+    trace("dv="+dv);
+    onArrow(dv);
   }
 
   private void addMotionListener() {
@@ -217,26 +285,54 @@ public class PointsEditMode extends Mode {
     return (Tile)e.getSource();
   }
 
-  private boolean hasPointsView(Tile tile) {
-    int ntv = tile.countTiledViews();
-    for (int itv=ntv-1; itv>=0; --itv) {
-      TiledView tv = tile.getTiledView(itv);
-      if (tv instanceof PointsView) {
-        PointsView pv = (PointsView)tv;
-        if (_pv==pv)
-          return true;
+  private void updateAll() {
+    updateImage();
+    updatePixelsView();
+    updatePointsView();
+  }
+
+  private void updateImage() {
+    Array.fill(_vnull,_v);
+    for (int is=0; is<_ns; ++is) {
+      float[] x1 = _x1[is];
+      float[] x2 = _x2[is];
+      float[] vx = _vx[is];
+      int np = _x1[is].length;
+      if (np==1) {
+        _is2.set(x1[0],x2[0],vx[0]);
+      } else if (np>1) {
+        for (int ip=1; ip<np; ++ip) {
+          float x1a = x1[ip-1];
+          float x2a = x2[ip-1];
+          float vxa = vx[ip-1];
+          float x1b = x1[ip];
+          float x2b = x2[ip];
+          float vxb = vx[ip];
+          ImageSampler2.Line line = _is2.sampleLine(x1a,x2a,x1b,x2b);
+          int nr = line.nr();
+          float ra = line.ra();
+          float rb = line.rb();
+          float dvx = (nr>1)?(vxb-vxa)/(float)(nr-1):vxa;
+          for (int ir=0; ir<nr; ++ir) {
+            float vxi = vxa+(float)ir*dvx;
+            line.set(ir,vxi);
+          }
+        }
       }
     }
-    return false;
+  }
+
+  private void updatePixelsView() {
+    _pixels.set(_v);
   }
 
   private void updatePointsView() {
-    _pv.set(_x1,_x2);
+    _points.set(_x1,_x2);
   }
 
   private int x(float x1, float x2) {
     Transcaler ts = _tile.getTranscaler();
-    PointsView.Orientation pvo = _pv.getOrientation();
+    PointsView.Orientation pvo = _points.getOrientation();
     if (pvo==PointsView.Orientation.X1RIGHT_X2UP) {
       Projector p = _tile.getHorizontalProjector();
       return ts.x(p.u(x1));
@@ -248,7 +344,7 @@ public class PointsEditMode extends Mode {
 
   private int y(float x1, float x2) {
     Transcaler ts = _tile.getTranscaler();
-    PointsView.Orientation pvo = _pv.getOrientation();
+    PointsView.Orientation pvo = _points.getOrientation();
     if (pvo==PointsView.Orientation.X1RIGHT_X2UP) {
       Projector p = _tile.getHorizontalProjector();
       return ts.y(p.u(x2));
@@ -260,7 +356,7 @@ public class PointsEditMode extends Mode {
 
   private float x1(int x, int y) {
     Transcaler ts = _tile.getTranscaler();
-    PointsView.Orientation pvo = _pv.getOrientation();
+    PointsView.Orientation pvo = _points.getOrientation();
     if (pvo==PointsView.Orientation.X1RIGHT_X2UP) {
       Projector p = _tile.getHorizontalProjector();
       return (float)p.v(ts.x(x));
@@ -272,7 +368,7 @@ public class PointsEditMode extends Mode {
 
   private float x2(int x, int y) {
     Transcaler ts = _tile.getTranscaler();
-    PointsView.Orientation pvo = _pv.getOrientation();
+    PointsView.Orientation pvo = _points.getOrientation();
     if (pvo==PointsView.Orientation.X1RIGHT_X2UP) {
       Projector p = _tile.getHorizontalProjector();
       return (float)p.v(ts.y(y));
@@ -330,7 +426,7 @@ public class PointsEditMode extends Mode {
   }
 
   private void changePoint(int is, int ip, int x, int y) {
-    trace("changePoint: is="+is+" ip="+ip);
+    //trace("changePoint: is="+is+" ip="+ip);
     _x1[is][ip] = x1(x,y);
     _x2[is][ip] = x2(x,y);
   }
@@ -359,31 +455,40 @@ public class PointsEditMode extends Mode {
       int ns = is+1;
       float[][] x1 = new float[ns][0];
       float[][] x2 = new float[ns][0];
+      float[][] vx = new float[ns][0];
       for (int js=0; js<_ns; ++js) {
         x1[js] = _x1[js];
         x2[js] = _x2[js];
+        vx[js] = _vx[js];
       }
       _x1 = x1;
       _x2 = x2;
+      _vx = vx;
       _ns = ns;
     }
     int np = _x1[is].length;
     float[] x1p = _x1[is];
     float[] x2p = _x2[is];
+    float[] vxp = _vx[is];
     float[] x1t = new float[np+1];
     float[] x2t = new float[np+1];
+    float[] vxt = new float[np+1];
     for (int jp=0; jp<ip; ++jp) {
       x1t[jp] = x1p[jp];
       x2t[jp] = x2p[jp];
+      vxt[jp] = vxp[jp];
     }
     x1t[ip] = x1(x,y);
     x2t[ip] = x2(x,y);
+    vxt[ip] = _is2.get(x1t[ip],x2t[ip]);
     for (int jp=ip; jp<np; ++jp) {
       x1t[jp+1] = x1p[jp];
       x2t[jp+1] = x2p[jp];
+      vxt[jp+1] = vxp[jp];
     }
     _x1[is] = x1t;
     _x2[is] = x2t;
+    _vx[is] = vxt;
   }
 
   private void removePoint(int is, int ip) {
@@ -391,32 +496,41 @@ public class PointsEditMode extends Mode {
     if (np==1) {
       float[][] x1t = new float[_ns-1][];
       float[][] x2t = new float[_ns-1][];
+      float[][] vxt = new float[_ns-1][];
       for (int js=0; js<is; ++js) {
         x1t[js] = _x1[js];
         x2t[js] = _x2[js];
+        vxt[js] = _vx[js];
       }
       for (int js=is+1; js<_ns; ++js) {
         x1t[js-1] = _x1[js];
         x2t[js-1] = _x2[js];
+        vxt[js-1] = _vx[js];
       }
       --_ns;
       _x1 = x1t;
       _x2 = x2t;
+      _vx = vxt;
     } else {
       float[] x1p = _x1[is];
       float[] x2p = _x2[is];
+      float[] vxp = _vx[is];
       float[] x1t = new float[np-1];
       float[] x2t = new float[np-1];
+      float[] vxt = new float[np-1];
       for (int jp=0; jp<ip; ++jp) {
         x1t[jp] = x1p[jp];
         x2t[jp] = x2p[jp];
+        vxt[jp] = vxp[jp];
       }
       for (int jp=ip+1; jp<np; ++jp) {
         x1t[jp-1] = x1p[jp];
         x2t[jp-1] = x2p[jp];
+        vxt[jp-1] = vxp[jp];
       }
       _x1[is] = x1t;
       _x2[is] = x2t;
+      _vx[is] = vxt;
     }
   }
 
@@ -511,56 +625,6 @@ public class PointsEditMode extends Mode {
     g.dispose();
   }
 
-  /*
-  To create a new segment, 
-    Begin by shift-clicking away from any existing segment
-    Continue clicking away to add points to segment
-    Click again on last point added to end segment
-    While new segment not yet ended,
-      the last point added is selected
-    When new segment has been ended,
-      no point is selected
-  To select a point in any segment,
-    Click the point
-  To unselect all points,
-    Click away from any points
-  To modify an existing segment,
-    Click-drag a point to move it
-    Shift-click to add a new point
-    Select an existing point and press backspace key
-
-  onMouseDown
-    if creating
-      if mouse on selected point (last point created)
-        creating = false
-      else
-        append and select point
-        add motion listener
-    else 
-      locate mouse
-      if mouse on existing point
-        select existing point
-        add motion listener
-        dragging = true
-      else if mouse on existing segment
-        if shiftDown
-          insert and select new point in existing segment
-          add motion listener
-      else // if mouse is away from any segments
-        if shiftDown
-          append and select point in a new segment
-          add motion listener
-          creating = true
-        else
-          deselect all points
-  onMouseDrag (should be called only when mouse is down and dragged)
-    update coordinates of selected point
-  onMouseUp
-    if motion listener
-      update coordinates of selected point
-      remove motion listener
-  */
-
   public static void main(String[] args) {
     SwingUtilities.invokeLater(new Runnable() {
       public void run() {
@@ -571,20 +635,17 @@ public class PointsEditMode extends Mode {
   private static void go() {
     int n1 = 101;
     int n2 = 101;
-    float[][] f = Array.sin(Array.rampfloat(0.0f,0.1f,0.1f,n1,n2));
-    float[][] x1 = new float[0][0];
-    float[][] x2 = new float[0][0];
+    //float[][] f = Array.sin(Array.rampfloat(0.0f,0.1f,0.1f,n1,n2));
+    float[][] f = Array.zerofloat(n1,n2);
 
     PlotPanel.Orientation orientation = PlotPanel.Orientation.X1DOWN_X2RIGHT;
     PlotPanel panel = new PlotPanel(orientation);
 
-    PixelsView pxv = panel.addPixels(f);
-    pxv.setColorModel(ColorMap.JET);
+    PixelsView pv = panel.addPixels(f);
+    pv.setInterpolation(PixelsView.Interpolation.NEAREST);
+    pv.setColorModel(ColorMap.JET);
 
-    PointsView ptv = panel.addPoints(x1,x2);
-    ptv.setStyle("k-o");
-
-    panel.addColorBar("velocity");
+    panel.addColorBar("time");
     panel.setVLabel("depth (km)");
     panel.setHLabel("distance (km)");
 
@@ -595,8 +656,8 @@ public class PointsEditMode extends Mode {
     frame.setVisible(true);
 
     ModeManager mm = frame.getModeManager();
-    PointsEditMode pem = new PointsEditMode(mm,ptv,x1,x2);
-    pem.setActive(true);
+    ImageEditMode iem = new ImageEditMode(mm,pv,0.0f,f);
+    iem.setActive(true);
   } 
 
   private void trace(String s) {
