@@ -71,6 +71,7 @@ public class ImageEditMode extends Mode {
       if (active) {
         tile.addTiledView(_points);
         tile.addMouseListener(_ml);
+        tile.addMouseWheelListener(_mwl);
         im.put(KS_BACK_SPACE,"backspace");
         im.put(KS_UP,"up");
         im.put(KS_DOWN,"down");
@@ -80,6 +81,7 @@ public class ImageEditMode extends Mode {
       } else {
         tile.removeTiledView(_points);
         tile.removeMouseListener(_ml);
+        tile.removeMouseWheelListener(_mwl);
         im.remove(KS_BACK_SPACE);
         im.remove(KS_UP);
         im.remove(KS_DOWN);
@@ -112,7 +114,7 @@ public class ImageEditMode extends Mode {
   private int _xedit; // x coordinate of current edit
   private int _yedit; // y coordinate of current edit
   private boolean _hasMotionListener; // true if handling mouse drag
-  private ImageSampler2 _is2; // used to get/set image values
+  private ImageSampler2 _is2; // used to get/set image samples
 
   // Event handlers.
   private static KeyStroke KS_BACK_SPACE = 
@@ -143,6 +145,8 @@ public class ImageEditMode extends Mode {
     public void mouseReleased(MouseEvent e) {
       onMouseUp(e);
     }
+  };
+  private MouseWheelListener _mwl = new MouseWheelListener() {;
     public void mouseWheelMoved(MouseWheelEvent e) {
       onMouseWheel(e);
     }
