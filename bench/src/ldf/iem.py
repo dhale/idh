@@ -69,7 +69,7 @@ v1,v2,ds = getV(x)
 def main(args):
   global iem,v,pvv
   p = panel()
-  p.addColorBar("time")
+  p.addColorBar()
   p.setVLabel("z (samples)")
   p.setHLabel("x (samples)")
   pv = p.addPixels(x)
@@ -88,7 +88,13 @@ def main(args):
   f.setVisible(True)
   return
 
-def interpolate():
+def interp000():
+  interpolate(0)
+def interp010():
+  interpolate(10)
+def interp100():
+  interpolate(100)
+def interpolate(aniso):
   print "interpolate"
   lif = LocalInterpolationFilter(aniso,small,niter)
   f = Array.zerobyte(n1,n2)
@@ -152,7 +158,13 @@ def makeToolBarAndMenus(frame):
     iemButton = ModeToggleButton(iem)
     toolBar.add(iemButton)
 
-    intAction = CallbackAction("Int","Interpolate",interpolate)
+    intAction = CallbackAction("Int000","Interpolate",interp000)
+    intButton = JButton(intAction)
+    toolBar.add(intButton)
+    intAction = CallbackAction("Int010","Interpolate",interp010)
+    intButton = JButton(intAction)
+    toolBar.add(intButton)
+    intAction = CallbackAction("Int100","Interpolate",interp100)
     intButton = JButton(intAction)
     toolBar.add(intButton)
 

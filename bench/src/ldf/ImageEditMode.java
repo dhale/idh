@@ -33,9 +33,9 @@ public class ImageEditMode extends Mode {
     ModeManager modeManager, PixelsView pixels, float vnull, float[][] v)
   {
     super(modeManager);
-    setName("ImageEdit");
+    setName("Edit");
     //setIcon(loadIcon(ImageEditMode.class,"resources/ImageEdit16.gif"));
-    setIcon(loadIcon(MouseTrackMode.class,"resources/Track24.gif"));
+    //setIcon(loadIcon(MouseTrackMode.class,"resources/Track24.gif"));
     setMnemonicKey(KeyEvent.VK_E);
     setAcceleratorKey(KeyStroke.getKeyStroke(KeyEvent.VK_E,0));
     setShortDescription("Edit points");
