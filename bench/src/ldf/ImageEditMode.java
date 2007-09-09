@@ -35,6 +35,7 @@ public class ImageEditMode extends Mode {
     super(modeManager);
     setName("ImageEdit");
     //setIcon(loadIcon(ImageEditMode.class,"resources/ImageEdit16.gif"));
+    setIcon(loadIcon(MouseTrackMode.class,"resources/Track24.gif"));
     setMnemonicKey(KeyEvent.VK_E);
     setAcceleratorKey(KeyStroke.getKeyStroke(KeyEvent.VK_E,0));
     setShortDescription("Edit points");
@@ -66,12 +67,12 @@ public class ImageEditMode extends Mode {
   protected void setActive(Component component, boolean active) {
     if (component instanceof Tile) {
       Tile tile = (Tile)component;
-      InputMap im = tile.getInputMap();
-      ActionMap am = tile.getActionMap();
       if (active) {
         tile.addTiledView(_points);
         tile.addMouseListener(_ml);
         tile.addMouseWheelListener(_mwl);
+        InputMap im = tile.getInputMap();
+        ActionMap am = tile.getActionMap();
         im.put(KS_BACK_SPACE,"backspace");
         im.put(KS_UP,"up");
         im.put(KS_DOWN,"down");
@@ -82,6 +83,8 @@ public class ImageEditMode extends Mode {
         tile.removeTiledView(_points);
         tile.removeMouseListener(_ml);
         tile.removeMouseWheelListener(_mwl);
+        InputMap im = tile.getInputMap();
+        ActionMap am = tile.getActionMap();
         im.remove(KS_BACK_SPACE);
         im.remove(KS_UP);
         im.remove(KS_DOWN);
@@ -158,12 +161,16 @@ public class ImageEditMode extends Mode {
   };
 
   private void onBackSpace() {
+    removeSelectedPoint();
+    updateAll();
+  }
+
+  private void removeSelectedPoint() {
     int is = _isSelected;
     int ip = _ipSelected;
     if (is>=0 && ip>=0) {
       removePoint(is,ip);
       deselect();
-      updateAll();
     }
   }
 
@@ -214,10 +221,20 @@ public class ImageEditMode extends Mode {
     // Else if not currently in the process of creating a new segment, ...
     else {
 
-      // If mouse on existing point, select the point
+      // If mouse on existing point, ...
       if (icode==1) {
-        selectPoint(is,ip);
-        addMotionListener();
+
+        // If alt key down, delete the point.
+        if (e.isAltDown()) {
+          selectPoint(is,ip);
+          removeSelectedPoint();
+        } 
+        
+        // Else, select the point
+        else {
+          selectPoint(is,ip);
+          addMotionListener();
+        }
       }
 
       // Else if mouse on existing segment, ...
@@ -267,7 +284,7 @@ public class ImageEditMode extends Mode {
 
   private void onMouseWheel(MouseWheelEvent e) {
     float dv = (float)(-e.getWheelRotation());
-    trace("dv="+dv);
+    //trace("dv="+dv);
     onArrow(dv);
   }
 
