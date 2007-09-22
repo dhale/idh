@@ -1,0 +1,184 @@
+/****************************************************************************
+Copyright (c) 2007, Colorado School of Mines and others. All rights reserved.
+This program and accompanying materials are made available under the terms of
+the Common Public License - v1.0, which accompanies this distribution, and is 
+available at http://www.eclipse.org/legal/cpl-v10.html
+****************************************************************************/
+package ldf;
+
+import edu.mines.jtk.dsp.*;
+import edu.mines.jtk.util.*;
+import static edu.mines.jtk.util.MathPlus.*;
+
+/**
+ * Local anisotropic smoothing filter.
+ * @author Dave Hale, Colorado School of Mines
+ * @version 2007.09.21
+ */
+public class LocalSmoothingFilter {
+
+  /**
+   * Constructs a local smoothing filter.
+   * @param sigma the filter half-width.
+   */
+  public LocalSmoothingFilter(double sigma) {
+    _sigma = (float)sigma;
+  }
+
+  /**
+   * Applies a filter that enhances (passes) features that are locally 
+   * linear with inline vectors v.
+   * @param ds diffusivity scale factors; null, for no scaling.
+   * @param v1 array of 1st components of inline unit vectors.
+   * @param x array with input image; must be distinct from y.
+   * @param y array with output image; must be distinct from x.
+   */
+  public void applyPass(
+    float[][] ds, float[][] v1, float[][] x, float[][] y) 
+  {
+    int n1 = x[0].length;
+    int n2 = x.length;
+    float[] s1 = Array.rampfloat(0.0f,1.0f,n1);
+    float[] t1 = new float[n1];
+    float[] y1 = new float[n1];
+    SincInterpolator si = new SincInterpolator();
+    si.setExtrapolation(SincInterpolator.Extrapolation.CONSTANT);
+    si.setUniformSampling(n1,1.0f,0.0f);
+    float a = _sigma/(_sigma+sqrt(2.0f));
+    float b = 1.0f-a;
+    for (int i2=1; i2<n2; ++i2) {
+      maket1(v1[i2],s1,t1);
+      si.setUniformSamples(y[i2-1]);
+      si.interpolate(n1,t1,y1);
+      for (int i1=0; i1<n1; ++i1) {
+        y[i2][i1] = a*y1[i1]+b*x[i2][i1];
+      }
+    }
+    for (int i2=n2-1; i2>0; --i2) {
+      maket1(v1[i2],s1,t1);
+      si.setUniformSamples(y[i2-1]);
+      Array.mul(a,y[i2],y1);
+      si.accumulate(n1,t1,y1);
+    }
+    Array.mul(b,y,y);
+  }
+  private static void maket1(float[] v1, float[] s1, float[] t1) {
+    int n1 = v1.length;
+    float t1min = 0.0f;
+    float t1max = (float)(n1-1);
+    for (int i1=0; i1<n1; ++i1) {
+      float v1i = v1[i1];
+      float v2i = sqrt(1.0f-v1i*v1i);
+      t1[i1] = max(t1min,min(t1max,s1[i1]-v1i/v2i));
+    }
+  }
+
+  /**
+   * Applies a filter that attenuates (kills) features that are locally 
+   * linear with inline vectors v.
+   * @param ds diffusivity scale factors; null, for no scaling.
+   * @param v1 array of 1st components of inline unit vectors.
+   * @param x array with input image; must be distinct from y.
+   * @param y array with output image; must be distinct from x.
+   */
+  public void applyLinearKill(
+    float[][] ds, float[][] v1, float[][] x, float[][] y) 
+  {
+    applyPass(ds,v1,x,y);
+    Array.sub(x,y,y);
+  }
+
+  /**
+   * Encodes specified fractions as 8-bit byte percentages.
+   * Fractions are clipped to lie in the range [0,1].
+   * @param s array of fractions.
+   * @return array of 8-bit (byte) percentages.
+   */
+  public static byte[] encodeFractions(float[] s) {
+    int n = s.length;
+    byte[] b = new byte[n];
+    for (int i=0; i<n; ++i) {
+      float si = s[i];
+      if (si<0.0f) {
+        b[i] = 0;
+      } else if (si>1.0f) {
+        b[i] = 100;
+      } else {
+        b[i] = (byte)(si*100+0.5f);
+      }
+    }
+    return b;
+  }
+
+  /**
+   * Encodes specified fractions as 8-bit byte percentages.
+   * Fractions are clipped to lie in the range [0,1].
+   * @param s array of fractions.
+   * @return array of 8-bit (byte) percentages.
+   */
+  public static byte[][] encodeFractions(float[][] s) {
+    int n = s.length;
+    byte[][] b = new byte[n][];
+    for (int i=0; i<n; ++i) {
+      b[i] = encodeFractions(s[i]);
+    }
+    return b;
+  }
+
+  /**
+   * Encodes specified fractions as 8-bit byte percentages.
+   * Fractions are clipped to lie in the range [0,1].
+   * @param s array of fractions.
+   * @return array of 8-bit (byte) percentages.
+   */
+  public static byte[][][] encodeFractions(float[][][] s) {
+    int n = s.length;
+    byte[][][] b = new byte[n][][];
+    for (int i=0; i<n; ++i) {
+      b[i] = encodeFractions(s[i]);
+    }
+    return b;
+  }
+
+  /**
+   * Encodes specified unit vectors as 16-bit (short) indices.
+   * @param u1 array of u1-components of unit vectors.
+   * @param u2 array of u2-components of unit vectors.
+   * @param u3 array of u3-components of unit vectors.
+   * @return array of 16-bit (short) indices.
+   */
+  public static short[] encodeUnitVectors(float[] u1, float[] u2, float[] u3) {
+    return UnitSphereSampling.encode16(u3,u2,u1);
+  }
+
+  /**
+   * Encodes specified unit vectors as 16-bit (short) indices.
+   * @param u1 array of u1-components of unit vectors.
+   * @param u2 array of u2-components of unit vectors.
+   * @param u3 array of u3-components of unit vectors.
+   * @return array of 16-bit (short) indices.
+   */
+  public static short[][] encodeUnitVectors(
+    float[][] u1, float[][] u2, float[][] u3) 
+  {
+    return UnitSphereSampling.encode16(u3,u2,u1);
+  }
+
+  /**
+   * Encodes specified unit vectors as 16-bit (short) indices.
+   * @param u1 array of u1-components of unit vectors.
+   * @param u2 array of u2-components of unit vectors.
+   * @param u3 array of u3-components of unit vectors.
+   * @return array of 16-bit (short) indices.
+   */
+  public static short[][][] encodeUnitVectors(
+    float[][][] u1, float[][][] u2, float[][][] u3) 
+  {
+    return UnitSphereSampling.encode16(u3,u2,u1);
+  }
+
+  ///////////////////////////////////////////////////////////////////////////
+  // private
+
+  private float _sigma; // filter half-width
+} 

@@ -156,6 +156,7 @@ def makeToolBarAndMenus(frame):
     tzmButton = ModeToggleButton(tzm)
     toolBar.add(tzmButton)
     iemButton = ModeToggleButton(iem)
+    iemButton.setText("Edit");
     toolBar.add(iemButton)
 
     intAction = CallbackAction("Int000","Interpolate",interp000)
