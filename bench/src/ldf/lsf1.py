@@ -61,7 +61,7 @@ def goSmooth():
   #x = makeRandom(n1)
   x = makeImpulse(n1)
   y = Array.zerofloat(n1)
-  ds = None
+  #ds = None
   ds = makeBlock(n1)
   #ds = makeStepUp(n1/2+1,n1)
   #ds = makeStepDown(n1/2+1,n1)

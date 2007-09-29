@@ -131,7 +131,7 @@ def doImage():
 
 def goSmooth():
   x1 = readImage()
-  x2 = makeTargetImage()
+  #x1 = makePlaneImage(80)
   #for x,s in [(x1,"_1"),(x2,"_2"),(x3,"_3")]:
   #for x,s in [(x1,"_1"),(x2,"_2")]:
   for x,s in [(x1,"_1")]:
@@ -144,21 +144,25 @@ def doSmooth(x,png):
   y = Array.zerofloat(n1,n2)
   z = Array.zerofloat(n1,n2)
   s = Array.zerofloat(n1,n2)
+  t = Array.zerofloat(n1,n2)
   r = makeRandom(n1,n2)
   r = smooth(r)
   v1,v2 = getV(x)
   #v1,v2 = makeVectorsRadial(n1,n2)
   #v1,v2 = makeVectors45(n1,n2)
   lsf = LocalSmoothingFilter(sigma)
-  #ldf = LocalDiffusionFilterCg(sigma,small,niter)
+  ldf = LocalDiffusionFilterCg(sigma,small,niter)
   ds = None
   ds = makeBlock(n1,n2)
   lsf.applyPass(ds,v1,x,y)
-  lsf.applyKill(ds,v1,x,z)
+  ldf.applyLinearPass(ds,v1,x,z)
   lsf.applyPass(ds,v1,r,s)
+  ldf.applyLinearPass(ds,v1,r,t)
+  #print "y min/max =",Array.min(y),Array.max(y)
   plot(y,10.0,"y"+png)
-  plot(z, 2.0,"z"+png)
+  plot(z,10.0,"z"+png)
   plot(s, 0.0,"s"+png)
+  plot(t, 0.0,"s"+png)
 
 def makeBlock(n1,n2):
   ds = Array.fillfloat(0.0,n1,n2);
