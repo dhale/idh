@@ -29,7 +29,7 @@ pngDir = None
 
 n1 = 315
 n2 = 315
-sigma = 200
+sigma = 16
 small = 0.01
 niter = 80
 nbefore = 2
@@ -142,20 +142,22 @@ def goSmooth():
 def doSmooth(x,png):
   n1,n2 = len(x[0]),len(x)
   y = Array.zerofloat(n1,n2)
+  z = Array.zerofloat(n1,n2)
   s = Array.zerofloat(n1,n2)
   r = makeRandom(n1,n2)
   r = smooth(r)
   v1,v2 = getV(x)
   #v1,v2 = makeVectorsRadial(n1,n2)
   #v1,v2 = makeVectors45(n1,n2)
-  ldf = LocalSmoothingFilter(sigma)
+  lsf = LocalSmoothingFilter(sigma)
   #ldf = LocalDiffusionFilterCg(sigma,small,niter)
-  #ldf = LocalDiffusionFilterMg(sigma,small,niter,nbefore,ncycle,nafter)
   ds = None
-  #ds = makeBlock(n1,n2)
-  ldf.applyPass(ds,v1,x,y)
-  ldf.applyPass(ds,v1,r,s)
+  ds = makeBlock(n1,n2)
+  lsf.applyPass(ds,v1,x,y)
+  lsf.applyKill(ds,v1,x,z)
+  lsf.applyPass(ds,v1,r,s)
   plot(y,10.0,"y"+png)
+  plot(z, 2.0,"z"+png)
   plot(s, 0.0,"s"+png)
 
 def makeBlock(n1,n2):
