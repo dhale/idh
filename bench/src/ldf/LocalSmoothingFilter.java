@@ -101,18 +101,19 @@ public class LocalSmoothingFilter {
 
     // Sub-diagonal of SPD tridiagonal matrix A in array e.
     float[][] e = new float[n2][n1];
-    if (ds==null) {
-      float ss = 0.50f*_sigma*_sigma;
-      for (int i2=1; i2<n2; ++i2)
-        for (int i1=0; i1<n1; ++i1)
-          e[i2][i1] = -ss;
-    } else {
-      float ss = 0.25f*_sigma*_sigma;
-      for (int i2=1; i2<n2; ++i2)
-        for (int i1=0; i1<n1; ++i1)
-          //e[i2][i1] = -ss*(ds[i2-1][i1]+ds[i2][i1]);
-          e[i2][i1] = -2.0f*ss*ds[i2][i1];
+    float ss = 0.50f*_sigma*_sigma;
+    for (int i2=1; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        float v1i = v1[i2][i1];
+        float v2s = 1.0f-v1i*v1i;
+        e[i2][i1] = -ss*v2s;
+        if (ds!=null) 
+          e[i2][i1] *= ds[i2][i1];
+      }
     }
+    for (int i2=n2-1; i2>0; --i2)
+      for (int i1=0; i1<n1; ++i1)
+        e[i2][i1] = 0.5f*(e[i2-1][i1]+e[i2][i1]);
 
     // Diagonal of SPD tridiagonal matrix A in array d.
     float[][] d = new float[n2][n1];

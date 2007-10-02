@@ -41,16 +41,35 @@ lof = LocalOrientFilter(8)
 # functions
 
 def main(args):
-  #doImage();
-  goSmooth()
+  #doImage()
+  #goSmooth()
+  goTestSymmetric()
   #goAmpDiff()
   return
 
-def goIdeal():
-  for dip in [20,40,60,80]:
-    suffix = str(dip)
-    ai = makeIdeal(dip)
-    plotf(ai,"ai"+suffix)
+def goTestSymmetric():
+  # if A is symmetric, then x'Ay = (Ay)'x = y'A'x = y'Ax
+  n = 11
+  n1,n2 = n,n
+  ds = Array.randfloat(n1,n2)
+  v1 = Array.sub(Array.randfloat(n1,n2),0.5)
+  x = Array.sub(Array.randfloat(n1,n2),0.5)
+  y = Array.sub(Array.randfloat(n1,n2),0.5)
+  ax = Array.zerofloat(n1,n2)
+  ay = Array.zerofloat(n1,n2)
+  lsf = LocalSmoothingFilter(sigma)
+  lsf.applyPass(ds,v1,x,ax)
+  lsf.applyPass(ds,v1,y,ay)
+  xay = 0.0
+  yax = 0.0
+  for i2 in range(n2):
+    for i1 in range(n1):
+      xay += x[i2][i1]*ay[i2][i1]
+      yax += y[i2][i1]*ax[i2][i1]
+  print "xay =",xay," yax =",yax
+
+def makeRandom(n1,n2):
+  return Array.sub(Array.randfloat(n1,n2),0.5)
 
 def makeIdeal(angle):
   n1 = 105
@@ -130,8 +149,9 @@ def doImage():
   return x
 
 def goSmooth():
-  x1 = readImage()
-  #x1 = makePlaneImage(80)
+  #x1 = readImage()
+  #x1 = Array.transpose(x1)
+  x1 = makePlaneImage(70)
   #for x,s in [(x1,"_1"),(x2,"_2"),(x3,"_3")]:
   #for x,s in [(x1,"_1"),(x2,"_2")]:
   for x,s in [(x1,"_1")]:
@@ -147,9 +167,9 @@ def doSmooth(x,png):
   t = Array.zerofloat(n1,n2)
   r = makeRandom(n1,n2)
   r = smooth(r)
-  v1,v2 = getV(x)
+  #v1,v2 = getV(x)
   #v1,v2 = makeVectorsRadial(n1,n2)
-  #v1,v2 = makeVectors45(n1,n2)
+  v1,v2 = makeVectors45(n1,n2)
   lsf = LocalSmoothingFilter(sigma)
   ldf = LocalDiffusionFilterCg(sigma,small,niter)
   ds = None
@@ -166,11 +186,10 @@ def doSmooth(x,png):
 
 def makeBlock(n1,n2):
   ds = Array.fillfloat(0.0,n1,n2);
-  for i2 in range(n2/5,4*n2/5):
-    for i1 in range(n1/5,4*n1/5):
-  #for i2 in range(n2/2,n2):
-  #  for i1 in range(n1):
-      ds[i2][i1] = 1.0
+  for i2 in range(n2):
+    for i1 in range(n1):
+      #if i1>i2: ds[i2][i1] = 1.0
+      if n2/5<=i2<=4*n2/5 and n1/5<=i1<=4*n1/5: ds[i2][i1] = 1.0
   return ds
 
 def makeRandom(n1,n2):
