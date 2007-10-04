@@ -58,6 +58,27 @@ public class LocalInterpolationFilter {
     solveLinear(ds,es,v1,f,b,x);
   }
 
+  public void applyLinear(
+    float sigma, float aniso,
+    float[][] ds, float[][] es, float[][] v1, 
+    byte[][] f, float[][] x) 
+  {
+    LocalSmoothingFilter lsf = new LocalSmoothingFilter(sigma,aniso);
+    int n1 = x[0].length;
+    int n2 = x.length;
+    float[][] t = new float[n2][n1];
+    float[][] b = new float[n2][n1];
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        t[i2][i1] = (f[i2][i1]!=0)?x[i2][i1]:0.0f;
+      }
+    }
+    lsf.applyPass(ds,es,v1,t,b);
+    Array.zero(t);
+    solve(lsf,ds,es,v1,f,b,t);
+    lsf.applyPass(ds,es,v1,t,x);
+  }
+
   ///////////////////////////////////////////////////////////////////////////
   // private
 
@@ -66,6 +87,15 @@ public class LocalInterpolationFilter {
   private float _small; // stop iterations when residuals are small
   private int _niter; // number of iterations
   private DirectionalLaplacianFilter _dlf;
+
+  private void solve(
+    LocalSmoothingFilter lsf, 
+    float[][] ds, float[][] es, float[][] v1, 
+    byte[][] f, float[][] x, float[][] y) 
+  {
+    Operator2 a = new LinearSmoother2(lsf,ds,es,v1,f);
+    solve(a,x,y);
+  }
 
   private void solveLinear(
     float[][] ds, float[][] es, float[][] v1, 
@@ -94,6 +124,37 @@ public class LocalInterpolationFilter {
   }
   private static interface Operator3 {
     public void apply(float[][][] x, float[][][] y);
+  }
+
+  private static class LinearSmoother2 implements Operator2 {
+    LinearSmoother2(
+      LocalSmoothingFilter lsf, 
+      float[][] ds, float[][] es, float[][] v1, byte[][] f) 
+    {
+      _lsf = lsf;
+      _ds = ds;
+      _es = es;
+      _v1 = v1;
+      _f = f;
+      int n1 = f[0].length;
+      int n2 = f.length;
+      _t = new float[n2][n1];
+    }
+    public void apply(float[][] x, float[][] y) {
+      int n1 = x[0].length;
+      int n2 = x.length;
+      _lsf.applyPass(_ds,_es,_v1,x,_t);
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          if (_f[i2][i1]==0)
+            _t[i2][i1] = 0.0f;
+        }
+      }
+      _lsf.applyPass(_ds,_es,_v1,_t,y);
+    }
+    private float[][] _ds,_es,_v1,_t;
+    private byte[][] _f;
+    private LocalSmoothingFilter _lsf;
   }
 
   private static class LinearOperator2 implements Operator2 {

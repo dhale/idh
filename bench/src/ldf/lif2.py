@@ -21,8 +21,8 @@ False = 0
 # parameters
 
 dataDir = "/data"
-pngDir = "./png"
-#pngDir = None
+#pngDir = "./png"
+pngDir = None
 
 gray = ColorMap.GRAY
 jet = ColorMap.JET
@@ -51,14 +51,15 @@ def goInterp():
   y = Array.zerofloat(n1,n2)
   z = Array.zerofloat(n1,n2)
   plot(x,-10,10,gray,"x")
-  for itest in [0,1,2,3]:
+  #for itest in [0,1,2,3]:
+  for itest in [0]:
     if itest==0 or itest==2:
       for i2 in [n2/2]:
         for i1 in range(n1):
           f[i2][i1] = 1
           y[i2][i1] = i1
       cmin = 0
-      cmax = 315
+      cmax = n1-1
       aniso = 10
     else:
       for i2 in [n2/2]:
@@ -76,7 +77,7 @@ def goInterp():
       ds = makeBlock(n1,n2)
       es = makeBlock(n1,n2)
     z = Array.copy(y)
-    lif.applyLinear(ds,es,v1,f,z)
+    lif.applyLinear(1,aniso,ds,es,v1,f,z)
     plot(y,cmin,cmax,jet,"y"+str(itest))
     plot(z,cmin,cmax,jet,"z"+str(itest))
     plot2(x,z,cmin,cmax,"xz"+str(itest))
