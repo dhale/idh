@@ -43,23 +43,24 @@ lof = LocalOrientFilter(8)
 def main(args):
   #doImage()
   #goSmooth()
-  goTestSymmetric()
+  goTestTranspose()
   #goAmpDiff()
   return
 
-def goTestSymmetric():
-  # if A is symmetric, then x'Ay = (Ay)'x = y'A'x = y'Ax
+def goTestTranspose():
+  # Check x'(Ay) = (Ay)'x = y'A'x = y'(A'x)
   n = 11
   n1,n2 = n,n
   ds = Array.randfloat(n1,n2)
+  es = Array.randfloat(n1,n2)
   v1 = Array.sub(Array.randfloat(n1,n2),0.5)
   x = Array.sub(Array.randfloat(n1,n2),0.5)
   y = Array.sub(Array.randfloat(n1,n2),0.5)
   ax = Array.zerofloat(n1,n2)
   ay = Array.zerofloat(n1,n2)
   lsf = LocalSmoothingFilter(sigma)
-  lsf.applyPass(ds,v1,x,ax)
-  lsf.applyPass(ds,v1,y,ay)
+  lsf.applyPassTranspose(ds,es,v1,x,ax)
+  lsf.applyPass(ds,es,v1,y,ay)
   xay = 0.0
   yax = 0.0
   for i2 in range(n2):

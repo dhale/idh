@@ -36,8 +36,8 @@ niter = 80
 # functions
 
 def main(args):
-  goSmooth()
-  #goTestSymmetric()
+  #goSmooth()
+  goTestSymmetric()
   return
 
 def goTestSymmetric():

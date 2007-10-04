@@ -63,6 +63,17 @@ public class LocalSmoothingFilter {
     apply2(es,y,t);
     apply12(ds,v1,t,y);
   }
+  public void applyPassTranspose(
+    float[][] ds, float[][] es, float[][] v1, 
+    float[][] x, float[][] y) 
+  {
+    int n1 = x[0].length;
+    int n2 = x.length;
+    float[][] t = new float[n2][n1];
+    apply12(ds,v1,x,y);
+    apply2(es,y,t);
+    apply1(es,t,y);
+  }
 
   /**
    * Applies a filter that attenuates (kills) features that are locally 
@@ -236,8 +247,10 @@ public class LocalSmoothingFilter {
 
   private void apply1( float[][] es, float[][] x, float[][] y) {
     int n2 = x.length;
-    for (int i2=0; i2<n2; ++i2)
-      apply1((es!=null)?es[i2]:null,x[i2],y[i2]);
+    for (int i2=0; i2<n2; ++i2) {
+      float[] esi2 = (es!=null)?es[i2]:null;
+      apply1(esi2,x[i2],y[i2]);
+    }
   }
 
   private void apply2( float[][] es, float[][] x, float[][] y) {
@@ -304,6 +317,7 @@ public class LocalSmoothingFilter {
 
     // Sinc interpolator.
     SincInterpolator si = new SincInterpolator();
+    //si.setExtrapolation(SincInterpolator.Extrapolation.CONSTANT);
     si.setUniformSampling(n1,1.0f,0.0f);
     float[] t1 = new float[n1];
     float[] y1 = new float[n1];

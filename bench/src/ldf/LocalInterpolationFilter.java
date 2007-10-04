@@ -73,8 +73,7 @@ public class LocalInterpolationFilter {
         t[i2][i1] = (f[i2][i1]!=0)?x[i2][i1]:0.0f;
       }
     }
-    lsf.applyPass(ds,es,v1,t,b);
-    Array.zero(t);
+    lsf.applyPassTranspose(ds,es,v1,t,b);
     solve(lsf,ds,es,v1,f,b,t);
     lsf.applyPass(ds,es,v1,t,x);
   }
@@ -136,23 +135,21 @@ public class LocalInterpolationFilter {
       _es = es;
       _v1 = v1;
       _f = f;
-      int n1 = f[0].length;
-      int n2 = f.length;
-      _t = new float[n2][n1];
     }
     public void apply(float[][] x, float[][] y) {
       int n1 = x[0].length;
       int n2 = x.length;
-      _lsf.applyPass(_ds,_es,_v1,x,_t);
+      float[][] t = new float[n2][n1];
+      _lsf.applyPass(_ds,_es,_v1,x,t);
       for (int i2=0; i2<n2; ++i2) {
         for (int i1=0; i1<n1; ++i1) {
           if (_f[i2][i1]==0)
-            _t[i2][i1] = 0.0f;
+            t[i2][i1] = 0.0f;
         }
       }
-      _lsf.applyPass(_ds,_es,_v1,_t,y);
+      _lsf.applyPassTranspose(_ds,_es,_v1,t,y);
     }
-    private float[][] _ds,_es,_v1,_t;
+    private float[][] _ds,_es,_v1;
     private byte[][] _f;
     private LocalSmoothingFilter _lsf;
   }

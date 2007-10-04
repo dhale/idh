@@ -57,10 +57,11 @@ def goInterp():
       for i2 in [n2/2]:
         for i1 in range(n1):
           f[i2][i1] = 1
-          y[i2][i1] = i1
-      cmin = 0
-      cmax = n1-1
-      aniso = 10
+          y[i2][i1] = i1-n1/2
+      cmin = -n1/2
+      cmax = n1/2
+      sigma = 1000
+      aniso = 1
     else:
       for i2 in [n2/2]:
         for i1 in range(n1):
@@ -68,6 +69,7 @@ def goInterp():
           y[i2][i1] = x[i2][i1]
       cmin = -10
       cmax = 10
+      sigma = 1
       aniso = 100
     lif = LocalInterpolationFilter(aniso,small,niter)
     if itest<2:
@@ -77,9 +79,17 @@ def goInterp():
       ds = makeBlock(n1,n2)
       es = makeBlock(n1,n2)
     z = Array.copy(y)
-    lif.applyLinear(1,aniso,ds,es,v1,f,z)
+    """
+    lsf = LocalSmoothingFilter(sigma,aniso)
+    lsf.applyPass(ds,es,v1,y,z)
+    plot(y,0.0,0.0,jet)
+    plot(z,0.0,0.0,jet)
+    return
+    """
+    lif.applyLinear(sigma,aniso,ds,es,v1,f,z)
     plot(y,cmin,cmax,jet,"y"+str(itest))
     plot(z,cmin,cmax,jet,"z"+str(itest))
+    plot(Array.sub(y,z),0,0,jet)
     plot2(x,z,cmin,cmax,"xz"+str(itest))
 
 def readImage():
