@@ -27,7 +27,7 @@ dataDir = "/data"
 #pngDir = "./png"
 pngDir = None
 
-n1 = 315
+n1 = 201
 sigma = 16
 small = 0.01
 niter = 80
@@ -36,9 +36,29 @@ niter = 80
 # functions
 
 def main(args):
+  #goTestSymmetric()
+  #goTestTranspose()
   #goSmooth()
-  goTestSymmetric()
+  goSmooth1()
   return
+
+def goTestTranspose():
+  # A is symmetric, then x'(Ay) = (Ay)'x = y'(A'x)
+  n = 11
+  x = makeRandom(n)
+  y = makeRandom(n)
+  ds = Array.randfloat(n)
+  ax = Array.zerofloat(n)
+  ay = Array.zerofloat(n)
+  lsf = LocalSmoothingFilter1(sigma,n,ds)
+  lsf.apply(y,ay)
+  lsf.applyTranspose(x,ax)
+  xay = 0.0
+  yax = 0.0
+  for i in range(n):
+    xay += x[i]*ay[i]
+    yax += y[i]*ax[i]
+  print "xay =",xay," yax =",yax
 
 def goTestSymmetric():
   # if A is symmetric, then x'Ay = (Ay)'x = y'A'x = y'Ax
@@ -70,9 +90,25 @@ def goSmooth():
   SimplePlot.asSequence(x);
   SimplePlot.asSequence(y);
 
+def goSmooth1():
+  #x = makeRandom(n1)
+  #x = makeImpulse(n1)
+  x = Array.zerofloat(n1)
+  x[5] = x[n1-6] = x[n1/2] = 1.0
+  y = Array.zerofloat(n1)
+  #ds = None
+  ds = makeBlock(n1)
+  #ds = makeStepUp(n1/2+1,n1)
+  #ds = makeStepDown(n1/2+1,n1)
+  lsf = LocalSmoothingFilter1(sigma,n1,ds)
+  lsf.applyTranspose(x,y)
+  lsf.apply(y,y)
+  SimplePlot.asSequence(x);
+  SimplePlot.asSequence(y);
+
 def makeBlock(n1):
-  ds = Array.fillfloat(0.2,n1)
-  for i1 in range(3*n1/7,4*n1/7):
+  ds = Array.fillfloat(0.3,n1)
+  for i1 in range(1*n1/3,2*n1/3):
     ds[i1] = 1.0
   return ds
 
