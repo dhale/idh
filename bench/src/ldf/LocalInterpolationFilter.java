@@ -8,6 +8,7 @@ package ldf;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
+import edu.mines.jtk.dsp.*;
 import edu.mines.jtk.util.*;
 import static edu.mines.jtk.util.MathPlus.*;
 
@@ -31,6 +32,89 @@ public class LocalInterpolationFilter {
     _dlf = new DirectionalLaplacianFilter(sigmad,sigmae);
     _small = (float)small;
     _niter = niter;
+  }
+
+  public void apply(
+    float[][] ds, float[][] v1, byte[][] f, float[][] x) 
+  {
+    int n1 = x[0].length;
+    int n2 = x.length;
+
+    // Sub- and super-diagonal of tridiagonal matrix A in arrays a and c.
+    float[][] a = new float[n2][n1];
+    float[][] c = new float[n2][n1];
+    for (int i2=0; i2<n2; ++i2 ) {
+      int i2m = max(i2-1,0);
+      int i2p = min(i2+1,n2-1);
+      for (int i1=0; i1<n1; ++i1) {
+        float v1i = v1[i2 ][i1], v2i = 1.0f-v1i*v1i;
+        float v1m = v1[i2m][i1], v2m = 1.0f-v1m*v1m;
+        float v1p = v1[i2p][i1], v2p = 1.0f-v1p*v1p;
+        a[i2][i1] = -0.5f*(v2m+v2i);
+        c[i2][i1] = -0.5f*(v2p+v2i);
+        if (ds!=null) {
+          float dsa = 0.5f*(ds[i2m][i1]+ds[i2][i1]);
+          float dsc = 0.5f*(ds[i2p][i1]+ds[i2][i1]);
+          a[i2][i1] *= dsa*dsa;
+          c[i2][i1] *= dsc*dsc;
+        }
+      }
+    }
+
+    // Diagonal of tridiagonal matrix A in array b.
+    float[][] b = new float[n2][n1];
+    for (int i2=0; i2<n2; ++i2) {
+      if (i2<n2-1) {
+        for (int i1=0; i1<n1; ++i1)
+          b[i2][i1] -= a[i2][i1];
+      }
+      if (i2>0) {
+        for (int i1=0; i1<n1; ++i1)
+          b[i2][i1] -= c[i2][i1];
+      }
+    }
+
+    // Sinc interpolator.
+    SincInterpolator si = SincInterpolator.fromErrorAndLength(0.01f,8);
+    si.setExtrapolation(SincInterpolator.Extrapolation.ZERO);
+    si.setUniformSampling(n1,1.0f,0.0f);
+    float[] u1 = Array.rampfloat(0.0f,1.0f,n1);
+    float[] t1 = new float[n1];
+    float[] x1 = new float[n1];
+
+    // Solve A x = b, where b is x with zeros where samples are missing.
+    float[] ot = new float[n1];
+    for (int i1=0; i1<n1; ++i1) {
+      ot[i1] = 1.0f/b[0][i1];
+      x[0][i1] = x[0][i1]*ot[i1];
+    }
+    for (int i2=1; i2<n2; ++i2) {
+      maket(v1[i2],u1,t1);
+      si.setUniformSamples(x[i2-1]);
+      si.interpolate(n1,t1,x1);
+      for (int i1=0; i1<n1; ++i1) {
+        float ai = (f[i2  ][i1]==0)?a[i2  ][i1]:0.0f;
+        float bi = (f[i2  ][i1]==0)?b[i2  ][i1]:1.0f;
+        float ci = (f[i2-1][i1]==0)?c[i2-1][i1]:0.0f;
+        b[i2][i1] = ci*ot[i1];
+        ot[i1] = 1.0f/(bi-ai*b[i2][i1]);
+        x[i2][i1] = (x[i2][i1]-ai*x1[i1])*ot[i1];
+      }
+    }
+    for (int i2=n2-1; i2>0; --i2) {
+      /*
+      maket2(v1[i2],u1,t1);
+      si.setUniformSamples(x[i2]);
+      si.interpolate(n1,t1,x1);
+      for (int i1=0; i1<n1; ++i1)
+        x[i2-1][i1] -= b[i2][i1]*x1[i1];
+      */
+      for (int i1=0; i1<n1; ++i1)
+        x1[i1] = -b[i2][i1]*x[i2][i1];
+      maket(v1[i2],u1,t1);
+      si.setUniformSamples(x[i2-1]);
+      si.accumulate(n1,t1,x1);
+    }
   }
 
   public void applyLinear(
@@ -86,6 +170,30 @@ public class LocalInterpolationFilter {
   private float _small; // stop iterations when residuals are small
   private int _niter; // number of iterations
   private DirectionalLaplacianFilter _dlf;
+
+  private static void maket(float[] v1, float[] u1, float[] t1) {
+    int n1 = v1.length;
+    float t1min = 0.0f;
+    float t1max = (float)(n1-1);
+    for (int i1=0; i1<n1; ++i1) {
+      float v1i = v1[i1];
+      float v2i = sqrt(1.0f-v1i*v1i);
+      float vi = v1i/v2i;
+      t1[i1] = max(t1min,min(t1max,u1[i1]-vi));
+    }
+  }
+
+  private static void maket2(float[] v1, float[] u1, float[] t1) {
+    int n1 = v1.length;
+    float t1min = 0.0f;
+    float t1max = (float)(n1-1);
+    for (int i1=0; i1<n1; ++i1) {
+      float v1i = v1[i1];
+      float v2i = sqrt(1.0f-v1i*v1i);
+      float vi = v1i/v2i;
+      t1[i1] = max(t1min,min(t1max,u1[i1]+vi));
+    }
+  }
 
   private void solve(
     LocalSmoothingFilter lsf, 

@@ -27,8 +27,8 @@ dataDir = "/data"
 #pngDir = "./png"
 pngDir = None
 
-n1 = 201
-sigma = 1.0
+n1 = 301
+sigma = 0.5
 small = 0.001
 niter = 100
 
@@ -46,31 +46,31 @@ def goInterp():
   f[2*n1/4] = 1; x[2*n1/4] = 1.5
   f[3*n1/4] = 1; x[3*n1/4] = 0.5
   y = Array.copy(x)
-  ds = None
-  #ds = makeBlock(n1)
-  #ds = makeStepUp(n1/2+1,n1)
-  #ds = makeStepDown(n1/2+1,n1)
-  lif = LocalInterpolationFilter1(sigma,small,niter)
-  lif.apply(ds,f,y)
-  SimplePlot.asSequence(x);
+  #ds = Array.fillfloat(1.0,n1)
+  #ds = Array.randfloat(n1)
+  ds = makeRaisedCosine(n1)
+  #lif = LocalInterpolationFilter1(sigma,0.001,niter)
+  #lif.apply(ds,f,y)
+  lif = LocalInterpolationFilter1(sigma,0.01,niter)
+  lif.applyExact(ds,f,y)
   SimplePlot.asSequence(y);
 
-def makeBlock(n1):
-  ds = Array.fillfloat(0.3,n1)
+def reset(f,x,y):
+  n = len(f)
+  for i in range(n):
+    if f[i]:
+      y[i] = x[i]
+
+def makeRaisedCosine(n1):
+  ds = Array.zerofloat(n1)
+  for i1 in range(n1):
+    ds[i1] = 0.51+0.49*cos(pi*(2*i1-n1)/n1)
+  return ds
+
+def makeBlocky(n1):
+  ds = Array.fillfloat(0.2,n1)
   for i1 in range(1*n1/3,2*n1/3):
     ds[i1] = 1.0
-  return ds
-
-def makeStepUp(k1,n1):
-  ds = Array.zerofloat(n1)
-  for i1 in range(k1,n1):
-    ds[i1] = 1.0
-  return ds
-
-def makeStepDown(k1,n1):
-  ds = Array.fillfloat(1.0,n1)
-  for i1 in range(k1,n1):
-    ds[i1] = 0.0
   return ds
 
 def makeImpulse(n1):

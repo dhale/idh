@@ -58,10 +58,10 @@ public class LocalSmoothingFilter {
   {
     int n1 = x[0].length;
     int n2 = x.length;
-    float[][] t = new float[n2][n1];
-    apply1(es,x,y);
-    apply2(es,y,t);
-    apply12(ds,v1,t,y);
+    //float[][] t = new float[n2][n1];
+    //apply1(es,x,y);
+    //apply2(es,y,t);
+    apply12(ds,v1,x,y);
   }
   public void applyPassTranspose(
     float[][] ds, float[][] es, float[][] v1, 
@@ -69,10 +69,10 @@ public class LocalSmoothingFilter {
   {
     int n1 = x[0].length;
     int n2 = x.length;
-    float[][] t = new float[n2][n1];
+    //float[][] t = new float[n2][n1];
     apply12(ds,v1,x,y);
-    apply2(es,y,t);
-    apply1(es,t,y);
+    //apply2(es,y,t);
+    //apply1(es,t,y);
   }
 
   /**

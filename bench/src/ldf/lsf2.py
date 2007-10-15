@@ -31,7 +31,7 @@ n1 = 315
 n2 = 315
 sigma = 16
 small = 0.01
-niter = 80
+niter = 100
 nbefore = 2
 ncycle = 2
 nafter = 2
@@ -42,8 +42,8 @@ lof = LocalOrientFilter(8)
 
 def main(args):
   #doImage()
-  #goSmooth()
-  goTestTranspose()
+  goSmooth()
+  #goTestTranspose()
   #goAmpDiff()
   return
 
@@ -150,14 +150,14 @@ def doImage():
   return x
 
 def goSmooth():
-  #x1 = readImage()
+  x1 = readImage()
   #x1 = Array.transpose(x1)
-  x1 = makePlaneImage(70)
+  #x1 = makePlaneImage(70)
   #for x,s in [(x1,"_1"),(x2,"_2"),(x3,"_3")]:
   #for x,s in [(x1,"_1"),(x2,"_2")]:
   for x,s in [(x1,"_1")]:
     #x = bigger(bigger(x))
-    plot(x,10.0,"x"+s)
+    #plot(x,10.0,"x"+s)
     doSmooth(x,"d"+s)
 
 def doSmooth(x,png):
@@ -166,24 +166,29 @@ def doSmooth(x,png):
   z = Array.zerofloat(n1,n2)
   s = Array.zerofloat(n1,n2)
   t = Array.zerofloat(n1,n2)
-  r = makeRandom(n1,n2)
-  r = smooth(r)
-  #v1,v2 = getV(x)
+  #r = makeRandom(n1,n2)
+  r = Array.zerofloat(n1,n2)
+  for i2 in [n2/2]:
+    for i1 in range(n1):
+      r[i2][i1] = i1
+  v1,v2 = getV(x)
   #v1,v2 = makeVectorsRadial(n1,n2)
-  v1,v2 = makeVectors45(n1,n2)
-  lsf = LocalSmoothingFilter(sigma)
+  #v1,v2 = makeVectors45(n1,n2)
+  aniso = 1.0
+  lsf = LocalSmoothingFilter(sigma,aniso)
   ldf = LocalDiffusionFilterCg(sigma,small,niter)
   ds = None
-  ds = makeBlock(n1,n2)
-  lsf.applyPass(ds,v1,x,y)
-  ldf.applyLinearPass(ds,v1,x,z)
-  lsf.applyPass(ds,v1,r,s)
+  es = None
+  #ds = makeBlock(n1,n2)
+  #lsf.applyPass(ds,es,v1,x,y)
+  #ldf.applyLinearPass(ds,v1,x,z)
+  lsf.applyPass(ds,es,v1,r,s)
   ldf.applyLinearPass(ds,v1,r,t)
   #print "y min/max =",Array.min(y),Array.max(y)
-  plot(y,10.0,"y"+png)
-  plot(z,10.0,"z"+png)
+  #plot(y,10.0,"y"+png)
+  #plot(z,10.0,"z"+png)
   plot(s, 0.0,"s"+png)
-  plot(t, 0.0,"s"+png)
+  plot(t, 0.0,"t"+png)
 
 def makeBlock(n1,n2):
   ds = Array.fillfloat(0.0,n1,n2);

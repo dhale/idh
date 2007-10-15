@@ -47,21 +47,26 @@ def goInterp():
   x = readImage()
   n1,n2 = len(x[0]),len(x)
   v1,v2,ds = getV(x)
+  #theta = 0.1*pi
+  #v1 = Array.fillfloat(sin(theta),n1,n2)
+  #v2 = Array.fillfloat(cos(theta),n1,n2)
+  #ds = Array.fillfloat(1.0,n1,n2)
   f = Array.zerobyte(n1,n2)
   y = Array.zerofloat(n1,n2)
   z = Array.zerofloat(n1,n2)
-  plot(x,-10,10,gray,"x")
+  #plot(x,-10,10,gray,"x")
   #for itest in [0,1,2,3]:
   for itest in [0]:
     if itest==0 or itest==2:
       for i2 in [n2/2]:
         for i1 in range(n1):
           f[i2][i1] = 1
-          y[i2][i1] = i1-n1/2
-      cmin = -n1/2
-      cmax = n1/2
-      sigma = 1000
-      aniso = 1
+          y[i2][i1] = sin(2*pi*i1/n1) 
+          #y[i2][i1] = 2.0*i1/n1-1.0
+      cmin = -1.0
+      cmax =  1.0
+      sigma = 0.1
+      aniso = 1000
     else:
       for i2 in [n2/2]:
         for i1 in range(n1):
@@ -78,19 +83,17 @@ def goInterp():
     else:
       ds = makeBlock(n1,n2)
       es = makeBlock(n1,n2)
-    z = Array.copy(y)
-    """
-    lsf = LocalSmoothingFilter(sigma,aniso)
-    lsf.applyPass(ds,es,v1,y,z)
-    plot(y,0.0,0.0,jet)
-    plot(z,0.0,0.0,jet)
-    return
-    """
-    lif.applyLinear(sigma,aniso,ds,es,v1,f,z)
-    plot(y,cmin,cmax,jet,"y"+str(itest))
-    plot(z,cmin,cmax,jet,"z"+str(itest))
-    plot(Array.sub(y,z),0,0,jet)
-    plot2(x,z,cmin,cmax,"xz"+str(itest))
+    z1 = Array.copy(y)
+    z2 = Array.copy(y)
+    lif.apply(ds,v1,f,z1)
+    lif.applyLinear(ds,es,v1,f,z2)
+    z2[0][n1-1] = 1.0
+    #lif.applyLinear(sigma,aniso,ds,es,v1,f,z)
+    #plot(y,cmin,cmax,jet,"y"+str(itest))
+    plot(z1,cmin,cmax,jet,"z1"+str(itest))
+    plot(z2,cmin,cmax,jet,"z2"+str(itest))
+    #plot(Array.sub(z,y),cmin,cmax,jet)
+    #plot2(x,z,cmin,cmax,"xz"+str(itest))
 
 def readImage():
   fileName = dataDir+"/seis/vg/junks.dat"

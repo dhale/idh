@@ -23,12 +23,57 @@ public class LocalInterpolationFilter1 {
    * @param niter stop when number of iterations exceeds this number.
    */
   public LocalInterpolationFilter1(double sigma, double small, int niter) {
-    _sigma = sigma;
+    _sigma = (float)sigma;
     _small = (float)small;
     _niter = niter;
   }
 
   public void apply(float[] ds, byte[] f, float[] x) {
+    int n1 = x.length;
+
+    // Sub- and super-diagonal of tridiagonal matrix A in arrays a and c.
+    float[] a = new float[n1];
+    float[] c = new float[n1];
+    for (int i1=0; i1<n1; ++i1)
+      a[i1] = c[i1] = -1.0f;
+    if (ds!=null) {
+      float dsa,dsc;
+      dsc = 0.50f*(ds[1]+ds[0]);
+      c[0] *= dsc*dsc;
+      for (int i1=1; i1<n1-1; ++i1) {
+        dsa = 0.50f*(ds[i1-1]+ds[i1]);
+        dsc = 0.50f*(ds[i1+1]+ds[i1]);
+        a[i1] *= dsa*dsa;
+        c[i1] *= dsc*dsc;
+      }
+      dsa = 0.50f*(ds[n1-1]+ds[n1-2]);
+      a[n1-1] *= dsa*dsa;
+    }
+
+    // Diagonal of tridiagonal matrix A in array b.
+    float[] b = new float[n1];
+    b[0] = -c[0];
+    for (int i1=1; i1<n1-1; ++i1) {
+      b[i1] = -(a[i1]+c[i1]);
+    }
+    b[n1-1] = -a[n1-1];
+
+    // Solve A x = b, where b is x with zeros for missing samples.
+    float ot = 1.0f/b[0];
+    x[0] = x[0]*ot;
+    for (int i1=1; i1<n1; ++i1) {
+      float ai = (f[i1  ]==0)?a[i1  ]:0.0f;
+      float bi = (f[i1  ]==0)?b[i1  ]:1.0f;
+      float ci = (f[i1-1]==0)?c[i1-1]:0.0f;
+      b[i1] = ci*ot;
+      ot = 1.0f/(bi-ai*b[i1]);
+      x[i1] = (x[i1]-ai*x[i1-1])*ot;
+    }
+    for (int i1=n1-1; i1>0; --i1)
+      x[i1-1] -= b[i1]*x[i1];
+  }
+
+  public void applySmoother(float[] ds, byte[] f, float[] x) {
     int n1 = x.length;
     LocalSmoothingFilter1 lsf = new LocalSmoothingFilter1(_sigma,n1,ds);
     float[] b = new float[n1];
@@ -39,10 +84,20 @@ public class LocalInterpolationFilter1 {
     lsf.apply(x,x);
   }
 
+  public void applyCg(float[] ds, byte[] f, float[] x) {
+    int n1 = x.length;
+    float[] t = Array.neg(x);
+    float[] b = new float[n1];
+    mask(0,f,t,t);
+    laplacian(ds,t,b);
+    mask(1,f,b,b);
+    solve(ds,f,b,x);
+  }
+
   ///////////////////////////////////////////////////////////////////////////
   // private
 
-  private double _sigma; // smoothing filter half-width
+  private float _sigma; // smoothing filter half-width
   private float _small; // stop iterations when residuals are small
   private int _niter; // number of iterations
 
@@ -53,11 +108,55 @@ public class LocalInterpolationFilter1 {
     solve(a,b,x);
   }
 
+  private void solve(
+    float[] ds, byte[] f, float[] b, float[] x) 
+  {
+    Operator1 a = new Laplacian1(f,ds);
+    solve(a,b,x);
+  }
+
   /**
    * A symmetric positive-definite operator.
    */
   private static interface Operator1 {
     public void apply(float[] x, float[] y);
+  }
+
+  private static class Laplacian1 implements Operator1 {
+    Laplacian1(byte[] f, float[] ds) {
+      _f = f;
+      _ds = ds;
+      _t = new float[f.length];
+    }
+    public void apply(float[] x, float[] y) {
+      mask(1,_f,x,_t);
+      laplacian(_ds,_t,y);
+      mask(1,_f,y,y);
+    }
+    private byte[] _f;
+    private float[] _ds,_t;
+  }
+  private static void laplacian(float[] ds, float[] x, float[] y) {
+    int n1 = x.length;
+    if (ds!=null) {
+      for (int i1=1; i1<n1; ++i1) {
+        float di = 0.5f*(ds[i1]+ds[i1-1]);
+        float xy = di*(x[i1]-x[i1-1]);
+        y[i1  ]  = xy;
+        y[i1-1] -= xy;
+      }
+    } else {
+      for (int i1=1; i1<n1; ++i1) {
+        float xy = x[i1]-x[i1-1];
+        y[i1  ]  = xy;
+        y[i1-1] -= xy;
+      }
+    }
+  }
+  private static void mask(int zero, byte[] f, float[] x, float[] y) {
+    int n1 = x.length;
+    for (int i1=0; i1<n1; ++i1)
+      y[i1] = (f[i1]==zero)?0.0f:x[i1];
   }
 
   private static class Smoother1 implements Operator1 {
