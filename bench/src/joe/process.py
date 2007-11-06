@@ -83,7 +83,13 @@ def main(args):
   eyz = readFile("eyz.dat",n1,n2,n3)
   plot3ds((x,eyz))
   #plotAll()
+  #writeSlice23()
   return
+
+def writeSlice23():
+  x = readFloats23("x.dat",174)
+  print "x min/max =",Array.min(x),Array.max(x)
+  writeFile("x174.dat",x)
 
 """
   x clip = 0.0100
@@ -294,6 +300,7 @@ def plot3ds(xs,k=None):
     s3 = Sampling(n3)
     ipg = ImagePanelGroup(s3,s2,s1,SimpleFloat3(x))
     ipg.setPercentiles(1,99)
+    #ipg.setPercentiles(0,100)
     world.addChild(ipg)
   frame = TestFrame(world)
   frame.setVisible(True)
