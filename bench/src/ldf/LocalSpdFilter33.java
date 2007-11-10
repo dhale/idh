@@ -16,16 +16,28 @@ import static edu.mines.jtk.util.MathPlus.*;
  */
 public class LocalSpdFilter33 {
 
+  /**
+   * Interface for 2x2 stencils used to construct SPD 3x3 stencils.
+   */
   public interface Stencils22 {
 
     /**
      * Gets stencils for four 2x2 filters, one for each quadrant.
+     * Quadrant indices are interpreted as two binary digits, where
+     * bit zero implies positive, and bit one implies negative.
+     * Therefore, the four quadrants are 
+     * 00 = ++, 01 = +-, 10 = -+, and 11 = --.
+     * <p>
+     * In the returned array of coefficients,
+     * array a[0] contains coefficients {a,b,c,d} for 0th quadrant;
+     * array a[1] contains coefficients {a,b,c,d} for 1st quadrant;
+     * and so on. In each quadrant, the coefficient a is that for
+     * zero lag of the filter, b is for non-zero lag in dimension 1 only,
+     * c is for non-zero lag in dimension 2 only, and d is for non-zero
+     * lags in both 1st and 2nd dimensions.
      * @param i1 sample index in 1st dimension.
      * @param i2 sample index in 2nd dimension.
      * @param abcd array[4][4] of stencil coefficients.
-     *  Array a[0] contains coefficients {a,b,c,d} for 0th quadrant;
-     *  array a[1] contains coefficients {a,b,c,d} for 1st quadrant;
-     *  and so on.
      */
     public void getStencils(int i1, int i2, float[][] abcd);
   }
@@ -131,6 +143,15 @@ public class LocalSpdFilter33 {
         app[i2  ][i1-1] += b1*c1;
         app[i2-1][i1  ] += b2*c2;
         */
+      }
+    }
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        a00[i2][i1] *= 0.25f;
+        a0p[i2][i1] *= 0.25f;
+        apm[i2][i1] *= 0.25f;
+        ap0[i2][i1] *= 0.25f;
+        app[i2][i1] *= 0.25f;
       }
     }
   }
@@ -334,6 +355,9 @@ public class LocalSpdFilter33 {
 
   ///////////////////////////////////////////////////////////////////////////
   // testing
+
+  private static class LocalDerivative22 {
+  }
 
   public static void main(String[] args) {
   }
