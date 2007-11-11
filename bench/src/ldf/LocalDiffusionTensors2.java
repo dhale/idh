@@ -36,7 +36,7 @@ public class LocalDiffusionTensors2 {
    * @param s1 constant scale factor for linear diffusivity.
    * @param v1 array of 1st components of inline unit vectors.
    */
-  LocalDiffusionTensors2(double s0, double s1, float[][] v1) {
+  public LocalDiffusionTensors2(double s0, double s1, float[][] v1) {
     this(s0,s1,null,null,v1);
   }
 
@@ -52,7 +52,7 @@ public class LocalDiffusionTensors2 {
    * @param d1 array of linear diffusivities; if null, assumed to be one.
    * @param v1 array of 1st components of inline unit vectors.
    */
-  LocalDiffusionTensors2(
+  public LocalDiffusionTensors2(
     double s0, double s1, float[][] d0, float[][] d1, float[][] v1) {
     _n1 = v1[0].length;
     _n2 = v1.length;

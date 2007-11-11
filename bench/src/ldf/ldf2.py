@@ -42,8 +42,9 @@ lof = LocalOrientFilter(8)
 
 def main(args):
   #doImage();
-  goDiff()
+  #goDiff()
   #goAmpDiff()
+  goAmpLaplacianDiffusionFilter()
   return
 
 def goIdeal():
@@ -193,9 +194,25 @@ def makeBlock(n1,n2):
       ds[i2][i1] = 1.0
   return ds
 
+def goAmpLaplacianDiffusionFilter():
+  for dip in [0,20,40,60]:
+    for rs in [0,8,25]:
+      suffix = str(dip)+str(rs)
+      rs /= 100.0
+      doAmpLaplacianDiffusionFilter(rs,dip,"ahs"+suffix)
+
+def doAmpLaplacianDiffusionFilter(rs,dip,png=None):
+  ldf = LaplacianDiffusionFilter(rs)
+  x,v1,v2 = makeImpulse(dip)
+  ldt = LocalDiffusionTensors2(1.0,10.0,v1)
+  h = Array.copy(x)
+  ldf.apply(ldt,x,h)
+  ah = frequencyResponse(h)
+  plotf(ah,png)
+
 def doAmpDiff(dip,png=None):
-  #ldf = LocalDiffusionFilterCg(sigma,small,niter)
-  ldf = LocalDiffusionFilterMp(sigma)
+  ldf = LocalDiffusionFilterCg(sigma,small,niter)
+  #ldf = LocalDiffusionFilterMp(sigma)
   x,v1,v2 = makeImpulse(dip)
   h = Array.copy(x)
   ldf.applyLinearPass(None,v1,x,h)
