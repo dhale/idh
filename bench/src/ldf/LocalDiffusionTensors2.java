@@ -84,6 +84,22 @@ public class LocalDiffusionTensors2 {
     d[2] = d22;
   }
 
+  /**
+   * Gets the number of tensors in the 1st dimension.
+   * @return the number of tensors in the 1st dimension.
+   */
+  public int getN1() {
+    return _n1;
+  }
+
+  /**
+   * Gets the number of tensors in the 2nd dimension.
+   * @return the number of tensors in the 2nd dimension.
+   */
+  public int getN2() {
+    return _n2;
+  }
+
   ///////////////////////////////////////////////////////////////////////////
   // private
 
