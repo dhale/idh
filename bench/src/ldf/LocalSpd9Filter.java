@@ -162,6 +162,9 @@ public class LocalSpd9Filter {
   private float[][][] _s;
   private boolean _factored;
 
+  /**
+   * Computes y = A*x, with non-zero elements of A stored in the array s.
+   */
   private void apply(float[][][] s, float[][] x, float[][] y) {
     int n1 = x[0].length;
     int n2 = x.length;
@@ -173,45 +176,11 @@ public class LocalSpd9Filter {
     float[][] sp0 = s[3];
     float[][] spp = s[4];
     int i1,i2;
-    /*
-    for (i2=0; i2<n2m; ++i2) {
-      i1 = 0;
-      y[i2  ][i1  ] += s00[i2][i1]*x[i2  ][i1  ];
-      y[i2  ][i1  ] += s0p[i2][i1]*x[i2  ][i1+1];
-      y[i2  ][i1+1] += s0p[i2][i1]*x[i2  ][i1  ];
-      y[i2  ][i1  ] += sp0[i2][i1]*x[i2+1][i1  ];
-      y[i2+1][i1  ] += sp0[i2][i1]*x[i2  ][i1  ];
-      y[i2  ][i1  ] += spp[i2][i1]*x[i2+1][i1+1];
-      y[i2+1][i1+1] += spp[i2][i1]*x[i2  ][i1  ];
-      for (i1=1; i1<n1m; ++i1) {
-        y[i2  ][i1  ] += s00[i2][i1]*x[i2  ][i1  ];
-        y[i2  ][i1  ] += s0p[i2][i1]*x[i2  ][i1+1];
-        y[i2  ][i1+1] += s0p[i2][i1]*x[i2  ][i1  ];
-        y[i2  ][i1  ] += spm[i2][i1]*x[i2+1][i1-1];
-        y[i2+1][i1-1] += spm[i2][i1]*x[i2  ][i1  ];
-        y[i2  ][i1  ] += sp0[i2][i1]*x[i2+1][i1  ];
-        y[i2+1][i1  ] += sp0[i2][i1]*x[i2  ][i1  ];
-        y[i2  ][i1  ] += spp[i2][i1]*x[i2+1][i1+1];
-        y[i2+1][i1+1] += spp[i2][i1]*x[i2  ][i1  ];
-      }
-      y[i2  ][i1  ] += s00[i2][i1]*x[i2  ][i1  ];
-      y[i2  ][i1  ] += spm[i2][i1]*x[i2+1][i1-1];
-      y[i2+1][i1-1] += spm[i2][i1]*x[i2  ][i1  ];
-      y[i2  ][i1  ] += sp0[i2][i1]*x[i2+1][i1  ];
-      y[i2+1][i1  ] += sp0[i2][i1]*x[i2  ][i1  ];
-    }
-    for (i1=0; i1<n1m; ++i1) {
-      y[i2  ][i1  ] += s00[i2][i1]*x[i2  ][i1  ];
-      y[i2  ][i1  ] += s0p[i2][i1]*x[i2  ][i1+1];
-      y[i2  ][i1+1] += s0p[i2][i1]*x[i2  ][i1  ];
-    }
-    y[i2  ][i1  ] += s00[i2][i1]*x[i2  ][i1  ];
-    */
     i1 = n1m;
     i2 = n2m;
     y[i2  ][i1  ]  = s00[i2][i1]*x[i2  ][i1  ];
     for (i1=n1m-1; i1>=0; --i1) {
-      y[i2  ][i1  ] += s00[i2][i1]*x[i2  ][i1  ];
+      y[i2  ][i1  ]  = s00[i2][i1]*x[i2  ][i1  ];
       y[i2  ][i1  ] += s0p[i2][i1]*x[i2  ][i1+1];
       y[i2  ][i1+1] += s0p[i2][i1]*x[i2  ][i1  ];
     }
@@ -292,6 +261,9 @@ public class LocalSpd9Filter {
     }
   }
   
+  /**
+   * Computes y = L*D*L'*x, with factors D and L' stored in the array s.
+   */
   private static void applyFactors(float[][][] s, float[][] x, float[][] y) {
     int n1 = x[0].length;
     int n2 = x.length;
@@ -465,6 +437,7 @@ public class LocalSpd9Filter {
     float[][] x = Array.zerofloat(n1,n2);  x[2][2] = 1.0f;
     float[][] y = Array.randfloat(n1,n2);
     float[][] z = Array.randfloat(n1,n2);
+    float[][] w = Array.randfloat(n1,n2);
     float[][] d0 = Array.fillfloat(1.0f,n1,n2);
     float[][] d1 = Array.fillfloat(1.0f,n1,n2);
     float[][] v1 = Array.fillfloat(sqrt(0.5f),n1,n2);
@@ -477,8 +450,10 @@ public class LocalSpd9Filter {
     lsf.apply(x,y);
     lsf.factorIC0();
     lsf.apply(x,z);
+    lsf.solve(z,w);
     Array.dump(y);
     Array.dump(z);
+    Array.dump(w);
   }
 
   private static void testMatrix() {
