@@ -77,21 +77,15 @@ public class LocalDiffusionKernel {
   }
 
   /**
-   * Gets coefficients for the 3x3 stencils of this kernel.
-   * Returns only five of the nine coefficients in the 3x3 stencil:
-   * <pre><code>
-   *   xxx  xxx  spm   (here, p denotes plus and m denotes minus)
-   *   xxx  s00  sp0
-   *   xxx  s0p  spp
-   * </code></pre>
-   * where the vertical axis corresponds to the 1st dimension
-   * and the horizontal axis corresponds to the 2nd dimension.
-   * Because this kernel is symmetric positive-semidefinite,
-   * these five coefficients for each sample are sufficient.
-   * @param ldt local diffusion tensors.
-   * @return arrays [5][n2][n1] of coefficients {s00,s0p,spm,sp0,spp}.
+   * Gets filter coefficients for this kernel.
+   * @param ldt local diffusion 2x2 tensors.
+   * @return arrays[5][n2][n1] of coefficients.
+   *  The five arrays are {s00,s0p,spm,sp0,spp}, where s00 corresponds to 
+   *  lag[0][0], s0p to lag[0][1], spm to lag[1][-1], and so on. 
+   *  (Here, m, 0, and p denote minus, zero, and plus, respectively.)
+   * @return the filter.
    */
-  public float[][][] getStencils(LocalDiffusionTensors2 ldt) {
+  public float[][][] getCoefficients(LocalDiffusionTensors2 ldt) {
     int n1 = ldt.getN1();
     int n2 = ldt.getN2();
     float[][][] s = new float[5][n2][n1];
@@ -108,6 +102,7 @@ public class LocalDiffusionKernel {
         float b = 0.5f*d[1];
         float c = 0.5f*d[2];
         float t = 2.0f*_rs*(a+c);
+        //float t = min(a,c,abs(b));
         s00[i2  ][i1  ] += a+b+c-t;
         s00[i2  ][i1-1] += a-b+c-t;
         s00[i2-1][i1  ] += a-b+c-t;
@@ -121,57 +116,6 @@ public class LocalDiffusionKernel {
       }
     }
     return s;
-  }
-
-  /**
-   * Applies specified 3x3 stencils.
-   * @param s arrays of stencil coefficients.
-   * @param x input image. Must be distinct from the array y.
-   * @param y input/output image. Must be distinct from the array x.
-   */
-  public void applyStencils(float[][][] s, float[][] x, float[][] y) {
-    int n1 = x[0].length;
-    int n2 = x.length;
-    int n1m = n1-1;
-    int n2m = n2-1;
-    float[][] s00 = s[0];
-    float[][] s0p = s[1];
-    float[][] spm = s[2];
-    float[][] sp0 = s[3];
-    float[][] spp = s[4];
-    int i1,i2;
-    for (i2=0; i2<n2m; ++i2) {
-      i1 = 0;
-      y[i2  ][i1  ] += s00[i2][i1]*x[i2  ][i1  ];
-      y[i2  ][i1  ] += s0p[i2][i1]*x[i2  ][i1+1];
-      y[i2  ][i1+1] += s0p[i2][i1]*x[i2  ][i1  ];
-      y[i2  ][i1  ] += sp0[i2][i1]*x[i2+1][i1  ];
-      y[i2+1][i1  ] += sp0[i2][i1]*x[i2  ][i1  ];
-      y[i2  ][i1  ] += spp[i2][i1]*x[i2+1][i1+1];
-      y[i2+1][i1+1] += spp[i2][i1]*x[i2  ][i1  ];
-      for (i1=1; i1<n1m; ++i1) {
-        y[i2  ][i1  ] += s00[i2][i1]*x[i2  ][i1  ];
-        y[i2  ][i1  ] += s0p[i2][i1]*x[i2  ][i1+1];
-        y[i2  ][i1+1] += s0p[i2][i1]*x[i2  ][i1  ];
-        y[i2  ][i1  ] += spm[i2][i1]*x[i2+1][i1-1];
-        y[i2+1][i1-1] += spm[i2][i1]*x[i2  ][i1  ];
-        y[i2  ][i1  ] += sp0[i2][i1]*x[i2+1][i1  ];
-        y[i2+1][i1  ] += sp0[i2][i1]*x[i2  ][i1  ];
-        y[i2  ][i1  ] += spp[i2][i1]*x[i2+1][i1+1];
-        y[i2+1][i1+1] += spp[i2][i1]*x[i2  ][i1  ];
-      }
-      y[i2  ][i1  ] += s00[i2][i1]*x[i2  ][i1  ];
-      y[i2  ][i1  ] += spm[i2][i1]*x[i2+1][i1-1];
-      y[i2+1][i1-1] += spm[i2][i1]*x[i2  ][i1  ];
-      y[i2  ][i1  ] += sp0[i2][i1]*x[i2+1][i1  ];
-      y[i2+1][i1  ] += sp0[i2][i1]*x[i2  ][i1  ];
-    }
-    for (i1=0; i1<n1m; ++i1) {
-      y[i2  ][i1  ] += s00[i2][i1]*x[i2  ][i1  ];
-      y[i2  ][i1  ] += s0p[i2][i1]*x[i2  ][i1+1];
-      y[i2  ][i1+1] += s0p[i2][i1]*x[i2  ][i1  ];
-    }
-    y[i2  ][i1  ] += s00[i2][i1]*x[i2  ][i1  ];
   }
 
   ///////////////////////////////////////////////////////////////////////////
@@ -189,6 +133,7 @@ public class LocalDiffusionKernel {
    int i1, int i2, float[][] x, float[][] y) 
   {
     float dd = rs*(d11+d22);
+    //float dd = 0.5f*min(d11,d22,abs(d12));
     float aa = (0.5f*d11-dd);
     float bm = (0.5f*d12-dd);
     float bp = (0.5f*d12+dd);
@@ -210,7 +155,7 @@ public class LocalDiffusionKernel {
   }
 
   // Computes y = y+G'DGx for one sample.
-  // This old method was designed for rs = 0.25.
+  // This old method assumes that rs = 0.25.
   private static void applyOld(
    float d11, float d12, float d22,
    int i1, int i2, float[][] x, float[][] y) 
@@ -256,49 +201,7 @@ public class LocalDiffusionKernel {
     Array.dump(z);
   }
 
-  public static void testStencilMethods() {
-    int n1 = 3;
-    int n2 = 3;
-    float theta = FLT_PI/4.0f;
-    float rmax = 0.0f;
-    float tmax = 0.0f;
-    for (theta=0.0f; theta<=FLT_PI/4.0f; theta+=FLT_PI/8) {
-    float[][] x = Array.zerofloat(n1,n2); x[1][1] = 1.0f;
-    //float[][] x = Array.randfloat(n1,n2);
-    float[][] y = Array.zerofloat(n1,n2);
-    float[][] z = Array.zerofloat(n1,n2);
-    //float[][] d0 = Array.randfloat(n1,n2);
-    //float[][] d1 = Array.randfloat(n1,n2);
-    //float[][] v1 = Array.randfloat(n1,n2);
-    float[][] d0 = Array.fillfloat(0.0f,n1,n2);
-    float[][] d1 = Array.fillfloat(1.0f,n1,n2);
-    float[][] v1 = Array.fillfloat(sin(theta),n1,n2);
-    LocalDiffusionTensors2 ldt = 
-      new LocalDiffusionTensors2(1.0,1.0,d0,d1,v1);
-    LocalDiffusionKernel ldk = new LocalDiffusionKernel(0.0/12.0);
-    ldk.apply(ldt,x,y);
-    float[][][] s = ldk.getStencils(ldt);
-    ldk.applyStencils(s,x,z);
-    float error = Array.sum(Array.sub(z,y));
-    Array.dump(y);
-    //Array.dump(z);
-    float z11 = z[1][1];
-    z[1][1] = 0.0f;
-    float ratio = Array.max(z)/z11;
-    z[1][1] = z11;
-    System.out.println("theta="+theta+
-                       " error="+error+
-                       " ratio="+ratio);
-    if (ratio>rmax) {
-      tmax = theta;
-      rmax = ratio;
-    }
-    }
-    System.out.println("tmax="+tmax+" rmax="+rmax);
-  }
-
   public static void main(String[] args) {
-    //testApplyMethods();
-    testStencilMethods();
+    testApplyMethods();
   }
 }

@@ -31,7 +31,7 @@ prism = ColorMap.PRISM
 n1 = 315
 n2 = 315
 aniso = 100
-small = 0.001
+small = 0.00001
 niter = 1000
 lof = LocalOrientFilter(8)
 lof.setGradientSmoothing(1)
@@ -44,6 +44,51 @@ def main(args):
   return
 
 def goInterp():
+  x = readImage()
+  n1,n2 = len(x[0]),len(x)
+  v1,v2,ds = getV(x)
+  #theta = 0.1*pi
+  #v1 = Array.fillfloat(sin(theta),n1,n2)
+  #v2 = Array.fillfloat(cos(theta),n1,n2)
+  #ds = Array.fillfloat(1.0,n1,n2)
+  f = Array.zerobyte(n1,n2)
+  y = Array.zerofloat(n1,n2)
+  z = Array.zerofloat(n1,n2)
+  #plot(x,-10,10,gray,"x")
+  #for itest in [0,1,2,3]:
+  for itest in [0,1]:
+    if itest<2:
+      d0 = None
+      d1 = None
+    else:
+      d0 = makeBlock(n1,n2)
+      d0 = makeBlock(n1,n2)
+    if itest==0 or itest==2:
+      for i2 in [n2/2]:
+        for i1 in range(n1):
+          f[i2][i1] = 1
+          y[i2][i1] = 2.0*i1/n1-1.0
+      cmin = -1.0
+      cmax =  1.0
+      ldt = LocalDiffusionTensors2(0.1,1.0,d0,d1,v1)
+    else:
+      for i2 in [n2/2]:
+        for i1 in range(n1):
+          f[i2][i1] = 1
+          y[i2][i1] = x[i2][i1]
+      cmin = -10
+      cmax = 10
+      ldt = LocalDiffusionTensors2(0.0,1.0,d0,d1,v1)
+    small = 0.001
+    niter = 1000
+    lif = LocalInterpolationFilterIc(small,niter)
+    Array.copy(y,z)
+    lif.apply(ldt,f,z)
+    #plot(y,cmin,cmax,jet,"y"+str(itest))
+    plot(z,cmin,cmax,jet,"z"+str(itest))
+    #plot2(x,z,cmin,cmax,"xz"+str(itest))
+
+def goInterpOld():
   x = readImage()
   n1,n2 = len(x[0]),len(x)
   v1,v2,ds = getV(x)
