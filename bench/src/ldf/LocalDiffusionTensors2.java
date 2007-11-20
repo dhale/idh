@@ -79,6 +79,10 @@ public class LocalDiffusionTensors2 {
     float d11 = s0i+s1i*v1i*v1i;
     float d12 =     s1i*v1i*v2i;
     float d22 = s0i+s1i*v2i*v2i;
+    if (abs(d12)>min(d11,d22)) {
+      float a12 = min(d11,d22);
+      d12 = (d12<0.0f)?-a12:a12;
+    }
     d[0] = d11;
     d[1] = d12;
     d[2] = d22;

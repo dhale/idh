@@ -45,9 +45,10 @@ def main(args):
 
 def goInterp():
   x = readImage()
+  #x = flip2(x)
   n1,n2 = len(x[0]),len(x)
   v1,v2,ds = getV(x)
-  #theta = 0.1*pi
+  #theta = 0.25*pi
   #v1 = Array.fillfloat(sin(theta),n1,n2)
   #v2 = Array.fillfloat(cos(theta),n1,n2)
   #ds = Array.fillfloat(1.0,n1,n2)
@@ -62,13 +63,13 @@ def goInterp():
       d1 = None
     else:
       d0 = makeBlock(n1,n2)
-      d0 = makeBlock(n1,n2)
+      d1 = makeBlock(n1,n2)
     if itest==0 or itest==2:
       for i2 in [n2/2]:
         for i1 in range(n1):
           f[i2][i1] = 1
-          y[i2][i1] = 2.0*i1/n1-1.0
-      cmin = -1.0
+          y[i2][i1] = float(i1)/n1
+      cmin =  0.0
       cmax =  1.0
       ldt = LocalDiffusionTensors2(0.1,1.0,d0,d1,v1)
     else:
@@ -79,7 +80,7 @@ def goInterp():
       cmin = -10
       cmax = 10
       ldt = LocalDiffusionTensors2(0.0,1.0,d0,d1,v1)
-    small = 0.001
+    small = 0.0001
     niter = 1000
     lif = LocalInterpolationFilterIc(small,niter)
     Array.copy(y,z)
@@ -166,6 +167,14 @@ def makeBlock(n1,n2):
     for i2 in range(100-(i1*50)/315,n2):
       ds[i2][i1] = 1.0
   return ds
+
+def flip2(f):
+  n1 = len(f[0])
+  n2 = len(f)
+  g = Array.zerofloat(n1,n2)
+  for i2 in range(n2):
+    Array.copy(f[n2-1-i2],g[i2])
+  return g
  
 #############################################################################
 # plot

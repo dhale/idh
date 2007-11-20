@@ -68,10 +68,12 @@ public class LocalDiffusionKernel {
     int n1 = x[0].length;
     int n2 = x.length;
     float[] d = new float[3];
-    for (int i2=1; i2<n2; ++i2) {
-      for (int i1=1; i1<n1; ++i1) {
-        ldt.getTensor(i1,i2,d);
-        apply(_rs,d[0],d[1],d[2],i1,i2,x,y);
+    for (int i2=0; i2<=n2; ++i2) {
+      int j2 = (i2<n2)?i2:n2-1;
+      for (int i1=0; i1<=n1; ++i1) {
+        int j1 = (i1<n1)?i1:n1-1;
+        ldt.getTensor(j1,j2,d);
+        apply(_rs,d[0],d[1],d[2],i1,i2,n1,n2,x,y);
       }
     }
   }
@@ -95,24 +97,46 @@ public class LocalDiffusionKernel {
     float[][] sp0 = s[3];
     float[][] spp = s[4];
     float[] d = new float[3];
-    for (int i2=1; i2<n2; ++i2) {
-      for (int i1=1; i1<n1; ++i1) {
-        ldt.getTensor(i1,i2,d);
+    for (int i2m=0,i2p=1; i2p<n2; ++i2m,++i2p) {
+      for (int i1m=0,i1p=1; i1p<n1; ++i1m,++i1p) {
+        ldt.getTensor(i1p,i2p,d);
         float a = 0.5f*d[0];
         float b = 0.5f*d[1];
         float c = 0.5f*d[2];
         float t = 2.0f*_rs*(a+c);
-        //float t = min(a,c,abs(b));
-        s00[i2  ][i1  ] += a+b+c-t;
-        s00[i2  ][i1-1] += a-b+c-t;
-        s00[i2-1][i1  ] += a-b+c-t;
-        s00[i2-1][i1-1] += a+b+c-t;
-        s0p[i2  ][i1-1] -= a-t;
-        s0p[i2-1][i1-1] -= a-t;
-        sp0[i2-1][i1  ] -= c-t;
-        sp0[i2-1][i1-1] -= c-t;
-        spm[i2-1][i1  ] += b-t;
-        spp[i2-1][i1-1] -= b+t;
+        //float t = abs(b);
+        s00[i2p][i1p] += a+b+c-t;
+        s00[i2p][i1m] += a-b+c-t;
+        s00[i2m][i1p] += a-b+c-t;
+        s00[i2m][i1m] += a+b+c-t;
+        s0p[i2p][i1m] -= a-t;
+        s0p[i2m][i1m] -= a-t;
+        spp[i2m][i1m] -= b+t;
+        spm[i2m][i1p] += b-t;
+        sp0[i2m][i1p] -= c-t;
+        sp0[i2m][i1m] -= c-t;
+        if (i1m==0) {
+          c *= 2.0f;
+          s00[i2p][i1m] += c;
+          s00[i2m][i1m] += c;
+          sp0[i2m][i1m] -= c;
+        } else if (i1p==n1-1) {
+          c *= 2.0f;
+          s00[i2p][i1p] += c;
+          s00[i2m][i1p] += c;
+          sp0[i2m][i1p] -= c;
+        }
+        if (i2m==0) {
+          a *= 2.0f;
+          s00[i2m][i1p] += a;
+          s00[i2m][i1m] += a;
+          s0p[i2m][i1m] -= a;
+        } else if (i2p==n2-1) {
+          a *= 2.0f;
+          s00[i2p][i1p] += a;
+          s00[i2p][i1m] += a;
+          s0p[i2p][i1m] -= a;
+        }
       }
     }
     return s;
@@ -130,28 +154,32 @@ public class LocalDiffusionKernel {
   // Computes y = y+G'DGx for one sample.
   private static void apply(
    float rs, float d11, float d12, float d22,
-   int i1, int i2, float[][] x, float[][] y) 
+   int i1, int i2, int n1, int n2, float[][] x, float[][] y) 
   {
+    //float dd = 0.5f*abs(d12);
     float dd = rs*(d11+d22);
-    //float dd = 0.5f*min(d11,d22,abs(d12));
     float aa = (0.5f*d11-dd);
     float bm = (0.5f*d12-dd);
     float bp = (0.5f*d12+dd);
     float cc = (0.5f*d22-dd);
-    float x00 = x[i2  ][i1  ];
-    float x01 = x[i2  ][i1-1];
-    float x10 = x[i2-1][i1  ];
-    float x11 = x[i2-1][i1-1];
-    float a0001 = aa*(x00-x01);
-    float a1011 = aa*(x10-x11);
-    float b0011 = bp*(x00-x11);
-    float b0110 = bm*(x01-x10);
-    float c0010 = cc*(x00-x10);
-    float c0111 = cc*(x01-x11);
-    y[i2  ][i1  ] += a0001+b0011+c0010;
-    y[i2  ][i1-1] -= a0001+b0110-c0111;
-    y[i2-1][i1  ] += a1011+b0110-c0010;
-    y[i2-1][i1-1] -= a1011+b0011+c0111;
+    int i1m = ( 0<i1)?i1-1:0;
+    int i2m = ( 0<i2)?i2-1:0;
+    int i1p = (i1<n1)?i1:n1-1;
+    int i2p = (i2<n2)?i2:n2-1;
+    float xpp = x[i2p][i1p];
+    float xpm = x[i2p][i1m];
+    float xmp = x[i2m][i1p];
+    float xmm = x[i2m][i1m];
+    float apppm = aa*(xpp-xpm);
+    float ampmm = aa*(xmp-xmm);
+    float bppmm = bp*(xpp-xmm);
+    float bpmmp = bm*(xpm-xmp);
+    float cppmp = cc*(xpp-xmp);
+    float cpmmm = cc*(xpm-xmm);
+    y[i2p][i1p] += apppm+bppmm+cppmp;
+    y[i2p][i1m] -= apppm+bpmmp-cpmmm;
+    y[i2m][i1p] += ampmm+bpmmp-cppmp;
+    y[i2m][i1m] -= ampmm+bppmm+cpmmm;
   }
 
   // Computes y = y+G'DGx for one sample.
@@ -184,16 +212,21 @@ public class LocalDiffusionKernel {
   public static void testApplyMethods() {
     int n1 = 3;
     int n2 = 3;
-    float[][] x = Array.randfloat(n1,n2);
+    float[][] x = Array.zerofloat(n1,n2); x[0][0] = 1.0f;
     float[][] y = Array.zerofloat(n1,n2);
     float[][] z = Array.zerofloat(n1,n2);
-    float d11 = 0.5f;
-    float d12 = 0.5f;
-    float d22 = 0.5f;
-    float rs = 0.25f;
-    for (int i2=1; i2<n2; ++i2) {
-      for (int i1=1; i1<n1; ++i1) {
-        apply(rs,d11,d12,d22,i1,i2,x,y);
+    float theta = FLT_PI*2.0f/8.0f;
+    float v1 = sin(theta);
+    float v2 = cos(theta);
+    float d0 = 0.0f;
+    float d1 = 1.0f;
+    float d11 = d0+d1*v1*v1;
+    float d12 =    d1*v2*v1;
+    float d22 = d0+d1*v2*v2;
+    float rs = 1.0f/12.0f;
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        apply(rs,d11,d12,d22,i1,i2,n1,n2,x,y);
         applyOld(d11,d12,d22,i1,i2,x,z);
       }
     }
@@ -201,7 +234,31 @@ public class LocalDiffusionKernel {
     Array.dump(z);
   }
 
+  public static void testGetCoefficients() {
+    int n1 = 5;
+    int n2 = 5;
+    float[][] x = Array.zerofloat(n1,n2); 
+    x[0][0] = x[n2-1][0] = x[0][n1-1] = x[n2-1][n1-1] = 1.0f;
+    //x[n2/2][n1/2] = 1.0f;
+    float[][] y = Array.zerofloat(n1,n2);
+    float[][] z = Array.zerofloat(n1,n2);
+    float theta = -FLT_PI*2.0f/8.0f;
+    float[][] d0 = Array.fillfloat(1.0f,n1,n2);
+    float[][] d1 = Array.fillfloat(1.0f,n1,n2);
+    float[][] v1 = Array.fillfloat(sin(theta),n1,n2);
+    LocalDiffusionTensors2 ldt = new LocalDiffusionTensors2(0.0,1.0,d0,d1,v1);
+    float rs = 1.0f/12.0f;
+    LocalDiffusionKernel ldk = new LocalDiffusionKernel(rs);
+    LocalSpd9Filter lsf = new LocalSpd9Filter(ldk.getCoefficients(ldt));
+    ldk.apply(ldt,x,y);
+    lsf.apply(x,z);
+    Array.dump(x);
+    Array.dump(y);
+    Array.dump(z);
+  }
+
   public static void main(String[] args) {
-    testApplyMethods();
+    //testApplyMethods();
+    testGetCoefficients();
   }
 }

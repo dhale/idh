@@ -62,6 +62,9 @@ public class LocalInterpolationFilterIc {
     }
   }
 
+  private static final LocalDiffusionKernel _ldk = 
+    new LocalDiffusionKernel(3.0/12.0);
+
   private static float[][] makeB(
     LocalDiffusionTensors2 ldt, byte[][] f, float[][] x) 
   {
@@ -70,8 +73,7 @@ public class LocalInterpolationFilterIc {
     float[][] t = new float[n2][n1];
     float[][] b = new float[n2][n1];
     copy(1,f,x,t); // t = Kx
-    LocalDiffusionKernel ldk = new LocalDiffusionKernel();
-    ldk.apply(ldt,t,b); // b = G'DGKx
+    _ldk.apply(ldt,t,b); // b = G'DGKx
     copy(0,f,b,b); // b = MG'DGKx
     Array.sub(t,b,b); // b = (K-MG'DGK)x
     return b;
@@ -82,8 +84,7 @@ public class LocalInterpolationFilterIc {
   {
     int n1 = f[0].length;
     int n2 = f.length;
-    LocalDiffusionKernel ldk = new LocalDiffusionKernel();
-    float[][][] s = ldk.getCoefficients(ldt);
+    float[][][] s = _ldk.getCoefficients(ldt);
     float[][] s00 = s[0];
     float[][] s0p = s[1];
     float[][] spm = s[2];
@@ -155,7 +156,8 @@ public class LocalInterpolationFilterIc {
     scopy(r,d);
     float delta = sdot(r,r);
     float deltaBegin = delta;
-    float deltaSmall = sdot(b,b)*_small*_small;
+    float deltaSmall = deltaBegin*_small*_small;
+    //float deltaSmall = sdot(b,b)*_small*_small;
     trace("solve: delta="+delta);
     int iter;
     for (iter=0; iter<_niter && delta>deltaSmall; ++iter) {
@@ -188,10 +190,11 @@ public class LocalInterpolationFilterIc {
     a.apply(x,q);
     saxpy(-1.0f,q,r); // r = b-Ax
     m.apply(r,d);
-    m.apply(b,s);
+    //m.apply(b,s);
     float delta = sdot(r,d);
     float deltaBegin = delta;
-    float deltaSmall = sdot(s,s)*_small*_small;
+    float deltaSmall = deltaBegin*_small*_small;
+    //float deltaSmall = sdot(s,s)*_small*_small;
     trace("solve: delta="+delta);
     int iter;
     for (iter=0; iter<_niter && delta>deltaSmall; ++iter) {

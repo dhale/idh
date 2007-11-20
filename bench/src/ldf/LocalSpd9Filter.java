@@ -84,7 +84,6 @@ public class LocalSpd9Filter {
    */
   public void factorIC0() {
     Check.state(_d==null,"filter has not been factored");
-    //mmatrix(_s);
     _d = factorIC0(_s);
   }
 
@@ -362,35 +361,82 @@ public class LocalSpd9Filter {
     for (int i2=0; i2<n2; ++i2) {
       for (int i1=0; i1<n1; ++i1) {
         if (a0p[i2][i1]>0.0f) {
-          trace("a0p>0: i1="+i1+" i2="+i2);
+          //trace("a0p>0: i1="+i1+" i2="+i2);
           a00[i2][i1] += a0p[i2][i1];
           if (i1<n1-1)
             a00[i2][i1+1] += a0p[i2][i1];
           a0p[i2][i1] = 0.0f;
         }
         if (apm[i2][i1]>0.0f) {
-          trace("apm>0: i1="+i1+" i2="+i2);
+          //trace("apm>0: i1="+i1+" i2="+i2);
           a00[i2][i1] += apm[i2][i1];
           if (0<i1 && i2<n2-1)
             a00[i2+1][i1-1] += apm[i2][i1];
           apm[i2][i1] = 0.0f;
         }
         if (ap0[i2][i1]>0.0f) {
-          trace("ap0>0: i1="+i1+" i2="+i2);
+          //trace("ap0>0: i1="+i1+" i2="+i2);
           a00[i2][i1] += ap0[i2][i1];
           if (i2<n2-1)
             a00[i2+1][i1] += ap0[i2][i1];
           ap0[i2][i1] = 0.0f;
         }
         if (app[i2][i1]>0.0f) {
-          trace("app>0: i1="+i1+" i2="+i2);
+          //trace("app>0: i1="+i1+" i2="+i2);
           a00[i2][i1] += app[i2][i1];
           if (i1<n1-1 && i2<n2-1)
-            a00[i2+1][i1-1] += app[i2][i1];
+            a00[i2+1][i1+1] += app[i2][i1];
           app[i2][i1] = 0.0f;
         }
       }
     }
+  }
+
+  private static void fixPivot(float[][][] a, int i1, int i2) {
+    trace("fixPivot: i1="+i1+" i2="+i2);
+    int n1 = a[0][0].length;
+    int n2 = a[0].length;
+    float[][] a00 = a[0];
+    float[][] a0p = a[1];
+    float[][] apm = a[2];
+    float[][] ap0 = a[3];
+    float[][] app = a[4];
+    float sum = 0.0f;
+    sum += abs(a0p[i2][i1]);
+    sum += abs(apm[i2][i1]);
+    sum += abs(ap0[i2][i1]);
+    sum += abs(app[i2][i1]);
+    if (0<i1)
+      sum += abs(a0p[i2][i1-1]);
+    if (0<i2) {
+        sum += abs(ap0[i2-1][i1]);
+      if (i1<n1-1)
+        sum += abs(apm[i2-1][i1+1]);
+      if (0<i1)
+        sum += abs(app[i2-1][i1-1]);
+    }
+    a00[i2][i1] = sum;
+  }
+
+  private static void preFactor(float[][][] a) {
+    //mmatrix(_s);
+    //Array.mul(1.008f,a00,a00);
+    /*
+    int n1 = a[0][0].length;
+    int n2 = a[0].length;
+    float[][] a00 = a[0];
+    float factor = 1.10f;
+    for (int i2=0; i2<n2; ++i2) {
+      a00[i2][0   ] *= factor;
+      a00[i2][1   ] *= factor;
+      a00[i2][n1-2] *= factor;
+      a00[i2][n1-1] *= factor;
+    }
+    for (int i1=0; i1<n1; ++i1) {
+      a00[0   ][i1] *= factor;
+      a00[n2-1][i1] *= factor;
+    }
+    */
   }
 
   /**
@@ -401,6 +447,7 @@ public class LocalSpd9Filter {
    * of the elements in d.
    */
   private static float[][] factorIC0(float[][][] a) {
+    preFactor(a);
     int n1 = a[0][0].length;
     int n2 = a[0].length;
     float[][] a00 = a[0];
@@ -409,7 +456,6 @@ public class LocalSpd9Filter {
     float[][] ap0 = a[3];
     float[][] app = a[4];
     float[][] d00 = new float[n2][n1];
-    Array.mul(1.002f,a00,a00);
     int i1 = 0;
     int i2 = 0;
     d00[i2][i1] = 1.0f/a00[i2][i1];
@@ -417,6 +463,7 @@ public class LocalSpd9Filter {
       a00[i2][i1] -= d00[i2  ][i1-1]*a0p[i2  ][i1-1]*a0p[i2  ][i1-1];
       apm[i2][i1] -= d00[i2  ][i1-1]*ap0[i2  ][i1-1]*a0p[i2  ][i1-1];
       ap0[i2][i1] -= d00[i2  ][i1-1]*app[i2  ][i1-1]*a0p[i2  ][i1-1];
+      if (a00[i2][i1]<=0.0f) fixPivot(a,i1,i2);
       d00[i2][i1] = 1.0f/a00[i2][i1];
     }
     for (i2=1; i2<n2; ++i2) {
@@ -424,6 +471,7 @@ public class LocalSpd9Filter {
       a00[i2][i1] -= d00[i2-1][i1+1]*apm[i2-1][i1+1]*apm[i2-1][i1+1] +
                      d00[i2-1][i1  ]*ap0[i2-1][i1  ]*ap0[i2-1][i1  ];
       a0p[i2][i1] -= d00[i2-1][i1  ]*app[i2-1][i1  ]*ap0[i2-1][i1  ];
+      if (a00[i2][i1]<=0.0f) fixPivot(a,i1,i2);
       d00[i2][i1] = 1.0f/a00[i2][i1];
       for (i1=1; i1<n1-1; ++i1) {
         a00[i2][i1] -= d00[i2  ][i1-1]*a0p[i2  ][i1-1]*a0p[i2  ][i1-1] +
@@ -434,6 +482,7 @@ public class LocalSpd9Filter {
                        d00[i2-1][i1  ]*app[i2-1][i1  ]*ap0[i2-1][i1  ];
         apm[i2][i1] -= d00[i2  ][i1-1]*ap0[i2  ][i1-1]*a0p[i2  ][i1-1];
         ap0[i2][i1] -= d00[i2  ][i1-1]*app[i2  ][i1-1]*a0p[i2  ][i1-1];
+        if (a00[i2][i1]<=0.0f) fixPivot(a,i1,i2);
         d00[i2][i1] = 1.0f/a00[i2][i1];
       }
       a00[i2][i1] -= d00[i2  ][i1-1]*a0p[i2  ][i1-1]*a0p[i2  ][i1-1] +
@@ -442,6 +491,7 @@ public class LocalSpd9Filter {
       a0p[i2][i1] -= d00[i2-1][i1  ]*app[i2-1][i1  ]*ap0[i2-1][i1  ];
       apm[i2][i1] -= d00[i2  ][i1-1]*ap0[i2  ][i1-1]*a0p[i2  ][i1-1];
       ap0[i2][i1] -= d00[i2  ][i1-1]*app[i2  ][i1-1]*a0p[i2  ][i1-1];
+      if (a00[i2][i1]<=0.0f) fixPivot(a,i1,i2);
       d00[i2][i1] = 1.0f/a00[i2][i1];
     }
     return d00;
@@ -464,18 +514,25 @@ public class LocalSpd9Filter {
     float[][] y = Array.randfloat(n1,n2);
     float[][] z = Array.randfloat(n1,n2);
     float[][] w = Array.randfloat(n1,n2);
+    float theta = FLT_PI*0.0f/8.0f;
     float[][] d0 = Array.fillfloat(1.0f,n1,n2);
     float[][] d1 = Array.fillfloat(1.0f,n1,n2);
-    float[][] v1 = Array.fillfloat(sqrt(0.5f),n1,n2);
-    //float[][] d0 = Array.randfloat(n1,n2);
-    //float[][] d1 = Array.randfloat(n1,n2);
-    //float[][] v1 = Array.randfloat(n1,n2);
+    float[][] v1 = Array.fillfloat(sin(theta),n1,n2);
     LocalDiffusionTensors2 ldt = 
-      new LocalDiffusionTensors2(1.0,0.0,d0,d1,v1);
+      new LocalDiffusionTensors2(0.0,1.0,d0,d1,v1);
     LocalDiffusionKernel ldk = new LocalDiffusionKernel();
     float[][][] s = ldk.getCoefficients(ldt);
-    Array.add(0.1f,s[0],s[0]);
+    float[][] s00 = s[0], s0p = s[1], spm = s[2], sp0 = s[3], spp = s[4];
+    int k1 = 1;
+    int k2 = 1;
+    s00[k2][k1] = 1.0f;
+    s0p[k2][k1] = s0p[k2  ][k1-1] = 0.0f;
+    spm[k2][k1] = spm[k2-1][k1+1] = 0.0f;
+    sp0[k2][k1] = sp0[k2-1][k1  ] = 0.0f;
+    spp[k2][k1] = spp[k2-1][k1-1] = 0.0f;
     LocalSpd9Filter lsf = new LocalSpd9Filter(s);
+    float[][] a = lsf.getMatrix();
+    edu.mines.jtk.mosaic.SimplePlot.asPixels(a);
     lsf.apply(x,y);
     lsf.factorIC0();
     lsf.apply(x,z);
@@ -507,6 +564,6 @@ public class LocalSpd9Filter {
 
   public static void main(String[] args) {
     testFactor();
-    testMatrix();
+    //testMatrix();
   }
 }
