@@ -42,6 +42,9 @@ public class LocalInterpolationFilterIc {
   ///////////////////////////////////////////////////////////////////////////
   // private
 
+  private static final LocalDiffusionKernel _ldk = 
+    new LocalDiffusionKernel(1.0/12.0);
+
   private float _small; // stop iterations when residuals are small
   private int _niter; // number of iterations
 
@@ -61,9 +64,6 @@ public class LocalInterpolationFilterIc {
       }
     }
   }
-
-  private static final LocalDiffusionKernel _ldk = 
-    new LocalDiffusionKernel(3.0/12.0);
 
   private static float[][] makeB(
     LocalDiffusionTensors2 ldt, byte[][] f, float[][] x) 
@@ -110,10 +110,9 @@ public class LocalInterpolationFilterIc {
         }
       }
     }
-    LocalSpd9Filter a = new LocalSpd9Filter(s);
-    LocalSpd9Filter m = new LocalSpd9Filter(s);
-    m.factorIC0();
-    return new Operator2[]{new A2(a), new M2(m)};
+    LocalSpd9Filter lsf = new LocalSpd9Filter(s);
+    //edu.mines.jtk.mosaic.SimplePlot.asPixels(lsf.getMatrix());
+    return new Operator2[]{new A2(lsf), new M2(lsf)};
   }
 
   private static interface Operator2 {
@@ -135,7 +134,7 @@ public class LocalInterpolationFilterIc {
       _lsf = lsf;
     }
     public void apply(float[][] x, float[][] y) {
-      _lsf.applyInverse(x,y);
+      _lsf.applyApproximateInverse(x,y);
     }
     private LocalSpd9Filter _lsf;
   }
@@ -266,28 +265,14 @@ public class LocalInterpolationFilterIc {
     testSolve();
   }
 
-  private static void testSolve() {
-    int n1 = 11;
-    int n2 = 11;
-    float s0 = 1.0f;
-    float s1 = 0.0f;
-    //float[][] d0 = Array.randfloat(n1,n2);
-    //float[][] d1 = Array.randfloat(n1,n2);
-    //float[][] v1 = Array.sub(Array.randfloat(n1,n2),0.5f);
-    float[][] d0 = Array.fillfloat(1.0f,n1,n2);
-    float[][] d1 = Array.fillfloat(1.0f,n1,n2);
-    float[][] v1 = Array.fillfloat(sqrt(0.5f),n1,n2);
-    LocalDiffusionTensors2 ldt = new LocalDiffusionTensors2(s0,s1,d0,d1,v1);
-    byte[][] f = Array.zerobyte(n1,n2);
-    f[n2/2][n1/2] = 1;
-    float small = 0.0001f;
-    int niter = 100;
-    LocalInterpolationFilterIc lif = 
-      new LocalInterpolationFilterIc(small,niter);
-    float[][] x = Array.zerofloat(n1,n2);
-    x[n2/2][n1/2] = 1.0f;
-    lif.apply(ldt,f,x);
-    edu.mines.jtk.mosaic.SimplePlot.asPixels(x);
+  private static void plotPixels(float[][] x) {
+    edu.mines.jtk.mosaic.SimplePlot sp =
+      new edu.mines.jtk.mosaic.SimplePlot(
+        edu.mines.jtk.mosaic.SimplePlot.Origin.UPPER_LEFT);
+    sp.setSize(650,600);
+    edu.mines.jtk.mosaic.PixelsView pv =
+      sp.addPixels(x);
+    pv.setColorModel(edu.mines.jtk.awt.ColorMap.JET);
   }
 
   private static void testOperators() {
@@ -325,5 +310,41 @@ public class LocalInterpolationFilterIc {
     float xay = sdot(x,ay);
     System.out.println("xax="+xax+" yay="+yay+" (should be positive)");
     System.out.println("yax="+yax+" xay="+xay+" (should be equal)");
+  }
+
+  private static void testSolve() {
+    int n1 = 101;
+    int n2 = 101;
+    float s0 = 0.00f;
+    float s1 = 1.00f;
+    //float[][] d0 = Array.randfloat(n1,n2);
+    //float[][] d1 = Array.randfloat(n1,n2);
+    //float[][] v1 = Array.sub(Array.randfloat(n1,n2),0.5f);
+    float theta = FLT_PI*0.5f/8.0f;
+    float ctheta = cos(theta);
+    float stheta = sin(theta);
+    float[][] d0 = Array.fillfloat(1.0f,n1,n2);
+    float[][] d1 = Array.fillfloat(1.0f,n1,n2);
+    float[][] v1 = Array.fillfloat(stheta,n1,n2);
+    LocalDiffusionTensors2 ldt = new LocalDiffusionTensors2(s0,s1,d0,d1,v1);
+    byte[][] f = Array.zerobyte(n1,n2);
+    float[][] x = Array.zerofloat(n1,n2);
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        //if (i2==0 || i2==n2/2 || i2==n2-1) {
+        if (i2==n2/2 || i2==n2-1) {
+          x[i2][i1] = sin(16.0f*FLT_PI*(float)((i1*ctheta-i2*stheta)/n1));
+          f[i2][i1] = 1;
+        }
+      }
+    }
+    plotPixels(x);
+    float small = 0.0001f;
+    int niter = 1000;
+    LocalInterpolationFilterIc lif = 
+      new LocalInterpolationFilterIc(small,niter);
+    lif.apply(ldt,f,x);
+    trace("x min="+Array.min(x)+" max="+Array.max(x));
+    plotPixels(x);
   }
 } 

@@ -48,16 +48,15 @@ def goInterp():
   #x = flip2(x)
   n1,n2 = len(x[0]),len(x)
   v1,v2,ds = getV(x)
-  #theta = 0.25*pi
+  #theta = 0.15*pi
   #v1 = Array.fillfloat(sin(theta),n1,n2)
   #v2 = Array.fillfloat(cos(theta),n1,n2)
-  #ds = Array.fillfloat(1.0,n1,n2)
   f = Array.zerobyte(n1,n2)
   y = Array.zerofloat(n1,n2)
   z = Array.zerofloat(n1,n2)
   #plot(x,-10,10,gray,"x")
   #for itest in [0,1,2,3]:
-  for itest in [0,1]:
+  for itest in [0,1,2,3]:
     if itest<2:
       d0 = None
       d1 = None
@@ -66,7 +65,8 @@ def goInterp():
       d1 = makeBlock(n1,n2)
     if itest==0 or itest==2:
       for i2 in [n2/2]:
-        for i1 in range(n1):
+        #for i1 in range(n1):
+        for i1 in range(n1/5,4*n1/5):
           f[i2][i1] = 1
           y[i2][i1] = float(i1)/n1
       cmin =  0.0
@@ -74,16 +74,17 @@ def goInterp():
       ldt = LocalDiffusionTensors2(0.1,1.0,d0,d1,v1)
     else:
       for i2 in [n2/2]:
-        for i1 in range(n1):
+        #for i1 in range(n1):
+        for i1 in range(n1/5,4*n1/5):
           f[i2][i1] = 1
           y[i2][i1] = x[i2][i1]
       cmin = -10
       cmax = 10
-      ldt = LocalDiffusionTensors2(0.0,1.0,d0,d1,v1)
-    small = 0.0001
+      ldt = LocalDiffusionTensors2(0.01,1.0,d0,d1,v1)
+    Array.copy(y,z)
+    small = 0.001
     niter = 1000
     lif = LocalInterpolationFilterIc(small,niter)
-    Array.copy(y,z)
     lif.apply(ldt,f,z)
     #plot(y,cmin,cmax,jet,"y"+str(itest))
     plot(z,cmin,cmax,jet,"z"+str(itest))
@@ -159,7 +160,7 @@ def getV(x):
   return v1,v2,el
 
 def makeBlock(n1,n2):
-  ds = Array.zerofloat(n1,n2);
+  ds = Array.fillfloat(0.001,n1,n2);
   #for i2 in range(n2/3,n2):
   #  for i1 in range(n1):
   #    ds[i2][i1] = 1.0
