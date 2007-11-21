@@ -84,7 +84,12 @@ public class LocalInterpolationFilterIc {
   {
     int n1 = f[0].length;
     int n2 = f.length;
+
+    // First make A = G'DG, which is symmetric positive semidefinite.
     float[][][] s = _ldk.getCoefficients(ldt);
+
+    // Then make A = K+MG'DGM, which should be symmetric positive definite.
+    // (It will be SPD iff one or more of the flags in f are non-zero.)
     float[][] s00 = s[0];
     float[][] s0p = s[1];
     float[][] spm = s[2];
@@ -93,7 +98,7 @@ public class LocalInterpolationFilterIc {
     for (int i2=0; i2<n2; ++i2) {
       for (int i1=0; i1<n1; ++i1) {
         if (f[i2][i1]!=0) {
-          s00[i2][i1] = 1.0f;
+          s00[i2][i1] = 1.0f; // A = (K+MG'DGM)
           s0p[i2][i1] = 0.0f;
           spm[i2][i1] = 0.0f;
           sp0[i2][i1] = 0.0f;
@@ -110,7 +115,7 @@ public class LocalInterpolationFilterIc {
         }
       }
     }
-    LocalSpd9Filter lsf = new LocalSpd9Filter(s);
+    LocalSpd9Filter lsf = new LocalSpd9Filter(s,0.0);
     //edu.mines.jtk.mosaic.SimplePlot.asPixels(lsf.getMatrix());
     return new Operator2[]{new A2(lsf), new M2(lsf)};
   }

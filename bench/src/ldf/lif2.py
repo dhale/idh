@@ -65,8 +65,7 @@ def goInterp():
       d1 = makeBlock(n1,n2)
     if itest==0 or itest==2:
       for i2 in [n2/2]:
-        #for i1 in range(n1):
-        for i1 in range(n1/5,4*n1/5):
+        for i1 in range(n1):
           f[i2][i1] = 1
           y[i2][i1] = float(i1)/n1
       cmin =  0.0
@@ -74,8 +73,7 @@ def goInterp():
       ldt = LocalDiffusionTensors2(0.1,1.0,d0,d1,v1)
     else:
       for i2 in [n2/2]:
-        #for i1 in range(n1):
-        for i1 in range(n1/5,4*n1/5):
+        for i1 in range(n1):
           f[i2][i1] = 1
           y[i2][i1] = x[i2][i1]
       cmin = -10

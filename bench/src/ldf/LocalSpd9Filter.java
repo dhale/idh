@@ -175,7 +175,7 @@ public class LocalSpd9Filter {
     float[][] spm = _s[2];
     float[][] sp0 = _s[3];
     float[][] spp = _s[4];
-    int i1,i2;
+    int i1,i2,i1m,i1p;
     i1 = n1m;
     i2 = n2m;
     y[i2  ][i1  ]  = s00[i2][i1]*x[i2  ][i1  ];
@@ -185,30 +185,39 @@ public class LocalSpd9Filter {
       y[i2  ][i1+1] += s0p[i2][i1]*x[i2  ][i1  ];
     }
     for (i2=n2m-1; i2>=0; --i2) {
+      float[] s00i2 = s00[i2];
+      float[] s0pi2 = s0p[i2];
+      float[] spmi2 = spm[i2];
+      float[] sp0i2 = sp0[i2];
+      float[] sppi2 = spp[i2];
+      float[] yi2p0 = y[i2  ];
+      float[] yi2p1 = y[i2+1];
+      float[] xi2p0 = x[i2  ];
+      float[] xi2p1 = x[i2+1];
       i1 = n1m;
-      y[i2  ][i1  ]  = s00[i2][i1]*x[i2  ][i1  ];
-      y[i2  ][i1  ] += spm[i2][i1]*x[i2+1][i1-1];
-      y[i2+1][i1-1] += spm[i2][i1]*x[i2  ][i1  ];
-      y[i2  ][i1  ] += sp0[i2][i1]*x[i2+1][i1  ];
-      y[i2+1][i1  ] += sp0[i2][i1]*x[i2  ][i1  ];
-      for (i1=n1m-1; i1>=1; --i1) {
-        y[i2  ][i1  ]  = s00[i2][i1]*x[i2  ][i1  ];
-        y[i2  ][i1  ] += s0p[i2][i1]*x[i2  ][i1+1];
-        y[i2  ][i1+1] += s0p[i2][i1]*x[i2  ][i1  ];
-        y[i2  ][i1  ] += spm[i2][i1]*x[i2+1][i1-1];
-        y[i2+1][i1-1] += spm[i2][i1]*x[i2  ][i1  ];
-        y[i2  ][i1  ] += sp0[i2][i1]*x[i2+1][i1  ];
-        y[i2+1][i1  ] += sp0[i2][i1]*x[i2  ][i1  ];
-        y[i2  ][i1  ] += spp[i2][i1]*x[i2+1][i1+1];
-        y[i2+1][i1+1] += spp[i2][i1]*x[i2  ][i1  ];
+      yi2p0[i1  ]  = s00i2[i1]*xi2p0[i1  ];
+      yi2p0[i1  ] += spmi2[i1]*xi2p1[i1-1];
+      yi2p1[i1-1] += spmi2[i1]*xi2p0[i1  ];
+      yi2p0[i1  ] += sp0i2[i1]*xi2p1[i1  ];
+      yi2p1[i1  ] += sp0i2[i1]*xi2p0[i1  ];
+      for (i1=n1m-1,i1m=i1-1,i1p=i1+1; i1>=1; --i1,--i1m,--i1p) {
+        yi2p0[i1 ]  = s00i2[i1]*xi2p0[i1 ];
+        yi2p0[i1 ] += s0pi2[i1]*xi2p0[i1p];
+        yi2p0[i1p] += s0pi2[i1]*xi2p0[i1 ];
+        yi2p0[i1 ] += spmi2[i1]*xi2p1[i1m];
+        yi2p1[i1m] += spmi2[i1]*xi2p0[i1 ];
+        yi2p0[i1 ] += sp0i2[i1]*xi2p1[i1 ];
+        yi2p1[i1 ] += sp0i2[i1]*xi2p0[i1 ];
+        yi2p0[i1 ] += sppi2[i1]*xi2p1[i1p];
+        yi2p1[i1p] += sppi2[i1]*xi2p0[i1 ];
       }
-      y[i2  ][i1  ]  = s00[i2][i1]*x[i2  ][i1  ];
-      y[i2  ][i1  ] += s0p[i2][i1]*x[i2  ][i1+1];
-      y[i2  ][i1+1] += s0p[i2][i1]*x[i2  ][i1  ];
-      y[i2  ][i1  ] += sp0[i2][i1]*x[i2+1][i1  ];
-      y[i2+1][i1  ] += sp0[i2][i1]*x[i2  ][i1  ];
-      y[i2  ][i1  ] += spp[i2][i1]*x[i2+1][i1+1];
-      y[i2+1][i1+1] += spp[i2][i1]*x[i2  ][i1  ];
+      yi2p0[i1  ]  = s00i2[i1]*xi2p0[i1  ];
+      yi2p0[i1  ] += s0pi2[i1]*xi2p0[i1+1];
+      yi2p0[i1+1] += s0pi2[i1]*xi2p0[i1  ];
+      yi2p0[i1  ] += sp0i2[i1]*xi2p1[i1  ];
+      yi2p1[i1  ] += sp0i2[i1]*xi2p0[i1  ];
+      yi2p0[i1  ] += sppi2[i1]*xi2p1[i1+1];
+      yi2p1[i1+1] += sppi2[i1]*xi2p0[i1  ];
     }
   }
 
@@ -227,61 +236,73 @@ public class LocalSpd9Filter {
     float[][] lp0 = _l[3];
     float[][] lpp = _l[4];
     int i1,i2;
-    float zi;
 
     // Solve L*z = b.
-    float[][] z = x;
-    Array.zero(z);
+    Array.zero(x);
     for (i2=0; i2<n2m; ++i2) {
+      float[] bi2p0 = b[i2  ];
+      float[] xi2p0 = x[i2  ];
+      float[] xi2p1 = x[i2+1];
+      float[] l0pi2 = l0p[i2];
+      float[] lpmi2 = lpm[i2];
+      float[] lp0i2 = lp0[i2];
+      float[] lppi2 = lpp[i2];
       i1 = 0;
-      z[i2  ][i1  ] += b[i2  ][i1  ];
-      z[i2  ][i1+1] -= l0p[i2][i1]*z[i2][i1];
-      z[i2+1][i1  ] -= lp0[i2][i1]*z[i2][i1];
-      z[i2+1][i1+1] -= lpp[i2][i1]*z[i2][i1];
+      xi2p0[i1  ] += bi2p0[i1];
+      xi2p0[i1+1] -= l0pi2[i1]*xi2p0[i1];
+      xi2p1[i1  ] -= lp0i2[i1]*xi2p0[i1];
+      xi2p1[i1+1] -= lppi2[i1]*xi2p0[i1];
       for (i1=1; i1<n1m; ++i1) {
-        z[i2  ][i1  ] += b[i2  ][i1  ];
-        z[i2  ][i1+1] -= l0p[i2][i1]*z[i2][i1];
-        z[i2+1][i1-1] -= lpm[i2][i1]*z[i2][i1];
-        z[i2+1][i1  ] -= lp0[i2][i1]*z[i2][i1];
-        z[i2+1][i1+1] -= lpp[i2][i1]*z[i2][i1];
+        xi2p0[i1  ] += bi2p0[i1];
+        xi2p0[i1+1] -= l0pi2[i1]*xi2p0[i1];
+        xi2p1[i1-1] -= lpmi2[i1]*xi2p0[i1];
+        xi2p1[i1  ] -= lp0i2[i1]*xi2p0[i1];
+        xi2p1[i1+1] -= lppi2[i1]*xi2p0[i1];
       }
-      z[i2  ][i1  ] += b[i2  ][i1  ];
-      z[i2+1][i1-1] -= lpm[i2][i1]*z[i2][i1];
-      z[i2+1][i1  ] -= lp0[i2][i1]*z[i2][i1];
+      xi2p0[i1  ] += bi2p0[i1];
+      xi2p1[i1-1] -= lpmi2[i1]*xi2p0[i1];
+      xi2p1[i1  ] -= lp0i2[i1]*xi2p0[i1];
     }
     i1 = 0;
-    z[i2  ][i1  ] += b[i2  ][i1  ];
-    z[i2  ][i1+1] -= l0p[i2][i1]*z[i2][i1];
+    x[i2  ][i1  ] += b[i2][i1];
+    x[i2  ][i1+1] -= l0p[i2][i1]*x[i2][i1];
     for (i1=1; i1<n1m; ++i1) {
-      z[i2  ][i1  ] += b[i2  ][i1  ];
-      z[i2  ][i1+1] -= l0p[i2][i1]*z[i2][i1];
+      x[i2  ][i1  ] += b[i2][i1];
+      x[i2  ][i1+1] -= l0p[i2][i1]*x[i2][i1];
     }
-    z[i2  ][i1  ] += b[i2  ][i1  ];
+    x[i2  ][i1  ] += b[i2][i1];
 
     // Solve D*y = z and L'*x = y.
     i2 = n2m;
     i1 = n1m;
-    x[i2][i1] = d00[i2][i1]*z[i2  ][i1  ];
+    x[i2][i1] = d00[i2][i1]*x[i2  ][i1  ];
     for (i1=n1m-1; i1>=0; --i1) {
-      x[i2][i1] = d00[i2][i1]*z[i2  ][i1  ] -
+      x[i2][i1] = d00[i2][i1]*x[i2  ][i1  ] -
                   l0p[i2][i1]*x[i2  ][i1+1];
     }
     for (i2=n2m-1; i2>=0; --i2) {
+      float[] xi2p0 = x[i2  ];
+      float[] xi2p1 = x[i2+1];
+      float[] d00i2 = d00[i2];
+      float[] l0pi2 = l0p[i2];
+      float[] lpmi2 = lpm[i2];
+      float[] lp0i2 = lp0[i2];
+      float[] lppi2 = lpp[i2];
       i1 = n1m;
-      x[i2][i1] = d00[i2][i1]*z[i2  ][i1  ] -
-                  lp0[i2][i1]*x[i2+1][i1  ] -
-                  lpm[i2][i1]*x[i2+1][i1-1];
+      xi2p0[i1] = d00[i2][i1]*xi2p0[i1  ] -
+                  lp0[i2][i1]*xi2p1[i1  ] -
+                  lpm[i2][i1]*xi2p1[i1-1];
       for (i1=n1m-1; i1>=1; --i1) {
-        x[i2][i1] = d00[i2][i1]*z[i2  ][i1  ] -
-                    lpp[i2][i1]*x[i2+1][i1+1] -
-                    lp0[i2][i1]*x[i2+1][i1  ] -
-                    lpm[i2][i1]*x[i2+1][i1-1] -
-                    l0p[i2][i1]*x[i2  ][i1+1];
+        xi2p0[i1] = d00i2[i1]*xi2p0[i1  ] -
+                    lppi2[i1]*xi2p1[i1+1] -
+                    lp0i2[i1]*xi2p1[i1  ] -
+                    lpmi2[i1]*xi2p1[i1-1] -
+                    l0pi2[i1]*xi2p0[i1+1];
       }
-      x[i2][i1] = d00[i2][i1]*z[i2  ][i1  ] -
-                  lpp[i2][i1]*x[i2+1][i1+1] -
-                  lp0[i2][i1]*x[i2+1][i1  ] -
-                  l0p[i2][i1]*x[i2  ][i1+1];
+      xi2p0[i1] = d00i2[i1]*xi2p0[i1  ] -
+                  lppi2[i1]*xi2p1[i1+1] -
+                  lp0i2[i1]*xi2p1[i1  ] -
+                  l0pi2[i1]*xi2p0[i1+1];
     }
   }
   
@@ -450,10 +471,10 @@ public class LocalSpd9Filter {
   private static void testFactor() {
     int n1 = 5;
     int n2 = 5;
-    float[][] x = Array.zerofloat(n1,n2);
-    x[0][0] = x[n2-1][0] = x[0][n1-1] = x[n2-1][n1-1] = 1.0f;
+    //float[][] x = Array.zerofloat(n1,n2);
+    //x[0][0] = x[n2-1][0] = x[0][n1-1] = x[n2-1][n1-1] = 1.0f;
     //x[2][2] = 1.0f;
-    //float[][] x = Array.randfloat(n1,n2);
+    float[][] x = Array.randfloat(n1,n2);
     float[][] y = Array.randfloat(n1,n2);
     float[][] z = Array.randfloat(n1,n2);
     float[][] w = Array.randfloat(n1,n2);
@@ -473,19 +494,6 @@ public class LocalSpd9Filter {
     spm[k2][k1] = spm[k2-1][k1+1] = 0.0f;
     sp0[k2][k1] = sp0[k2-1][k1  ] = 0.0f;
     spp[k2][k1] = spp[k2-1][k1-1] = 0.0f;
-    /*
-    for (int i=0; i<5; ++i) {
-      for (int i2=0; i2<n2; ++i2) {
-        for (int i1=0; i1<n1; ++i1) {
-          s00[i2][i1] =  2.1f;
-          s0p[i2][i1] = -1.0f;
-          spm[i2][i1] =  0.0f;
-          sp0[i2][i1] =  0.0f;
-          spp[i2][i1] =  0.0f;
-        }
-      }
-    }
-    */
     LocalSpd9Filter lsf = new LocalSpd9Filter(s);
     float[][] a = lsf.getMatrix();
     edu.mines.jtk.mosaic.SimplePlot.asPixels(a);
