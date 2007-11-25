@@ -57,14 +57,19 @@ def goInterp():
   #plot(x,-10,10,gray,"x")
   #for itest in [0,1,2,3]:
   for itest in [0,1,2,3]:
+    Array.zero(f);
+    Array.zero(y);
+    Array.zero(z);
     if itest<2:
       d0 = None
       d1 = None
+      i2s = [n2/2]
     else:
-      d0 = makeBlock(n1,n2)
-      d1 = makeBlock(n1,n2)
+      d0 = makeFault(n1,n2)
+      d1 = makeFault(n1,n2)
+      i2s = [5,n2/2]
     if itest==0 or itest==2:
-      for i2 in [n2/2]:
+      for i2 in i2s:
         for i1 in range(n1):
           f[i2][i1] = 1
           y[i2][i1] = float(i1)/n1
@@ -72,10 +77,11 @@ def goInterp():
       cmax =  1.0
       ldt = LocalDiffusionTensors2(0.1,1.0,d0,d1,v1)
     else:
-      for i2 in [n2/2]:
+      for i2 in i2s:
         for i1 in range(n1):
           f[i2][i1] = 1
-          y[i2][i1] = x[i2][i1]
+        #y[i2] = smoothSgn(x[i2])
+        y[i2] = Array.copy(x[i2])
       cmin = -10
       cmax = 10
       ldt = LocalDiffusionTensors2(0.01,1.0,d0,d1,v1)
@@ -86,7 +92,19 @@ def goInterp():
     lif.apply(ldt,f,z)
     #plot(y,cmin,cmax,jet,"y"+str(itest))
     plot(z,cmin,cmax,jet,"z"+str(itest))
-    #plot2(x,z,cmin,cmax,"xz"+str(itest))
+    plot2(x,z,cmin,cmax,"xz"+str(itest))
+
+def smoothSgn(x):
+  n = len(x)
+  y = Array.zerofloat(n)
+  for i in range(n):
+    if x[i]<0:
+      y[i] = -10
+    else:
+      y[i] = 10
+  lgf = RecursiveGaussianFilter(2.0)
+  lgf.apply0(y,y)
+  return y
 
 def goInterpOld():
   x = readImage()
@@ -156,6 +174,17 @@ def getV(x):
   el = Array.zerofloat(n1,n2)
   lof.apply(x,None,None,None,v1,v2,None,None,el)
   return v1,v2,el
+
+def makeFault(n1,n2):
+  ds = Array.fillfloat(1.0,n1,n2);
+  #for i2 in range(n2/3,n2):
+  #  for i1 in range(n1):
+  #    ds[i2][i1] = 1.0
+  for i1 in range(n1):
+    i2 = 100-(i1*50)/n1
+    ds[i2  ][i1] = 0.001
+    ds[i2+1][i1] = 0.001
+  return ds
 
 def makeBlock(n1,n2):
   ds = Array.fillfloat(0.001,n1,n2);

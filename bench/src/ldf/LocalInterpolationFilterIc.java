@@ -115,7 +115,7 @@ public class LocalInterpolationFilterIc {
         }
       }
     }
-    LocalSpd9Filter lsf = new LocalSpd9Filter(s,0.0);
+    LocalSpd9Filter lsf = new LocalSpd9Filter(s,0.001);
     //edu.mines.jtk.mosaic.SimplePlot.asPixels(lsf.getMatrix());
     return new Operator2[]{new A2(lsf), new M2(lsf)};
   }
