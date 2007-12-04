@@ -30,6 +30,8 @@ f3 = 0
 s3 = Sampling(n3,d3,f3)
 
 datadir = "/data/seis/sw/all/"
+datbdir = "/datb/seis/sw/all/"
+datcdir = "/datb/seis/sw/all/"
 
 ##############################################################################
 # Read/write
@@ -92,27 +94,50 @@ def slice23(f,i1):
 # Research
 
 class WhitenFilter(FileFloat3Chunks.Filter):
+  def __init__(self,sigma1,sigma2,sigma3):
+    self.sf = ShiftFinder(sigma1,sigma2,sigma3)
   def apply(self,i1,i2,i3,x,y):
     x,y = x[0],y[0]
     n1 = len(x[0][0])
     n2 = len(x[0])
     n3 = len(x)
+    xmin,xmax = Array.min(x),Array.max(x)
+    tiny = 1.0e-5*xmax
     print "apply"
+    print "  min =",xmin," max =",xmax
     print "  i1 =",i1," i2 =",i2," i3 =",i3
     print "  n1 =",n1," n2 =",n2," n3 =",n3
-    print "  min =",Array.min(x)," max =",Array.max(x)
+    r = Array.randfloat(n1,n2,n3)
+    Array.mul(tiny,r,r)
+    Array.add(r,x,x)
+    r = None
+    self.sf.whiten(x,y)
+
+def whitenArrayFile(afx,afy):
+  sigma1,sigma2,sigma3 = 12,6,6
+  wf = WhitenFilter(sigma1,sigma2,sigma3)
+  #mc = 50000000 # 50 Mfloats
+  mc = 120000000 # 120 Mfloats
+  l1,l2,l3 = 3*sigma1,3*sigma2,3*sigma3
+  ff3c = FileFloat3Chunks(mc,n1,l1,l1,n2,l2,l2,n3,l3,l3)
+  print "whitenArrayFile: chunk size =",ff3c.getChunkSize()
+  ff3c.apply(wf,[afx],[afy])
 
 def whiten():
-  sigma1,sigma2,sigma3 = 12.0,6.0,6.0
-  l1,l2,l3 = int(3*sigma1),int(3*sigma2),int(3*sigma3)
-  wf = WhitenFilter()
-  #mc = 50000000 # 50 Mfloats
-  mc = 100000000 # 100 Mfloats
-  ff3c = FileFloat3Chunks(mc,n1,l1,l1,n2,l2,l2,n3,l3,l3)
-  print "whiten: chunk size =",ff3c.getChunkSize()
-  afx = [ArrayFile(datadir+"s02.dat","r")]
-  afy = [ArrayFile(datadir+"w02.dat","rw")]
-  ff3c.apply(wf,afx,afy)
+  #fs = ["s02","s04"]
+  #fw = ["w02","w04"]
+  fs = ["s04"]
+  fw = ["w04"]
+  for i in range(len(fs)):
+    sname = datadir+fs[i]+".dat"
+    wname = datadir+fw[i]+".dat"
+    print "whitening",sname,"..."
+    afs = ArrayFile(sname,"r")
+    afw = ArrayFile(wname,"rw")
+    whitenArrayFile(afs,afw)
+    afs.close()
+    afw.close()
+    print "... done"
 
 def main(args):
   whiten()
