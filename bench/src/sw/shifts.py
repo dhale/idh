@@ -98,12 +98,10 @@ class WhitenFilter(FileFloat3Chunks.Filter):
     self.sf = ShiftFinder(sigma1,sigma2,sigma3)
   def apply(self,i1,i2,i3,x,y):
     x,y = x[0],y[0]
-    n1 = len(x[0][0])
-    n2 = len(x[0])
-    n3 = len(x)
+    n1,n2,n3 = len(x[0][0]),len(x[0]),len(x)
     xmin,xmax = Array.min(x),Array.max(x)
     tiny = 1.0e-5*xmax
-    print "apply"
+    print "WhitenFilter.apply"
     print "  min =",xmin," max =",xmax
     print "  i1 =",i1," i2 =",i2," i3 =",i3
     print "  n1 =",n1," n2 =",n2," n3 =",n3
@@ -139,6 +137,68 @@ def whiten():
     afw.close()
     print "... done"
 
+class ShiftFinderFilter(FileFloat3Chunks.Filter):
+  def __init__(self,niter,lmin,lmax,sigma1,sigma2,sigma3):
+    self.sf = ShiftFinder(sigma1,sigma2,sigma3)
+    self.niter = niter
+    self.lmin = lmin
+    self.lmax = lmax
+  def apply(self,i1,i2,i3,x,y):
+    print "ShiftFinderFilter.apply:"
+    print "  i1 =",i1," i2 =",i2," i3 =",i3
+    print "  n1 =",n1," n2 =",n2," n3 =",n3
+    f,g = x[0],x[1]
+    u1,u2,u3 = y[0],y[1],y[2]
+    n1,n2,n3 = len(f[0][0]),len(f[0]),len(f)
+    du = Array.zerofloat(n1,n2,n3)
+    ga = Array.copy(g)
+    gb = Array.copy(g)
+    print "  shift1"
+    sf.find1(lmin,lmax,f,ga,du)
+    sf.shift1(du,ga,gb,u1,u2,u3)
+    gt = ga; ga = gb; gb = gt
+    print "    du min =",Array.min(du)," max =",Array.max(du)
+    print "  shift3"
+    sf.find3(lmin,lmax,f,ga,du)
+    sf.shift3(du,ga,gb,u1,u2,u3)
+    gt = ga; ga = gb; gb = gt
+    print "    du min =",Array.min(du)," max =",Array.max(du)
+    print "  shift2"
+    sf.find2(lmin,lmax,f,ga,du)
+    sf.shift2(du,ga,gb,u1,u2,u3)
+    gt = ga; ga = gb; gb = gt
+    print "    du min =",Array.min(du)," max =",Array.max(du)
+
+def findShifts():
+  lmin,lmax = -2,2
+  f = readFloats3("w02.dat")
+  g = readFloats3("w04.dat")
+  n1 = len(f[0][0])
+  n2 = len(f[0])
+  n3 = len(f)
+  sf = ShiftFinder(12,12,12)
+  u1 = Array.zerofloat(n1,n2,n3)
+  u2 = Array.zerofloat(n1,n2,n3)
+  u3 = Array.zerofloat(n1,n2,n3)
+  du = Array.zerofloat(n1,n2,n3)
+  ga = Array.copy(g)
+  gb = Array.copy(g)
+  for i in range(2):
+    print "shift1"
+    sf.find1(lmin,lmax,f,ga,du)
+    sf.shift1(du,ga,gb,u1,u2,u3)
+    gt = ga; ga = gb; gb = gt
+    writeFloats3("u1s"+str(i)+".dat",u1)
+    print "shift3"
+    sf.find3(lmin,lmax,f,ga,du)
+    sf.shift3(du,ga,gb,u1,u2,u3)
+    gt = ga; ga = gb; gb = gt
+    writeFloats3("u3s"+str(i)+".dat",u3)
+    print "shift2"
+    sf.find2(lmin,lmax,f,ga,du)
+    sf.shift2(du,ga,gb,u1,u2,u3)
+    gt = ga; ga = gb; gb = gt
+    writeFloats3("u2s"+str(i)+".dat",u2)
 def main(args):
   whiten()
   return
