@@ -90,6 +90,20 @@ def slice23(f,i1):
       f23[i3][i2] = f[i3][i2][i1];
   return f23
 
+def copyFile(x,y):
+  x = ArrayFile(x,"r")
+  y = ArrayFile(y,"r")
+  n = 65536
+  b = Array.zerobyte(n)
+  size = x.length()
+  while size>0:
+    m = min(n,size)
+    x.readBytes(b,0,m)
+    y.writeBytes(b,0,m)
+    size -= m
+  x.close()
+  y.close()
+
 #############################################################################
 # Research
 
@@ -147,60 +161,61 @@ class ShiftFinderFilter(FileFloat3Chunks.Filter):
     print "ShiftFinderFilter.apply:"
     print "  i1 =",i1," i2 =",i2," i3 =",i3
     print "  n1 =",n1," n2 =",n2," n3 =",n3
-    f,g = x[0],x[1]
-    u1,u2,u3 = y[0],y[1],y[2]
+    f = x[0] # input array, not modified
+    g,u1,u2,u3 = y[0],y[1],y[2],y[3] # input/output arrays
     n1,n2,n3 = len(f[0][0]),len(f[0]),len(f)
     du = Array.zerofloat(n1,n2,n3)
-    ga = Array.copy(g)
-    gb = Array.copy(g)
+    gs = Array.zerofloat(n1,n2,n3)
     print "  shift1"
-    sf.find1(lmin,lmax,f,ga,du)
-    sf.shift1(du,ga,gb,u1,u2,u3)
-    gt = ga; ga = gb; gb = gt
+    sf.find1(lmin,lmax,f,g,du)
     print "    du min =",Array.min(du)," max =",Array.max(du)
+    sf.shift1(du,g,gs,u1,u2,u3)
+    print "    shift1 complete"
+    Array.copy(gs,g)
     print "  shift3"
-    sf.find3(lmin,lmax,f,ga,du)
-    sf.shift3(du,ga,gb,u1,u2,u3)
-    gt = ga; ga = gb; gb = gt
+    sf.find3(lmin,lmax,f,g,du)
     print "    du min =",Array.min(du)," max =",Array.max(du)
+    sf.shift3(du,g,gs,u1,u2,u3)
+    print "    shift3 complete"
+    Array.copy(gs,g)
     print "  shift2"
-    sf.find2(lmin,lmax,f,ga,du)
-    sf.shift2(du,ga,gb,u1,u2,u3)
-    gt = ga; ga = gb; gb = gt
+    sf.find2(lmin,lmax,f,g,du)
     print "    du min =",Array.min(du)," max =",Array.max(du)
+    sf.shift2(du,g,gs,u1,u2,u3)
+    print "    shift2 complete"
+    Array.copy(gs,g)
 
 def findShifts():
+  nshift = 3
   lmin,lmax = -2,2
-  f = readFloats3("w02.dat")
-  g = readFloats3("w04.dat")
-  n1 = len(f[0][0])
-  n2 = len(f[0])
-  n3 = len(f)
-  sf = ShiftFinder(12,12,12)
-  u1 = Array.zerofloat(n1,n2,n3)
-  u2 = Array.zerofloat(n1,n2,n3)
-  u3 = Array.zerofloat(n1,n2,n3)
-  du = Array.zerofloat(n1,n2,n3)
-  ga = Array.copy(g)
-  gb = Array.copy(g)
-  for i in range(2):
-    print "shift1"
-    sf.find1(lmin,lmax,f,ga,du)
-    sf.shift1(du,ga,gb,u1,u2,u3)
-    gt = ga; ga = gb; gb = gt
-    writeFloats3("u1s"+str(i)+".dat",u1)
-    print "shift3"
-    sf.find3(lmin,lmax,f,ga,du)
-    sf.shift3(du,ga,gb,u1,u2,u3)
-    gt = ga; ga = gb; gb = gt
-    writeFloats3("u3s"+str(i)+".dat",u3)
-    print "shift2"
-    sf.find2(lmin,lmax,f,ga,du)
-    sf.shift2(du,ga,gb,u1,u2,u3)
-    gt = ga; ga = gb; gb = gt
-    writeFloats3("u2s"+str(i)+".dat",u2)
+  sigma1,sigma2,sigma3 = 12,12,12
+  sff = ShiftFinderFilter(lmin,lmax,sigma1,sigma2,sigma3)
+  fname = datadir+"w02.dat"
+  gname = datadir+"w04.dat"
+  faf = ArrayFile(fname,"r")
+  for ishift in range(1,nshift+1):
+    print "findShifts: iteration =",ishift
+    gsname = datadir+"gs"+ishift+".dat"
+    u1name = datadir+"u1s"+ishift+".dat"
+    u2name = datadir+"u2s"+ishift+".dat"
+    u3name = datadir+"u3s"+ishift+".dat"
+    copyFile(gname,gsname)
+    gname = gsname
+    gaf = ArrayFile(gname,"rw")
+    u1f = ArrayFile(u1name,"rw")
+    u2f = ArrayFile(u2name,"rw")
+    u3f = ArrayFile(u3name,"rw")
+    x = [faf,gaf,u1f,u2f,u3f]
+    y = [    gaf,u1f,u2f,u3f]
+    sff.apply(sff,x,y)
+    gaf.close()
+    u1f.close()
+    u2f.close()
+    u3f.close()
+
 def main(args):
-  whiten()
+  #whiten()
+  findShifts()
   return
 
 #############################################################################
