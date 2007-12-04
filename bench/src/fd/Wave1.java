@@ -192,7 +192,8 @@ public class Wave1 {
     float odi,df,dg;
     g[0] = 0.0f;
     for (int ix=1; ix<nx; ++ix) {
-      odi = 0.5f*(od[ix]+od[ix-1]);
+      //odi = 0.5f*(od[ix]+od[ix-1]);
+      odi = od[ix];
       df  = f[ix  ];
       df -= f[ix-1];
       dg = -odi*df;

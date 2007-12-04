@@ -51,7 +51,7 @@ def plot(w,png):
   pf.setSize(width,height)
   pf.setVisible(True)
   if png and pngDir:
-    pf.paintToPng(100,6,pngDir+"/"+png+".png")
+    pf.paintToPng(300,6,pngDir+"/"+png+".png")
  
 def makeModel(dl,dr):
   nx = 801
