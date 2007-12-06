@@ -138,17 +138,32 @@ public class FileFloat3Chunks {
    * @param filter the filter.
    * @param xf array of files for input chunks.
    * @param yf array of files for output chunks.
+   * @param ip indices for which in-place chunks y[i] == x[ip[i]];
+   *  ip[i]&lt;0 indicates that chunk y[i] should be a new array of zeros.
+   */
+  public void apply(Filter filter, ArrayFile[] xf, ArrayFile[] yf, int[] ip) 
+    throws IOException 
+  {
+    ip = (ip!=null)?ip:Array.fillint(-1,yf.length);
+    if (_m1>0) {
+      apply1(filter,xf,yf,ip);
+    } else if (_m2>0) {
+      apply2(filter,xf,yf,ip);
+    } else if (_m3>0) {
+      apply3(filter,xf,yf,ip);
+    }
+  }
+
+  /**
+   * Transforms chunks in the specified files using the specified filter.
+   * @param filter the filter.
+   * @param xf array of files for input chunks.
+   * @param yf array of files for output chunks.
    */
   public void apply(Filter filter, ArrayFile[] xf, ArrayFile[] yf) 
     throws IOException 
   {
-    if (_m1>0) {
-      apply1(filter,xf,yf);
-    } else if (_m2>0) {
-      apply2(filter,xf,yf);
-    } else if (_m3>0) {
-      apply3(filter,xf,yf);
-    }
+    apply(filter,xf,yf,null);
   }
 
   /**
@@ -170,6 +185,110 @@ public class FileFloat3Chunks {
   private long byteOffset(int i1, int i2, int i3) {
     return 4*((long)i1+(long)i2*_n1+(long)i3*_n1*_n2);
   }
+
+  private void apply1(Filter filter, ArrayFile[] xf, ArrayFile[] yf, int[] ip)
+    throws IOException 
+  {
+    int nx = xf.length;
+    int ny = yf.length;
+    float[][][][] x = new float[nx][][][];
+    float[][][][] y = new float[ny][][][];
+    for (int i1=0; i1<_n1; i1+=_m1) {
+      int l1 = min(_l1,i1); // 0 <= i1-l1
+      int m1 = min(_m1,_n1-i1); // i1+m1 <= n1
+      int r1 = min(_r1,_n1-i1-m1); // i1+m1+r1 <= n1
+      int s1 = l1+m1+r1; // chunk size
+      int j1 = i1-l1; // chunk index
+      for (int ix=0; ix<nx; ++ix) {
+        float[][][] xi = x[ix] = new float[_n3][_n2][s1];
+        for (int i3=0; i3<_n3; ++i3) {
+          for (int i2=0; i2<_n2; ++i2) {
+            xf[ix].seek(byteOffset(j1,i2,i3));
+            xf[ix].readFloats(xi[i3][i2]);
+          }
+        }
+      }
+      for (int iy=0; iy<ny; ++iy)
+        y[iy] = ip[iy]<0?new float[_n3][_n2][s1]:x[ip[iy]];
+      filter.apply(i1,0,0,x,y);
+      for (int iy=0; iy<ny; ++iy) {
+        float[][][] yi = y[iy];
+        for (int i3=0; i3<_n3; ++i3) {
+          for (int i2=0; i2<_n2; ++i2) {
+            yf[iy].seek(byteOffset(i1,i2,i3));
+            yf[iy].writeFloats(yi[i3][i2],l1,m1);
+          }
+        }
+      }
+    }
+  }
+
+  private void apply2(Filter filter, ArrayFile[] xf, ArrayFile[] yf, int[] ip)
+    throws IOException 
+  {
+    int nx = xf.length;
+    int ny = yf.length;
+    float[][][][] x = new float[nx][][][];
+    float[][][][] y = new float[ny][][][];
+    for (int i2=0; i2<_n2; i2+=_m2) {
+      int l2 = min(_l2,i2); // 0 <= i2-l2
+      int m2 = min(_m2,_n2-i2); // i2+m2 <= n2
+      int r2 = min(_r2,_n2-i2-m2); // i2+m2+r2 <= n2
+      int s2 = l2+m2+r2; // chunk size
+      int j2 = i2-l2; // chunk index
+      for (int ix=0; ix<nx; ++ix) {
+        float[][][] xi = x[ix] = new float[_n3][s2][_n1];
+        for (int i3=0; i3<_n3; ++i3) {
+          xf[ix].seek(byteOffset(0,j2,i3));
+          xf[ix].readFloats(xi[i3]);
+        }
+      }
+      for (int iy=0; iy<ny; ++iy)
+        y[iy] = ip[iy]<0?new float[_n3][s2][_n1]:x[ip[iy]];
+      filter.apply(0,i2,0,x,y);
+      for (int iy=0; iy<ny; ++iy) {
+        float[][][] yi = y[iy];
+        for (int i3=0; i3<_n3; ++i3) {
+          yf[iy].seek(byteOffset(0,i2,i3));
+          for (int k2=0; k2<m2; ++k2)
+            yf[iy].writeFloats(yi[i3][l2+k2]);
+        }
+      }
+    }
+  }
+
+  private void apply3(Filter filter, ArrayFile[] xf, ArrayFile[] yf, int[] ip)
+    throws IOException 
+  {
+    int nx = xf.length;
+    int ny = yf.length;
+    float[][][][] x = new float[nx][][][];
+    float[][][][] y = new float[ny][][][];
+    for (int i3=0; i3<_n3; i3+=_m3) {
+      int l3 = min(_l3,i3); // 0 <= i3-l3
+      int m3 = min(_m3,_n3-i3); // i3+m3 <= n3
+      int r3 = min(_r3,_n3-i3-m3); // i3+m3+r3 <= n3
+      int s3 = l3+m3+r3; // chunk size
+      int j3 = i3-l3; // chunk index
+      for (int ix=0; ix<nx; ++ix) {
+        float[][][] xi = x[ix] = new float[s3][_n2][_n1];
+        xf[ix].seek(byteOffset(0,0,j3));
+        xf[ix].readFloats(xi);
+      }
+      for (int iy=0; iy<ny; ++iy)
+        y[iy] = ip[iy]<0?new float[s3][_n2][_n1]:x[ip[iy]];
+      filter.apply(0,0,i3,x,y);
+      for (int iy=0; iy<ny; ++iy) {
+        float[][][] yi = y[iy];
+        yf[iy].seek(byteOffset(0,0,i3));
+        for (int k3=0; k3<m3; ++k3)
+          yf[iy].writeFloats(yi[l3+k3]);
+      }
+    }
+  }
+
+  ///////////////////////////////////////////////////////////////////////////
+  // unused
 
   private void apply1(Filter filter, ArrayFile[] xf, ArrayFile[] yf)
     throws IOException 
@@ -194,7 +313,7 @@ public class FileFloat3Chunks {
         }
       }
       for (int iy=0; iy<ny; ++iy)
-        y[iy] = new float[_n3][_n2][s1];
+        y[iy] = yarray(x,xf,yf[iy]);
       filter.apply(i1,0,0,x,y);
       for (int iy=0; iy<ny; ++iy) {
         float[][][] yi = y[iy];
@@ -229,7 +348,7 @@ public class FileFloat3Chunks {
         }
       }
       for (int iy=0; iy<ny; ++iy)
-        y[iy] = new float[_n3][s2][_n1];
+        y[iy] = yarray(x,xf,yf[iy]);
       filter.apply(0,i2,0,x,y);
       for (int iy=0; iy<ny; ++iy) {
         float[][][] yi = y[iy];
@@ -261,7 +380,7 @@ public class FileFloat3Chunks {
         xf[ix].readFloats(xi);
       }
       for (int iy=0; iy<ny; ++iy)
-        y[iy] = new float[s3][_n2][_n1];
+        y[iy] = yarray(x,xf,yf[iy]);
       filter.apply(0,0,i3,x,y);
       for (int iy=0; iy<ny; ++iy) {
         float[][][] yi = y[iy];
@@ -270,6 +389,18 @@ public class FileFloat3Chunks {
           yf[iy].writeFloats(yi[l3+k3]);
       }
     }
+  }
+
+  private float[][][] yarray(float[][][][] x, ArrayFile[] xf, ArrayFile yf) {
+    int n = x.length;
+    for (int i=0; i<n; ++i) {
+      if (yf==xf[i])
+        return x[i];
+    }
+    int n1 = x[0][0].length;
+    int n2 = x[0].length;
+    int n3 = x.length;
+    return new float[n3][n2][n1];
   }
 
   ///////////////////////////////////////////////////////////////////////////
