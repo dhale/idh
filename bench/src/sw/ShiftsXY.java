@@ -28,6 +28,14 @@ public class ShiftsXY {
   }
 
   /**
+   * Sets the lower bound on time used in integrals over time.
+   * @param tmin the minimum time; the default is zero.
+   */
+  public void setMinimumTime(float tmin) {
+    _itmin = _st.indexOfNearest(tmin);
+  }
+
+  /**
    * Estimates horizontal shifts in x direction.
    * @param r Hatchell and Bournes' parameter R.
    * @param v0 velocity as a function of vertical time t.
@@ -35,17 +43,24 @@ public class ShiftsXY {
    * @return array of horizontal shifts in x direction.
    */
   public float[][][] getDeltaX(float r, float[] v0, float[][][] deltat) {
-    float[][][] ddt = ddt(deltat);
-    deltat = null;
-    float[][][] ddtdx = ddx(ddt);
-    ddt = null;
-    float[][][] dvdx = dv(r,v0,ddtdx);
-    ddtdx = null;
-    float[][][] theta = theta(v0,dvdx);
-    dvdx = null;
-    float[][][] delta = delta(v0,theta);
-    theta = null;
-    return delta;
+    int nx = _sx.getCount();
+    int ny = _sy.getCount();
+    int nt = _st.getCount();
+    double dx = _sx.getDelta();
+    double dt = _st.getDelta();
+    float[][][] deltax = new float[nx][ny][nt];
+    float scale = (float)(0.125*r/(1.0+r)*dt/dx);
+    for (int ix=1; ix<nx-1; ++ix) {
+      for (int iy=0; iy<ny; ++iy) {
+        float d = 0.0f;
+        for (int it=_itmin; it<nt; ++it) {
+          float ddtdx = deltat[ix+1][iy][it]-deltat[ix-1][iy][it];
+          float v0s = v0[it]*v0[it];
+          deltax[ix][iy][it] = d = d-scale*v0s*ddtdx;
+        }
+      }
+    }
+    return deltax;
   }
 
   /**
@@ -56,23 +71,31 @@ public class ShiftsXY {
    * @return array of horizontal shifts in y direction.
    */
   public float[][][] getDeltaY(float r, float[] v0, float[][][] deltat) {
-    float[][][] ddt = ddt(deltat);
-    deltat = null;
-    float[][][] ddtdy = ddy(ddt);
-    ddt = null;
-    float[][][] dvdy = dv(r,v0,ddtdy);
-    ddtdy = null;
-    float[][][] theta = theta(v0,dvdy);
-    dvdy = null;
-    float[][][] delta = delta(v0,theta);
-    theta = null;
-    return delta;
+    int nx = _sx.getCount();
+    int ny = _sy.getCount();
+    int nt = _st.getCount();
+    double dy = _sy.getDelta();
+    double dt = _st.getDelta();
+    float[][][] deltay = new float[nx][ny][nt];
+    float scale = (float)(0.125*r/(1.0+r)*dt/dy);
+    for (int ix=0; ix<nx; ++ix) {
+      for (int iy=1; iy<ny-1; ++iy) {
+        float d = 0.0f;
+        for (int it=_itmin; it<nt; ++it) {
+          float ddtdy = deltat[ix][iy+1][it]-deltat[ix][iy-1][it];
+          float v0s = v0[it]*v0[it];
+          deltay[ix][iy][it] = d = d-scale*v0s*ddtdy;
+        }
+      }
+    }
+    return deltay;
   }
 
   ///////////////////////////////////////////////////////////////////////////
   // private
 
   Sampling _sx,_sy,_st;
+  int _itmin = 0;
 
   /**
    * Partial derivative g = df/dx.
@@ -180,8 +203,8 @@ public class ShiftsXY {
     float[][][] theta = new float[nx][ny][nt];
     for (int ix=0; ix<nx; ++ix) {
       for (int iy=0; iy<ny; ++iy) {
-        float t = theta[ix][iy][0] = 0.0f;
-        for (int it=1; it<nt; ++it) {
+        float t = theta[ix][iy][_itmin] = 0.0f;
+        for (int it=_itmin+1; it<nt; ++it) {
           float s = dv0[it]*sin(t);
           float c = -0.5f*dv[ix][iy][it]*cos(t);
           theta[ix][iy][it] = t = t+(s+c)*dt;
@@ -199,12 +222,54 @@ public class ShiftsXY {
     float[][][] delta = new float[nx][ny][nt];
     for (int ix=0; ix<nx; ++ix) {
       for (int iy=0; iy<ny; ++iy) {
-        float d = delta[ix][iy][0] = 0.0f;
-        for (int it=1; it<nt; ++it) {
+        float d = delta[ix][iy][_itmin] = 0.0f;
+        for (int it=_itmin+1; it<nt; ++it) {
           delta[ix][iy][it] = d = d-0.5f*v0[it]*sin(theta[ix][iy][it])*dt;
         }
       }
     }
+    return delta;
+  }
+
+  /**
+   * Estimates horizontal shifts in x direction.
+   * @param r Hatchell and Bournes' parameter R.
+   * @param v0 velocity as a function of vertical time t.
+   * @param deltat array of vertical time shifts.
+   * @return array of horizontal shifts in x direction.
+   */
+  private float[][][] getDeltaXOld(float r, float[] v0, float[][][] deltat) {
+    float[][][] ddt = ddt(deltat);
+    deltat = null;
+    float[][][] ddtdx = ddx(ddt);
+    ddt = null;
+    float[][][] dvdx = dv(r,v0,ddtdx);
+    ddtdx = null;
+    float[][][] theta = theta(v0,dvdx);
+    dvdx = null;
+    float[][][] delta = delta(v0,theta);
+    theta = null;
+    return delta;
+  }
+
+  /**
+   * Estimates horizontal shifts in y direction.
+   * @param r Hatchell and Bournes' parameter R.
+   * @param v0 velocity as a function of vertical time t.
+   * @param deltat array of vertical time shifts.
+   * @return array of horizontal shifts in y direction.
+   */
+  private float[][][] getDeltaYOld(float r, float[] v0, float[][][] deltat) {
+    float[][][] ddt = ddt(deltat);
+    deltat = null;
+    float[][][] ddtdy = ddy(ddt);
+    ddt = null;
+    float[][][] dvdy = dv(r,v0,ddtdy);
+    ddtdy = null;
+    float[][][] theta = theta(v0,dvdy);
+    dvdy = null;
+    float[][][] delta = delta(v0,theta);
+    theta = null;
     return delta;
   }
 }

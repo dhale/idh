@@ -3,25 +3,21 @@ from math import *
 from java.awt import *
 from java.lang import *
 from javax.swing import *
-from sw import *
 from edu.mines.jtk.awt import *
 from edu.mines.jtk.dsp import *
 from edu.mines.jtk.io import *
 from edu.mines.jtk.mosaic import *
 from edu.mines.jtk.util import *
+from edu.mines.jtk.sgl import *
+from edu.mines.jtk.sgl.test import *
 
 True = 1
 False = 0
 
-n1 = 1501
+n1 = 1501  
 d1 = 0.004
 f1 = 0.0
 s1 = Sampling(n1,d1,f1)
-
-n1s = 301  
-d1s = 0.004
-f1s = 3.6
-s1s = Sampling(n1,d1,f1)
 
 n2 = 623  
 d2 = 0.025
@@ -33,7 +29,11 @@ d3 = 0.025
 f3 = 0
 s3 = Sampling(n3,d3,f3)
 
+#datadir = "/data/seis/sw/all/"
+#datadir = "/datc/seis/sw/all/"
 datadir = "/datb/seis/sw/all/"
+
+pngdir = None
 
 ##############################################################################
 # Read/write
@@ -44,24 +44,6 @@ def readFloats3(file):
   af.readFloats(f)
   af.close()
   return f
-
-def writeFloats3(file,f):
-  af = ArrayFile(datadir+file,"rw")
-  af.writeFloats(f)
-  af.close()
-  return f
-
-def readBytes3(file):
-  b = Array.zerobyte(n1,n2,n3)
-  af = ArrayFile(datadir+file,"r")
-  af.readBytes(b)
-  af.close()
-  return b
-
-def writeBytes3(file,lag):
-  af = ArrayFile(datadir+file,"rw")
-  af.writeBytes(lag)
-  af.close()
 
 def readFloats12(file,i3):
   f = readFloats3(file)
@@ -111,12 +93,11 @@ frameHeight=768
 def frame(panel,png):
   frame = PlotFrame(panel)
   frame.setBackground(Color.WHITE)
-  frame.setFont(Font("Arial",Font.PLAIN,30))
-  #frame.setFontSize(30)
+  frame.setFontSize(30)
   frame.setSize(frameWidth,frameHeight)
   frame.setVisible(True)
-  if png!=None:
-    frame.paintToPng(300,6,png)
+  if pngdir!=None and png!=None:
+    frame.paintToPng(300,6,pngdir+png+".png")
   return frame
 
 def plot3d(k1,k2,k3,file,scale,clip,cmod=ColorMap.GRAY,png=None):
@@ -173,61 +154,57 @@ def isGray(icm):
   return True
 
 def plot3dAll():
-  k1 = 201 # = (4.404-3.600)/0.004
-  k2 = 293 # = (7.325-0.000)/0.025
-  k3 = 170 # = (4.250-0.000)/0.025
+  #k1 = 201 # = (4.404-3.600)/0.004
+  k1 = 1101 # = (4.404-0.000)/0.004
+  k2 =  293 # = (7.325-0.000)/0.025
+  k3 =  170 # = (4.250-0.000)/0.025
   gray = ColorMap.GRAY
   flag = ColorMap.RED_WHITE_BLUE
-  #wplot3d(k1,k2,k3,"sw02a.dat",0.002,5.0,gray,"sws02z.png")
-  #wplot3d(k1,k2,k3,"sw04a.dat",0.002,5.0,gray,"sws04z.png")
-  #wplot3d(k1,k2,k3,"w02.dat",0.002,0.5,gray,"sww02w.png")
-  #wplot3d(k1,k2,k3,"w04.dat",0.002,0.5,gray,"sww04w.png")
-  #plot3d(k1,k2,k3,"sw02a.dat",0.001,5.0,gray,"sws02.png")
-  #plot3d(k1,k2,k3,"sw04a.dat",0.001,5.0,gray,"sws04.png")
-  #plot3d(k1,k2,k3,"w02.dat",0.001,0.5,gray,"sww02.png")
-  #plot3d(k1,k2,k3,"w04.dat",0.001,0.5,gray,"sww04.png")
-  #plot3d(k1,k2,k3,"u1s0.dat",1000*d1,4.5,flag,"swu1s0.png")
-  #plot3d(k1,k2,k3,"u2s0.dat",1000*d2,6.5,flag,"swu2s0.png")
-  #plot3d(k1,k2,k3,"u3s0.dat",1000*d3,6.5,flag,"swu3s0.png")
-  #plot3d(k1,k2,k3,"u1s1.dat",1000*d1,4.5,flag,"swu1s1.png")
-  plot3d(k1,k2,k3,"u2s1.dat",1000*d2,6.5,flag,"swu2s1.png")
-  plot3d(k1,k2,k3,"u3s1.dat",1000*d3,6.5,flag,"swu3s1.png")
-  #plot3d(k1,k2,k3,"e2s1.dat",1000*d2,6.5,flag,"swe2s1.png")
-  #plot3d(k1,k2,k3,"e3s1.dat",1000*d3,6.5,flag,"swe3s1.png")
+  #plot3d(k1,k2,k3,"s02.dat",0.001,5.0,gray,"sws02")
+  #plot3d(k1,k2,k3,"s04.dat",0.001,5.0,gray,"sws04")
+  #plot3d(k1,k2,k3,"w02.dat",0.001,0.5,gray,"sww02")
+  #plot3d(k1,k2,k3,"w04.dat",0.001,0.5,gray,"sww04")
+  #plot3d(k1,k2,k3,"u1s1.dat",1000*d1,4.5,flag,"swu1s1")
+  #plot3d(k1,k2,k3,"u2s1.dat",1000*d2,6.5,flag,"swu2s1")
+  #plot3d(k1,k2,k3,"u3s1.dat",1000*d3,6.5,flag,"swu3s1")
+  #plot3d(k1,k2,k3,"u1s2.dat",1000*d1,4.5,flag,"swu1s2")
+  #plot3d(k1,k2,k3,"u2s2.dat",1000*d2,6.5,flag,"swu2s2")
+  #plot3d(k1,k2,k3,"u3s2.dat",1000*d3,6.5,flag,"swu3s2")
+  plot3d(k1,k2,k3,"u1s3.dat",1000*d1,4.5,flag,"swu1s3")
+  plot3d(k1,k2,k3,"u2s3.dat",1000*d2,6.5,flag,"swu2s3")
+  plot3d(k1,k2,k3,"u3s3.dat",1000*d3,6.5,flag,"swu3s3")
+
+##############################################################################
+# 3-D View
+
+def ipg(file,clip,cmod):
+  x = readFloats3(file)
+  x3 = SimpleFloat3(x)
+  ipg = ImagePanelGroup(s3,s2,s1,x3)
+  ipg.setClips(-clip,clip)
+  ipg.setColorModel(cmod)
+  return ipg
+
+def view3dAll():
+  gray = ColorMap.GRAY
+  flag = ColorMap.RED_WHITE_BLUE
+  world = World()
+  #world.addChild(ipg("s02.dat",5000,gray))
+  #world.addChild(ipg("u1s2.dat",0.50,flag))
+  #world.addChild(ipg("u2s2.dat",0.25,flag))
+  world.addChild(ipg("u3s2.dat",0.25,flag))
+  #world.addChild(ipg("e2s2.dat",0.50,flag))
+  world.addChild(ipg("e3s2.dat",0.25,flag))
+  frame = TestFrame(world)
+  frame.setVisible(True)
 
 #############################################################################
-# Research
-
-def computeDeltaXY():
-  dx,dy,dt = d3,d2,d1
-  sx,sy,st = s3,s2,s1
-  shifts = ShiftsXY(sx,sy,st)
-  shifts.setMinimumTime(1.0)
-  r = 5.0
-  v0 = Array.rampfloat(1.5,0.5*dt,n1)
-  deltat = readFloats3("u1s2.dat")
-  print "computeDeltaXY: u1s2 read"
-  Array.mul(dt,deltat,deltat) # shifts are in samples
-  deltax = shifts.getDeltaX(r,v0,deltat)
-  Array.mul(1/dx,deltax,deltax) # shifts are in samples
-  writeFloats3("e3s2.dat",deltax)
-  deltax = None
-  print "computeDeltaXY: e3s2 written"
-  deltay = shifts.getDeltaY(r,v0,deltat)
-  Array.mul(1/dy,deltay,deltay) # shifts are in samples
-  writeFloats3("e2s2.dat",deltay)
-  deltay = None
-  print "computeDeltaXY: e2s2 written"
-
 def main(args):
-  computeDeltaXY()
   #plot3dAll()
+  view3dAll()
   return
-
-#############################################################################
-# Do everything on Swing thread.
 
 class RunMain(Runnable):
   def run(self):
     main(sys.argv)
-SwingUtilities.invokeLater(RunMain())
+SwingUtilities.invokeLater(RunMain()) 

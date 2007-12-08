@@ -14,8 +14,7 @@ from edu.mines.jtk.util import *
 True = 1
 False = 0
 
-#n1 = 1501  
-n1 = 301  
+n1 = 1501  
 d1 = 0.004
 f1 = 0.0
 s1 = Sampling(n1,d1,f1)
@@ -30,9 +29,9 @@ d3 = 0.025
 f3 = 0
 s3 = Sampling(n3,d3,f3)
 
-datadir = "/data/seis/sw/all/"
-datbdir = "/datb/seis/sw/all/"
-datcdir = "/datb/seis/sw/all/"
+#datadir = "/data/seis/sw/all/"
+#datadir = "/datc/seis/sw/all/"
+datadir = "/datb/seis/sw/all/"
 
 ##############################################################################
 # Read/write
@@ -152,8 +151,6 @@ def whitenArrayFile(afx,afy):
 def whiten():
   fs = ["s02","s04"]
   fw = ["w02","w04"]
-  #fs = ["s04"]
-  #fw = ["w04"]
   for i in range(len(fs)):
     sname = datadir+fs[i]+".dat"
     wname = datadir+fw[i]+".dat"
@@ -197,10 +194,11 @@ class ShiftFinderFilter(FileFloat3Chunks.Filter):
     print "    complete"
  
 def findShifts():
-  nshift = 1
+  nshift = 3
   lmin,lmax = -2,2
   sigma1,sigma2,sigma3 = 12,12,12
-  mc = 30000000 # 30 Mfloats
+  #mc = 30000000 # 30 Mfloats
+  mc = 90000000 # 90 Mfloats
   l1,l2,l3 = 3*sigma1,3*sigma2,3*sigma3
   ff3c = FileFloat3Chunks(mc,n1,l1,l1,n2,l2,l2,n3,l3,l3)
   sff = ShiftFinderFilter(lmin,lmax,sigma1,sigma2,sigma3)
@@ -210,7 +208,7 @@ def findShifts():
   zname = datadir+"zeros.dat"
   fa = ArrayFile(fname,"r")
   ga = ArrayFile(gname,"r")
-  zeroFile(n1,n2,n3,zname)
+  #zeroFile(n1,n2,n3,zname)
   u1a = ArrayFile(zname,"r")
   u2a = ArrayFile(zname,"r")
   u3a = ArrayFile(zname,"r")
