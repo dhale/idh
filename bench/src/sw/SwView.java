@@ -44,7 +44,7 @@ public class SwView extends JFrame {
   private static final Sampling SZ = new Sampling(NZ,DZ,FZ);
 
   private static final int SIZE = 600;
-  private static final String DATA_DIR = "/data/seis/sw/";
+  private static final String DATA_DIR = "/data/seis/sw/old/";
 
   public SwView(World world) {
     OrbitView view = (world!=null)?new OrbitView(world):new OrbitView();
