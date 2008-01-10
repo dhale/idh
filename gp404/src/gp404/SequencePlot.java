@@ -105,6 +105,7 @@ public class SequencePlot {
         _panel = new PlotPanel(ns,1);
         _panel.setHLabel("time");
         _panel.setHFormat("%1.6f");
+        _panel.setVLimits(-1.0,1.0);
         for (int is=0; is<ns; ++is) {
           Sequence s = as[is];
           Sampling st = s.getSampling();
