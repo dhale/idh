@@ -16,6 +16,7 @@ False = 0
 
 #n1,d1,f1 = 1501,0.004,0.0
 #n1,d1,f1 = 301,0.004,3.6
+#n1,d1,f1 = 601,0.004,0.0
 n1,d1,f1 = 601,0.004,2.4
 n2,d2,f2 = 623,0.025,0.0
 n3,d3,f3 = 367,0.025,0.0
@@ -23,7 +24,8 @@ s1 = Sampling(n1,d1,f1)
 s2 = Sampling(n2,d2,f2)
 s3 = Sampling(n3,d3,f3)
 
-datadir = "/data/seis/sw/sub/"
+#datadir = "/data/seis/sw/sub0/"
+datadir = "/data/seis/sw/sub24/"
 #datadir = "/datc/seis/sw/all/"
 #datadir = "/datb/seis/sw/all/"
 
@@ -155,7 +157,8 @@ def isGray(icm):
 def plot3dAll():
   #k1 = 1101 # = (4.404-0.000)/0.004
   #k1 = 201 # = (4.404-3.600)/0.004
-  k1 = 501 # = (4.404-2.400)/0.004
+  #k1 = 501 # = (4.404-2.400)/0.004
+  k1 = 501 # = (2.404-0.000)/0.004
   k2 = 293 # = (7.325-0.000)/0.025
   k3 = 170 # = (4.250-0.000)/0.025
   gray = ColorMap.GRAY
@@ -170,9 +173,9 @@ def plot3dAll():
   #plot3d(k1,k2,k3,"u1s2.dat",1000*d1,3.25,flag,"swu1s2")
   #plot3d(k1,k2,k3,"u2s2.dat",1000*d2,6.50,flag,"swu2s2")
   #plot3d(k1,k2,k3,"u3s2.dat",1000*d3,6.50,flag,"swu3s2")
-  plot3d(k1,k2,k3,"u1s3.dat",1000*d1,3.25,flag,"swu1s3")
-  plot3d(k1,k2,k3,"u2s3.dat",1000*d2,6.50,flag,"swu2s3")
-  plot3d(k1,k2,k3,"u3s3.dat",1000*d3,6.50,flag,"swu3s3")
+  #plot3d(k1,k2,k3,"u1s3.dat",1000*d1,3.25,flag,"swu1s3")
+  #plot3d(k1,k2,k3,"u2s3.dat",1000*d2,6.50,flag,"swu2s3")
+  #plot3d(k1,k2,k3,"u3s3.dat",1000*d3,6.50,flag,"swu3s3")
   plot3d(k1,k2,k3,"e2s3.dat",1000*d2,6.50,flag,"swe2s3")
   plot3d(k1,k2,k3,"e3s3.dat",1000*d3,6.50,flag,"swe3s3")
 

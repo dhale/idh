@@ -10,13 +10,14 @@ from edu.mines.jtk.util import *
 
 n1a = 1501 # = 6.0 s (number of time samples in original volume)
 n1s = 601  # = 2.4 s (number of time samples in subset)
-j1s = 600  # = 2.4 s (time of first sample in subset)
+j1s =   0  # = 0.0 s (time of first sample in subset)
+#j1s = 600  # = 2.4 s (time of first sample in subset)
 
 n2 = 623 # number of samples in inline direction 
 n3 = 367 # number of samples in crossline direction
 
 dataall = "/data/seis/sw/all/"
-datasub = "/data/seis/sw/sub/"
+datasub = "/data/seis/sw/sub0/"
 
 ##############################################################################
 

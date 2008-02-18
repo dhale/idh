@@ -26,10 +26,56 @@ dx,dy,dt = d3,d2,d1
 sx,sy,st = s3,s2,s1
 shifts = ShiftsXY(sx,sy,st)
 r = 5.0
-v0 = Array.rampfloat(3.5,0.5*dt,n1)
-#v0 = Array.rampfloat(4.0,0.5*dt,n1)
 
-datadir = "/data/seis/sw/sub/"
+datadir = "/data/seis/sw/sub24/"
+
+##############################################################################
+# Velocity function of time v0(t)
+
+def makev0():
+  global v0
+  # v0(t) = 3.5 + (t-2.4)*0.5 (a simple linear function)
+  # v0 = Array.rampfloat(3.5,0.5*dt,n1)
+  # v0 = v0(t) = z'(t), for (z,t) in (m,ms) from checkshot survey
+  # depths in ft from checkshot survey
+  zl= [0.00,  3168.00,  3568.00,  4018.00,  4418.00,
+    5168.00,  5618.00,  6018.00,  6418.00,  7168.00,
+    7568.00,  8018.00,  8768.00,  9218.00,  9618.00,
+   10028.00, 10718.00, 11168.00, 11618.00, 12368.00,
+   12968.00, 13408.00, 13918.00, 14368.00, 14768.00,
+   15018.00, 15222.00, 15518.00, 15721.50, 16078.17,
+   16468.00, 16768.00, 17068.00, 17368.00, 17618.00,
+   17908.00]
+  # two-way times in ms from checkshot survey
+  tl= [0.00,  1051.00,  1174.80,  1317.00,  1444.80,
+    1682.40,  1831.20,  1962.00,  2089.00,  2317.20,
+    2437.20,  2567.20,  2776.60,  2896.80,  3001.00,
+    3099.40,  3233.00,  3302.00,  3361.00,  3445.60,
+    3512.80,  3567.40,  3637.60,  3699.80,  3754.40,
+    3788.20,  3814.40,  3854.80,  3883.36,  3965.37,
+    4051.25,  4113.00,  4157.80,  4216.40,  4264.00,
+    4310.00]
+  nt = len(tl)
+  z = Array.zerofloat(nt)
+  t = Array.zerofloat(nt)
+  Array.copy(zl,z)
+  Array.copy(tl,t)
+  z = Array.mul(0.001*0.3048,z) # depths in km
+  t = Array.mul(0.001,t) # two-way times in s
+  #Array.dump(z)
+  #Array.dump(t)
+  ci = CubicInterpolator(CubicInterpolator.Method.LINEAR,nt,t,z)
+  v0 = Array.zerofloat(n1)
+  for i1 in range(n1):
+    t1 = (f1+i1*d1)
+    v0[i1] = 2.0*ci.interpolate1(t1)
+def plotv0():
+  sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
+  sp.setSize(500,800)
+  sp.addPoints(s1,v0)
+  sp.setHLabel("velocity (km/s)")
+  sp.setVLabel("time (s)")
+  sp.paintToPng(300,3,"vt.png")
 
 ##############################################################################
 # Read/write
@@ -85,6 +131,8 @@ def estimateDeltaY():
   print "min =",Array.min(deltay)," max =",Array.max(deltay)
 
 def main(args):
+  makev0()
+  plotv0()
   #computeDdxdt()
   #estimateDdxdt()
   estimateDeltaX()
