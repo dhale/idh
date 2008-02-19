@@ -7,10 +7,11 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 package ldf;
 
 import edu.mines.jtk.dsp.*;
+import edu.mines.jtk.util.Check;
 
 /**
- * A 3-D array of structure tensors. Each structure tensor is a 
- * symmetric positive-semidefinite 3-by-3 matrix:
+ * A 3-D array of structure tensors. Each structure tensor is a symmetric 
+ * positive-semidefinite 3-by-3 matrix:
  * <pre><code>
  *     |s11 s12 s13|
  * S = |s12 s22 s23| = eu*u*u' + ev*v*v' + ew*w*w'
@@ -47,7 +48,7 @@ import edu.mines.jtk.dsp.*;
 public class StructureTensors3 {
 
   /**
-   * Constructs tensors for specified 3-D array dimensions.
+   * Constructs tensors for specified array dimensions.
    * @param n1 number of tensors in 1st dimension.
    * @param n2 number of tensors in 2nd dimension.
    * @param n3 number of tensors in 3rd dimension.
@@ -121,7 +122,7 @@ public class StructureTensors3 {
    * Gets tensor elements {s11,s12,s13,s22,s23,s33} for specified indices.
    * @param i1 index for 1st dimension.
    * @param i2 index for 2nd dimension.
-   * @param i3 index for 2nd dimension.
+   * @param i3 index for 3rd dimension.
    * @param s array {s11,s12,s13,s22,s23,s33} of tensor elements.
    */
   public void getTensor(int i1, int i2, int i3, float[] s) {
@@ -165,10 +166,10 @@ public class StructureTensors3 {
    * Gets the eigenvalues for the tensor with specified indices.
    * @param i1 index for 1st dimension.
    * @param i2 index for 2nd dimension.
-   * @param i3 index for 2nd dimension.
+   * @param i3 index for 3rd dimension.
    * @param e array {eu,ev,ew} of eigenvalues.
    */
-  public void getValues(int i1, int i2, int i3, float[] e) {
+  public void getEigenvalues(int i1, int i2, int i3, float[] e) {
     float bvi = _bv[i3][i2][i1];
     float bwi = _bw[i3][i2][i1];
     if (bvi<0.0) bvi += 256.0f;
@@ -184,12 +185,12 @@ public class StructureTensors3 {
    * Gets the eigenvalues for the tensor with specified indices.
    * @param i1 index for 1st dimension.
    * @param i2 index for 2nd dimension.
-   * @param i3 index for 2nd dimension.
+   * @param i3 index for 3rd dimension.
    * @return array {eu,ev,ew} of eigenvalues.
    */
-  public float[] getValues(int i1, int i2, int i3) {
+  public float[] getEigenvalues(int i1, int i2, int i3) {
     float[] e = new float[3];
-    getValues(i1,i2,i3,e);
+    getEigenvalues(i1,i2,i3,e);
     return e;
   }
 
@@ -197,10 +198,10 @@ public class StructureTensors3 {
    * Gets the eigenvector u for the tensor with specified indices.
    * @param i1 index for 1st dimension.
    * @param i2 index for 2nd dimension.
-   * @param i3 index for 2nd dimension.
+   * @param i3 index for 3rd dimension.
    * @param u array {u1,u2,u3} of eigenvector components.
    */
-  public void getVectorU(int i1, int i2, int i3, float[] u) {
+  public void getEigenvectorU(int i1, int i2, int i3, float[] u) {
     float[] ui = _uss.getPoint(_iu[i3][i2][i1]);
     u[0] = ui[0];
     u[1] = ui[1];
@@ -211,12 +212,12 @@ public class StructureTensors3 {
    * Gets the eigenvector u for the tensor with specified indices.
    * @param i1 index for 1st dimension.
    * @param i2 index for 2nd dimension.
-   * @param i3 index for 2nd dimension.
+   * @param i3 index for 3rd dimension.
    * @return array {u1,u2,u3} of eigenvector components.
    */
-  public float[] getVectorU(int i1, int i2, int i3) {
+  public float[] getEigenvectorU(int i1, int i2, int i3) {
     float[] u = new float[3];
-    getVectorU(i1,i2,i3,u);
+    getEigenvectorU(i1,i2,i3,u);
     return u;
   }
 
@@ -224,12 +225,12 @@ public class StructureTensors3 {
    * Gets the eigenvector v for the tensor with specified indices.
    * @param i1 index for 1st dimension.
    * @param i2 index for 2nd dimension.
-   * @param i3 index for 2nd dimension.
+   * @param i3 index for 3rd dimension.
    * @param v array {v1,v2,v3} of eigenvector components.
    */
-  public void getVectorV(int i1, int i2, int i3, float[] v) {
-    float[] u = getVectorU(i1,i2,i3);
-    float[] w = getVectorW(i1,i2,i3);
+  public void getEigenvectorV(int i1, int i2, int i3, float[] v) {
+    float[] u = getEigenvectorU(i1,i2,i3);
+    float[] w = getEigenvectorW(i1,i2,i3);
     v[0] = w[1]*u[2]-w[2]*u[1]; // v = w cross u
     v[1] = w[2]*u[0]-w[0]*u[2];
     v[2] = w[0]*u[1]-w[1]*u[1];
@@ -239,12 +240,12 @@ public class StructureTensors3 {
    * Gets the eigenvector v for the tensor with specified indices.
    * @param i1 index for 1st dimension.
    * @param i2 index for 2nd dimension.
-   * @param i3 index for 2nd dimension.
+   * @param i3 index for 3rd dimension.
    * @return array {v1,v2,v3} of eigenvector components.
    */
-  public float[] getVectorV(int i1, int i2, int i3) {
+  public float[] getEigenvectorV(int i1, int i2, int i3) {
     float[] v = new float[3];
-    getVectorV(i1,i2,i3,v);
+    getEigenvectorV(i1,i2,i3,v);
     return v;
   }
 
@@ -252,10 +253,10 @@ public class StructureTensors3 {
    * Gets the eigenvector w for the tensor with specified indices.
    * @param i1 index for 1st dimension.
    * @param i2 index for 2nd dimension.
-   * @param i3 index for 2nd dimension.
+   * @param i3 index for 3rd dimension.
    * @param w array {w1,w2,w3} of eigenvector components.
    */
-  public void getVectorW(int i1, int i2, int i3, float[] w) {
+  public void getEigenvectorW(int i1, int i2, int i3, float[] w) {
     float[] wi = _uss.getPoint(_iw[i3][i2][i1]);
     w[0] = wi[0];
     w[1] = wi[1];
@@ -266,12 +267,12 @@ public class StructureTensors3 {
    * Gets the eigenvector w for the tensor with specified indices.
    * @param i1 index for 1st dimension.
    * @param i2 index for 2nd dimension.
-   * @param i3 index for 2nd dimension.
+   * @param i3 index for 3rd dimension.
    * @return array {w1,w2,w3} of eigenvector components.
    */
-  public float[] getVectorW(int i1, int i2, int i3) {
+  public float[] getEigenvectorW(int i1, int i2, int i3) {
     float[] w = new float[3];
-    getVectorW(i1,i2,i3,w);
+    getEigenvectorW(i1,i2,i3,w);
     return w;
   }
 
@@ -279,7 +280,7 @@ public class StructureTensors3 {
    * Sets tensor elements {s11,s12,s13,s22,s23,s33} for specified indices.
    * @param i1 index for 1st dimension.
    * @param i2 index for 2nd dimension.
-   * @param i3 index for 2nd dimension.
+   * @param i3 index for 3rd dimension.
    * @param s array of tensor elements {s11,s12,s13,s22,s23,s33}.
    */
   public void setTensor(int i1, int i2, int i3, float[] s) {
@@ -291,19 +292,22 @@ public class StructureTensors3 {
     float[][] uvw = new float[3][3];
     float[] e = new float[3];
     Eigen.solveSymmetric33(a,uvw,e);
-    setValues(i1,i2,i3,e);
-    setVectorU(i1,i2,i3,uvw[0]);
-    setVectorW(i1,i2,i3,uvw[2]);
+    setEigenvalues(i1,i2,i3,e);
+    setEigenvectorU(i1,i2,i3,uvw[0]);
+    setEigenvectorW(i1,i2,i3,uvw[2]);
   }
 
   /**
    * Sets the eigenvalues for the tensor with specified indices.
    * @param i1 index for 1st dimension.
    * @param i2 index for 2nd dimension.
-   * @param i3 index for 2nd dimension.
+   * @param i3 index for 3rd dimension.
    * @param e array of eigenvalues {eu,ev,ew}.
    */
-  public void setValues(int i1, int i2, int i3, float[] e) {
+  public void setEigenvalues(int i1, int i2, int i3, float[] e) {
+    Check.argument(e[0]>=e[1],"e[0]>=e[1]");
+    Check.argument(e[1]>=e[2],"e[1]>=e[2]");
+    Check.argument(e[2]>=0.0f,"e[2]>=0.0");
     float eu = e[0];
     float ev = e[1];
     float ew = e[2];
@@ -327,11 +331,11 @@ public class StructureTensors3 {
   private short[][][] _iu;
   private short[][][] _iw;
 
-  private void setVectorU(int i1, int i2, int i3, float[] u) {
+  private void setEigenvectorU(int i1, int i2, int i3, float[] u) {
     _iu[i3][i2][i1] = (short)_uss.getIndex(u);
   }
 
-  private void setVectorW(int i1, int i2, int i3, float[] w) {
+  private void setEigenvectorW(int i1, int i2, int i3, float[] w) {
     _iw[i3][i2][i1] = (short)_uss.getIndex(w);
   }
 
