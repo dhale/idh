@@ -6,9 +6,6 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package ldf;
 
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import edu.mines.jtk.util.*;
 import static edu.mines.jtk.util.MathPlus.*;
 
