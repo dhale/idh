@@ -21,8 +21,8 @@ False = 0
 # parameters
 
 dataDir = "/data"
-#pngDir = "./png"
-pngDir = None
+pngDir = "./png"
+#pngDir = None
 
 gray = ColorMap.GRAY
 jet = ColorMap.JET
@@ -40,7 +40,8 @@ lof.setGradientSmoothing(1)
 # functions
 
 def main(args):
-  goInterp()
+  #goInterp()
+  goStencils()
   return
 
 def goInterp():
@@ -203,6 +204,93 @@ def flip2(f):
   for i2 in range(n2):
     Array.copy(f[n2-1-i2],g[i2])
   return g
+
+def goStencils():
+  rs0 = 0.0/12.0
+  rs1 = 1.0/12.0
+  rs3 = 3.0/12.0
+  iso = False
+  for theta in [90,-45,45]:
+    for rs in [rs0,rs1,rs3]:
+      stencilOne(iso,rs,theta)
+      stencilAvg(iso,rs,theta)
+  iso = True
+  theta = 0
+  for rs in [rs0,rs1,rs3]:
+    stencilAvg(iso,rs,theta)
+
+def stencilOne(iso,rs,theta):
+  print "one: iso =",iso,"rs =",rs,"theta =",theta
+  png = "one"+str(iso)+str(int(rs*12))+str(theta)
+  if iso:
+    a = 1.0
+    b = 0.0
+    c = 1.0
+  else:
+    theta *= pi/180.0
+    v1 = sin(theta)
+    v2 = cos(theta)
+    a = v1*v1
+    b = v1*v2
+    c = v2*v2
+  r = (1+sqrt(1-4*rs))/2
+  s = (1-sqrt(1-4*rs))/2
+  g1 = [[-s,s],[-r,r]]
+  g2 = [[-s,-r],[s,r]]
+  g1g1 = Array.zerofloat(3,3)
+  g1g2 = Array.zerofloat(3,3)
+  g2g1 = Array.zerofloat(3,3)
+  g2g2 = Array.zerofloat(3,3)
+  h = Array.zerofloat(3,3)
+  Conv.xcor(2,2,0,0,g1,2,2,0,0,g1,3,3,-1,-1,g1g1)
+  Conv.xcor(2,2,0,0,g1,2,2,0,0,g2,3,3,-1,-1,g1g2)
+  Conv.xcor(2,2,0,0,g2,2,2,0,0,g1,3,3,-1,-1,g2g1)
+  Conv.xcor(2,2,0,0,g2,2,2,0,0,g2,3,3,-1,-1,g2g2)
+  for i2 in range(3):
+    for i1 in range(3):
+      h[i2][i1] = a*g1g1[i2][i1]+b*(g1g2[i2][i1]+g2g1[i2][i1])+c*g2g2[i2][i1]
+  Array.dump(Array.transpose(h))
+  plotf(frequencyResponse(h),png)
+
+def stencilAvg(iso,rs,theta):
+  print "avg: iso =",iso,"rs =",rs,"theta =",theta
+  png = "avg"+str(iso)+str(int(rs*12))+str(theta)
+  theta *= pi/180.0
+  n1,n2 = 3,3
+  x = Array.zerofloat(n1,n2)
+  y = Array.zerofloat(n1,n2);
+  x[n2/2][n1/2] = 1.0
+  v1 = Array.fillfloat(sin(theta),n1,n2)
+  if iso:
+    ldt = LocalDiffusionTensors2(1.0,0.0,None,None,v1)
+  else:
+    ldt = LocalDiffusionTensors2(0.0,1.0,None,None,v1)
+  ldk = LocalDiffusionKernel(rs)
+  ldk.apply(ldt,x,y)
+  Array.dump(Array.transpose(y))
+  plotf(frequencyResponse(y),png)
+
+def frequencyResponse(x):
+  n1,n2 = 315,315
+  n1 = FftComplex.nfftSmall(n1)
+  n2 = FftComplex.nfftSmall(n2)
+  xr = Array.zerofloat(n1,n2)
+  xi = Array.zerofloat(n1,n2)
+  Array.copy(len(x[0]),len(x),x,xr)
+  cx = Array.cmplx(xr,xi)
+  fft1 = FftComplex(n1)
+  fft2 = FftComplex(n2)
+  fft1.complexToComplex1(1,n2,cx,cx)
+  fft2.complexToComplex2(1,n1,cx,cx)
+  ax = Array.cabs(cx)
+  a = Array.zerofloat(n1,n2)
+  j1 = n1/2
+  j2 = n2/2
+  Array.copy(n1-j1,n2-j2,0,0,ax,j1,j2,a)
+  Array.copy(j1,j2,n1-j1,n2-j2,ax,0,0,a)
+  Array.copy(n1-j1,j2,0,n2-j2,ax,j1,0,a)
+  Array.copy(j1,n2-j2,n1-j1,0,ax,0,j2,a)
+  return a
  
 #############################################################################
 # plot
@@ -237,6 +325,16 @@ def plot2(f,g,cmin=0,cmax=0,png=None):
   if cmin!=cmax:
     pv.setClips(cmin,cmax)
   pv.setColorModel(ColorMap.getJet(0.3))
+  frame(p,png)
+
+def plotf(f,png=None):
+  n1 = len(f[0])
+  n2 = len(f)
+  p = panel()
+  pv = p.addPixels(f)
+  pv.setClips(0.0,4.0)
+  pv.setColorModel(ColorMap.JET)
+  pv.setInterpolation(PixelsView.Interpolation.LINEAR)
   frame(p,png)
 
 fontSize = 24

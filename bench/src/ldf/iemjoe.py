@@ -1,4 +1,3 @@
-
 import sys
 from math import *
 from java.awt import *
@@ -96,6 +95,19 @@ def interp010():
 def interp100():
   interpolate(100)
 def interpolate(aniso):
+  print "interpolate"
+  f = Array.zerobyte(n1,n2)
+  for i2 in range(n2):
+    for i1 in range(n1):
+      if v[i2][i1]!=vnull:
+        f[i2][i1] = 1
+  ldt = LocalDiffusionTensors2(1.0/aniso,1.0,None,None,v1)
+  small = 0.001
+  niter = 1000
+  lif = LocalInterpolationFilterIc(small,niter)
+  lif.apply(ldt,f,v)
+  pvv.set(v)
+def interpolateOld(aniso):
   print "interpolate"
   lif = LocalInterpolationFilter(aniso,small,niter)
   f = Array.zerobyte(n1,n2)
