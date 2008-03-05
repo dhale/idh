@@ -41,7 +41,8 @@ lof.setGradientSmoothing(1)
 
 def main(args):
   #goInterp()
-  goStencils()
+  #goStencils()
+  goGaussian()
   return
 
 def goInterp():
@@ -269,6 +270,53 @@ def stencilAvg(iso,rs,theta):
   ldk.apply(ldt,x,y)
   Array.dump(Array.transpose(y))
   plotf(frequencyResponse(y),png)
+
+def gaussianResponse(nx,sigma,rs,ldt):
+  t = Array.zerofloat(3)
+  ldt.getTensor(0,0,t)
+  a,b,c = t[0],t[1],t[2]
+  dx = 8.0*sigma/(nx-1)
+  fx = -(nx-1)/2.0*dx
+  f = Array.zerofloat(nx,nx)
+  g = Array.zerofloat(nx,nx)
+  h = Array.zerofloat(nx,nx)
+  oss = 1.0/(sigma*sigma)
+  for i2 in range(nx):
+    x2 = fx+i2*dx
+    for i1 in range(nx):
+      x1 = fx+i1*dx
+      g00 = exp(-0.5*oss*(x1*x1+x2*x2))
+      g20 = oss*(1.0-x1*x1*oss)*g00
+      g11 =     (   -x1*x2*oss)*g00
+      g02 = oss*(1.0-x2*x2*oss)*g00
+      f[i2][i1] = g00
+      g[i2][i1] = a*g20+2.0*b*g11+c*g02
+  ldk = LocalDiffusionKernel(rs)
+  ldk.apply(ldt,f,h)
+  Array.mul(1.0/(dx*dx),h,h)
+  e = Array.sub(h,g)
+  for i2 in range(nx):
+    for i1 in range(nx):
+      if i1==0 or i1==nx-1 or i2==0 or i2==nx-1:
+        e[i2][i1] = 0.0
+  #print "g min =",Array.min(g)," max =",Array.max(g)
+  #print "h min =",Array.min(h)," max =",Array.max(h)
+  print "e abs =",Array.max(Array.abs(e))
+  #plot(g,0,0,jet)
+  #plot(h,0,0,jet)
+  plot(e,0,0,jet)
+def goGaussian():
+  rs0 = 0.0/12.0
+  rs1 = 1.0/12.0
+  rs3 = 3.0/12.0
+  nx = 65
+  sigma = 1.0
+  theta = pi/4
+  for rs in [rs0,rs1,rs3]:
+    for theta in [0*pi/16,1*pi/16,2*pi/16,3*pi/16,4*pi/16]:
+      v1 = Array.fillfloat(sin(theta),nx,nx)
+      ldt = LocalDiffusionTensors2(0.0,1.0,None,None,v1)
+      gaussianResponse(nx,sigma,rs,ldt)
 
 def frequencyResponse(x):
   n1,n2 = 315,315
