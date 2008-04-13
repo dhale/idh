@@ -92,9 +92,9 @@ public class SteerableFilter3 {
 
       // Ensure Hessian is positive-definite or negative-definite.
       double det = hpp*htt-htp*htp; // determinant
-      //System.out.println("niter="+niter+" det="+det+" p="+p+" t="+t);
-      //System.out.println("gp="+gp+" gt="+gt);
-      //System.out.println("hpp="+hpp+" htp="+htp+" htt="+htt);
+      System.out.println("niter="+niter+" det="+det+" p="+p+" t="+t);
+      System.out.println("gp="+gp+" gt="+gt);
+      System.out.println("hpp="+hpp+" htp="+htp+" htt="+htt);
       /*
       double dss = 0.001*(hpp*hpp+htt*htt);
       if (det*det<dss*dss) {
