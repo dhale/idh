@@ -65,7 +65,7 @@ public class SteerableFilter2 {
    *  theta2 are in the range [0,PI] and the absolute difference in these
    *  angles is PI/2.
    */
-  private static double[][] findExtrema(double f0, double f1, double f2) {
+  public static double[][] findExtrema(double f0, double f1, double f2) {
     double theta1 = 0.5*(PI+atan2(SQRT_THREE*(f1-f2),(2.0*f0-f1-f2)));
     double value1 = eval0(f0,f1,f2,theta1);
     double theta2 = modPi(theta1+0.5*PI);

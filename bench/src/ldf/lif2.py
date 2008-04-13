@@ -40,9 +40,7 @@ lof.setGradientSmoothing(1)
 # functions
 
 def main(args):
-  #goInterp()
-  #goStencils()
-  goGaussian()
+  goInterp()
   return
 
 def goInterp():
@@ -205,140 +203,6 @@ def flip2(f):
   for i2 in range(n2):
     Array.copy(f[n2-1-i2],g[i2])
   return g
-
-def goStencils():
-  rs0 = 0.0/12.0
-  rs1 = 1.0/12.0
-  rs3 = 3.0/12.0
-  iso = False
-  for theta in [90,-45,45]:
-    for rs in [rs0,rs1,rs3]:
-      stencilOne(iso,rs,theta)
-      stencilAvg(iso,rs,theta)
-  iso = True
-  theta = 0
-  for rs in [rs0,rs1,rs3]:
-    stencilAvg(iso,rs,theta)
-
-def stencilOne(iso,rs,theta):
-  print "one: iso =",iso,"rs =",rs,"theta =",theta
-  png = "one"+str(iso)+str(int(rs*12))+str(theta)
-  if iso:
-    a = 1.0
-    b = 0.0
-    c = 1.0
-  else:
-    theta *= pi/180.0
-    v1 = sin(theta)
-    v2 = cos(theta)
-    a = v1*v1
-    b = v1*v2
-    c = v2*v2
-  r = (1+sqrt(1-4*rs))/2
-  s = (1-sqrt(1-4*rs))/2
-  g1 = [[-s,s],[-r,r]]
-  g2 = [[-s,-r],[s,r]]
-  g1g1 = Array.zerofloat(3,3)
-  g1g2 = Array.zerofloat(3,3)
-  g2g1 = Array.zerofloat(3,3)
-  g2g2 = Array.zerofloat(3,3)
-  h = Array.zerofloat(3,3)
-  Conv.xcor(2,2,0,0,g1,2,2,0,0,g1,3,3,-1,-1,g1g1)
-  Conv.xcor(2,2,0,0,g1,2,2,0,0,g2,3,3,-1,-1,g1g2)
-  Conv.xcor(2,2,0,0,g2,2,2,0,0,g1,3,3,-1,-1,g2g1)
-  Conv.xcor(2,2,0,0,g2,2,2,0,0,g2,3,3,-1,-1,g2g2)
-  for i2 in range(3):
-    for i1 in range(3):
-      h[i2][i1] = a*g1g1[i2][i1]+b*(g1g2[i2][i1]+g2g1[i2][i1])+c*g2g2[i2][i1]
-  Array.dump(Array.transpose(h))
-  plotf(frequencyResponse(h),png)
-
-def stencilAvg(iso,rs,theta):
-  print "avg: iso =",iso,"rs =",rs,"theta =",theta
-  png = "avg"+str(iso)+str(int(rs*12))+str(theta)
-  theta *= pi/180.0
-  n1,n2 = 3,3
-  x = Array.zerofloat(n1,n2)
-  y = Array.zerofloat(n1,n2);
-  x[n2/2][n1/2] = 1.0
-  v1 = Array.fillfloat(sin(theta),n1,n2)
-  if iso:
-    ldt = LocalDiffusionTensors2(1.0,0.0,None,None,v1)
-  else:
-    ldt = LocalDiffusionTensors2(0.0,1.0,None,None,v1)
-  ldk = LocalDiffusionKernel(rs)
-  ldk.apply(ldt,x,y)
-  Array.dump(Array.transpose(y))
-  plotf(frequencyResponse(y),png)
-
-def gaussianResponse(nx,sigma,rs,ldt):
-  t = Array.zerofloat(3)
-  ldt.getTensor(0,0,t)
-  a,b,c = t[0],t[1],t[2]
-  dx = 8.0*sigma/(nx-1)
-  fx = -(nx-1)/2.0*dx
-  f = Array.zerofloat(nx,nx)
-  g = Array.zerofloat(nx,nx)
-  h = Array.zerofloat(nx,nx)
-  oss = 1.0/(sigma*sigma)
-  for i2 in range(nx):
-    x2 = fx+i2*dx
-    for i1 in range(nx):
-      x1 = fx+i1*dx
-      g00 = exp(-0.5*oss*(x1*x1+x2*x2))
-      g20 = oss*(1.0-x1*x1*oss)*g00
-      g11 =     (   -x1*x2*oss)*g00
-      g02 = oss*(1.0-x2*x2*oss)*g00
-      f[i2][i1] = g00
-      g[i2][i1] = a*g20+2.0*b*g11+c*g02
-  ldk = LocalDiffusionKernel(rs)
-  ldk.apply(ldt,f,h)
-  Array.mul(1.0/(dx*dx),h,h)
-  e = Array.sub(h,g)
-  for i2 in range(nx):
-    for i1 in range(nx):
-      if i1==0 or i1==nx-1 or i2==0 or i2==nx-1:
-        e[i2][i1] = 0.0
-  #print "g min =",Array.min(g)," max =",Array.max(g)
-  #print "h min =",Array.min(h)," max =",Array.max(h)
-  print "e abs =",Array.max(Array.abs(e))
-  #plot(g,0,0,jet)
-  #plot(h,0,0,jet)
-  plot(e,0,0,jet)
-def goGaussian():
-  rs0 = 0.0/12.0
-  rs1 = 1.0/12.0
-  rs3 = 3.0/12.0
-  nx = 65
-  sigma = 1.0
-  theta = pi/4
-  for rs in [rs0,rs1,rs3]:
-    for theta in [0*pi/16,1*pi/16,2*pi/16,3*pi/16,4*pi/16]:
-      v1 = Array.fillfloat(sin(theta),nx,nx)
-      ldt = LocalDiffusionTensors2(0.0,1.0,None,None,v1)
-      gaussianResponse(nx,sigma,rs,ldt)
-
-def frequencyResponse(x):
-  n1,n2 = 315,315
-  n1 = FftComplex.nfftSmall(n1)
-  n2 = FftComplex.nfftSmall(n2)
-  xr = Array.zerofloat(n1,n2)
-  xi = Array.zerofloat(n1,n2)
-  Array.copy(len(x[0]),len(x),x,xr)
-  cx = Array.cmplx(xr,xi)
-  fft1 = FftComplex(n1)
-  fft2 = FftComplex(n2)
-  fft1.complexToComplex1(1,n2,cx,cx)
-  fft2.complexToComplex2(1,n1,cx,cx)
-  ax = Array.cabs(cx)
-  a = Array.zerofloat(n1,n2)
-  j1 = n1/2
-  j2 = n2/2
-  Array.copy(n1-j1,n2-j2,0,0,ax,j1,j2,a)
-  Array.copy(j1,j2,n1-j1,n2-j2,ax,0,0,a)
-  Array.copy(n1-j1,j2,0,n2-j2,ax,j1,0,a)
-  Array.copy(j1,n2-j2,n1-j1,0,ax,0,j2,a)
-  return a
  
 #############################################################################
 # plot
@@ -373,16 +237,6 @@ def plot2(f,g,cmin=0,cmax=0,png=None):
   if cmin!=cmax:
     pv.setClips(cmin,cmax)
   pv.setColorModel(ColorMap.getJet(0.3))
-  frame(p,png)
-
-def plotf(f,png=None):
-  n1 = len(f[0])
-  n2 = len(f)
-  p = panel()
-  pv = p.addPixels(f)
-  pv.setClips(0.0,4.0)
-  pv.setColorModel(ColorMap.JET)
-  pv.setInterpolation(PixelsView.Interpolation.LINEAR)
   frame(p,png)
 
 fontSize = 24
