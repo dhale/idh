@@ -102,10 +102,10 @@ public class SteerableFilter3 {
       // updating (a,b,c). We eliminate the component with largest 
       // magnitude (in this case, c), because that choice permits the 
       // largest updates (da,db).
+      double da,db,dc;
       double aa = a*a;
       double bb = b*b;
       double cc = c*c;
-      double da,db,dc;
 
       // If the component c has largest magnitude, ...
       if (aa<=cc && bb<=cc) {
@@ -231,6 +231,7 @@ public class SteerableFilter3 {
 
     // Three points p1, p2, and p3 in plane of pr and ps,
     // with angles 0, PI/3 and -PI/3 as measured from p1.
+    // These are the points used in a 2D steering function.
     double a1 = ar;
     double b1 = br;
     double c1 = cr;
@@ -248,6 +249,7 @@ public class SteerableFilter3 {
     double f3 = fab*a3*b3+fac*a3*c3+fbc*b3*c3-faa*a3*a3-fbb*b3*b3-fcc*c3*c3;
 
     // Critical points p1 and p2 such that p0, p1, and p2 are orthogonal.
+    // We use the analytic solution available for 2D steering functions.
     double denom = 2.0*f1-f2-f3;
     if (denom<DET_SMALL && -denom<DET_SMALL)
       denom = DET_SMALL;
