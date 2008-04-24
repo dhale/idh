@@ -113,11 +113,15 @@ public class SteerableFilter3 {
         double boc = b/c;
         double aocs = aoc*aoc;
         double bocs = boc*boc;
-        double ga = 2.0*a*(faa-fcc)+a*boc*fbc-c*(1.0-aocs)*fac-b*fab;
-        double gb = 2.0*b*(fbb-fcc)+b*aoc*fac-c*(1.0-bocs)*fbc-a*fab;
-        double haa = 2.0*(faa-fcc)+boc*(1.0+aocs)*fbc+aoc*(3.0+aocs)*fac;
-        double hbb = 2.0*(fbb-fcc)+aoc*(1.0+bocs)*fac+boc*(3.0+bocs)*fbc;
-        double hab = boc*(1.0+aocs)*fac+aoc*(1.0+bocs)*fbc-fab;
+        double faamcc2 = (faa-fcc)*2.0;
+        double fbbmcc2 = (fbb-fcc)*2.0;
+        double aocsp1 = aocs+1.0;
+        double bocsp1 = bocs+1.0;
+        double ga = a*(faamcc2+boc*fbc)-c*(1.0-aocs)*fac-b*fab;
+        double gb = b*(fbbmcc2+aoc*fac)-c*(1.0-bocs)*fbc-a*fab;
+        double haa = faamcc2+boc*aocsp1*fbc+aoc*(3.0+aocs)*fac;
+        double hbb = fbbmcc2+aoc*bocsp1*fac+boc*(3.0+bocs)*fbc;
+        double hab = boc*aocsp1*fac+aoc*bocsp1*fbc-fab;
         double det = haa*hbb-hab*hab;
         if (det<=DET_SMALL && -det<=DET_SMALL) det = DET_SMALL;
         double odet = 1.0/det;
@@ -139,11 +143,15 @@ public class SteerableFilter3 {
         double cob = c/b;
         double aobs = aob*aob;
         double cobs = cob*cob;
-        double ga = 2.0*a*(faa-fbb)+a*cob*fbc-b*(1.0-aobs)*fab-c*fac;
-        double gc = 2.0*c*(fcc-fbb)+c*aob*fab-b*(1.0-cobs)*fbc-a*fac;
-        double haa = 2.0*(faa-fbb)+cob*(1.0+aobs)*fbc+aob*(3.0+aobs)*fab;
-        double hcc = 2.0*(fcc-fbb)+aob*(1.0+cobs)*fab+cob*(3.0+cobs)*fbc;
-        double hac = cob*(1.0+aobs)*fab+aob*(1.0+cobs)*fbc-fac;
+        double faambb2 = (faa-fbb)*2.0;
+        double fccmbb2 = (fbb-fbb)*2.0;
+        double aobsp1 = aobs+1.0;
+        double cobsp1 = cobs+1.0;
+        double ga = a*(faambb2+cob*fbc)-b*(1.0-aobs)*fab-c*fac;
+        double gc = c*(fccmbb2+aob*fab)-b*(1.0-cobs)*fbc-a*fac;
+        double haa = faambb2+cob*aobsp1*fbc+aob*(3.0+aobs)*fab;
+        double hcc = fccmbb2+aob*cobsp1*fab+cob*(3.0+cobs)*fbc;
+        double hac = cob*aobsp1*fab+aob*cobsp1*fbc-fac;
         double det = haa*hcc-hac*hac;
         if (det<=DET_SMALL && -det<=DET_SMALL) det = DET_SMALL;
         double odet = 1.0/det;
@@ -165,11 +173,15 @@ public class SteerableFilter3 {
         double coa = c/a;
         double boas = boa*boa;
         double coas = coa*coa;
-        double gb = 2.0*b*(fbb-faa)+b*coa*fac-a*(1.0-boas)*fab-c*fbc;
-        double gc = 2.0*c*(fcc-faa)+c*boa*fab-a*(1.0-coas)*fac-b*fbc;
-        double hbb = 2.0*(fbb-faa)+coa*(1.0+boas)*fac+boa*(3.0+boas)*fab;
-        double hcc = 2.0*(fcc-faa)+boa*(1.0+coas)*fab+coa*(3.0+coas)*fac;
-        double hbc = coa*(1.0+boas)*fab+boa*(1.0+coas)*fac-fbc;
+        double fbbmaa2 = (fbb-faa)*2.0;
+        double fccmaa2 = (fcc-faa)*2.0;
+        double boasp1 = boas+1.0;
+        double coasp1 = coas+1.0;
+        double gb = b*(fbbmaa2+coa*fac)-a*(1.0-boas)*fab-c*fbc;
+        double gc = c*(fccmaa2+boa*fab)-a*(1.0-coas)*fac-b*fbc;
+        double hbb = fbbmaa2+coa*boasp1*fac+boa*(3.0+boas)*fab;
+        double hcc = fccmaa2+boa*coasp1*fab+coa*(3.0+coas)*fac;
+        double hbc = coa*boasp1*fab+boa*coasp1*fac-fbc;
         double det = hbb*hcc-hbc*hbc;
         if (det<=DET_SMALL && -det<=DET_SMALL) det = DET_SMALL;
         double odet = 1.0/det;
@@ -230,6 +242,7 @@ public class SteerableFilter3 {
     double c3 = COS_PIO3*cr-SIN_PIO3*cs;
 
     // Function values for points p0, p1, p2, and p3.
+    double f0 = fab*a0*b0+fac*a0*c0+fbc*b0*c0-faa*a0*a0-fbb*b0*b0-fcc*c0*c0;
     double f1 = fab*a1*b1+fac*a1*c1+fbc*b1*c1-faa*a1*a1-fbb*b1*b1-fcc*c1*c1;
     double f2 = fab*a2*b2+fac*a2*c2+fbc*b2*c2-faa*a2*a2-fbb*b2*b2-fcc*c2*c2;
     double f3 = fab*a3*b3+fac*a3*c3+fbc*b3*c3-faa*a3*a3-fbb*b3*b3-fcc*c3*c3;
@@ -248,11 +261,11 @@ public class SteerableFilter3 {
     b2 = stheta*br-ctheta*bs;
     c2 = stheta*cr-ctheta*cs;
 
-    // Function values for p0, p1, and p2.
-    double f0;
-    f0 = fab*a0*b0+fac*a0*c0+fbc*b0*c0-faa*a0*a0-fbb*b0*b0-fcc*c0*c0;
+    // Function values for p1 and p2.
     f1 = fab*a1*b1+fac*a1*c1+fbc*b1*c1-faa*a1*a1-fbb*b1*b1-fcc*c1*c1;
     f2 = fab*a2*b2+fac*a2*c2+fbc*b2*c2-faa*a2*a2-fbb*b2*b2-fcc*c2*c2;
+
+    // Convert to the equivalent steering function.
     f0 = fsum+2.0*f0;
     f1 = fsum+2.0*f1;
     f2 = fsum+2.0*f2;
@@ -285,15 +298,11 @@ public class SteerableFilter3 {
     return abcf;
   }
 
+  ///////////////////////////////////////////////////////////////////////////
+  // testing
+
   /**
-   * Finds the minimum of the function:
-   * <pre>
-   * f(a,b,c) = ((a+b)*(a+b)-c*c)*f[0] + ((a-b)*(a-b)-c*c)*f[1] +
-   *            ((a+c)*(a+c)-b*b)*f[2] + ((a-c)*(a-c)-b*b)*f[3] +
-   *            ((b+c)*(b+c)-a*a)*f[4] + ((b-c)*(b-c)-a*a)*f[5]
-   * </pre>
-   * where (a,b,c) is a point on the unit-sphere.
-   * Uses the Nelder-Mead method that requires no derivatives.
+   * Uses the Nelder-Mead simplex method that requires no derivatives.
    * <em>Currently broken without a method to initialize (a,b,c).</em>
    */
   private static void findMinimumAbcNelderMead(double[] f, double[] abcf) {
@@ -490,9 +499,6 @@ public class SteerableFilter3 {
   private static double modPi2(double theta) {
     return theta-floor(theta/(2.0*PI))*2.0*PI;
   }
-
-  ///////////////////////////////////////////////////////////////////////////
-  // Testing.
 
   private static void plot(double[] f, double p, double t) {
     int np = 201;
