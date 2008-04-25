@@ -24,13 +24,13 @@ s1 = Sampling(n1,d1,f1)
 s2 = Sampling(n2,d2,f2)
 s3 = Sampling(n3,d3,f3)
 
-#datadir = "/data/seis/sw/sub0/"
+#datadir = "/data/seis/sw/sub00/"
 datadir = "/data/seis/sw/sub24/"
 #datadir = "/datc/seis/sw/all/"
 #datadir = "/datb/seis/sw/all/"
 
-pngdir = None
-#pngdir = "png/"
+#pngdir = None
+pngdir = "png/"
 
 ##############################################################################
 
@@ -61,14 +61,20 @@ def readAndScaleSlices(file,scale,i1,i2,i3):
 
 ##############################################################################
 
-colorBarWidthMinimum = 80
-frameWidth = 1160
+#colorBarWidthMinimum = 80
+#frameWidth = 1160
+#frameHeight = 768
+#fontSize = 30
+
+colorBarWidthMinimum = 115
+frameWidth = 1175
 frameHeight = 768
+fontSize = 42
 
 def frame(panel,png):
   frame = PlotFrame(panel)
   frame.setBackground(Color.WHITE)
-  frame.setFontSize(42)
+  frame.setFontSize(fontSize)
   frame.setSize(frameWidth,frameHeight)
   frame.setVisible(True)
   if pngdir!=None and png!=None:
@@ -157,14 +163,14 @@ def isGray(icm):
 def plot3dAll():
   #k1 = 1101 # = (4.404-0.000)/0.004
   #k1 = 201 # = (4.404-3.600)/0.004
-  #k1 = 501 # = (4.404-2.400)/0.004
-  k1 = 501 # = (2.404-0.000)/0.004
+  #k1 = 501 # = (2.404-0.000)/0.004
+  k1 = 501 # = (4.404-2.400)/0.004
   k2 = 293 # = (7.325-0.000)/0.025
   k3 = 170 # = (4.250-0.000)/0.025
   gray = ColorMap.GRAY
   flag = ColorMap.RED_WHITE_BLUE
   #plot3d(k1,k2,k3,"s02.dat",0.001,5.0,gray,"sws02")
-  #plot3d(k1,k2,k3,"s04.dat",0.001,5.0,gray,"sws04")
+  plot3d(k1,k2,k3,"s04.dat",0.001,5.0,gray,"sws04")
   #plot3d(k1,k2,k3,"w02.dat",0.001,0.5,gray,"sww02")
   #plot3d(k1,k2,k3,"w04.dat",0.001,0.5,gray,"sww04")
   #plot3d(k1,k2,k3,"u1s1.dat",1000*d1,3.25,flag,"swu1s1")
