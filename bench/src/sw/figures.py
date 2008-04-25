@@ -29,8 +29,8 @@ datadir = "/data/seis/sw/sub24/"
 #datadir = "/datc/seis/sw/all/"
 #datadir = "/datb/seis/sw/all/"
 
-#pngdir = None
-pngdir = "png/"
+pngdir = None
+#pngdir = "png/"
 
 ##############################################################################
 
@@ -68,7 +68,7 @@ frameHeight = 768
 def frame(panel,png):
   frame = PlotFrame(panel)
   frame.setBackground(Color.WHITE)
-  frame.setFontSize(30)
+  frame.setFontSize(42)
   frame.setSize(frameWidth,frameHeight)
   frame.setVisible(True)
   if pngdir!=None and png!=None:
@@ -173,11 +173,11 @@ def plot3dAll():
   #plot3d(k1,k2,k3,"u1s2.dat",1000*d1,3.25,flag,"swu1s2")
   #plot3d(k1,k2,k3,"u2s2.dat",1000*d2,6.50,flag,"swu2s2")
   #plot3d(k1,k2,k3,"u3s2.dat",1000*d3,6.50,flag,"swu3s2")
-  #plot3d(k1,k2,k3,"u1s3.dat",1000*d1,3.25,flag,"swu1s3")
+  plot3d(k1,k2,k3,"u1s3.dat",1000*d1,3.25,flag,"swu1s3")
   #plot3d(k1,k2,k3,"u2s3.dat",1000*d2,6.50,flag,"swu2s3")
   #plot3d(k1,k2,k3,"u3s3.dat",1000*d3,6.50,flag,"swu3s3")
-  plot3d(k1,k2,k3,"e2s3.dat",1000*d2,6.50,flag,"swe2s3")
-  plot3d(k1,k2,k3,"e3s3.dat",1000*d3,6.50,flag,"swe3s3")
+  #plot3d(k1,k2,k3,"e2s3.dat",1000*d2,6.50,flag,"swe2s3")
+  #plot3d(k1,k2,k3,"e3s3.dat",1000*d3,6.50,flag,"swe3s3")
 
 #############################################################################
 def main(args):
