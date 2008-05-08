@@ -56,6 +56,11 @@ s2 = Sampling(n2,0.025,0.0)
 s3 = Sampling(n3,0.025,0.0)
 
 def main(args):
+  plot23("y.dat",174,"channelsInput.png")
+  plot23("yz.dat",174,"channelsSmoothed.png")
+  return
+
+def old():
   #window()
   #x = readFile("x.dat",n1,n2,n3)
   #plot3d(x)
@@ -84,7 +89,6 @@ def main(args):
   plot3ds((x,eyz))
   #plotAll()
   #writeSlice23()
-  return
 
 def writeSlice23():
   x = readFloats23("x.dat",174)
@@ -287,6 +291,22 @@ def plot12(i3):
   #pv.setPercentiles(1.0,99.0)
   pv.setClips(-1.0e-6,1.0e-6)
   pv.setInterpolation(PixelsView.Interpolation.LINEAR)
+
+def plot23(file,i1,png):
+  x = readFloats23(file,i1)
+  print "x min =",Array.min(x)," max =",Array.max(x)
+  orientation = PlotPanel.Orientation.X1DOWN_X2RIGHT
+  axesPlacement = PlotPanel.AxesPlacement.NONE
+  panel = PlotPanel(1,1,orientation,axesPlacement)
+  pv = panel.addPixels(x)
+  pv.setClips(-0.005,0.005)
+  pv.setInterpolation(PixelsView.Interpolation.NEAREST)
+  frame = PlotFrame(panel)
+  frame.setSize(800,825)
+  frame.setVisible(True)
+  if png:
+    frame.paintToPng(200,6,png)
+  return frame
 
 def plot3ds(xs,k=None):
   world = World()
