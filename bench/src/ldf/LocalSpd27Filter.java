@@ -869,7 +869,7 @@ public class LocalSpd27Filter {
             lppm[i3][i2][i1] -= 
               d000[i3 ][i2 ][i1m]*lpp0[i3 ][i2 ][i1m]*lpp0[i3 ][i2 ][i1m];
             lpp0[i3][i2][i1] -= 
-              d000[i3 ][i2m][i1m]*lppp[i3 ][i2 ][i1m]*lppp[i3 ][i2 ][i1m];
+              d000[i3 ][i2 ][i1m]*lppp[i3 ][i2 ][i1m]*lppp[i3 ][i2 ][i1m];
             if (l000[i3][i2][i1]<=0.0f) 
               return null;
             d000[i3][i2][i1] = 1.0f/l000[i3][i2][i1];
@@ -927,7 +927,7 @@ public class LocalSpd27Filter {
           lppm[i3][i2][i1] -= 
             d000[i3 ][i2 ][i1m]*lpp0[i3 ][i2 ][i1m]*lpp0[i3 ][i2 ][i1m];
           lpp0[i3][i2][i1] -= 
-            d000[i3 ][i2m][i1m]*lppp[i3 ][i2 ][i1m]*lppp[i3 ][i2 ][i1m];
+            d000[i3 ][i2 ][i1m]*lppp[i3 ][i2 ][i1m]*lppp[i3 ][i2 ][i1m];
           if (l000[i3][i2][i1]<=0.0f) 
             return null;
           d000[i3][i2][i1] = 1.0f/l000[i3][i2][i1];
@@ -954,7 +954,7 @@ public class LocalSpd27Filter {
               lppm[i3][i2][i1] -= 
                 d000[i3 ][i2 ][i1m]*lpp0[i3 ][i2 ][i1m]*lpp0[i3 ][i2 ][i1m];
               lpp0[i3][i2][i1] -= 
-                d000[i3 ][i2m][i1m]*lppp[i3 ][i2 ][i1m]*lppp[i3 ][i2 ][i1m];
+                d000[i3 ][i2 ][i1m]*lppp[i3 ][i2 ][i1m]*lppp[i3 ][i2 ][i1m];
             }
             if (0<=i2m) {
               if (0<=i1m) {
@@ -1118,7 +1118,6 @@ public class LocalSpd27Filter {
     if (TRACE)
       System.out.println(s);
   }
-   //{s000,s00p,s0pm,s0p0,s0pp,spm0,sp0m,sp00,sp0p,spp0}.
   private static void testFactor() {
     java.util.Random r = new java.util.Random();
     int n1 = 5;

@@ -50,6 +50,13 @@ public class LocalDiffusionKernel {
    */
   public LocalDiffusionKernel(double rs) {
     _rs = (float)rs;
+
+    float t = 5.0f/12.0f-1.0f/sqrt(6.0f);
+    float r = (1.0f-sqrt(t))*(1.0f-sqrt(t));
+    float s = sqrt(r*t);
+    _erst = s*s;
+    _frst = s*(r+t);
+    _grst = (r+t)*(r+t);
   }
 
   ///////////////////////////////////////////////////////////////////////////
@@ -179,6 +186,94 @@ public class LocalDiffusionKernel {
 
   ///////////////////////////////////////////////////////////////////////////
   // 3-D
+
+  /**
+   * Computes y = y+G'DGx, for specified local 3-D diffusion tensors D.
+   * @param ldt local diffusion tensors.
+   * @param x input image. Must be distinct from the array y.
+   * @param y input/output image. Must be distinct from the array x.
+   */
+  public void apply(DiffusionTensors3 ldt, float[][][] x, float[][][] y) {
+    int n1 = x[0][0].length;
+    int n2 = x[0].length;
+    int n3 = x.length;
+    int n1m = n1-1;
+    int n2m = n2-1;
+    int n3m = n3-1;
+    float e = _erst;
+    float f = _frst;
+    float g = _grst;
+    float[] d = new float[6];
+    for (int i3m=0,i3p=1; i3p<n3; ++i3m,++i3p) {
+      for (int i2m=0,i2p=1; i2p<n2; ++i2m,++i2p) {
+        for (int i1m=0,i1p=1; i1p<n1; ++i1m,++i1p) {
+          ldt.getTensor(i1m,i2m,i3m,d);
+          float d11 = d[0];
+          float d12 = d[1];
+          float d13 = d[2];
+          float d22 = d[3];
+          float d23 = d[4];
+          float d33 = d[5];
+          float ed11 = e*d11;
+          float ed22 = e*d22;
+          float ed33 = e*d33;
+          float eddd = ed11+ed22+ed33;
+          float pd12 = 0.125f*d12;
+          float pd13 = 0.125f*d13;
+          float pd23 = 0.125f*d23;
+          float fd11 = 0.5f*f*(d22+d33);
+          float fd22 = 0.5f*f*(d11+d33);
+          float fd33 = 0.5f*f*(d11+d22);
+          float gd11 = 0.25f*g*d11-fd11;
+          float gd22 = 0.25f*g*d22-fd22;
+          float gd33 = 0.25f*g*d33-fd33;
+          float hd11 = fd22+fd33-ed11;
+          float hd22 = fd11+fd33-ed22;
+          float hd33 = fd11+fd22-ed33;
+          float hd12 = hd33+pd12;
+          float hd21 = hd33-pd12;
+          float hd13 = hd22+pd13;
+          float hd31 = hd22-pd13;
+          float hd23 = hd11+pd23;
+          float hd32 = hd11-pd23;
+          float hdpp = eddd+pd12+pd13+pd23;
+          float hdpm = eddd+pd12-pd13-pd23;
+          float hdmp = eddd-pd12+pd13-pd23;
+          float hdmm = eddd-pd12-pd13+pd23;
+          float xppp = x[i3p][i2p][i1p];
+          float xppm = x[i3p][i2p][i1m];
+          float xpmp = x[i3p][i2m][i1p];
+          float xpmm = x[i3p][i2m][i1m];
+          float xmpp = x[i3m][i2p][i1p];
+          float xmpm = x[i3m][i2p][i1m];
+          float xmmp = x[i3m][i2m][i1p];
+          float xmmm = x[i3m][i2m][i1m];
+          float x11 = gd11*(xppp-xppm+xpmp-xpmm+xmpp-xmpm+xmmp-xmmm);
+          float x22 = gd22*(xppp-xpmp+xppm-xpmm+xmpp-xmmp+xmpm-xmmm);
+          float x33 = gd33*(xppp-xmpp+xppm-xmpm+xpmp-xmmp+xpmm-xmmm);
+          float x12 = hd12*(xppp-xpmm+xmpp-xmmm);
+          float x21 = hd21*(xppm-xpmp+xmpm-xmmp);
+          float x13 = hd13*(xppp-xmpm+xpmp-xmmm);
+          float x31 = hd31*(xppm-xmpp+xpmm-xmmp);
+          float x23 = hd23*(xppp-xmmp+xppm-xmmm);
+          float x32 = hd32*(xpmp-xmpp+xpmm-xmpm);
+          float xpp = hdpp*(xppp-xmmm);
+          float xpm = hdpm*(xpmp-xmpm);
+          float xmp = hdmp*(xmpp-xpmm);
+          float xmm = hdmm*(xmmp-xppm);
+          y[i3p][i2p][i1p]  =  x11+x22+x33+x12+x13+x23+xpp;
+          y[i3p][i2p][i1m] += -x11+x22+x33+x21+x31+x23-xmm;
+          y[i3p][i2m][i1p] +=  x11-x22+x33-x21+x13+x32+xpm;
+          y[i3p][i2m][i1m] += -x11-x22+x33-x12+x31+x32-xmp;
+
+          y[i3m][i2p][i1p] +=  x11+x22+x33+x12+x13+x23+xpp;
+          y[i3m][i2p][i1m] += -x11+x22+x33+x21+x31+x23;
+          y[i3m][i2m][i1p] +=  x11-x22+x33-x21+x13+x32+xpm;
+          y[i3m][i2m][i1m] += -x11-x22+x33-x12+x31+x32-xmp;
+        }
+      }
+    }
+  }
 
   /**
    * Computes y = y+G'DGx, for specified local 3-D diffusion tensors D.
@@ -324,6 +419,7 @@ public class LocalDiffusionKernel {
 
   private static final boolean ZERO_SLOPE_BOUNDARIES = true;
   private float _rs; // experimental parameter for gradient approximation
+  private float _erst,_frst,_grst;
 
   ///////////////////////////////////////////////////////////////////////////
   // testing
