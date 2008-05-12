@@ -148,9 +148,9 @@ public class DiffusionTensors3 {
     d[0] = e1i*w1i*w1i+e2i*(1.0f-u1i*u1i)+e3i; // d11
     d[1] = e1i*w1i*w2i+e2i*(    -u1i*u2i)    ; // d12
     d[2] = e1i*w1i*w3i+e2i*(    -u1i*u3i)    ; // d13
-    d[3] = e2i*w2i*w2i+e2i*(1.0f-u2i*u2i)+e3i; // d22
+    d[3] = e1i*w2i*w2i+e2i*(1.0f-u2i*u2i)+e3i; // d22
     d[4] = e1i*w2i*w3i+e2i*(    -u2i*u3i)    ; // d23
-    d[5] = e3i*w3i*w3i+e3i*(1.0f-u3i*u3i)+e3i; // d33
+    d[5] = e1i*w3i*w3i+e2i*(1.0f-u3i*u3i)+e3i; // d33
   }
 
   /**
