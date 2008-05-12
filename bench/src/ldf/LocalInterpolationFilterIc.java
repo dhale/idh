@@ -118,10 +118,12 @@ public class LocalInterpolationFilterIc {
     return new Operator2[]{new A2(lsf), new M2(lsf)};
   }
 
+  ///////////////////////////////////////////////////////////////////////////
+  // 2D solver
+
   private static interface Operator2 {
     public void apply(float[][] x, float[][] y);
   }
-
   private static class A2 implements Operator2 {
     A2(LocalSpd9Filter lsf) {
       _lsf = lsf;
@@ -131,7 +133,6 @@ public class LocalInterpolationFilterIc {
     }
     private LocalSpd9Filter _lsf;
   }
-
   private static class M2 implements Operator2 {
     M2(LocalSpd9Filter lsf) {
       _lsf = lsf;
@@ -214,7 +215,6 @@ public class LocalInterpolationFilterIc {
     }
     trace("  iter="+iter+" delta="+delta+" ratio="+delta/deltaBegin);
   }
-
   private static void scopy(float[][] x, float[][] y) {
     Array.copy(x,y);
   }
@@ -252,6 +252,130 @@ public class LocalInterpolationFilterIc {
         y2[i1] = a*y2[i1]+x2[i1];
       }
     }
+  }
+
+  ///////////////////////////////////////////////////////////////////////////
+  // 3D solver
+
+  private static interface Operator3 {
+    public void apply(float[][][] x, float[][][] y);
+  }
+  private static class A3 implements Operator3 {
+    A3(LocalSpd27Filter lsf) {
+      _lsf = lsf;
+    }
+    public void apply(float[][][] x, float[][][] y) {
+      _lsf.apply(x,y);
+    }
+    private LocalSpd27Filter _lsf;
+  }
+  private static class M3 implements Operator3 {
+    M3(LocalSpd27Filter lsf) {
+      _lsf = lsf;
+    }
+    public void apply(float[][][] x, float[][][] y) {
+      _lsf.applyApproximateInverse(x,y);
+    }
+    private LocalSpd27Filter _lsf;
+  }
+
+  /**
+   * Solves Ax = b via conjugate gradient iterations. (No preconditioner.)
+   * Uses the initial values of x; does not assume they are zero.
+   */
+  private void solve(Operator3 a, float[][][] b, float[][][] x) {
+    int n1 = b[0][0].length;
+    int n2 = b[0].length;
+    int n3 = b.length;
+    float[][][] d = new float[n3][n2][n1];
+    float[][][] q = new float[n3][n2][n1];
+    float[][][] r = new float[n3][n2][n1];
+    scopy(b,r);
+    a.apply(x,q);
+    saxpy(-1.0f,q,r); // r = b-Ax
+    scopy(r,d);
+    float delta = sdot(r,r);
+    float deltaBegin = delta;
+    float deltaSmall = deltaBegin*_small*_small;
+    //float deltaSmall = sdot(b,b)*_small*_small;
+    trace("solve: delta="+delta);
+    int iter;
+    for (iter=0; iter<_niter && delta>deltaSmall; ++iter) {
+      a.apply(d,q);
+      float dq = sdot(d,q);
+      float alpha = delta/dq;
+      saxpy( alpha,d,x);
+      saxpy(-alpha,q,r);
+      float deltaOld = delta;
+      delta = sdot(r,r);
+      float beta = delta/deltaOld;
+      sxpay(beta,r,d);
+      trace("  iter="+iter+" delta="+delta);
+    }
+    trace("  iter="+iter+" delta="+delta+" ratio="+delta/deltaBegin);
+  }
+
+  /**
+   * Solves Ax = b via conjugate gradient iterations with preconditioner M.
+   * Uses the initial values of x; does not assume they are zero.
+   */
+  private void solve(Operator3 a, Operator3 m, float[][][] b, float[][][] x) {
+    int n1 = b[0][0].length;
+    int n2 = b[0].length;
+    int n3 = b.length;
+    float[][][] d = new float[n3][n2][n1];
+    float[][][] q = new float[n3][n2][n1];
+    float[][][] r = new float[n3][n2][n1];
+    float[][][] s = new float[n3][n2][n1];
+    scopy(b,r);
+    a.apply(x,q);
+    saxpy(-1.0f,q,r); // r = b-Ax
+    m.apply(r,d);
+    //m.apply(b,s);
+    float delta = sdot(r,d);
+    float deltaBegin = delta;
+    float deltaSmall = deltaBegin*_small*_small;
+    //float deltaSmall = sdot(s,s)*_small*_small;
+    trace("solve: delta="+delta);
+    int iter;
+    for (iter=0; iter<_niter && delta>deltaSmall; ++iter) {
+      a.apply(d,q);
+      float dq = sdot(d,q);
+      float alpha = delta/dq;
+      saxpy( alpha,d,x);
+      saxpy(-alpha,q,r);
+      m.apply(r,s);
+      float deltaOld = delta;
+      delta = sdot(r,s);
+      float beta = delta/deltaOld;
+      sxpay(beta,s,d);
+      trace("  iter="+iter+" delta="+delta);
+    }
+    trace("  iter="+iter+" delta="+delta+" ratio="+delta/deltaBegin);
+  }
+
+  private static void scopy(float[][][] x, float[][][] y) {
+    Array.copy(x,y);
+  }
+  private static void szero(float[][][] x) {
+    Array.zero(x);
+  }
+  private static float sdot(float[][][] x, float[][][] y) {
+    int n3 = x.length;
+    float d = 0.0f;
+    for (int i3=0; i3<n3; ++i3)
+      d += sdot(x[i3],y[i3]);
+    return d;
+  }
+  private static void saxpy(float a, float[][][] x, float[][][] y) {
+    int n3 = x.length;
+    for (int i3=0; i3<n3; ++i3)
+      saxpy(a,x[i3],y[i3]);
+  }
+  private static void sxpay(float a, float[][][] x, float[][][] y) {
+    int n3 = x.length;
+    for (int i3=0; i3<n3; ++i3)
+      sxpay(a,x[i3],y[i3]);
   }
 
   private static final boolean TRACE = true;

@@ -836,6 +836,7 @@ public class LocalDiffusionKernel {
   private float _erst,_frst,_grst; // for 3D 2x2x2-sample stencils
 
   // This version is more like the one used for 3D 2x2x2 stencils.
+  // But the version above works, so this one is currently unused.
   private void applyX(LocalDiffusionTensors2 ldt, float[][] x, float[][] y) {
     int n1 = x[0].length;
     int n2 = x.length;
@@ -873,20 +874,20 @@ public class LocalDiffusionKernel {
         y[i2m][i1m] -= ympmm+ypmmm-yppmm;
         if (ZERO_SLOPE_BOUNDARIES) {
           if (i1m==0) {
-            ypmmm = d22*(x[i2p][i1m]-x[i2m][i1m]);
+            ypmmm = d22*(xpm-xmm);
             y[i2p][i1m] += ypmmm;
             y[i2m][i1m] -= ypmmm;
           } else if (i1p==n1m) {
-            yppmp = d22*(x[i2p][i1p]-x[i2m][i1p]);
+            yppmp = d22*(xpp-xmp);
             y[i2p][i1p] += yppmp;
             y[i2m][i1p] -= yppmp;
           }
           if (i2m==0) {
-            ympmm = d11*(x[i2m][i1p]-x[i2m][i1m]);
+            ympmm = d11*(xmp-xmm);
             y[i2m][i1p] += ympmm;
             y[i2m][i1m] -= ympmm;
           } else if (i2p==n2m) {
-            ypppm = d11*(x[i2p][i1p]-x[i2p][i1m]);
+            ypppm = d11*(xpp-xpm);
             y[i2p][i1p] += ypppm;
             y[i2p][i1m] -= ypppm;
           }
