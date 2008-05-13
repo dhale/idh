@@ -971,28 +971,48 @@ public class LocalDiffusionKernel {
     for (int i3=0; i3<n3; ++i3) {
       for (int i2=0; i2<n2; ++i2) {
         for (int i1=0; i1<n1; ++i1) {
-          ldt.setCoefficients(i1,i2,i3,randomCoefficients());
-          ldt.setEigenvectorU(i1,i2,i3,randomEigenvector());
-          ldt.setEigenvectorW(i1,i2,i3,randomEigenvector());
+          float[] d = makeRandomCoefficients();
+          float[] u = makeRandomVector();
+          float[] w = makeOrthogonalVector(u);
+          ldt.setCoefficients(i1,i2,i3,d);
+          ldt.setEigenvectorU(i1,i2,i3,u);
+          ldt.setEigenvectorW(i1,i2,i3,w);
         }
       }
     }
     return ldt;
   }
-  private static float[] randomCoefficients() {
-    float d1 = _rand.nextFloat();
-    float d2 = _rand.nextFloat();
-    float d3 = _rand.nextFloat();
-    return new float[]{d1,d2,d3};
+  private static java.util.Random r = new java.util.Random();
+  private static float[] makeRandomCoefficients() {
+    float d1 = r.nextFloat();
+    float d2 = r.nextFloat();
+    float d3 = r.nextFloat();
+    float ds = 1.0f/(d1+d2+d3);
+    return new float[]{d1*ds,d2*ds,d3*ds};
   }
-  private static float[] randomEigenvector() {
-    float v1 = _rand.nextFloat()-0.5f;
-    float v2 = _rand.nextFloat()-0.5f;
-    float v3 = _rand.nextFloat()-0.5f;
-    float vs = 1.0f/sqrt(v1*v1+v2*v2+v3*v3);
-    return new float[]{v1*vs,v2*vs,v3*vs};
+  private static float[] makeRandomVector() {
+    float a = r.nextFloat()-0.5f;
+    float b = r.nextFloat()-0.5f;
+    float c = r.nextFloat()-0.5f;
+    float s = 1.0f/(float)Math.sqrt(a*a+b*b+c*c);
+    return new float[]{a*s,b*s,c*s};
   }
-  private static java.util.Random _rand = new java.util.Random();
+  private static float[] makeOrthogonalVector(float[] v1) {
+    float a1 = v1[0];
+    float b1 = v1[1];
+    float c1 = v1[2];
+    float a2 = r.nextFloat()-0.5f;
+    float b2 = r.nextFloat()-0.5f;
+    float c2 = r.nextFloat()-0.5f;
+    float d11 = a1*a1+b1*b1+c1*c1;
+    float d12 = a1*a2+b1*b2+c1*c2;
+    float s = d12/d11;
+    float a = a2-s*a1;
+    float b = b2-s*b1;
+    float c = c2-s*c1;
+    s = 1.0f/(float)Math.sqrt(a*a+b*b+c*c);
+    return new float[]{a*s,b*s,c*s};
+  }
 
 
   public static void main(String[] args) {

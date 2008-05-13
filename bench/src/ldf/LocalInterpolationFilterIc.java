@@ -46,6 +46,31 @@ public class LocalInterpolationFilterIc {
   private float _small; // stop iterations when residuals are small
   private int _niter; // number of iterations
 
+  ///////////////////////////////////////////////////////////////////////////
+  // 2D solver
+
+  private static interface Operator2 {
+    public void apply(float[][] x, float[][] y);
+  }
+  private static class A2 implements Operator2 {
+    A2(LocalSpd9Filter lsf) {
+      _lsf = lsf;
+    }
+    public void apply(float[][] x, float[][] y) {
+      _lsf.apply(x,y);
+    }
+    private LocalSpd9Filter _lsf;
+  }
+  private static class M2 implements Operator2 {
+    M2(LocalSpd9Filter lsf) {
+      _lsf = lsf;
+    }
+    public void apply(float[][] x, float[][] y) {
+      _lsf.applyApproximateInverse(x,y);
+    }
+    private LocalSpd9Filter _lsf;
+  }
+
   /**
    * Copies flagged samples in a specified array; zeros other samples.
    * @param flag the flag for elements to be copied.
@@ -116,31 +141,6 @@ public class LocalInterpolationFilterIc {
     LocalSpd9Filter lsf = new LocalSpd9Filter(s,0.001);
     //edu.mines.jtk.mosaic.SimplePlot.asPixels(lsf.getMatrix());
     return new Operator2[]{new A2(lsf), new M2(lsf)};
-  }
-
-  ///////////////////////////////////////////////////////////////////////////
-  // 2D solver
-
-  private static interface Operator2 {
-    public void apply(float[][] x, float[][] y);
-  }
-  private static class A2 implements Operator2 {
-    A2(LocalSpd9Filter lsf) {
-      _lsf = lsf;
-    }
-    public void apply(float[][] x, float[][] y) {
-      _lsf.apply(x,y);
-    }
-    private LocalSpd9Filter _lsf;
-  }
-  private static class M2 implements Operator2 {
-    M2(LocalSpd9Filter lsf) {
-      _lsf = lsf;
-    }
-    public void apply(float[][] x, float[][] y) {
-      _lsf.applyApproximateInverse(x,y);
-    }
-    private LocalSpd9Filter _lsf;
   }
 
   /**
@@ -280,6 +280,126 @@ public class LocalInterpolationFilterIc {
   }
 
   /**
+   * Copies flagged samples in a specified array; zeros other samples.
+   * @param flag the flag for elements to be copied.
+   * @param f input array of flags.
+   * @param x input array; may be same array as y.
+   * @param y output array; may be same array as x.
+   */
+  private static void copy(
+    int flag, byte[][][] f, float[][][] x, float[][][] y) 
+  {
+    int n1 = x[0][0].length;
+    int n2 = x[0].length;
+    int n3 = x.length;
+    for (int i3=0; i3<n3; ++i3) {
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          y[i3][i2][i1] = (f[i3][i2][i1]==flag)?x[i3][i2][i1]:0.0f;
+        }
+      }
+    }
+  }
+
+  private static float[][][] makeB(
+    DiffusionTensors3 ldt, byte[][][] f, float[][][] x) 
+  {
+    int n1 = x[0][0].length;
+    int n2 = x[0].length;
+    int n3 = x.length;
+    float[][][] t = new float[n3][n2][n1];
+    float[][][] b = new float[n3][n2][n1];
+    copy(1,f,x,t); // t = Kx
+    _ldk.apply(ldt,t,b); // b = G'DGKx
+    copy(0,f,b,b); // b = MG'DGKx
+    Array.sub(t,b,b); // b = (K-MG'DGK)x
+    return b;
+  }
+
+  private static Operator3[] makeOperators(
+    DiffusionTensors3 ldt, byte[][][] f) 
+  {
+    int n1 = f[0][0].length;
+    int n2 = f[0].length;
+    int n3 = f.length;
+
+    // First make A = G'DG, which is symmetric positive semidefinite.
+    float[][][][] s = _ldk.getCoefficients(ldt);
+
+    // Then make A = K+MG'DGM, which should be symmetric positive definite.
+    // (It will be SPD iff one or more of the flags in f are non-zero.)
+    float[][][] s000 = s[0];
+    float[][][] s00p = s[1];
+    float[][][] s0pm = s[2];
+    float[][][] s0p0 = s[3];
+    float[][][] s0pp = s[4];
+    float[][][] spmm = s[5];
+    float[][][] spm0 = s[6];
+    float[][][] spmp = s[7];
+    float[][][] sp0m = s[8];
+    float[][][] sp00 = s[9];
+    float[][][] sp0p = s[10];
+    float[][][] sppm = s[11];
+    float[][][] spp0 = s[12];
+    float[][][] sppp = s[13];
+    for (int i3=0; i3<n3; ++i3) {
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          if (f[i3][i2][i1]!=0) {
+            s000[i3][i2][i1] = 1.0f; // A = (K+MG'DGM)
+            s00p[i3][i2][i1] = 0.0f;
+            s0pm[i3][i2][i1] = 0.0f;
+            s0p0[i3][i2][i1] = 0.0f;
+            s0pp[i3][i2][i1] = 0.0f;
+            spmm[i3][i2][i1] = 0.0f;
+            spm0[i3][i2][i1] = 0.0f;
+            spmp[i3][i2][i1] = 0.0f;
+            sp0m[i3][i2][i1] = 0.0f;
+            sp00[i3][i2][i1] = 0.0f;
+            sp0p[i3][i2][i1] = 0.0f;
+            sppm[i3][i2][i1] = 0.0f;
+            spp0[i3][i2][i1] = 0.0f;
+            sppp[i3][i2][i1] = 0.0f;
+            if (0<i1)
+              s00p[i3][i2][i1-1] = 0.0f;
+            if (0<i2) {
+              s0p0[i3][i2-1][i1  ] = 0.0f;
+              if (i1<n1-1) 
+                s0pm[i3][i2-1][i1+1] = 0.0f;
+              if (0<i1) 
+                s0pp[i3][i2-1][i1-1] = 0.0f;
+            }
+            if (0<i3) {
+              sp00[i3-1][i2][i1] = 0.0f;
+              if (i1<n1-1) 
+                sp0m[i3][i2][i1+1] = 0.0f;
+              if (0<i1)
+                sp0p[i3][i2][i1-1] = 0.0f;
+              if (i2<n2-1) {
+                spm0[i3-1][i2+1][i1] = 0.0f;
+                if (i1<n1-1) 
+                  spmm[i3-1][i2+1][i1+1] = 0.0f;
+                if (0<i1) 
+                  spmp[i3-1][i2+1][i1-1] = 0.0f;
+              }
+              if (0<i2) {
+                spp0[i3-1][i2-1][i1  ] = 0.0f;
+                if (i1<n1-1) 
+                  sppm[i3-1][i2-1][i1+1] = 0.0f;
+                if (0<i1) 
+                  sppp[i3-1][i2-1][i1-1] = 0.0f;
+              }
+            }
+          }
+        }
+      }
+    }
+    LocalSpd27Filter lsf = new LocalSpd27Filter(s,0.001);
+    //edu.mines.jtk.mosaic.SimplePlot.asPixels(lsf.getMatrix());
+    return new Operator3[]{new A3(lsf), new M3(lsf)};
+  }
+
+  /**
    * Solves Ax = b via conjugate gradient iterations. (No preconditioner.)
    * Uses the initial values of x; does not assume they are zero.
    */
@@ -388,8 +508,8 @@ public class LocalInterpolationFilterIc {
   // testing
 
   public static void main(String[] args) {
-    //testOperators();
-    testSolve();
+    //testOperators2();
+    testSolve2();
   }
 
   private static void plotPixels(float[][] x) {
@@ -402,7 +522,7 @@ public class LocalInterpolationFilterIc {
     pv.setColorModel(edu.mines.jtk.awt.ColorMap.JET);
   }
 
-  private static void testOperators() {
+  private static void testOperators2() {
     int n1 = 9;
     int n2 = 11;
     float s0 = 1.0f;
@@ -424,6 +544,40 @@ public class LocalInterpolationFilterIc {
     testSpd(n1,n2,m);
   }
 
+  private static void testOperators3() {
+    int n1 = 9;
+    int n2 = 10;
+    int n3 = 11;
+    DiffusionTensors3 ldt = makeLinearDiffusionTensors3(n1,n2,n3);
+    byte[][][] f = Array.zerobyte(n1,n2,n3);
+    for (int i1=0; i1<n1; ++i1)
+      f[n3/2][n2/2][i1] = 1;
+    Operator3[] op = makeOperators(ldt,f);
+    Operator3 a = op[0];
+    Operator3 m = op[1];
+    testSpd(n1,n2,n3,a);
+    testSpd(n1,n2,n3,m);
+  }
+
+  private static DiffusionTensors3 makeLinearDiffusionTensors3(
+    int n1, int n2, int n3) 
+  {
+    DiffusionTensors3 ldt = new DiffusionTensors3(n1,n2,n3,1.0f,1.0f,1.0f);
+    float[] d = {1.0f,0.0f,0.0f};
+    float[] u = {0.0f,0.0f,1.0f};
+    float[] w = {1.0f,0.0f,0.0f};
+    for (int i3=0; i3<n3; ++i3) {
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          ldt.setCoefficients(i1,i2,i3,d);
+          ldt.setEigenvectorU(i1,i2,i3,u);
+          ldt.setEigenvectorW(i1,i2,i3,w);
+        }
+      }
+    }
+    return ldt;
+  }
+
   private static void testSpd(int n1, int n2, Operator2 a) {
     float[][] x = Array.sub(Array.randfloat(n1,n2),0.5f);
     float[][] y = Array.sub(Array.randfloat(n1,n2),0.5f);
@@ -439,7 +593,22 @@ public class LocalInterpolationFilterIc {
     System.out.println("yax="+yax+" xay="+xay+" (should be equal)");
   }
 
-  private static void testSolve() {
+  private static void testSpd(int n1, int n2, int n3, Operator3 a) {
+    float[][][] x = Array.sub(Array.randfloat(n1,n2,n3),0.5f);
+    float[][][] y = Array.sub(Array.randfloat(n1,n2,n3),0.5f);
+    float[][][] ax = Array.zerofloat(n1,n2,n3);
+    float[][][] ay = Array.zerofloat(n1,n2,n3);
+    a.apply(x,ax);
+    a.apply(y,ay);
+    float xax = sdot(x,ax);
+    float yay = sdot(y,ay);
+    float yax = sdot(y,ax);
+    float xay = sdot(x,ay);
+    System.out.println("xax="+xax+" yay="+yay+" (should be positive)");
+    System.out.println("yax="+yax+" xay="+xay+" (should be equal)");
+  }
+
+  private static void testSolve2() {
     int n1 = 101;
     int n2 = 101;
     float s0 = 0.00f;
