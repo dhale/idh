@@ -37,6 +37,15 @@ public class LocalInterpolationFilterIc {
     //solve(a,b,x);
   }
 
+  public void apply(DiffusionTensors3 ldt, byte[][][] f, float[][][] x) {
+    Operator3[] op = makeOperators(ldt,f);
+    Operator3 a = op[0];
+    Operator3 m = op[1];
+    float[][][] b = makeB(ldt,f,x);
+    solve(a,m,b,x);
+    //solve(a,b,x);
+  }
+
   ///////////////////////////////////////////////////////////////////////////
   // private
 
@@ -507,11 +516,6 @@ public class LocalInterpolationFilterIc {
   ///////////////////////////////////////////////////////////////////////////
   // testing
 
-  public static void main(String[] args) {
-    //testOperators2();
-    testSolve2();
-  }
-
   private static void plotPixels(float[][] x) {
     edu.mines.jtk.mosaic.SimplePlot sp =
       new edu.mines.jtk.mosaic.SimplePlot(
@@ -557,25 +561,6 @@ public class LocalInterpolationFilterIc {
     Operator3 m = op[1];
     testSpd(n1,n2,n3,a);
     testSpd(n1,n2,n3,m);
-  }
-
-  private static DiffusionTensors3 makeLinearDiffusionTensors3(
-    int n1, int n2, int n3) 
-  {
-    DiffusionTensors3 ldt = new DiffusionTensors3(n1,n2,n3,1.0f,1.0f,1.0f);
-    float[] d = {1.0f,0.0f,0.0f};
-    float[] u = {0.0f,0.0f,1.0f};
-    float[] w = {1.0f,0.0f,0.0f};
-    for (int i3=0; i3<n3; ++i3) {
-      for (int i2=0; i2<n2; ++i2) {
-        for (int i1=0; i1<n1; ++i1) {
-          ldt.setCoefficients(i1,i2,i3,d);
-          ldt.setEigenvectorU(i1,i2,i3,u);
-          ldt.setEigenvectorW(i1,i2,i3,w);
-        }
-      }
-    }
-    return ldt;
   }
 
   private static void testSpd(int n1, int n2, Operator2 a) {
@@ -642,5 +627,116 @@ public class LocalInterpolationFilterIc {
     lif.apply(ldt,f,x);
     trace("x min="+Array.min(x)+" max="+Array.max(x));
     plotPixels(x);
+  }
+
+  private static void testSolve3() {
+    int n1 = 24;
+    int n2 = 25;
+    int n3 = 26;
+    float theta = 0.0f*FLT_PI/8.0f;
+    float phi = 0.0f*FLT_PI/8.0f;
+    DiffusionTensors3 ldt = makePlanarDiffusionTensors3(n1,n2,n3,theta,phi);
+    byte[][][] f = Array.zerobyte(n1,n2,n3);
+    float[][][] x = Array.zerofloat(n1,n2,n3);
+    for (int i3=0; i3<n3; ++i3) {
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          if (i2==n2/2 && i3==n3/2) {
+            x[i3][i2][i1] = sin(6.0f*FLT_PI*(float)i1/(float)n1);
+            f[i3][i2][i1] = 1;
+          }
+        }
+      }
+    }
+    //plotPixels(x);
+    float small = 0.0001f;
+    int niter = 1000;
+    LocalInterpolationFilterIc lif = 
+      new LocalInterpolationFilterIc(small,niter);
+    lif.apply(ldt,f,x);
+    trace("x min="+Array.min(x)+" max="+Array.max(x));
+    //plotPixels(x);
+  }
+
+  private static DiffusionTensors3 makeLinearDiffusionTensors3(
+    int n1, int n2, int n3) 
+  {
+    DiffusionTensors3 ldt = new DiffusionTensors3(n1,n2,n3,1.0f,1.0f,1.0f);
+    float[] d = {1.0f,0.0f,0.0f};
+    float[] u = {0.0f,0.0f,1.0f};
+    float[] w = {1.0f,0.0f,0.0f};
+    for (int i3=0; i3<n3; ++i3) {
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          ldt.setCoefficients(i1,i2,i3,d);
+          ldt.setEigenvectorU(i1,i2,i3,u);
+          ldt.setEigenvectorW(i1,i2,i3,w);
+        }
+      }
+    }
+    return ldt;
+  }
+
+  private static DiffusionTensors3 makePlanarDiffusionTensors3(
+    int n1, int n2, int n3, float theta, float phi) 
+  {
+    DiffusionTensors3 ldt = new DiffusionTensors3(n1,n2,n3,1.0f,1.0f,1.0f);
+    float d1 = 0.000f;
+    float d2 = 1.000f;
+    float d3 = 0.001f;
+    float u1 = cos(theta);
+    float u2 = sin(theta)*cos(phi);
+    float u3 = sin(theta)*sin(phi);
+    float[] d = {d1,d2,d3};
+    float[] u = {u1,u2,u3};
+    float[] w = makeOrthogonalVector(u);
+    for (int i3=0; i3<n3; ++i3) {
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          ldt.setCoefficients(i1,i2,i3,d);
+          ldt.setEigenvectorU(i1,i2,i3,u);
+          ldt.setEigenvectorW(i1,i2,i3,w);
+        }
+      }
+    }
+    return ldt;
+  }
+  private static java.util.Random r = new java.util.Random();
+  private static float[] makeRandomCoefficients() {
+    float d1 = r.nextFloat();
+    float d2 = r.nextFloat();
+    float d3 = r.nextFloat();
+    float ds = 1.0f/(d1+d2+d3);
+    return new float[]{d1*ds,d2*ds,d3*ds};
+  }
+  private static float[] makeRandomVector() {
+    float a = r.nextFloat()-0.5f;
+    float b = r.nextFloat()-0.5f;
+    float c = r.nextFloat()-0.5f;
+    float s = 1.0f/(float)Math.sqrt(a*a+b*b+c*c);
+    return new float[]{a*s,b*s,c*s};
+  }
+  private static float[] makeOrthogonalVector(float[] v1) {
+    float a1 = v1[0];
+    float b1 = v1[1];
+    float c1 = v1[2];
+    float a2 = r.nextFloat()-0.5f;
+    float b2 = r.nextFloat()-0.5f;
+    float c2 = r.nextFloat()-0.5f;
+    float d11 = a1*a1+b1*b1+c1*c1;
+    float d12 = a1*a2+b1*b2+c1*c2;
+    float s = d12/d11;
+    float a = a2-s*a1;
+    float b = b2-s*b1;
+    float c = c2-s*c1;
+    s = 1.0f/(float)Math.sqrt(a*a+b*b+c*c);
+    return new float[]{a*s,b*s,c*s};
+  }
+
+  public static void main(String[] args) {
+    //testOperators2();
+    //testOperators3();
+    //testSolve2();
+    testSolve3();
   }
 } 

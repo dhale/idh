@@ -756,43 +756,43 @@ public class LocalSpd27Filter {
             d000[i3m][i2m][i1p]*lppm[i3m][i2m][i1p]*lppm[i3m][i2m][i1p] +
             d000[i3m][i2m][i1 ]*lpp0[i3m][i2m][i1 ]*lpp0[i3m][i2m][i1 ];
           l00p[i3][i2][i1] -= 
-            d000[i3 ][i2m][i1p]*l0p0[i3 ][i2m][i1p]*l0p0[i3 ][i2m][i1p] +
-            d000[i3 ][i2m][i1 ]*l0pp[i3 ][i2m][i1 ]*l0pp[i3 ][i2m][i1 ] +
-            d000[i3m][i2p][i1p]*lpm0[i3m][i2p][i1p]*lpm0[i3m][i2p][i1p] +
-            d000[i3m][i2p][i1 ]*lpmp[i3m][i2p][i1 ]*lpmp[i3m][i2p][i1 ] +
-            d000[i3m][i2 ][i1p]*lp00[i3m][i2 ][i1p]*lp00[i3m][i2 ][i1p] +
-            d000[i3m][i2 ][i1 ]*lp0p[i3m][i2 ][i1 ]*lp0p[i3m][i2 ][i1 ] +
-            d000[i3m][i2m][i1p]*lpp0[i3m][i2m][i1p]*lpp0[i3m][i2m][i1p] +
-            d000[i3m][i2m][i1 ]*lppp[i3m][i2m][i1 ]*lppp[i3m][i2m][i1 ];
+            d000[i3 ][i2m][i1p]*l0p0[i3 ][i2m][i1p]*l0pm[i3 ][i2m][i1p] +
+            d000[i3 ][i2m][i1 ]*l0pp[i3 ][i2m][i1 ]*l0p0[i3 ][i2m][i1 ] +
+            d000[i3m][i2p][i1p]*lpm0[i3m][i2p][i1p]*lpmm[i3m][i2p][i1p] +
+            d000[i3m][i2p][i1 ]*lpmp[i3m][i2p][i1 ]*lpm0[i3m][i2p][i1 ] +
+            d000[i3m][i2 ][i1p]*lp00[i3m][i2 ][i1p]*lp0m[i3m][i2 ][i1p] +
+            d000[i3m][i2 ][i1 ]*lp0p[i3m][i2 ][i1 ]*lp00[i3m][i2 ][i1 ] +
+            d000[i3m][i2m][i1p]*lpp0[i3m][i2m][i1p]*lppm[i3m][i2m][i1p] +
+            d000[i3m][i2m][i1 ]*lppp[i3m][i2m][i1 ]*lpp0[i3m][i2m][i1 ];
           l0pm[i3][i2][i1] -= 
-            d000[i3m][i2p][i1 ]*lp0m[i3m][i2p][i1 ]*lp0m[i3m][i2p][i1 ] +
-            d000[i3m][i2 ][i1 ]*lppm[i3m][i2 ][i1 ]*lppm[i3m][i2 ][i1 ];
+            d000[i3m][i2p][i1 ]*lp0m[i3m][i2p][i1 ]*lpm0[i3m][i2p][i1 ] +
+            d000[i3m][i2 ][i1 ]*lppm[i3m][i2 ][i1 ]*lp00[i3m][i2 ][i1 ];
           l0p0[i3][i2][i1] -= 
-            d000[i3m][i2p][i1p]*lp0m[i3m][i2p][i1p]*lp0m[i3m][i2p][i1p] +
-            d000[i3m][i2p][i1 ]*lp00[i3m][i2p][i1 ]*lp00[i3m][i2p][i1 ] +
-            d000[i3m][i2 ][i1p]*lppm[i3m][i2 ][i1p]*lppm[i3m][i2 ][i1p] +
-            d000[i3m][i2 ][i1 ]*lpp0[i3m][i2 ][i1 ]*lpp0[i3m][i2 ][i1 ];
+            d000[i3m][i2p][i1p]*lp0m[i3m][i2p][i1p]*lpmm[i3m][i2p][i1p] +
+            d000[i3m][i2p][i1 ]*lp00[i3m][i2p][i1 ]*lpm0[i3m][i2p][i1 ] +
+            d000[i3m][i2 ][i1p]*lppm[i3m][i2 ][i1p]*lp0m[i3m][i2 ][i1p] +
+            d000[i3m][i2 ][i1 ]*lpp0[i3m][i2 ][i1 ]*lp00[i3m][i2 ][i1 ];
           l0pp[i3][i2][i1] -= 
-            d000[i3m][i2p][i1p]*lp00[i3m][i2p][i1p]*lp00[i3m][i2p][i1p] +
-            d000[i3m][i2p][i1 ]*lp0p[i3m][i2p][i1 ]*lp0p[i3m][i2p][i1 ] +
-            d000[i3m][i2 ][i1p]*lpp0[i3m][i2 ][i1p]*lpp0[i3m][i2 ][i1p] +
-            d000[i3m][i2 ][i1 ]*lppp[i3m][i2 ][i1 ]*lppp[i3m][i2 ][i1 ];
+            d000[i3m][i2p][i1p]*lp00[i3m][i2p][i1p]*lpmm[i3m][i2p][i1p] +
+            d000[i3m][i2p][i1 ]*lp0p[i3m][i2p][i1 ]*lpm0[i3m][i2p][i1 ] +
+            d000[i3m][i2 ][i1p]*lpp0[i3m][i2 ][i1p]*lp0m[i3m][i2 ][i1p] +
+            d000[i3m][i2 ][i1 ]*lppp[i3m][i2 ][i1 ]*lp00[i3m][i2 ][i1 ];
           lpmm[i3][i2][i1] -= 
-            d000[i3 ][i2m][i1 ]*lp0m[i3 ][i2m][i1 ]*lp0m[i3 ][i2m][i1 ];
+            d000[i3 ][i2m][i1 ]*lp0m[i3 ][i2m][i1 ]*l0p0[i3 ][i2m][i1 ];
           lpm0[i3][i2][i1] -= 
-            d000[i3 ][i2m][i1p]*lp0m[i3 ][i2m][i1p]*lp0m[i3 ][i2m][i1p] +
-            d000[i3 ][i2m][i1 ]*lp00[i3 ][i2m][i1 ]*lp00[i3 ][i2m][i1 ];
+            d000[i3 ][i2m][i1p]*lp0m[i3 ][i2m][i1p]*l0pm[i3 ][i2m][i1p] +
+            d000[i3 ][i2m][i1 ]*lp00[i3 ][i2m][i1 ]*l0p0[i3 ][i2m][i1 ];
           lpmp[i3][i2][i1] -= 
-            d000[i3 ][i2m][i1p]*lp00[i3 ][i2m][i1p]*lp00[i3 ][i2m][i1p] +
-            d000[i3 ][i2m][i1 ]*lp0p[i3 ][i2m][i1 ]*lp0p[i3 ][i2m][i1 ];
+            d000[i3 ][i2m][i1p]*lp00[i3 ][i2m][i1p]*l0pm[i3 ][i2m][i1p] +
+            d000[i3 ][i2m][i1 ]*lp0p[i3 ][i2m][i1 ]*l0p0[i3 ][i2m][i1 ];
           lp0m[i3][i2][i1] -= 
-            d000[i3 ][i2m][i1 ]*lppm[i3 ][i2m][i1 ]*lppm[i3 ][i2m][i1 ];
+            d000[i3 ][i2m][i1 ]*lppm[i3 ][i2m][i1 ]*l0p0[i3 ][i2m][i1 ];
           lp00[i3][i2][i1] -= 
-            d000[i3 ][i2m][i1p]*lppm[i3 ][i2m][i1p]*lppm[i3 ][i2m][i1p] +
-            d000[i3 ][i2m][i1 ]*lpp0[i3 ][i2m][i1 ]*lpp0[i3 ][i2m][i1 ];
+            d000[i3 ][i2m][i1p]*lppm[i3 ][i2m][i1p]*l0pm[i3 ][i2m][i1p] +
+            d000[i3 ][i2m][i1 ]*lpp0[i3 ][i2m][i1 ]*l0p0[i3 ][i2m][i1 ];
           lp0p[i3][i2][i1] -= 
-            d000[i3 ][i2m][i1p]*lpp0[i3 ][i2m][i1p]*lpp0[i3 ][i2m][i1p] +
-            d000[i3 ][i2m][i1 ]*lppp[i3 ][i2m][i1 ]*lppp[i3 ][i2m][i1 ];
+            d000[i3 ][i2m][i1p]*lpp0[i3 ][i2m][i1p]*l0pm[i3 ][i2m][i1p] +
+            d000[i3 ][i2m][i1 ]*lppp[i3 ][i2m][i1 ]*l0p0[i3 ][i2m][i1 ];
           if (l000[i3][i2][i1]<=0.0f) 
             return null;
           d000[i3][i2][i1] = 1.0f/l000[i3][i2][i1];
@@ -815,61 +815,61 @@ public class LocalSpd27Filter {
               d000[i3m][i2m][i1 ]*lpp0[i3m][i2m][i1 ]*lpp0[i3m][i2m][i1 ] +
               d000[i3m][i2m][i1m]*lppp[i3m][i2m][i1m]*lppp[i3m][i2m][i1m];
             l00p[i3][i2][i1] -= 
-              d000[i3 ][i2m][i1p]*l0p0[i3 ][i2m][i1p]*l0p0[i3 ][i2m][i1p] +
-              d000[i3 ][i2m][i1 ]*l0pp[i3 ][i2m][i1 ]*l0pp[i3 ][i2m][i1 ] +
-              d000[i3m][i2p][i1p]*lpm0[i3m][i2p][i1p]*lpm0[i3m][i2p][i1p] +
-              d000[i3m][i2p][i1 ]*lpmp[i3m][i2p][i1 ]*lpmp[i3m][i2p][i1 ] +
-              d000[i3m][i2 ][i1p]*lp00[i3m][i2 ][i1p]*lp00[i3m][i2 ][i1p] +
-              d000[i3m][i2 ][i1 ]*lp0p[i3m][i2 ][i1 ]*lp0p[i3m][i2 ][i1 ] +
-              d000[i3m][i2m][i1p]*lpp0[i3m][i2m][i1p]*lpp0[i3m][i2m][i1p] +
-              d000[i3m][i2m][i1 ]*lppp[i3m][i2m][i1 ]*lppp[i3m][i2m][i1 ];
+              d000[i3 ][i2m][i1p]*l0p0[i3 ][i2m][i1p]*l0pm[i3 ][i2m][i1p] +
+              d000[i3 ][i2m][i1 ]*l0pp[i3 ][i2m][i1 ]*l0p0[i3 ][i2m][i1 ] +
+              d000[i3m][i2p][i1p]*lpm0[i3m][i2p][i1p]*lpmm[i3m][i2p][i1p] +
+              d000[i3m][i2p][i1 ]*lpmp[i3m][i2p][i1 ]*lpm0[i3m][i2p][i1 ] +
+              d000[i3m][i2 ][i1p]*lp00[i3m][i2 ][i1p]*lp0m[i3m][i2 ][i1p] +
+              d000[i3m][i2 ][i1 ]*lp0p[i3m][i2 ][i1 ]*lp00[i3m][i2 ][i1 ] +
+              d000[i3m][i2m][i1p]*lpp0[i3m][i2m][i1p]*lppm[i3m][i2m][i1p] +
+              d000[i3m][i2m][i1 ]*lppp[i3m][i2m][i1 ]*lpp0[i3m][i2m][i1 ];
             l0pm[i3][i2][i1] -= 
-              d000[i3 ][i2 ][i1m]*l0p0[i3 ][i2 ][i1m]*l0p0[i3 ][i2 ][i1m] +
-              d000[i3m][i2p][i1 ]*lp0m[i3m][i2p][i1 ]*lp0m[i3m][i2p][i1 ] +
-              d000[i3m][i2p][i1m]*lp00[i3m][i2p][i1m]*lp00[i3m][i2p][i1m] +
-              d000[i3m][i2 ][i1 ]*lppm[i3m][i2 ][i1 ]*lppm[i3m][i2 ][i1 ] +
-              d000[i3m][i2 ][i1m]*lpp0[i3m][i2 ][i1m]*lpp0[i3m][i2 ][i1m];
+              d000[i3 ][i2 ][i1m]*l0p0[i3 ][i2 ][i1m]*l00p[i3 ][i2 ][i1m] +
+              d000[i3m][i2p][i1 ]*lp0m[i3m][i2p][i1 ]*lpm0[i3m][i2p][i1 ] +
+              d000[i3m][i2p][i1m]*lp00[i3m][i2p][i1m]*lpmp[i3m][i2p][i1m] +
+              d000[i3m][i2 ][i1 ]*lppm[i3m][i2 ][i1 ]*lp00[i3m][i2 ][i1 ] +
+              d000[i3m][i2 ][i1m]*lpp0[i3m][i2 ][i1m]*lp0p[i3m][i2 ][i1m];
             l0p0[i3][i2][i1] -= 
-              d000[i3 ][i2 ][i1m]*l0pp[i3 ][i2 ][i1m]*l0pp[i3 ][i2 ][i1m] +
-              d000[i3m][i2p][i1p]*lp0m[i3m][i2p][i1p]*lp0m[i3m][i2p][i1p] +
-              d000[i3m][i2p][i1 ]*lp00[i3m][i2p][i1 ]*lp00[i3m][i2p][i1 ] +
-              d000[i3m][i2p][i1m]*lp0p[i3m][i2p][i1m]*lp0p[i3m][i2p][i1m] +
-              d000[i3m][i2 ][i1p]*lppm[i3m][i2 ][i1p]*lppm[i3m][i2 ][i1p] +
-              d000[i3m][i2 ][i1 ]*lpp0[i3m][i2 ][i1 ]*lpp0[i3m][i2 ][i1 ] +
-              d000[i3m][i2 ][i1m]*lppp[i3m][i2 ][i1m]*lppp[i3m][i2 ][i1m];
+              d000[i3 ][i2 ][i1m]*l0pp[i3 ][i2 ][i1m]*l00p[i3 ][i2 ][i1m] +
+              d000[i3m][i2p][i1p]*lp0m[i3m][i2p][i1p]*lpmm[i3m][i2p][i1p] +
+              d000[i3m][i2p][i1 ]*lp00[i3m][i2p][i1 ]*lpm0[i3m][i2p][i1 ] +
+              d000[i3m][i2p][i1m]*lp0p[i3m][i2p][i1m]*lpmp[i3m][i2p][i1m] +
+              d000[i3m][i2 ][i1p]*lppm[i3m][i2 ][i1p]*lp0m[i3m][i2 ][i1p] +
+              d000[i3m][i2 ][i1 ]*lpp0[i3m][i2 ][i1 ]*lp00[i3m][i2 ][i1 ] +
+              d000[i3m][i2 ][i1m]*lppp[i3m][i2 ][i1m]*lp0p[i3m][i2 ][i1m];
             l0pp[i3][i2][i1] -= 
-              d000[i3m][i2p][i1p]*lp00[i3m][i2p][i1p]*lp00[i3m][i2p][i1p] +
-              d000[i3m][i2p][i1 ]*lp0p[i3m][i2p][i1 ]*lp0p[i3m][i2p][i1 ] +
-              d000[i3m][i2 ][i1p]*lpp0[i3m][i2 ][i1p]*lpp0[i3m][i2 ][i1p] +
-              d000[i3m][i2 ][i1 ]*lppp[i3m][i2 ][i1 ]*lppp[i3m][i2 ][i1 ];
+              d000[i3m][i2p][i1p]*lp00[i3m][i2p][i1p]*lpmm[i3m][i2p][i1p] +
+              d000[i3m][i2p][i1 ]*lp0p[i3m][i2p][i1 ]*lpm0[i3m][i2p][i1 ] +
+              d000[i3m][i2 ][i1p]*lpp0[i3m][i2 ][i1p]*lp0m[i3m][i2 ][i1p] +
+              d000[i3m][i2 ][i1 ]*lppp[i3m][i2 ][i1 ]*lp00[i3m][i2 ][i1 ];
             lpmm[i3][i2][i1] -= 
-              d000[i3 ][i2 ][i1m]*lpm0[i3 ][i2 ][i1m]*lpm0[i3 ][i2 ][i1m] +
-              d000[i3 ][i2m][i1 ]*lp0m[i3 ][i2m][i1 ]*lp0m[i3 ][i2m][i1 ] +
-              d000[i3 ][i2m][i1m]*lp00[i3 ][i2m][i1m]*lp00[i3 ][i2m][i1m];
+              d000[i3 ][i2 ][i1m]*lpm0[i3 ][i2 ][i1m]*l00p[i3 ][i2 ][i1m] +
+              d000[i3 ][i2m][i1 ]*lp0m[i3 ][i2m][i1 ]*l0p0[i3 ][i2m][i1 ] +
+              d000[i3 ][i2m][i1m]*lp00[i3 ][i2m][i1m]*l0pp[i3 ][i2m][i1m];
             lpm0[i3][i2][i1] -= 
-              d000[i3 ][i2 ][i1m]*lpmp[i3 ][i2 ][i1m]*lpmp[i3 ][i2 ][i1m] +
-              d000[i3 ][i2m][i1p]*lp0m[i3 ][i2m][i1p]*lp0m[i3 ][i2m][i1p] +
-              d000[i3 ][i2m][i1 ]*lp00[i3 ][i2m][i1 ]*lp00[i3 ][i2m][i1 ] +
-              d000[i3 ][i2m][i1m]*lp0p[i3 ][i2m][i1m]*lp0p[i3 ][i2m][i1m];
+              d000[i3 ][i2 ][i1m]*lpmp[i3 ][i2 ][i1m]*l00p[i3 ][i2 ][i1m] +
+              d000[i3 ][i2m][i1p]*lp0m[i3 ][i2m][i1p]*l0pm[i3 ][i2m][i1p] +
+              d000[i3 ][i2m][i1 ]*lp00[i3 ][i2m][i1 ]*l0p0[i3 ][i2m][i1 ] +
+              d000[i3 ][i2m][i1m]*lp0p[i3 ][i2m][i1m]*l0pp[i3 ][i2m][i1m];
             lpmp[i3][i2][i1] -= 
-              d000[i3 ][i2m][i1p]*lp00[i3 ][i2m][i1p]*lp00[i3 ][i2m][i1p] +
-              d000[i3 ][i2m][i1 ]*lp0p[i3 ][i2m][i1 ]*lp0p[i3 ][i2m][i1 ];
+              d000[i3 ][i2m][i1p]*lp00[i3 ][i2m][i1p]*l0pm[i3 ][i2m][i1p] +
+              d000[i3 ][i2m][i1 ]*lp0p[i3 ][i2m][i1 ]*l0p0[i3 ][i2m][i1 ];
             lp0m[i3][i2][i1] -= 
-              d000[i3 ][i2 ][i1m]*lp00[i3 ][i2 ][i1m]*lp00[i3 ][i2 ][i1m] +
-              d000[i3 ][i2m][i1 ]*lppm[i3 ][i2m][i1 ]*lppm[i3 ][i2m][i1 ] +
-              d000[i3 ][i2m][i1m]*lpp0[i3 ][i2m][i1m]*lpp0[i3 ][i2m][i1m];
+              d000[i3 ][i2 ][i1m]*lp00[i3 ][i2 ][i1m]*l00p[i3 ][i2 ][i1m] +
+              d000[i3 ][i2m][i1 ]*lppm[i3 ][i2m][i1 ]*l0p0[i3 ][i2m][i1 ] +
+              d000[i3 ][i2m][i1m]*lpp0[i3 ][i2m][i1m]*l0pp[i3 ][i2m][i1m];
             lp00[i3][i2][i1] -= 
-              d000[i3 ][i2 ][i1m]*lp0p[i3 ][i2 ][i1m]*lp0p[i3 ][i2 ][i1m] +
-              d000[i3 ][i2m][i1p]*lppm[i3 ][i2m][i1p]*lppm[i3 ][i2m][i1p] +
-              d000[i3 ][i2m][i1 ]*lpp0[i3 ][i2m][i1 ]*lpp0[i3 ][i2m][i1 ] +
-              d000[i3 ][i2m][i1m]*lppp[i3 ][i2m][i1m]*lppp[i3 ][i2m][i1m];
+              d000[i3 ][i2 ][i1m]*lp0p[i3 ][i2 ][i1m]*l00p[i3 ][i2 ][i1m] +
+              d000[i3 ][i2m][i1p]*lppm[i3 ][i2m][i1p]*l0pm[i3 ][i2m][i1p] +
+              d000[i3 ][i2m][i1 ]*lpp0[i3 ][i2m][i1 ]*l0p0[i3 ][i2m][i1 ] +
+              d000[i3 ][i2m][i1m]*lppp[i3 ][i2m][i1m]*l0pp[i3 ][i2m][i1m];
             lp0p[i3][i2][i1] -= 
-              d000[i3 ][i2m][i1p]*lpp0[i3 ][i2m][i1p]*lpp0[i3 ][i2m][i1p] +
-              d000[i3 ][i2m][i1 ]*lppp[i3 ][i2m][i1 ]*lppp[i3 ][i2m][i1 ];
+              d000[i3 ][i2m][i1p]*lpp0[i3 ][i2m][i1p]*l0pm[i3 ][i2m][i1p] +
+              d000[i3 ][i2m][i1 ]*lppp[i3 ][i2m][i1 ]*l0p0[i3 ][i2m][i1 ];
             lppm[i3][i2][i1] -= 
-              d000[i3 ][i2 ][i1m]*lpp0[i3 ][i2 ][i1m]*lpp0[i3 ][i2 ][i1m];
+              d000[i3 ][i2 ][i1m]*lpp0[i3 ][i2 ][i1m]*l00p[i3 ][i2 ][i1m];
             lpp0[i3][i2][i1] -= 
-              d000[i3 ][i2 ][i1m]*lppp[i3 ][i2 ][i1m]*lppp[i3 ][i2 ][i1m];
+              d000[i3 ][i2 ][i1m]*lppp[i3 ][i2 ][i1m]*l00p[i3 ][i2 ][i1m];
             if (l000[i3][i2][i1]<=0.0f) 
               return null;
             d000[i3][i2][i1] = 1.0f/l000[i3][i2][i1];
@@ -885,49 +885,49 @@ public class LocalSpd27Filter {
             d000[i3m][i2m][i1 ]*lpp0[i3m][i2m][i1 ]*lpp0[i3m][i2m][i1 ] +
             d000[i3m][i2m][i1m]*lppp[i3m][i2m][i1m]*lppp[i3m][i2m][i1m];
           l00p[i3][i2][i1] -= 
-            d000[i3 ][i2m][i1 ]*l0pp[i3 ][i2m][i1 ]*l0pp[i3 ][i2m][i1 ] +
-            d000[i3m][i2p][i1 ]*lpmp[i3m][i2p][i1 ]*lpmp[i3m][i2p][i1 ] +
-            d000[i3m][i2 ][i1 ]*lp0p[i3m][i2 ][i1 ]*lp0p[i3m][i2 ][i1 ] +
-            d000[i3m][i2m][i1 ]*lppp[i3m][i2m][i1 ]*lppp[i3m][i2m][i1 ];
+            d000[i3 ][i2m][i1 ]*l0pp[i3 ][i2m][i1 ]*l0p0[i3 ][i2m][i1 ] +
+            d000[i3m][i2p][i1 ]*lpmp[i3m][i2p][i1 ]*lpm0[i3m][i2p][i1 ] +
+            d000[i3m][i2 ][i1 ]*lp0p[i3m][i2 ][i1 ]*lp00[i3m][i2 ][i1 ] +
+            d000[i3m][i2m][i1 ]*lppp[i3m][i2m][i1 ]*lpp0[i3m][i2m][i1 ];
           l0pm[i3][i2][i1] -= 
-            d000[i3 ][i2 ][i1m]*l0p0[i3 ][i2 ][i1m]*l0p0[i3 ][i2 ][i1m] +
-            d000[i3m][i2p][i1 ]*lp0m[i3m][i2p][i1 ]*lp0m[i3m][i2p][i1 ] +
-            d000[i3m][i2p][i1m]*lp00[i3m][i2p][i1m]*lp00[i3m][i2p][i1m] +
-            d000[i3m][i2 ][i1 ]*lppm[i3m][i2 ][i1 ]*lppm[i3m][i2 ][i1 ] +
-            d000[i3m][i2 ][i1m]*lpp0[i3m][i2 ][i1m]*lpp0[i3m][i2 ][i1m];
+            d000[i3 ][i2 ][i1m]*l0p0[i3 ][i2 ][i1m]*l00p[i3 ][i2 ][i1m] +
+            d000[i3m][i2p][i1 ]*lp0m[i3m][i2p][i1 ]*lpm0[i3m][i2p][i1 ] +
+            d000[i3m][i2p][i1m]*lp00[i3m][i2p][i1m]*lpmp[i3m][i2p][i1m] +
+            d000[i3m][i2 ][i1 ]*lppm[i3m][i2 ][i1 ]*lp00[i3m][i2 ][i1 ] +
+            d000[i3m][i2 ][i1m]*lpp0[i3m][i2 ][i1m]*lp0p[i3m][i2 ][i1m];
           l0p0[i3][i2][i1] -= 
-            d000[i3 ][i2 ][i1m]*l0pp[i3 ][i2 ][i1m]*l0pp[i3 ][i2 ][i1m] +
-            d000[i3m][i2p][i1 ]*lp00[i3m][i2p][i1 ]*lp00[i3m][i2p][i1 ] +
-            d000[i3m][i2p][i1m]*lp0p[i3m][i2p][i1m]*lp0p[i3m][i2p][i1m] +
-            d000[i3m][i2 ][i1 ]*lpp0[i3m][i2 ][i1 ]*lpp0[i3m][i2 ][i1 ] +
-            d000[i3m][i2 ][i1m]*lppp[i3m][i2 ][i1m]*lppp[i3m][i2 ][i1m];
+            d000[i3 ][i2 ][i1m]*l0pp[i3 ][i2 ][i1m]*l00p[i3 ][i2 ][i1m] +
+            d000[i3m][i2p][i1 ]*lp00[i3m][i2p][i1 ]*lpm0[i3m][i2p][i1 ] +
+            d000[i3m][i2p][i1m]*lp0p[i3m][i2p][i1m]*lpmp[i3m][i2p][i1m] +
+            d000[i3m][i2 ][i1 ]*lpp0[i3m][i2 ][i1 ]*lp00[i3m][i2 ][i1 ] +
+            d000[i3m][i2 ][i1m]*lppp[i3m][i2 ][i1m]*lp0p[i3m][i2 ][i1m];
           l0pp[i3][i2][i1] -= 
-            d000[i3m][i2p][i1 ]*lp0p[i3m][i2p][i1 ]*lp0p[i3m][i2p][i1 ] +
-            d000[i3m][i2 ][i1 ]*lppp[i3m][i2 ][i1 ]*lppp[i3m][i2 ][i1 ];
+            d000[i3m][i2p][i1 ]*lp0p[i3m][i2p][i1 ]*lpm0[i3m][i2p][i1 ] +
+            d000[i3m][i2 ][i1 ]*lppp[i3m][i2 ][i1 ]*lp00[i3m][i2 ][i1 ];
           lpmm[i3][i2][i1] -= 
-            d000[i3 ][i2 ][i1m]*lpm0[i3 ][i2 ][i1m]*lpm0[i3 ][i2 ][i1m] +
-            d000[i3 ][i2m][i1 ]*lp0m[i3 ][i2m][i1 ]*lp0m[i3 ][i2m][i1 ] +
-            d000[i3 ][i2m][i1m]*lp00[i3 ][i2m][i1m]*lp00[i3 ][i2m][i1m];
+            d000[i3 ][i2 ][i1m]*lpm0[i3 ][i2 ][i1m]*l00p[i3 ][i2 ][i1m] +
+            d000[i3 ][i2m][i1 ]*lp0m[i3 ][i2m][i1 ]*l0p0[i3 ][i2m][i1 ] +
+            d000[i3 ][i2m][i1m]*lp00[i3 ][i2m][i1m]*l0pp[i3 ][i2m][i1m];
           lpm0[i3][i2][i1] -= 
-            d000[i3 ][i2 ][i1m]*lpmp[i3 ][i2 ][i1m]*lpmp[i3 ][i2 ][i1m] +
-            d000[i3 ][i2m][i1 ]*lp00[i3 ][i2m][i1 ]*lp00[i3 ][i2m][i1 ] +
-            d000[i3 ][i2m][i1m]*lp0p[i3 ][i2m][i1m]*lp0p[i3 ][i2m][i1m];
+            d000[i3 ][i2 ][i1m]*lpmp[i3 ][i2 ][i1m]*l00p[i3 ][i2 ][i1m] +
+            d000[i3 ][i2m][i1 ]*lp00[i3 ][i2m][i1 ]*l0p0[i3 ][i2m][i1 ] +
+            d000[i3 ][i2m][i1m]*lp0p[i3 ][i2m][i1m]*l0pp[i3 ][i2m][i1m];
           lpmp[i3][i2][i1] -= 
-            d000[i3 ][i2m][i1 ]*lp0p[i3 ][i2m][i1 ]*lp0p[i3 ][i2m][i1 ];
+            d000[i3 ][i2m][i1 ]*lp0p[i3 ][i2m][i1 ]*l0p0[i3 ][i2m][i1 ];
           lp0m[i3][i2][i1] -= 
-            d000[i3 ][i2 ][i1m]*lp00[i3 ][i2 ][i1m]*lp00[i3 ][i2 ][i1m] +
-            d000[i3 ][i2m][i1 ]*lppm[i3 ][i2m][i1 ]*lppm[i3 ][i2m][i1 ] +
-            d000[i3 ][i2m][i1m]*lpp0[i3 ][i2m][i1m]*lpp0[i3 ][i2m][i1m];
+            d000[i3 ][i2 ][i1m]*lp00[i3 ][i2 ][i1m]*l00p[i3 ][i2 ][i1m] +
+            d000[i3 ][i2m][i1 ]*lppm[i3 ][i2m][i1 ]*l0p0[i3 ][i2m][i1 ] +
+            d000[i3 ][i2m][i1m]*lpp0[i3 ][i2m][i1m]*l0pp[i3 ][i2m][i1m];
           lp00[i3][i2][i1] -= 
-            d000[i3 ][i2 ][i1m]*lp0p[i3 ][i2 ][i1m]*lp0p[i3 ][i2 ][i1m] +
-            d000[i3 ][i2m][i1 ]*lpp0[i3 ][i2m][i1 ]*lpp0[i3 ][i2m][i1 ] +
-            d000[i3 ][i2m][i1m]*lppp[i3 ][i2m][i1m]*lppp[i3 ][i2m][i1m];
+            d000[i3 ][i2 ][i1m]*lp0p[i3 ][i2 ][i1m]*l00p[i3 ][i2 ][i1m] +
+            d000[i3 ][i2m][i1 ]*lpp0[i3 ][i2m][i1 ]*l0p0[i3 ][i2m][i1 ] +
+            d000[i3 ][i2m][i1m]*lppp[i3 ][i2m][i1m]*l0pp[i3 ][i2m][i1m];
           lp0p[i3][i2][i1] -= 
-            d000[i3 ][i2m][i1 ]*lppp[i3 ][i2m][i1 ]*lppp[i3 ][i2m][i1 ];
+            d000[i3 ][i2m][i1 ]*lppp[i3 ][i2m][i1 ]*l0p0[i3 ][i2m][i1 ];
           lppm[i3][i2][i1] -= 
-            d000[i3 ][i2 ][i1m]*lpp0[i3 ][i2 ][i1m]*lpp0[i3 ][i2 ][i1m];
+            d000[i3 ][i2 ][i1m]*lpp0[i3 ][i2 ][i1m]*l00p[i3 ][i2 ][i1m];
           lpp0[i3][i2][i1] -= 
-            d000[i3 ][i2 ][i1m]*lppp[i3 ][i2 ][i1m]*lppp[i3 ][i2 ][i1m];
+            d000[i3 ][i2 ][i1m]*lppp[i3 ][i2 ][i1m]*l00p[i3 ][i2 ][i1m];
           if (l000[i3][i2][i1]<=0.0f) 
             return null;
           d000[i3][i2][i1] = 1.0f/l000[i3][i2][i1];
@@ -940,64 +940,64 @@ public class LocalSpd27Filter {
               l000[i3][i2][i1] -= 
                 d000[i3 ][i2 ][i1m]*l00p[i3 ][i2 ][i1m]*l00p[i3 ][i2 ][i1m];
               l0pm[i3][i2][i1] -= 
-                d000[i3 ][i2 ][i1m]*l0p0[i3 ][i2 ][i1m]*l0p0[i3 ][i2 ][i1m];
+                d000[i3 ][i2 ][i1m]*l0p0[i3 ][i2 ][i1m]*l00p[i3 ][i2 ][i1m];
               l0p0[i3][i2][i1] -= 
-                d000[i3 ][i2 ][i1m]*l0pp[i3 ][i2 ][i1m]*l0pp[i3 ][i2 ][i1m];
+                d000[i3 ][i2 ][i1m]*l0pp[i3 ][i2 ][i1m]*l00p[i3 ][i2 ][i1m];
               lpmm[i3][i2][i1] -= 
-                d000[i3 ][i2 ][i1m]*lpm0[i3 ][i2 ][i1m]*lpm0[i3 ][i2 ][i1m];
+                d000[i3 ][i2 ][i1m]*lpm0[i3 ][i2 ][i1m]*l00p[i3 ][i2 ][i1m];
               lpm0[i3][i2][i1] -= 
-                d000[i3 ][i2 ][i1m]*lpmp[i3 ][i2 ][i1m]*lpmp[i3 ][i2 ][i1m];
+                d000[i3 ][i2 ][i1m]*lpmp[i3 ][i2 ][i1m]*l00p[i3 ][i2 ][i1m];
               lp0m[i3][i2][i1] -= 
-                d000[i3 ][i2 ][i1m]*lp00[i3 ][i2 ][i1m]*lp00[i3 ][i2 ][i1m];
+                d000[i3 ][i2 ][i1m]*lp00[i3 ][i2 ][i1m]*l00p[i3 ][i2 ][i1m];
               lp00[i3][i2][i1] -= 
-                d000[i3 ][i2 ][i1m]*lp0p[i3 ][i2 ][i1m]*lp0p[i3 ][i2 ][i1m];
+                d000[i3 ][i2 ][i1m]*lp0p[i3 ][i2 ][i1m]*l00p[i3 ][i2 ][i1m];
               lppm[i3][i2][i1] -= 
-                d000[i3 ][i2 ][i1m]*lpp0[i3 ][i2 ][i1m]*lpp0[i3 ][i2 ][i1m];
+                d000[i3 ][i2 ][i1m]*lpp0[i3 ][i2 ][i1m]*l00p[i3 ][i2 ][i1m];
               lpp0[i3][i2][i1] -= 
-                d000[i3 ][i2 ][i1m]*lppp[i3 ][i2 ][i1m]*lppp[i3 ][i2 ][i1m];
+                d000[i3 ][i2 ][i1m]*lppp[i3 ][i2 ][i1m]*l00p[i3 ][i2 ][i1m];
             }
             if (0<=i2m) {
               if (0<=i1m) {
                 l000[i3][i2][i1] -= 
                   d000[i3 ][i2m][i1m]*l0pp[i3 ][i2m][i1m]*l0pp[i3 ][i2m][i1m];
                 lpmm[i3][i2][i1] -= 
-                  d000[i3 ][i2m][i1m]*lp00[i3 ][i2m][i1m]*lp00[i3 ][i2m][i1m];
+                  d000[i3 ][i2m][i1m]*lp00[i3 ][i2m][i1m]*l0pp[i3 ][i2m][i1m];
                 lpm0[i3][i2][i1] -= 
-                  d000[i3 ][i2m][i1m]*lp0p[i3 ][i2m][i1m]*lp0p[i3 ][i2m][i1m];
+                  d000[i3 ][i2m][i1m]*lp0p[i3 ][i2m][i1m]*l0pp[i3 ][i2m][i1m];
                 lp0m[i3][i2][i1] -= 
-                  d000[i3 ][i2m][i1m]*lpp0[i3 ][i2m][i1m]*lpp0[i3 ][i2m][i1m];
+                  d000[i3 ][i2m][i1m]*lpp0[i3 ][i2m][i1m]*l0pp[i3 ][i2m][i1m];
                 lp00[i3][i2][i1] -= 
-                  d000[i3 ][i2m][i1m]*lppp[i3 ][i2m][i1m]*lppp[i3 ][i2m][i1m];
+                  d000[i3 ][i2m][i1m]*lppp[i3 ][i2m][i1m]*l0pp[i3 ][i2m][i1m];
               }
               l000[i3][i2][i1] -= 
                 d000[i3 ][i2m][i1 ]*l0p0[i3 ][i2m][i1 ]*l0p0[i3 ][i2m][i1 ];
               l00p[i3][i2][i1] -= 
-                d000[i3 ][i2m][i1 ]*l0pp[i3 ][i2m][i1 ]*l0pp[i3 ][i2m][i1 ];
+                d000[i3 ][i2m][i1 ]*l0pp[i3 ][i2m][i1 ]*l0p0[i3 ][i2m][i1 ];
               lpmm[i3][i2][i1] -= 
-                d000[i3 ][i2m][i1 ]*lp0m[i3 ][i2m][i1 ]*lp0m[i3 ][i2m][i1 ];
+                d000[i3 ][i2m][i1 ]*lp0m[i3 ][i2m][i1 ]*l0p0[i3 ][i2m][i1 ];
               lpm0[i3][i2][i1] -= 
-                d000[i3 ][i2m][i1 ]*lp00[i3 ][i2m][i1 ]*lp00[i3 ][i2m][i1 ];
+                d000[i3 ][i2m][i1 ]*lp00[i3 ][i2m][i1 ]*l0p0[i3 ][i2m][i1 ];
               lpmp[i3][i2][i1] -= 
-                d000[i3 ][i2m][i1 ]*lp0p[i3 ][i2m][i1 ]*lp0p[i3 ][i2m][i1 ];
+                d000[i3 ][i2m][i1 ]*lp0p[i3 ][i2m][i1 ]*l0p0[i3 ][i2m][i1 ];
               lp0m[i3][i2][i1] -= 
-                d000[i3 ][i2m][i1 ]*lppm[i3 ][i2m][i1 ]*lppm[i3 ][i2m][i1 ];
+                d000[i3 ][i2m][i1 ]*lppm[i3 ][i2m][i1 ]*l0p0[i3 ][i2m][i1 ];
               lp00[i3][i2][i1] -= 
-                d000[i3 ][i2m][i1 ]*lpp0[i3 ][i2m][i1 ]*lpp0[i3 ][i2m][i1 ];
+                d000[i3 ][i2m][i1 ]*lpp0[i3 ][i2m][i1 ]*l0p0[i3 ][i2m][i1 ];
               lp0p[i3][i2][i1] -= 
-                d000[i3 ][i2m][i1 ]*lppp[i3 ][i2m][i1 ]*lppp[i3 ][i2m][i1 ];
+                d000[i3 ][i2m][i1 ]*lppp[i3 ][i2m][i1 ]*l0p0[i3 ][i2m][i1 ];
               if (i1p<n1) {
                 l000[i3][i2][i1] -= 
                   d000[i3 ][i2m][i1p]*l0pm[i3 ][i2m][i1p]*l0pm[i3 ][i2m][i1p];
                 l00p[i3][i2][i1] -= 
-                  d000[i3 ][i2m][i1p]*l0p0[i3 ][i2m][i1p]*l0p0[i3 ][i2m][i1p];
+                  d000[i3 ][i2m][i1p]*l0p0[i3 ][i2m][i1p]*l0pm[i3 ][i2m][i1p];
                 lpm0[i3][i2][i1] -= 
-                  d000[i3 ][i2m][i1p]*lp0m[i3 ][i2m][i1p]*lp0m[i3 ][i2m][i1p];
+                  d000[i3 ][i2m][i1p]*lp0m[i3 ][i2m][i1p]*l0pm[i3 ][i2m][i1p];
                 lpmp[i3][i2][i1] -= 
-                  d000[i3 ][i2m][i1p]*lp00[i3 ][i2m][i1p]*lp00[i3 ][i2m][i1p];
+                  d000[i3 ][i2m][i1p]*lp00[i3 ][i2m][i1p]*l0pm[i3 ][i2m][i1p];
                 lp00[i3][i2][i1] -= 
-                  d000[i3 ][i2m][i1p]*lppm[i3 ][i2m][i1p]*lppm[i3 ][i2m][i1p];
+                  d000[i3 ][i2m][i1p]*lppm[i3 ][i2m][i1p]*l0pm[i3 ][i2m][i1p];
                 lp0p[i3][i2][i1] -= 
-                  d000[i3 ][i2m][i1p]*lpp0[i3 ][i2m][i1p]*lpp0[i3 ][i2m][i1p];
+                  d000[i3 ][i2m][i1p]*lpp0[i3 ][i2m][i1p]*l0pm[i3 ][i2m][i1p];
               }
             }
             if (0<=i3m) {
@@ -1009,71 +1009,71 @@ public class LocalSpd27Filter {
                 l000[i3][i2][i1] -= 
                   d000[i3m][i2m][i1 ]*lpp0[i3m][i2m][i1 ]*lpp0[i3m][i2m][i1 ];
                 l00p[i3][i2][i1] -= 
-                  d000[i3m][i2m][i1 ]*lppp[i3m][i2m][i1 ]*lppp[i3m][i2m][i1 ];
+                  d000[i3m][i2m][i1 ]*lppp[i3m][i2m][i1 ]*lpp0[i3m][i2m][i1 ];
               }
               if (0<=i2m && i1p<n1) {
                 l000[i3][i2][i1] -= 
                   d000[i3m][i2m][i1p]*lppm[i3m][i2m][i1p]*lppm[i3m][i2m][i1p];
                 l00p[i3][i2][i1] -= 
-                  d000[i3m][i2m][i1p]*lpp0[i3m][i2m][i1p]*lpp0[i3m][i2m][i1p];
+                  d000[i3m][i2m][i1p]*lpp0[i3m][i2m][i1p]*lppm[i3m][i2m][i1p];
               }
               if (0<=i1m) {
                 l000[i3][i2][i1] -= 
                   d000[i3m][i2 ][i1m]*lp0p[i3m][i2 ][i1m]*lp0p[i3m][i2 ][i1m];
                 l0pm[i3][i2][i1] -= 
-                  d000[i3m][i2 ][i1m]*lpp0[i3m][i2 ][i1m]*lpp0[i3m][i2 ][i1m];
+                  d000[i3m][i2 ][i1m]*lpp0[i3m][i2 ][i1m]*lp0p[i3m][i2 ][i1m];
                 l0p0[i3][i2][i1] -= 
-                  d000[i3m][i2 ][i1m]*lppp[i3m][i2 ][i1m]*lppp[i3m][i2 ][i1m];
+                  d000[i3m][i2 ][i1m]*lppp[i3m][i2 ][i1m]*lp0p[i3m][i2 ][i1m];
               }
               l000[i3][i2][i1] -= 
                 d000[i3m][i2 ][i1 ]*lp00[i3m][i2 ][i1 ]*lp00[i3m][i2 ][i1 ];
               l00p[i3][i2][i1] -= 
-                d000[i3m][i2 ][i1 ]*lp0p[i3m][i2 ][i1 ]*lp0p[i3m][i2 ][i1 ];
+                d000[i3m][i2 ][i1 ]*lp0p[i3m][i2 ][i1 ]*lp00[i3m][i2 ][i1 ];
               l0pm[i3][i2][i1] -= 
-                d000[i3m][i2 ][i1 ]*lppm[i3m][i2 ][i1 ]*lppm[i3m][i2 ][i1 ];
+                d000[i3m][i2 ][i1 ]*lppm[i3m][i2 ][i1 ]*lp00[i3m][i2 ][i1 ];
               l0p0[i3][i2][i1] -= 
-                d000[i3m][i2 ][i1 ]*lpp0[i3m][i2 ][i1 ]*lpp0[i3m][i2 ][i1 ];
+                d000[i3m][i2 ][i1 ]*lpp0[i3m][i2 ][i1 ]*lp00[i3m][i2 ][i1 ];
               l0pp[i3][i2][i1] -= 
-                d000[i3m][i2 ][i1 ]*lppp[i3m][i2 ][i1 ]*lppp[i3m][i2 ][i1 ];
+                d000[i3m][i2 ][i1 ]*lppp[i3m][i2 ][i1 ]*lp00[i3m][i2 ][i1 ];
               if (i1p<n1) {
                 l000[i3][i2][i1] -= 
                   d000[i3m][i2 ][i1p]*lp0m[i3m][i2 ][i1p]*lp0m[i3m][i2 ][i1p];
                 l00p[i3][i2][i1] -= 
-                  d000[i3m][i2 ][i1p]*lp00[i3m][i2 ][i1p]*lp00[i3m][i2 ][i1p];
+                  d000[i3m][i2 ][i1p]*lp00[i3m][i2 ][i1p]*lp0m[i3m][i2 ][i1p];
                 l0p0[i3][i2][i1] -= 
-                  d000[i3m][i2 ][i1p]*lppm[i3m][i2 ][i1p]*lppm[i3m][i2 ][i1p];
+                  d000[i3m][i2 ][i1p]*lppm[i3m][i2 ][i1p]*lp0m[i3m][i2 ][i1p];
                 l0pp[i3][i2][i1] -= 
-                  d000[i3m][i2 ][i1p]*lpp0[i3m][i2 ][i1p]*lpp0[i3m][i2 ][i1p];
+                  d000[i3m][i2 ][i1p]*lpp0[i3m][i2 ][i1p]*lp0m[i3m][i2 ][i1p];
               }
               if (i2p<n2 && 0<=i1m) {
                 l000[i3][i2][i1] -= 
                   d000[i3m][i2p][i1m]*lpmp[i3m][i2p][i1m]*lpmp[i3m][i2p][i1m];
                 l0pm[i3][i2][i1] -= 
-                  d000[i3m][i2p][i1m]*lp00[i3m][i2p][i1m]*lp00[i3m][i2p][i1m];
+                  d000[i3m][i2p][i1m]*lp00[i3m][i2p][i1m]*lpmp[i3m][i2p][i1m];
                 l0p0[i3][i2][i1] -= 
-                  d000[i3m][i2p][i1m]*lp0p[i3m][i2p][i1m]*lp0p[i3m][i2p][i1m];
+                  d000[i3m][i2p][i1m]*lp0p[i3m][i2p][i1m]*lpmp[i3m][i2p][i1m];
               }
               if (i2p<n2) {
                 l000[i3][i2][i1] -= 
                   d000[i3m][i2p][i1 ]*lpm0[i3m][i2p][i1 ]*lpm0[i3m][i2p][i1 ];
                 l00p[i3][i2][i1] -= 
-                  d000[i3m][i2p][i1 ]*lpmp[i3m][i2p][i1 ]*lpmp[i3m][i2p][i1 ];
+                  d000[i3m][i2p][i1 ]*lpmp[i3m][i2p][i1 ]*lpm0[i3m][i2p][i1 ];
                 l0pm[i3][i2][i1] -= 
-                  d000[i3m][i2p][i1 ]*lp0m[i3m][i2p][i1 ]*lp0m[i3m][i2p][i1 ];
+                  d000[i3m][i2p][i1 ]*lp0m[i3m][i2p][i1 ]*lpm0[i3m][i2p][i1 ];
                 l0p0[i3][i2][i1] -= 
-                  d000[i3m][i2p][i1 ]*lp00[i3m][i2p][i1 ]*lp00[i3m][i2p][i1 ];
+                  d000[i3m][i2p][i1 ]*lp00[i3m][i2p][i1 ]*lpm0[i3m][i2p][i1 ];
                 l0pp[i3][i2][i1] -= 
-                  d000[i3m][i2p][i1 ]*lp0p[i3m][i2p][i1 ]*lp0p[i3m][i2p][i1 ];
+                  d000[i3m][i2p][i1 ]*lp0p[i3m][i2p][i1 ]*lpm0[i3m][i2p][i1 ];
               }
               if (i2p<n2 && i1p<n1) {
                 l000[i3][i2][i1] -= 
                   d000[i3m][i2p][i1p]*lpmm[i3m][i2p][i1p]*lpmm[i3m][i2p][i1p];
                 l00p[i3][i2][i1] -= 
-                  d000[i3m][i2p][i1p]*lpm0[i3m][i2p][i1p]*lpm0[i3m][i2p][i1p];
+                  d000[i3m][i2p][i1p]*lpm0[i3m][i2p][i1p]*lpmm[i3m][i2p][i1p];
                 l0p0[i3][i2][i1] -= 
-                  d000[i3m][i2p][i1p]*lp0m[i3m][i2p][i1p]*lp0m[i3m][i2p][i1p];
+                  d000[i3m][i2p][i1p]*lp0m[i3m][i2p][i1p]*lpmm[i3m][i2p][i1p];
                 l0pp[i3][i2][i1] -= 
-                  d000[i3m][i2p][i1p]*lp00[i3m][i2p][i1p]*lp00[i3m][i2p][i1p];
+                  d000[i3m][i2p][i1p]*lp00[i3m][i2p][i1p]*lpmm[i3m][i2p][i1p];
               }
             }
             if (l000[i3][i2][i1]<=0.0f) 
@@ -1139,18 +1139,78 @@ public class LocalSpd27Filter {
     //float[][] a = lsf.getMatrix();
     //edu.mines.jtk.mosaic.SimplePlot.asPixels(a);
     float[][][] x = Array.randfloat(n1,n2,n3);
+    //x = Array.zerofloat(n1,n2,n3);
+    //x[n3/2][n2/2][n1/2] = 1.0f;
     float[][][] y = Array.randfloat(n1,n2,n3);
     float[][][] z = Array.randfloat(n1,n2,n3);
     float[][][] w = Array.randfloat(n1,n2,n3);
     lsf.apply(x,y);
     lsf.applyApproximate(x,z);
     lsf.applyApproximateInverse(z,w);
-    Array.dump(x);
-    Array.dump(y);
+    float[][] ldl = factorIC0(lsf,0.0f);
+    float[][][] v = factorMul(ldl,x);
+    float[][][] e = Array.sub(z,v);
+    System.out.println("factor error="+Array.sum(Array.abs(e)));
     Array.dump(z);
-    Array.dump(Array.sub(z,y));
-    Array.dump(w);
-    Array.dump(Array.sub(w,x));
+    Array.dump(v);
+    Array.dump(e);
+    //Array.dump(x);
+    //Array.dump(y);
+    //Array.dump(z);
+    //Array.dump(Array.sub(z,y));
+    //Array.dump(w);
+    //Array.dump(Array.sub(w,x));
+  }
+  private static float[][] factorIC0(LocalSpd27Filter lsf, float bias) {
+    float[][] a = lsf.getMatrix();
+    int n = a.length;
+    float scale = 1.0f+bias;
+    for (int k=0; k<n; ++k) {
+      a[k][k] = sqrt(a[k][k]*scale);
+      for (int i=k+1; i<n; ++i) {
+        if (a[k][i]!=0.0f)
+          a[k][i] /= a[k][k];
+      }
+      for (int j=k+1; j<n; ++j) {
+        for (int i=j; i<n; ++i) {
+          if (a[j][i]!=0.0f)
+            a[j][i] -= a[k][i]*a[k][j];
+        }
+      }
+      for (int i=0; i<k; ++i)
+        a[k][i] = 0.0f;
+    }
+    return a;
+  }
+  private static float[][][] factorMul(float[][] a, float[][][] x) {
+    int n1 = x[0][0].length;
+    int n2 = x[0].length;
+    int n3 = x.length;
+    float[][][] y = new float[n3][n2][n1];
+    for (int i3=0,i=0; i3<n3; ++i3) {
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1,++i) {
+          float ti = 0.0f;
+          for (int j3=0,j=0; j3<n3; ++j3) {
+            for (int j2=0; j2<n2; ++j2) {
+              for (int j1=0; j1<n1; ++j1,++j) {
+                if (i<=j)
+                  ti += a[i][j]*x[j3][j2][j1];
+              }
+            }
+          }
+          for (int j3=0,j=0; j3<n3; ++j3) {
+            for (int j2=0; j2<n2; ++j2) {
+              for (int j1=0; j1<n1; ++j1,++j) {
+                if (i<=j)
+                  y[j3][j2][j1] += a[i][j]*ti;
+              }
+            }
+          }
+        }
+      }
+    }
+    return y;
   }
 
   public static void main(String[] args) {

@@ -401,46 +401,48 @@ public class LocalSpd9Filter {
     float[][] d00 = l00; // will contain inverse of diagonal matrix D
 
     // Incomplete Cholesky decomposition, in-place.
+    int i1m,i1p,i2m;
     int n1 = a[0][0].length;
     int n2 = a[0].length;
     int i1 = 0;
     int i2 = 0;
     d00[i2][i1] = 1.0f/l00[i2][i1];
-    for (i1=1; i1<n1; ++i1) {
-      l00[i2][i1] -= d00[i2  ][i1-1]*l0p[i2  ][i1-1]*l0p[i2  ][i1-1];
-      lpm[i2][i1] -= d00[i2  ][i1-1]*lp0[i2  ][i1-1]*l0p[i2  ][i1-1];
-      lp0[i2][i1] -= d00[i2  ][i1-1]*lpp[i2  ][i1-1]*l0p[i2  ][i1-1];
+    for (i1=1,i1m=i1-1,i1p=i1+1; i1<n1; ++i1,++i1m,++i1p) {
+      l00[i2][i1] -= d00[i2 ][i1m]*l0p[i2 ][i1m]*l0p[i2 ][i1m];
+      lpm[i2][i1] -= d00[i2 ][i1m]*lp0[i2 ][i1m]*l0p[i2 ][i1m];
+      lp0[i2][i1] -= d00[i2 ][i1m]*lpp[i2 ][i1m]*l0p[i2 ][i1m];
       if (l00[i2][i1]<=0.0f) 
         return null;
       d00[i2][i1] = 1.0f/l00[i2][i1];
     }
-    for (i2=1; i2<n2; ++i2) {
-      i1 = 0;
-      l00[i2][i1] -= d00[i2-1][i1+1]*lpm[i2-1][i1+1]*lpm[i2-1][i1+1] +
-                     d00[i2-1][i1  ]*lp0[i2-1][i1  ]*lp0[i2-1][i1  ];
-      l0p[i2][i1] -= d00[i2-1][i1  ]*lpp[i2-1][i1  ]*lp0[i2-1][i1  ];
+    for (i2=1,i2m=i2-1; i2<n2; ++i2,++i2m) {
+      i1 = 0; i1p = i1+1;
+      l00[i2][i1] -= d00[i2m][i1p]*lpm[i2m][i1p]*lpm[i2m][i1p] +
+                     d00[i2m][i1 ]*lp0[i2m][i1 ]*lp0[i2m][i1 ];
+      l0p[i2][i1] -= d00[i2m][i1p]*lp0[i2m][i1p]*lpm[i2m][i1p] +
+                     d00[i2m][i1 ]*lpp[i2m][i1 ]*lp0[i2m][i1 ];
       if (l00[i2][i1]<=0.0f) 
         return null;
       d00[i2][i1] = 1.0f/l00[i2][i1];
-      for (i1=1; i1<n1-1; ++i1) {
-        l00[i2][i1] -= d00[i2  ][i1-1]*l0p[i2  ][i1-1]*l0p[i2  ][i1-1] +
-                       d00[i2-1][i1+1]*lpm[i2-1][i1+1]*lpm[i2-1][i1+1] +
-                       d00[i2-1][i1  ]*lp0[i2-1][i1  ]*lp0[i2-1][i1  ] +
-                       d00[i2-1][i1-1]*lpp[i2-1][i1-1]*lpp[i2-1][i1-1];
-        l0p[i2][i1] -= d00[i2-1][i1+1]*lp0[i2-1][i1+1]*lpm[i2-1][i1+1] +
-                       d00[i2-1][i1  ]*lpp[i2-1][i1  ]*lp0[i2-1][i1  ];
-        lpm[i2][i1] -= d00[i2  ][i1-1]*lp0[i2  ][i1-1]*l0p[i2  ][i1-1];
-        lp0[i2][i1] -= d00[i2  ][i1-1]*lpp[i2  ][i1-1]*l0p[i2  ][i1-1];
+      for (i1=1,i1m=i1-1,i1p=i1+1; i1<n1-1; ++i1,++i1m,++i1p) {
+        l00[i2][i1] -= d00[i2 ][i1m]*l0p[i2 ][i1m]*l0p[i2 ][i1m] +
+                       d00[i2m][i1p]*lpm[i2m][i1p]*lpm[i2m][i1p] +
+                       d00[i2m][i1 ]*lp0[i2m][i1 ]*lp0[i2m][i1 ] +
+                       d00[i2m][i1m]*lpp[i2m][i1m]*lpp[i2m][i1m];
+        l0p[i2][i1] -= d00[i2m][i1p]*lp0[i2m][i1p]*lpm[i2m][i1p] +
+                       d00[i2m][i1 ]*lpp[i2m][i1 ]*lp0[i2m][i1 ];
+        lpm[i2][i1] -= d00[i2 ][i1m]*lp0[i2 ][i1m]*l0p[i2 ][i1m];
+        lp0[i2][i1] -= d00[i2 ][i1m]*lpp[i2 ][i1m]*l0p[i2 ][i1m];
         if (l00[i2][i1]<=0.0f) 
           return null;
         d00[i2][i1] = 1.0f/l00[i2][i1];
       }
-      l00[i2][i1] -= d00[i2  ][i1-1]*l0p[i2  ][i1-1]*l0p[i2  ][i1-1] +
-                     d00[i2-1][i1  ]*lp0[i2-1][i1  ]*lp0[i2-1][i1  ] +
-                     d00[i2-1][i1-1]*lpp[i2-1][i1-1]*lpp[i2-1][i1-1];
-      l0p[i2][i1] -= d00[i2-1][i1  ]*lpp[i2-1][i1  ]*lp0[i2-1][i1  ];
-      lpm[i2][i1] -= d00[i2  ][i1-1]*lp0[i2  ][i1-1]*l0p[i2  ][i1-1];
-      lp0[i2][i1] -= d00[i2  ][i1-1]*lpp[i2  ][i1-1]*l0p[i2  ][i1-1];
+      l00[i2][i1] -= d00[i2 ][i1m]*l0p[i2 ][i1m]*l0p[i2 ][i1m] +
+                     d00[i2m][i1 ]*lp0[i2m][i1 ]*lp0[i2m][i1 ] +
+                     d00[i2m][i1m]*lpp[i2m][i1m]*lpp[i2m][i1m];
+      l0p[i2][i1] -= d00[i2m][i1 ]*lpp[i2m][i1 ]*lp0[i2m][i1 ];
+      lpm[i2][i1] -= d00[i2 ][i1m]*lp0[i2 ][i1m]*l0p[i2 ][i1m];
+      lp0[i2][i1] -= d00[i2 ][i1m]*lpp[i2 ][i1m]*l0p[i2 ][i1m];
       if (l00[i2][i1]<=0.0f) 
         return null;
       d00[i2][i1] = 1.0f/l00[i2][i1];
@@ -470,7 +472,7 @@ public class LocalSpd9Filter {
 
   private static void testFactor() {
     int n1 = 5;
-    int n2 = 5;
+    int n2 = 7;
     //float[][] x = Array.zerofloat(n1,n2);
     //x[0][0] = x[n2-1][0] = x[0][n1-1] = x[n2-1][n1-1] = 1.0f;
     //x[2][2] = 1.0f;
@@ -495,16 +497,25 @@ public class LocalSpd9Filter {
     sp0[k2][k1] = sp0[k2-1][k1  ] = 0.0f;
     spp[k2][k1] = spp[k2-1][k1-1] = 0.0f;
     LocalSpd9Filter lsf = new LocalSpd9Filter(s);
-    float[][] a = lsf.getMatrix();
-    edu.mines.jtk.mosaic.SimplePlot.asPixels(a);
+    //float[][] a = lsf.getMatrix();
+    //edu.mines.jtk.mosaic.SimplePlot.asPixels(a);
     lsf.apply(x,y);
     lsf.applyApproximate(x,z);
     lsf.applyApproximateInverse(z,w);
+    float[][] ldl = factorIC0(lsf,0.0f);
+    float[][] v = factorMul(ldl,x);
+    float[][] ez = Array.sub(z,v);
+    System.out.println("ez: error="+Array.sum(Array.abs(ez)));
+    Array.dump(z);
+    Array.dump(v);
+    Array.dump(ez);
+    /*
     Array.dump(x);
     Array.dump(y);
     Array.dump(z);
     Array.dump(w);
     Array.dump(Array.sub(w,x));
+    */
   }
 
   private static void testMatrix() {
@@ -520,7 +531,76 @@ public class LocalSpd9Filter {
     Array.add(0.1f,s[0],s[0]);
     LocalSpd9Filter lsf = new LocalSpd9Filter(s);
     float[][] a = lsf.getMatrix();
-    edu.mines.jtk.mosaic.SimplePlot.asPixels(a);
+    //edu.mines.jtk.mosaic.SimplePlot.asPixels(a);
+    float[][] x = Array.randfloat(n1,n2);
+    float[][] y = Array.randfloat(n1,n2);
+    lsf.apply(x,y);
+    float[][] z = matrixMul(a,x);
+    float[][] e = Array.sub(z,y);
+    System.out.println("error="+Array.sum(Array.abs(e)));
+    Array.dump(y);
+    Array.dump(z);
+    Array.dump(e);
+  }
+  private static float[][] factorIC0(LocalSpd9Filter lsf, float bias) {
+    float[][] a = lsf.getMatrix();
+    int n = a.length;
+    float scale = 1.0f+bias;
+    for (int k=0; k<n; ++k) {
+      a[k][k] = sqrt(a[k][k]*scale);
+      for (int i=k+1; i<n; ++i) {
+        if (a[k][i]!=0.0f)
+          a[k][i] /= a[k][k];
+      }
+      for (int j=k+1; j<n; ++j) {
+        for (int i=j; i<n; ++i) {
+          if (a[j][i]!=0.0f)
+            a[j][i] -= a[k][i]*a[k][j];
+        }
+      }
+      for (int i=0; i<k; ++i)
+        a[k][i] = 0.0f;
+    }
+    //edu.mines.jtk.mosaic.SimplePlot.asPixels(a);
+    return a;
+  }
+  private static float[][] factorMul(float[][] a, float[][] x) {
+    int n1 = x[0].length;
+    int n2 = x.length;
+    float[][] y = new float[n2][n1];
+    for (int i2=0,i=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1,++i) {
+        float ti = 0.0f;
+        for (int j2=0,j=0; j2<n2; ++j2) {
+          for (int j1=0; j1<n1; ++j1,++j) {
+            if (i<=j)
+              ti += a[i][j]*x[j2][j1];
+          }
+        }
+        for (int j2=0,j=0; j2<n2; ++j2) {
+          for (int j1=0; j1<n1; ++j1,++j) {
+            if (i<=j)
+              y[j2][j1] += a[i][j]*ti;
+          }
+        }
+      }
+    }
+    return y;
+  }
+  private static float[][] matrixMul(float[][] a, float[][] x) {
+    int n1 = x[0].length;
+    int n2 = x.length;
+    float[][] y = new float[n2][n1];
+    for (int i2=0,i=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1,++i) {
+        for (int j2=0,j=0; j2<n2; ++j2) {
+          for (int j1=0; j1<n1; ++j1,++j) {
+            y[i2][i1] += a[i][j]*x[j2][j1];
+          }
+        }
+      }
+    }
+    return y;
   }
 
   public static void main(String[] args) {
