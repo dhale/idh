@@ -10,6 +10,12 @@ import edu.mines.jtk.dsp.*;
 import edu.mines.jtk.util.*;
 import static edu.mines.jtk.util.MathPlus.*;
 
+// for testing
+import edu.mines.jtk.awt.*;
+import edu.mines.jtk.mosaic.*;
+import edu.mines.jtk.sgl.*;
+import edu.mines.jtk.sgl.test.*;
+
 /**
  * Local anisotropic interpolation filter via conjugate gradient iterations.
  * This version uses a preconditioner based on incomplete Cholesky factors.
@@ -148,7 +154,7 @@ public class LocalInterpolationFilterIc {
       }
     }
     LocalSpd9Filter lsf = new LocalSpd9Filter(s,0.001);
-    //edu.mines.jtk.mosaic.SimplePlot.asPixels(lsf.getMatrix());
+    //SimplePlot.asPixels(lsf.getMatrix());
     return new Operator2[]{new A2(lsf), new M2(lsf)};
   }
 
@@ -324,6 +330,9 @@ public class LocalInterpolationFilterIc {
     Array.sub(t,b,b); // b = (K-MG'DGK)x
     return b;
   }
+  // (K+MG'DGM)x = (K-MG'DGK)x
+  // MG'DGMx + MG'DGKx = MG'DGx = 0
+
 
   private static Operator3[] makeOperators(
     DiffusionTensors3 ldt, byte[][][] f) 
@@ -381,9 +390,9 @@ public class LocalInterpolationFilterIc {
             if (0<i3) {
               sp00[i3-1][i2][i1] = 0.0f;
               if (i1<n1-1) 
-                sp0m[i3][i2][i1+1] = 0.0f;
+                sp0m[i3-1][i2][i1+1] = 0.0f;
               if (0<i1)
-                sp0p[i3][i2][i1-1] = 0.0f;
+                sp0p[i3-1][i2][i1-1] = 0.0f;
               if (i2<n2-1) {
                 spm0[i3-1][i2+1][i1] = 0.0f;
                 if (i1<n1-1) 
@@ -404,7 +413,7 @@ public class LocalInterpolationFilterIc {
       }
     }
     LocalSpd27Filter lsf = new LocalSpd27Filter(s,0.001);
-    //edu.mines.jtk.mosaic.SimplePlot.asPixels(lsf.getMatrix());
+    //SimplePlot.asPixels(lsf.getMatrix());
     return new Operator3[]{new A3(lsf), new M3(lsf)};
   }
 
@@ -517,13 +526,28 @@ public class LocalInterpolationFilterIc {
   // testing
 
   private static void plotPixels(float[][] x) {
-    edu.mines.jtk.mosaic.SimplePlot sp =
-      new edu.mines.jtk.mosaic.SimplePlot(
-        edu.mines.jtk.mosaic.SimplePlot.Origin.UPPER_LEFT);
+    SimplePlot sp = new SimplePlot(SimplePlot.Origin.UPPER_LEFT);
     sp.setSize(650,600);
-    edu.mines.jtk.mosaic.PixelsView pv =
-      sp.addPixels(x);
-    pv.setColorModel(edu.mines.jtk.awt.ColorMap.JET);
+    PixelsView pv = sp.addPixels(x);
+    pv.setClips(-1.0f,1.0f);
+    pv.setColorModel(ColorMap.JET);
+    pv.setInterpolation(PixelsView.Interpolation.NEAREST);
+  }
+
+  private static void plot3d(float[][][] x) {
+    x = Array.copy(x);
+    int n1 = x[0][0].length;
+    int n2 = x[0].length;
+    int n3 = x.length;
+    Sampling s1 = new Sampling(n1);
+    Sampling s2 = new Sampling(n2);
+    Sampling s3 = new Sampling(n3);
+    ImagePanelGroup ipg = new ImagePanelGroup(s3,s2,s1,new SimpleFloat3(x));
+    ipg.setColorModel(ColorMap.JET);
+    World world = new World();
+    world.addChild(ipg);
+    TestFrame frame = new TestFrame(world);
+    frame.setVisible(true);
   }
 
   private static void testOperators2() {
@@ -552,7 +576,9 @@ public class LocalInterpolationFilterIc {
     int n1 = 9;
     int n2 = 10;
     int n3 = 11;
-    DiffusionTensors3 ldt = makeLinearDiffusionTensors3(n1,n2,n3);
+    float theta = FLT_PI*2.0f/8.0f;
+    float phi = FLT_PI*0.0f/8.0f;
+    DiffusionTensors3 ldt = makeLinearDiffusionTensors3(n1,n2,n3,theta,phi);
     byte[][][] f = Array.zerobyte(n1,n2,n3);
     for (int i1=0; i1<n1; ++i1)
       f[n3/2][n2/2][i1] = 1;
@@ -601,7 +627,7 @@ public class LocalInterpolationFilterIc {
     //float[][] d0 = Array.randfloat(n1,n2);
     //float[][] d1 = Array.randfloat(n1,n2);
     //float[][] v1 = Array.sub(Array.randfloat(n1,n2),0.5f);
-    float theta = FLT_PI*0.5f/8.0f;
+    float theta = FLT_PI*2.0f/8.0f;
     float ctheta = cos(theta);
     float stheta = sin(theta);
     float[][] d0 = Array.fillfloat(1.0f,n1,n2);
@@ -613,8 +639,10 @@ public class LocalInterpolationFilterIc {
     for (int i2=0; i2<n2; ++i2) {
       for (int i1=0; i1<n1; ++i1) {
         //if (i2==0 || i2==n2/2 || i2==n2-1) {
-        if (i2==n2/2 || i2==n2-1) {
-          x[i2][i1] = sin(16.0f*FLT_PI*(float)((i1*ctheta-i2*stheta)/n1));
+        //if (i2==n2/2 || i2==n2-1) {
+        //if (i1==0 || i1==n1-1 || i2==0 || i2==n2-1) {
+        if (i2==n2/2) {
+          x[i2][i1] = sin(0.1f*FLT_PI*(float)(i1*ctheta-i2*stheta));
           f[i2][i1] = 1;
         }
       }
@@ -627,44 +655,63 @@ public class LocalInterpolationFilterIc {
     lif.apply(ldt,f,x);
     trace("x min="+Array.min(x)+" max="+Array.max(x));
     plotPixels(x);
+    LocalDiffusionKernel ldk = new LocalDiffusionKernel(1.0/12.0);
+    float[][] y = Array.zerofloat(n1,n2);
+    ldk.apply(ldt,x,y);
+    plotPixels(y);
   }
 
   private static void testSolve3() {
-    int n1 = 24;
-    int n2 = 25;
-    int n3 = 26;
-    float theta = 0.0f*FLT_PI/8.0f;
-    float phi = 0.0f*FLT_PI/8.0f;
+    int n1 = 101;
+    int n2 = 101;
+    int n3 = 21;
+    float theta = FLT_PI*1.0f/8.0f;
+    float phi = FLT_PI*2.0f/8.0f;
+    float ctheta = cos(theta);
+    float stheta = sin(theta);
     DiffusionTensors3 ldt = makePlanarDiffusionTensors3(n1,n2,n3,theta,phi);
+    //DiffusionTensors3 ldt = makeLinearDiffusionTensors3(n1,n2,n3,theta,phi);
     byte[][][] f = Array.zerobyte(n1,n2,n3);
     float[][][] x = Array.zerofloat(n1,n2,n3);
     for (int i3=0; i3<n3; ++i3) {
       for (int i2=0; i2<n2; ++i2) {
         for (int i1=0; i1<n1; ++i1) {
+          //if (i2==n2/2) {
           if (i2==n2/2 && i3==n3/2) {
-            x[i3][i2][i1] = sin(6.0f*FLT_PI*(float)i1/(float)n1);
+            //x[i3][i2][i1] = sin(0.1f*FLT_PI*(float)(i1*ctheta-i2*stheta));
+            x[i3][i2][i1] = sin(0.1f*FLT_PI*(float)i1);
             f[i3][i2][i1] = 1;
           }
         }
       }
     }
-    //plotPixels(x);
+    plot3d(x);
     float small = 0.0001f;
     int niter = 1000;
     LocalInterpolationFilterIc lif = 
       new LocalInterpolationFilterIc(small,niter);
     lif.apply(ldt,f,x);
     trace("x min="+Array.min(x)+" max="+Array.max(x));
-    //plotPixels(x);
+    plot3d(x);
+    LocalDiffusionKernel ldk = new LocalDiffusionKernel();
+    float[][][] y = Array.zerofloat(n1,n2,n3);
+    ldk.apply(ldt,x,y);
+    plot3d(y);
   }
 
   private static DiffusionTensors3 makeLinearDiffusionTensors3(
-    int n1, int n2, int n3) 
+    int n1, int n2, int n3, float theta, float phi) 
   {
     DiffusionTensors3 ldt = new DiffusionTensors3(n1,n2,n3,1.0f,1.0f,1.0f);
-    float[] d = {1.0f,0.0f,0.0f};
-    float[] u = {0.0f,0.0f,1.0f};
-    float[] w = {1.0f,0.0f,0.0f};
+    float d1 = 1.000f;
+    float d2 = 0.000f;
+    float d3 = 0.000f;
+    float w1 = cos(theta);
+    float w2 = sin(theta)*cos(phi);
+    float w3 = sin(theta)*sin(phi);
+    float[] d = {d1,d2,d3};
+    float[] w = {w1,w2,w3};
+    float[] u = makeOrthogonalVector(w);
     for (int i3=0; i3<n3; ++i3) {
       for (int i2=0; i2<n2; ++i2) {
         for (int i1=0; i1<n1; ++i1) {
@@ -676,14 +723,13 @@ public class LocalInterpolationFilterIc {
     }
     return ldt;
   }
-
   private static DiffusionTensors3 makePlanarDiffusionTensors3(
     int n1, int n2, int n3, float theta, float phi) 
   {
     DiffusionTensors3 ldt = new DiffusionTensors3(n1,n2,n3,1.0f,1.0f,1.0f);
     float d1 = 0.000f;
     float d2 = 1.000f;
-    float d3 = 0.001f;
+    float d3 = 0.000f;
     float u1 = cos(theta);
     float u2 = sin(theta)*cos(phi);
     float u3 = sin(theta)*sin(phi);

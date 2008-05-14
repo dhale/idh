@@ -21,8 +21,8 @@ False = 0
 # parameters
 
 dataDir = "/data"
-pngDir = "./png"
-#pngDir = None
+#pngDir = "./png"
+pngDir = None
 
 gray = ColorMap.GRAY
 jet = ColorMap.JET

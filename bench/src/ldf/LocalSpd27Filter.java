@@ -1151,9 +1151,11 @@ public class LocalSpd27Filter {
     float[][][] v = factorMul(ldl,x);
     float[][][] e = Array.sub(z,v);
     System.out.println("factor error="+Array.sum(Array.abs(e)));
-    Array.dump(z);
-    Array.dump(v);
-    Array.dump(e);
+    System.out.println(
+      "factor inverse error="+Array.sum(Array.abs(Array.sub(w,x))));
+    //Array.dump(z);
+    //Array.dump(v);
+    //Array.dump(e);
     //Array.dump(x);
     //Array.dump(y);
     //Array.dump(z);

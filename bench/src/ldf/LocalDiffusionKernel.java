@@ -53,9 +53,10 @@ public class LocalDiffusionKernel {
     _ers = _rs;
     _frs = 1.0f-2.0f*_rs;
     float t = 5.0f/12.0f-1.0f/sqrt(6.0f);
-    t = 0.0f; // TESTING!
+    //t = 0.25f; // TESTING!
     float r = (1.0f-sqrt(t))*(1.0f-sqrt(t));
     float s = sqrt(r*t);
+    System.out.println("r="+r+" s="+s+" t="+t);
     _erst = s*s;
     _frst = s*(r+t);
     _grst = (r+t)*(r+t);
@@ -228,9 +229,9 @@ public class LocalDiffusionKernel {
           float fd11 = fp50*(d22+d33);
           float fd22 = fp50*(d11+d33);
           float fd33 = fp50*(d11+d22);
-          float td11 = fd22+fd33-ed11;
-          float td22 = fd11+fd33-ed22;
-          float td33 = fd11+fd22-ed33;
+          float td11 = fd11-ed11;
+          float td22 = fd22-ed22;
+          float td33 = fd33-ed33;
           float hd11 = gp25*d11-fd11;
           float hd22 = gp25*d22-fd22;
           float hd33 = gp25*d33-fd33;
@@ -241,8 +242,8 @@ public class LocalDiffusionKernel {
           float hd23 = td11+pd23;
           float hd32 = td11-pd23;
           float hdpp = eddd+pd12+pd13+pd23;
-          float hdpm = eddd+pd12-pd13-pd23;
-          float hdmp = eddd-pd12+pd13-pd23;
+          float hdpm = eddd-pd12+pd13-pd23;
+          float hdmp = eddd+pd12-pd13-pd23;
           float hdmm = eddd-pd12-pd13+pd23;
           float xppp = x[i3p][i2p][i1p];
           float xppm = x[i3p][i2p][i1m];
@@ -553,9 +554,9 @@ public class LocalDiffusionKernel {
           float fd11 = fp50*(d22+d33);
           float fd22 = fp50*(d11+d33);
           float fd33 = fp50*(d11+d22);
-          float td11 = fd22+fd33-ed11;
-          float td22 = fd11+fd33-ed22;
-          float td33 = fd11+fd22-ed33;
+          float td11 = fd11-ed11;
+          float td22 = fd22-ed22;
+          float td33 = fd33-ed33;
           float hd11 = gp25*d11-fd11;
           float hd22 = gp25*d22-fd22;
           float hd33 = gp25*d33-fd33;
@@ -566,8 +567,8 @@ public class LocalDiffusionKernel {
           float hd23 = td11+pd23;
           float hd32 = td11-pd23;
           float hdpp = eddd+pd12+pd13+pd23;
-          float hdpm = eddd+pd12-pd13-pd23;
-          float hdmp = eddd-pd12+pd13-pd23;
+          float hdpm = eddd-pd12+pd13-pd23;
+          float hdmp = eddd+pd12-pd13-pd23;
           float hdmm = eddd-pd12-pd13+pd23;
 
           // The comment at the end of each line below indicates the element 
@@ -904,16 +905,16 @@ public class LocalDiffusionKernel {
     int n2 = 5;
     float[][] x = Array.zerofloat(n1,n2); 
     //float[][] x = Array.randfloat(n1,n2); 
-    x[0][0] = x[n2-1][0] = x[0][n1-1] = x[n2-1][n1-1] = 1.0f;
-    //x[n2/2][n1/2] = 1.0f;
+    //x[0][0] = x[n2-1][0] = x[0][n1-1] = x[n2-1][n1-1] = 1.0f;
+    x[n2/2][n1/2] = 1.0f;
     float[][] y = Array.zerofloat(n1,n2);
     float[][] z = Array.zerofloat(n1,n2);
-    float theta = FLT_PI*2.0f/8.0f;
+    float theta = FLT_PI*0.0f/8.0f;
     float[][] d0 = Array.fillfloat(1.0f,n1,n2);
     float[][] d1 = Array.fillfloat(1.0f,n1,n2);
     float[][] v1 = Array.fillfloat(sin(theta),n1,n2);
     LocalDiffusionTensors2 ldt = new LocalDiffusionTensors2(0.0,1.0,d0,d1,v1);
-    float rs = 1.0f/12.0f;
+    float rs = 3.0f/12.0f;
     LocalDiffusionKernel ldk = new LocalDiffusionKernel(rs);
     LocalSpd9Filter lsf = new LocalSpd9Filter(ldk.getCoefficients(ldt));
     ldk.apply(ldt,x,y);
@@ -928,13 +929,18 @@ public class LocalDiffusionKernel {
     int n1 = 5;
     int n2 = 4;
     int n3 = 3;
-    float[][][] x = Array.randfloat(n1,n2,n3); 
-    //float[][][] x = Array.zerofloat(n1,n2,n3); 
-    //x[n3/2][n2/2][n1/2] = 1.0f;
+    //float[][][] x = Array.randfloat(n1,n2,n3); 
+    float[][][] x = Array.zerofloat(n1,n2,n3); 
+    x[n3/2][n2/2][n1/2] = 1.0f;
+    //for (int i3=0; i3<n3; ++i3)
+    //  x[i3][n2/2][n1/2] = 1.0f;
     float[][][] y = Array.zerofloat(n1,n2,n3); 
     float[][][] z = Array.zerofloat(n1,n2,n3); 
-    //DiffusionTensors3 ldt = makeLinearDiffusionTensors3(n1,n2,n3);
-    DiffusionTensors3 ldt = makeRandomDiffusionTensors3(n1,n2,n3);
+    //DiffusionTensors3 ldt = makeRandomDiffusionTensors3(n1,n2,n3);
+    float theta = FLT_PI*2.0f/8.0f;
+    float phi = FLT_PI*0.0f/8.0f;
+    //DiffusionTensors3 ldt = makePlanarDiffusionTensors3(n1,n2,n3,theta,phi);
+    DiffusionTensors3 ldt = makeLinearDiffusionTensors3(n1,n2,n3,theta,phi);
     LocalDiffusionKernel ldk = new LocalDiffusionKernel();
     LocalSpd27Filter lsf = new LocalSpd27Filter(ldk.getCoefficients(ldt));
     ldk.apply(ldt,x,y);
@@ -943,15 +949,23 @@ public class LocalDiffusionKernel {
     Array.dump(y);
     Array.dump(z);
     System.out.println("error = "+Array.sum(Array.abs(Array.sub(y,z))));
+    System.out.println("sum y = "+Array.sum(y));
+    System.out.println("sum z = "+Array.sum(z));
   }
 
   private static DiffusionTensors3 makeLinearDiffusionTensors3(
-    int n1, int n2, int n3) 
+    int n1, int n2, int n3, float theta, float phi) 
   {
     DiffusionTensors3 ldt = new DiffusionTensors3(n1,n2,n3,1.0f,1.0f,1.0f);
-    float[] d = {1.0f,0.0f,0.0f};
-    float[] u = {0.0f,0.0f,1.0f};
-    float[] w = {1.0f,0.0f,0.0f};
+    float d1 = 1.000f;
+    float d2 = 0.000f;
+    float d3 = 0.000f;
+    float w1 = cos(theta);
+    float w2 = sin(theta)*cos(phi);
+    float w3 = sin(theta)*sin(phi);
+    float[] d = {d1,d2,d3};
+    float[] w = {w1,w2,w3};
+    float[] u = makeOrthogonalVector(w);
     for (int i3=0; i3<n3; ++i3) {
       for (int i2=0; i2<n2; ++i2) {
         for (int i1=0; i1<n1; ++i1) {
@@ -963,7 +977,30 @@ public class LocalDiffusionKernel {
     }
     return ldt;
   }
-
+  private static DiffusionTensors3 makePlanarDiffusionTensors3(
+    int n1, int n2, int n3, float theta, float phi) 
+  {
+    DiffusionTensors3 ldt = new DiffusionTensors3(n1,n2,n3,1.0f,1.0f,1.0f);
+    float d1 = 0.000f;
+    float d2 = 1.000f;
+    float d3 = 0.000f;
+    float u1 = cos(theta);
+    float u2 = sin(theta)*cos(phi);
+    float u3 = sin(theta)*sin(phi);
+    float[] d = {d1,d2,d3};
+    float[] u = {u1,u2,u3};
+    float[] w = makeOrthogonalVector(u);
+    for (int i3=0; i3<n3; ++i3) {
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          ldt.setCoefficients(i1,i2,i3,d);
+          ldt.setEigenvectorU(i1,i2,i3,u);
+          ldt.setEigenvectorW(i1,i2,i3,w);
+        }
+      }
+    }
+    return ldt;
+  }
   private static DiffusionTensors3 makeRandomDiffusionTensors3(
     int n1, int n2, int n3) 
   {
