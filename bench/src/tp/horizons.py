@@ -181,6 +181,7 @@ def convertHorizons():
 
 def horizonFilenames():
   list = []
+  list.append("h8carlile.dat")
   list.append("h0kf2.dat")
   list.append("h1fallriver.dat")
   list.append("h2lakotamorrison.dat")
@@ -189,7 +190,6 @@ def horizonFilenames():
   list.append("h5tensleep.dat")
   list.append("h6tensleepbbase.dat")
   list.append("h7basement.dat")
-  list.append("h8carlile.dat")
   return list
 
 def readHorizon(fileName):
@@ -224,7 +224,8 @@ def paintHorizons():
   nfile = len(hfiles)
   for ifile in range(nfile):
     x2,x3,t = readHorizon(hfiles[ifile])
-    paintHorizon(ifile,p,x2,x3,t)
+    index = ifile+4
+    paintHorizon(index,p,x2,x3,t)
   plot3d(p)
 
 def plot3d(x):
