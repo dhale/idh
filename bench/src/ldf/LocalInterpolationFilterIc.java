@@ -665,8 +665,8 @@ public class LocalInterpolationFilterIc {
     int n1 = 101;
     int n2 = 101;
     int n3 = 21;
-    float theta = FLT_PI*1.0f/8.0f;
-    float phi = FLT_PI*2.0f/8.0f;
+    float theta = FLT_PI*2.0f/8.0f;
+    float phi = FLT_PI*0.0f/8.0f;
     float ctheta = cos(theta);
     float stheta = sin(theta);
     DiffusionTensors3 ldt = makePlanarDiffusionTensors3(n1,n2,n3,theta,phi);
