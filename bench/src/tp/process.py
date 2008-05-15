@@ -12,6 +12,9 @@ from edu.mines.jtk.util import *
 from edu.mines.jtk.sgl import *
 from edu.mines.jtk.sgl.test import *
 
+True = 1
+False = 0
+
 dataDir = "/data/seis/tp/"
 
 # Rotated and resampled data.
