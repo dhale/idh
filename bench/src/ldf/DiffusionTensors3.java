@@ -7,7 +7,7 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 package ldf;
 
 /**
- * A 3-D array of diffusion tensors. Each diffusion tensor is a symmetric 
+ * A 3D array of diffusion tensors. Each diffusion tensor is a symmetric 
  * positive-semidefinite 3-by-3 matrix:
  * <pre><code>
  *     |d11 d12 d13|
@@ -32,10 +32,10 @@ package ldf;
  *   =  d3*u*u' + (d2+d3)*v*v' + w*w'
  *   =  d1*w*w' + d2*(I-u*u') + d3*I
  * </code></pre>
- * where d1 controls the amount of 1-D diffusion along lines parallel
- * to the eigenvector w, d2 controls the amount of 2-D diffusion within
+ * where d1 controls the amount of 1D diffusion along lines parallel
+ * to the eigenvector w, d2 controls the amount of 2D diffusion within
  * planes perpendicular to the eigenvector u, and d3 controls the amount
- * of 3-D isotropic diffusion. (The symbol I denotes a 3-by-3 identity
+ * of 3D isotropic diffusion. (The symbol I denotes a 3-by-3 identity
  * matrix.) All three diffusion coefficients d1, d2, and d3 are in the 
  * range [0,1], and are normalized so that their sum d1+d2+d3 = 1.
  * <p>
@@ -56,7 +56,7 @@ package ldf;
  * Computation of eigenvalues and eigenvectors is straightforward
  * but can be costly if performed repeatedly as needed. And caching
  * of eigenvalues and eigenvectors computed once can require more
- * memory than the six 3-D arrays required to store tensor elements.
+ * memory than the six 3D arrays required to store tensor elements.
  * <p> 
  * To balance computational efficiency with memory requirements, the
  * eigen-decomposition of each diffusion tensor is computed once and 
@@ -71,13 +71,14 @@ package ldf;
 public class DiffusionTensors3 {
 
   /**
-   * Constructs tensors for specified array dimensions.
+   * Constructs tensors for specified array dimensions. Diffusion coefficients 
+   * and eigenvector components are not set and are initially zero.
    * @param n1 number of tensors in 1st dimension.
    * @param n2 number of tensors in 2nd dimension.
    * @param n3 number of tensors in 3rd dimension.
-   * @param s1 scale factor for 1-D diffusion.
-   * @param s2 scale factor for 2-D diffusion.
-   * @param s3 scale factor for 3-D diffusion.
+   * @param s1 global scale factor for 1D diffusion.
+   * @param s2 global scale factor for 2D diffusion.
+   * @param s3 global scale factor for 3D diffusion.
    */
   public DiffusionTensors3(
     int n1, int n2, int n3,
@@ -93,6 +94,56 @@ public class DiffusionTensors3 {
     _b3 = new byte[n3][n2][n1];
     _iu = new short[n3][n2][n1];
     _iw = new short[n3][n2][n1];
+  }
+
+  /**
+   * Constructs tensors for specified array dimensions and coefficients.
+   * The 3D (isotropic) diffusion coefficient is computed from the 1D and
+   * 2D coefficients. The 1st component of eigenvector u is computed from
+   * the 2nd and 3rd components and is assumed to be positive. Likewise, 
+   * the 3rd component of eigenvector w is computed from the 1st and 2nd 
+   * components and is assumed to be positive.
+   * @param n1 number of tensors in 1st dimension.
+   * @param n2 number of tensors in 2nd dimension.
+   * @param n3 number of tensors in 3rd dimension.
+   * @param s1 global scale factor for 1D diffusion.
+   * @param s2 global scale factor for 2D diffusion.
+   * @param s3 global scale factor for 3D diffusion.
+   * @param d1 array of coefficients for 1D (linear) diffusion.
+   * @param d2 array of coefficients for 2D (planar) diffusion.
+   * @param u2 array of 2nd components of u.
+   * @param u3 array of 3nd components of u.
+   * @param w1 array of 1st components of w.
+   * @param w2 array of 2nd components of w.
+   */
+  public DiffusionTensors3(
+    int n1, int n2, int n3,
+    double s1, double s2, double s3,
+    float[][][] d1, float[][][] d2,
+    float[][][] u2, float[][][] u3,
+    float[][][] w1, float[][][] w2)
+  {
+    this(n1,n2,n3,s1,s2,s3);
+    for (int i3=0; i3<n3; ++i3) {
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          float d1i = d1[i3][i2][i1];
+          float d2i = d2[i3][i2][i1];
+          float d3i = 1.0f-d1i-d2i;
+          float u2i = u2[i3][i2][i1];
+          float u3i = u3[i3][i2][i1];
+          float usi = u2i*u2i+u3i*u3i;
+          float u1i = (usi<1.0f)?(float)Math.sqrt(1.0f-usi):0.0f;
+          float w1i = w1[i3][i2][i1];
+          float w2i = w2[i3][i2][i1];
+          float wsi = w1i*w1i+w2i*w2i;
+          float w3i = (wsi<1.0f)?(float)Math.sqrt(1.0f-wsi):0.0f;
+          setCoefficients(i1,i2,i3,d1i,d2i,d3i);
+          setEigenvectorU(i1,i2,i3,u1i,u2i,u3i);
+          setEigenvectorW(i1,i2,i3,w1i,w2i,w3i);
+        }
+      }
+    }
   }
 
   /**
@@ -275,12 +326,13 @@ public class DiffusionTensors3 {
    * @param i1 index for 1st dimension.
    * @param i2 index for 2nd dimension.
    * @param i3 index for 3rd dimension.
-   * @param d array {d1,d2,d3} of diffusion coefficients.
+   * @param d1 coefficient for 1D (linear) diffusion.
+   * @param d2 coefficient for 2D (planar) diffusion.
+   * @param d3 coefficient for 3D (isotropic) diffusion.
    */
-  public void setCoefficients(int i1, int i2, int i3, float[] d) {
-    float d1 = d[0];
-    float d2 = d[1];
-    float d3 = d[2];
+  public void setCoefficients(
+    int i1, int i2, int i3, float d1, float d2, float d3)
+  {
     float ds = d1+d2+d3;
     ds = (ds>0.0f)?DS_SET/ds:0.0f;
     _b2[i3][i2][i1] = (byte)(d2*ds+0.5f);
@@ -288,27 +340,72 @@ public class DiffusionTensors3 {
   }
 
   /**
+   * Sets diffusion coefficients for the tensor with specified indices.
+   * If necessary, the specified coefficients are scaled so that their 
+   * sum d1+d2+d3 = 1.
+   * @param i1 index for 1st dimension.
+   * @param i2 index for 2nd dimension.
+   * @param i3 index for 3rd dimension.
+   * @param d array {d1,d2,d3} of diffusion coefficients.
+   */
+  public void setCoefficients(int i1, int i2, int i3, float[] d) {
+    setCoefficients(i1,i2,i3,d[0],d[1],d[2]);
+  }
+
+  /**
    * Sets the eigenvector u for the tensor with specified indices.
-   * The unit vector u is orthogonal to the plane of 2-D diffusion.
+   * The unit vector u is orthogonal to the plane of 2D diffusion.
+   * @param i1 index for 1st dimension.
+   * @param i2 index for 2nd dimension.
+   * @param i3 index for 3rd dimension.
+   * @param u1 1st component of u.
+   * @param u2 2nd component of u.
+   * @param u3 3nd component of u.
+   */
+  public void setEigenvectorU(
+    int i1, int i2, int i3, float u1, float u2, float u3)
+  {
+    _iu[i3][i2][i1] = (short)_uss.getIndex(u1,u2,u3);
+  }
+
+  /**
+   * Sets the eigenvector u for the tensor with specified indices.
+   * The unit vector u is orthogonal to the plane of 2D diffusion.
    * @param i1 index for 1st dimension.
    * @param i2 index for 2nd dimension.
    * @param i3 index for 3rd dimension.
    * @param array {u1,u2,u3} of eigenvector components.
    */
   public void setEigenvectorU(int i1, int i2, int i3, float[] u) {
-    _iu[i3][i2][i1] = (short)_uss.getIndex(u);
+    setEigenvectorU(i1,i2,i3,u[0],u[1],u[2]);
   }
 
   /**
    * Sets the eigenvector w for the tensor with specified indices.
-   * The unit vector w is parallel to the line of 1-D diffusion.
+   * The unit vector w is parallel to the line of 1D diffusion.
+   * @param i1 index for 1st dimension.
+   * @param i2 index for 2nd dimension.
+   * @param i3 index for 3rd dimension.
+   * @param w1 1st component of w.
+   * @param w2 2nd component of w.
+   * @param w3 3nd component of w.
+   */
+  public void setEigenvectorW(
+    int i1, int i2, int i3, float w1, float w2, float w3)
+  {
+    _iw[i3][i2][i1] = (short)_uss.getIndex(w1,w2,w3);
+  }
+
+  /**
+   * Sets the eigenvector w for the tensor with specified indices.
+   * The unit vector w is parallel to the line of 1D diffusion.
    * @param i1 index for 1st dimension.
    * @param i2 index for 2nd dimension.
    * @param i3 index for 3rd dimension.
    * @param array {w1,w2,w3} of eigenvector components.
    */
   public void setEigenvectorW(int i1, int i2, int i3, float[] w) {
-    _iw[i3][i2][i1] = (short)_uss.getIndex(w);
+    setEigenvectorW(i1,i2,i3,w[0],w[1],w[2]);
   }
 
   ///////////////////////////////////////////////////////////////////////////

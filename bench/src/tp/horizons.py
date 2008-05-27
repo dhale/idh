@@ -13,6 +13,11 @@ from edu.mines.jtk.util import *
 from edu.mines.jtk.sgl import *
 from edu.mines.jtk.sgl.test import *
 
+def main(args):
+  #convertHorizons()
+  paintHorizons()
+  return
+
 True = 1
 False = 0
 
@@ -226,7 +231,9 @@ def paintHorizons():
     x2,x3,t = readHorizon(hfiles[ifile])
     index = ifile+4
     paintHorizon(index,p,x2,x3,t)
-  plot3d(p)
+  aos = ArrayOutputStream(dataDir+"ph.dat")
+  aos.writeFloats(p)
+  aos.close()
 
 def plot3d(x):
   #s1 = Sampling(n1,d1,f1)
@@ -243,11 +250,6 @@ def plot3d(x):
   world.addChild(ipg)
   frame = TestFrame(world)
   frame.setVisible(True)
-
-def main(args):
-  #convertHorizons()
-  paintHorizons()
-  return
 
 #############################################################################
 class RunMain(Runnable):

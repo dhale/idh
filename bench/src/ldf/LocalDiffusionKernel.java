@@ -56,7 +56,6 @@ public class LocalDiffusionKernel {
     //t = 0.25f; // TESTING!
     float r = (1.0f-sqrt(t))*(1.0f-sqrt(t));
     float s = sqrt(r*t);
-    System.out.println("r="+r+" s="+s+" t="+t);
     _erst = s*s;
     _frst = s*(r+t);
     _grst = (r+t)*(r+t);
@@ -831,7 +830,7 @@ public class LocalDiffusionKernel {
   ///////////////////////////////////////////////////////////////////////////
   // private
 
-  private static final boolean ZERO_SLOPE_BOUNDARIES = true;
+  private static final boolean ZERO_SLOPE_BOUNDARIES = false;
   private float _rs; // experimental parameter for gradient approximation
   private float _ers,_frs; // for 2D 2x2-sample stencils
   private float _erst,_frst,_grst; // for 3D 2x2x2-sample stencils

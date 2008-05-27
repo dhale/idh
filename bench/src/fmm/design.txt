@@ -1,0 +1,65 @@
+ImagePainter2
+
+LocalDiffusionTensors2[n2][n1] (structure tensors)
+
+Representation:
+float[n2][n1] image (the image to be painted, not yet used)
+float[n2][n1] paint (the painted values)
+byte[n2][n1] flags (status of samples)
+  CLEAR = 0 (no paint value)
+  FIXED = 1 (fixed paint value)
+  EXTRA = 2 (extrapolated paint value)
+  INTER = 3 (interpolated paint value)
+
+Algorithm summary:
+Mark all samples either CLEAR or FIXED.
+Extrapolate samples CLEAR -> EXTRA.
+Interpolate samples EXTRA -> INTER.
+
+Extrapolate detail:
+Initialize time map using fixed samples.
+  After this step, all samples marked either CLEAR or FIXED.
+Complete time map using FMM to extrapolate.
+  After this step, all samples are marked either EXTRA or FIXED.
+
+Interpolate detail:
+While any sample is marked EXTRA, ...
+  choose the extrapolated sample with greatest time
+  update time map via FMM while accumulating paint value
+  mark sample interpolated (INTER)
+
+Why are detailed byte flags necessary or useful?
+(Why not have only fixed or not-fixed?)
+Because we may want to want to know the state of samples during 
+time-consuming paint operations. For example, during extrapolation
+might display fixed, extrapolated or clear samples differently.
+
+int n1 = number of samples in 1st dimension
+int n2 = number of samples in 2nd dimension
+int nc = count of clear samples
+int nf = count of fixed samples
+int ne = count of extrapolated samples
+int ni = count of interpolated samples
+
+The time map contains, for each sample, information related to the 
+nearest known sample, where "nearest" means least time, not distance.
+int[n2][n1] k1 = index in 1st dimension of nearest known sample
+int[n2][n1] k2 = index in 2nd dimension of nearest known sample
+float[n2][n1] tk = time to nearest known sample
+
+Two priority queues (binary heaps) are necessary.
+  1st is a min-heap, used in FMM to find next FAR 
+    sample with the smallest time.
+  2nd is a max-heap, used to determine where to next interpolate
+    and update the time map.
+  At some time, each of these queues may be almost as large as the image.
+  Entries in the queues are sample indices (i1,i2).
+  Compare entries by comparing times tk[i2][i1].
+
+Use FMM to compute all times for samples not FIXED.
+For FMM, need
+  byte[n2][n1] flags (FAR=0,NEAR=1,DONE=2,CHANGED=3)
+    For efficiency, should be able to repeat FMM for different sources 
+    without resetting all of the flags. Instead, should keep track of 
+    the current BASE for the flags; then FAR = BASE, NEAR = FAR+1, etc.
+  a min-heap of FAR samples

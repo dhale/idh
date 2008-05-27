@@ -529,9 +529,15 @@ public class LocalInterpolationFilterIc {
     SimplePlot sp = new SimplePlot(SimplePlot.Origin.UPPER_LEFT);
     sp.setSize(650,600);
     PixelsView pv = sp.addPixels(x);
-    pv.setClips(-1.0f,1.0f);
+    //pv.setClips(-1.0f,1.0f);
     pv.setColorModel(ColorMap.JET);
     pv.setInterpolation(PixelsView.Interpolation.NEAREST);
+    int n2 = x.length;
+    float[] y = new float[n2];
+    for (int i2=0; i2<n2; ++i2)
+      y[i2] = x[i2][i2];
+    SimplePlot.asPoints(y);
+ 
   }
 
   private static void plot3d(float[][][] x) {
@@ -622,31 +628,44 @@ public class LocalInterpolationFilterIc {
   private static void testSolve2() {
     int n1 = 101;
     int n2 = 101;
-    float s0 = 0.00f;
+    float s0 = 0.01f;
     float s1 = 1.00f;
     //float[][] d0 = Array.randfloat(n1,n2);
     //float[][] d1 = Array.randfloat(n1,n2);
     //float[][] v1 = Array.sub(Array.randfloat(n1,n2),0.5f);
-    float theta = FLT_PI*2.0f/8.0f;
+    float theta = FLT_PI*0.5f/8.0f;
     float ctheta = cos(theta);
     float stheta = sin(theta);
     float[][] d0 = Array.fillfloat(1.0f,n1,n2);
-    float[][] d1 = Array.fillfloat(1.0f,n1,n2);
+    float[][] d1 = Array.fillfloat(0.0f,n1,n2);
     float[][] v1 = Array.fillfloat(stheta,n1,n2);
     LocalDiffusionTensors2 ldt = new LocalDiffusionTensors2(s0,s1,d0,d1,v1);
     byte[][] f = Array.zerobyte(n1,n2);
     float[][] x = Array.zerofloat(n1,n2);
+    /*
     for (int i2=0; i2<n2; ++i2) {
       for (int i1=0; i1<n1; ++i1) {
         //if (i2==0 || i2==n2/2 || i2==n2-1) {
         //if (i2==n2/2 || i2==n2-1) {
         //if (i1==0 || i1==n1-1 || i2==0 || i2==n2-1) {
-        if (i2==n2/2) {
-          x[i2][i1] = sin(0.1f*FLT_PI*(float)(i1*ctheta-i2*stheta));
+        //if (i1==1*n1/4 && i2==n2/2) {
+        //  //x[i2][i1] = sin(0.1f*FLT_PI*(float)(i1*ctheta-i2*stheta));
+        //  x[i2][i1] = 1.0f;
+        //  f[i2][i1] = 1;
+        //}
+        //if (i2==1*n2/3 || i2==2*n2/3) {
+        if (i2==1*n2/3) {
+          x[i2][i1] = ((i1/10)%2==0)?0.0f:1.0f;
           f[i2][i1] = 1;
         }
       }
     }
+    */
+    x[0][0] = 0.0f; f[0][0] = 1;
+    x[0][n1-1] = 0.0f; f[0][n1-1] = 1;
+    x[n2-1][0] = 0.0f; f[n2-1][0] = 1;
+    x[n2-1][n1-1] = 0.0f; f[n2-1][n1-1] = 1;
+    x[n2/2][n1/2] = 1.0f; f[n2/2][n1/2] = 1;
     plotPixels(x);
     float small = 0.0001f;
     int niter = 1000;
@@ -655,10 +674,10 @@ public class LocalInterpolationFilterIc {
     lif.apply(ldt,f,x);
     trace("x min="+Array.min(x)+" max="+Array.max(x));
     plotPixels(x);
-    LocalDiffusionKernel ldk = new LocalDiffusionKernel(1.0/12.0);
-    float[][] y = Array.zerofloat(n1,n2);
-    ldk.apply(ldt,x,y);
-    plotPixels(y);
+    //LocalDiffusionKernel ldk = new LocalDiffusionKernel(1.0/12.0);
+    //float[][] y = Array.zerofloat(n1,n2);
+    //ldk.apply(ldt,x,y);
+    //plotPixels(y);
   }
 
   private static void testSolve3() {
@@ -782,7 +801,7 @@ public class LocalInterpolationFilterIc {
   public static void main(String[] args) {
     //testOperators2();
     //testOperators3();
-    //testSolve2();
-    testSolve3();
+    testSolve2();
+    //testSolve3();
   }
 } 
