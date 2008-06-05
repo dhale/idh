@@ -51,9 +51,9 @@ public class ImagePainter2 {
     int _n1,_n2; // map dimensions
     float[][] _tk; // time to nearest painted (known) sample
     int[][] _k1,_k2; // indices of nearest painted (known) sample
-    byte[][] _mark; // ???
+    byte[][] _mark; // samples are marked FAR, TRIAL or KNOWN
     int[][] _imin,_imax; // indices for samples in min/max heaps
-    MinTimeHeap _hmin;
+    MinTimeHeap _hmin; // the min heap
 
     TimeMap(int n1, int n2) {
       _n1 = n1;
@@ -66,13 +66,65 @@ public class ImagePainter2 {
       _imax = new int[n2][n1];
       _hmin = new MinTimeHeap(this);
     }
-    void initialize(float[][] paint, byte[][] flags) {
+    void initialize(byte[][] flags) {
       for (int i2=0; i2<_n2; ++i2) {
         for (int i1=0; i1<_n1; ++i1) {
-          if (flags[i2][i1]!=CLEAR) {
+          if (flags[i2][i1]==FIXED) {
+            _mark[i2][i1] = KNOWN;
             _tk[i2][i1] = 0.0f;
             _k1[i2][i1] = i1;
             _k2[i2][i1] = i2;
+          } else {
+            _mark[i2][i1] = FAR;
+            _tk[i2][i1] = TIME_UNKNOWN;
+          }
+        }
+      }
+    }
+    void extrapolate() {
+      while (!_hmin.isEmpty()) {
+        Entry e = _hmin.remove();
+        int i1 = e.i1;
+        int i2 = e.i2;
+        _mark[i2][i1] = KNOWN;
+        updateNabors(i1,i2);
+      }
+    }
+    void updateNabors(int i1, int i2) {
+
+      // For all sample nabors of (i1,i2) ...
+      for (int k2=-1; k2<=1; ++k2) {
+        for (int k1=-1; k1<=1; ++k1) {
+          if (k1==0 && k2==0) continue;
+
+          // Sample indices for this nabor; skip if out of bounds.
+          int j1 = i1+k1;
+          int j2 = i2+k2;
+          if (j1<0 || j1>=_n1) continue;
+          if (j2<0 || j2>=_n2) continue;
+
+          // Skip this nabor if time is already known.
+          if (_mark[j2][j1]==KNOWN) continue;
+
+          // Current time for this nabor.
+          float tj = _tk[j2][j1];
+
+          // If nabor not already in the trial heap, insert it.
+          if (_mark[j2][j1]==FAR) {
+            _mark[j2][j1] = TRIAL;
+            _hmin.insert(j1,j2,tj);
+          }
+
+          // Compute time for this nabor.
+          float e11 = 1.0f; // TODO: tensor coefficients
+          float e12 = 0.0f;
+          float e22 = 1.0f;
+          float tc = computeTime(j1,j2,e11,e12,e22,_tk);
+
+          // If computed time is smaller, reduce the current time.
+          if (tc<tj) {
+            _tk[j2][j1] = tc;
+            _hmin.reduce(j1,j2,tc);
           }
         }
       }
@@ -84,10 +136,17 @@ public class ImagePainter2 {
       _imin[e.i2][e.i1] = i;
     }
 
+    // The value for times not yet computed. Also the value returned by
+    // methods that compute times from nabor times when a valid time
+    // cannot be computed. We use the maximum possible float so that
+    // it will be larger than any valid times we compute.
+    private static final float TIME_UNKNOWN = Float.MAX_VALUE;
+
     private static final int CLEAR = 0;
     private static final int FIXED = 1;
     private static final int EXTRA = 2;
     private static final int INTER = 3;
+
     private static final int FAR = 0;
     private static final int TRIAL = 1;
     private static final int KNOWN = 2;
@@ -104,9 +163,17 @@ public class ImagePainter2 {
     //   * - - * - - *
     // The symbol X represents the vertex X0 shared by all eight triangles. 
     // The symbol * represents the other two triangle vertices X1 and X2, 
-    // which are ordered counter-clockwise around X0.
+    // which are indexed in counter-clockwise order around X0.
 
     private static final float SQRT2 = sqrt(2.0f);
+
+    // Sample index offsets for vertices X1 of the eight nabor triangles.
+    private static final int[] K11 = { 1, 1, 0,-1,-1,-1, 0, 1};
+    private static final int[] K12 = { 0, 1, 1, 1, 0,-1,-1,-1};
+
+    // Sample index offsets for vertices X2 of the eight nabor triangles.
+    private static final int[] K21 = { 1, 0,-1,-1,-1, 0, 1, 1};
+    private static final int[] K22 = { 1, 1, 1, 0,-1,-1,-1, 0};
 
     // Components of vectors Y1 = X1-X2 for the eight nabor triangles.
     private static final float[] Y11 =
@@ -120,34 +187,24 @@ public class ImagePainter2 {
     private static final float[] Y22 =
       {-SQRT2, -1.0f,-SQRT2,  0.0f, SQRT2,  1.0f, SQRT2,  0.0f};
 
-    // Sample index offsets for vertices X1 of the eight nabor triangles.
-    private static final int[] K11 = { 1, 1, 0,-1,-1,-1, 0, 1};
-    private static final int[] K12 = { 0, 1, 1, 1, 0,-1,-1,-1};
-
-    // Sample index offsets for vertices X2 of the eight nabor triangles.
-    private static final int[] K21 = { 1, 0,-1,-1,-1, 0, 1, 1};
-    private static final int[] K22 = { 1, 1, 1, 0,-1,-1,-1, 0};
-
-    // The value for times not yet computed. Also the value returned by
-    // methods that compute times from nabor times when a valid time
-    // cannot be computed. We use the maximum possible float so that
-    // it will be larger than any valid times we compute.
-    private static final float TIME_UNKNOWN = Float.MAX_VALUE;
-
     /**
-     * Updates the time for one sample using times at eight nabors.
-     * @param i1 sample index in 1st dimension at which to update the time.
-     * @param i2 sample index in 2nd dimension at which to update the time.
+     * Computes the time for one sample using times at eight nabors.
+     * @param i1 sample index in 1st dimension at which to compute the time.
+     * @param i2 sample index in 2nd dimension at which to compute the time.
      * @param e11 sloth tensor coefficient (1,1) at sample (i1,i2).
      * @param e12 sloth tensor coefficient (1,2) at sample (i1,i2).
      * @param e22 sloth tensor coefficient (2,2) at sample (i1,i2).
-     * @param t array of times; t[i2][i1] is the time to be updated.
+     * @param t array of times; referenced but not modified
+     * @return the computed time.
      */
-    private static void updateTime(
+    private static float computeTime(
       int i1, int i2, float e11, float e12, float e22, float[][] t) 
     {
       int n1 = t[0].length;
       int n2 = t.length;
+
+      // Current time for the specified sample.
+      float ti = t[i2][i1];
 
       // For all eight nabor triangles, ...
       for (int it=0; it<8; ++it) {
@@ -183,12 +240,12 @@ public class ImagePainter2 {
         // Time T0 computed for one nabor triangle.
         float t0 = computeTime(e11,e12,e22,u1,u2,y11,y12,y21,y22);
 
-        // Update the current time if the computed time is smaller.
-        if (t0<t[i2][i1]) 
-          t[i2][i1] = t0;
+        // Update current time if computed time T0 is smaller.
+        if (t0<ti) ti = t0;
       }
-    }
 
+      return ti;
+    }
     private static float computeTime(
       float e11, float e12, float e22,
       float u1, float u2, float y11, float y12, float y21, float y22)
@@ -339,6 +396,9 @@ public class ImagePainter2 {
       _e = e;
     }
   }
+
+  ///////////////////////////////////////////////////////////////////////////
+  // testing
 
   private static void testMinTimeHeap() {
     int n1 = 5;
