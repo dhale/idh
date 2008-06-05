@@ -80,8 +80,16 @@ public class ImagePainter2 {
           }
         }
       }
+      for (int i2=0; i2<_n2; ++i2) {
+        for (int i1=0; i1<_n1; ++i1) {
+          if (_mark[i2][i1]==KNOWN) {
+            initializeNabors(i1,i2);
+          }
+        }
+      }
     }
     void extrapolate() {
+      trace("extrapolate: heap size="+_hmin.size());
       while (!_hmin.isEmpty()) {
         Entry e = _hmin.remove();
         int i1 = e.i1;
@@ -90,42 +98,79 @@ public class ImagePainter2 {
         updateNabors(i1,i2);
       }
     }
+    private static final int[] K1 = { 1,-1,-1, 1, 1, 0,-1, 0};
+    private static final int[] K2 = { 1, 1,-1,-1, 0, 1, 0,-1};
+    void initializeNabors(int i1, int i2) {
+      for (int k=0; k<8; ++k) {
+        int k1 = K1[k];
+        int k2 = K2[k];
+
+        // Sample indices for this nabor; skip if out of bounds.
+        int j1 = i1+k1;
+        int j2 = i2+k2;
+        if (j1<0 || j1>=_n1) continue;
+        if (j2<0 || j2>=_n2) continue;
+
+        // Skip this nabor if time is already known.
+        if (_mark[j2][j1]==KNOWN) continue;
+
+        // Compute time for this nabor.
+        float e11 = 1.0f; // TODO: tensor coefficients
+        float e12 = 0.0f;
+        float e22 = 1.0f;
+        float y1 = (float)(j1-i1);
+        float y2 = (float)(j2-i2);
+        float tj = _tk[j2][j1];
+        float tc = sqrt(y1*e11*y1+y1*e12*y2+y2*e12*y1+y2*e22*y2);
+        trace("  j1="+j1+" j2="+j2+" tj="+tj+" tc="+tc);
+        _tk[j2][j1] = tc;
+        if (_mark[j2][j1]!=TRIAL) {
+          trace("  inserting tc="+tc);
+          _hmin.insert(j1,j2,tc);
+        } else {
+          trace("  reducing tj="+tj+" to tc="+tc);
+          _hmin.reduce(j1,j2,tc);
+        }
+      }
+    }
     void updateNabors(int i1, int i2) {
+      trace("updateNabors: i1="+i1+" i2="+i2);
 
-      // For all sample nabors of (i1,i2) ...
-      for (int k2=-1; k2<=1; ++k2) {
-        for (int k1=-1; k1<=1; ++k1) {
-          if (k1==0 && k2==0) continue;
+      // For all eight nabors of (i1,i2) ...
+      for (int k=0; k<8; ++k) {
+        int k1 = K1[k];
+        int k2 = K2[k];
 
-          // Sample indices for this nabor; skip if out of bounds.
-          int j1 = i1+k1;
-          int j2 = i2+k2;
-          if (j1<0 || j1>=_n1) continue;
-          if (j2<0 || j2>=_n2) continue;
+        // Sample indices for this nabor; skip if out of bounds.
+        int j1 = i1+k1;
+        int j2 = i2+k2;
+        if (j1<0 || j1>=_n1) continue;
+        if (j2<0 || j2>=_n2) continue;
 
-          // Skip this nabor if time is already known.
-          if (_mark[j2][j1]==KNOWN) continue;
+        // Skip this nabor if time is already known.
+        if (_mark[j2][j1]==KNOWN) continue;
 
-          // Current time for this nabor.
-          float tj = _tk[j2][j1];
+        // Current time for this nabor.
+        float tj = _tk[j2][j1];
 
-          // If nabor not already in the trial heap, insert it.
-          if (_mark[j2][j1]==FAR) {
-            _mark[j2][j1] = TRIAL;
-            _hmin.insert(j1,j2,tj);
-          }
+        // If nabor not already in the trial heap, insert it.
+        if (_mark[j2][j1]==FAR) {
+          _mark[j2][j1] = TRIAL;
+          _hmin.insert(j1,j2,tj);
+        }
 
-          // Compute time for this nabor.
-          float e11 = 1.0f; // TODO: tensor coefficients
-          float e12 = 0.0f;
-          float e22 = 1.0f;
-          float tc = computeTime(j1,j2,e11,e12,e22,_tk);
+        // Compute time for this nabor.
+        float e11 = 1.0f; // TODO: tensor coefficients
+        float e12 = 0.0f;
+        float e22 = 1.0f;
+        float tc = computeTime(j1,j2,e11,e12,e22,_tk);
+        trace("  j1="+j1+" j2="+j2+" tc="+tc);
 
-          // If computed time is smaller, reduce the current time.
-          if (tc<tj) {
-            _tk[j2][j1] = tc;
-            _hmin.reduce(j1,j2,tc);
-          }
+        // If computed time is smaller, reduce the current time.
+        if (tc<tj) {
+          trace("  reducing tj="+tj+" to tc="+tc);
+          _tk[j2][j1] = tc;
+          _hmin.reduce(j1,j2,tc);
         }
       }
     }
@@ -165,8 +210,6 @@ public class ImagePainter2 {
     // The symbol * represents the other two triangle vertices X1 and X2, 
     // which are indexed in counter-clockwise order around X0.
 
-    private static final float SQRT2 = sqrt(2.0f);
-
     // Sample index offsets for vertices X1 of the eight nabor triangles.
     private static final int[] K11 = { 1, 1, 0,-1,-1,-1, 0, 1};
     private static final int[] K12 = { 0, 1, 1, 1, 0,-1,-1,-1};
@@ -177,15 +220,15 @@ public class ImagePainter2 {
 
     // Components of vectors Y1 = X1-X2 for the eight nabor triangles.
     private static final float[] Y11 =
-      {  0.0f,  1.0f,  1.0f,  0.0f,  0.0f, -1.0f, -1.0f,  0.0f};
+      { 0.0f, 1.0f, 1.0f, 0.0f, 0.0f,-1.0f,-1.0f, 0.0f};
     private static final float[] Y12 =
-      { -1.0f,  0.0f,  0.0f,  1.0f,  1.0f,  0.0f,  0.0f, -1.0f};
+      {-1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f,-1.0f};
 
     // Components of vectors Y2 = X0-X2 for the eight nabor triangles.
     private static final float[] Y21 =
-      {-SQRT2,  0.0f, SQRT2,  1.0f, SQRT2,  0.0f,-SQRT2, -1.0f};
+      {-1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f,-1.0f,-1.0f};
     private static final float[] Y22 =
-      {-SQRT2, -1.0f,-SQRT2,  0.0f, SQRT2,  1.0f, SQRT2,  0.0f};
+      {-1.0f,-1.0f,-1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f};
 
     /**
      * Computes the time for one sample using times at eight nabors.
@@ -200,6 +243,7 @@ public class ImagePainter2 {
     private static float computeTime(
       int i1, int i2, float e11, float e12, float e22, float[][] t) 
     {
+      trace("computeTime: i1="+i1+" i2="+i2);
       int n1 = t[0].length;
       int n2 = t.length;
 
@@ -208,6 +252,7 @@ public class ImagePainter2 {
 
       // For all eight nabor triangles, ...
       for (int it=0; it<8; ++it) {
+        trace("  it="+it);
 
         // Sample indices of vertices X0, X1 and X2 of nabor triangle.
         int i01 = i1;
@@ -222,14 +267,10 @@ public class ImagePainter2 {
         if (i22<0 || i22>=n2) continue;
 
         // Times T1 and T2 at vertices X1 and X2 of nabor triangle.
+        float t0 = TIME_UNKNOWN;
         float t1 = t[i12][i11];
         float t2 = t[i22][i21];
-        if (t1==TIME_UNKNOWN) continue;
-        if (t2==TIME_UNKNOWN) continue;
-
-        // Reduced times U1 and U2 from T1 and T2.
-        float u1 = t1-t2;
-        float u2 = t2;
+        if (t1==TIME_UNKNOWN && t2==TIME_UNKNOWN) continue;
 
         // Components of vectors Y1 = X1-X2 and Y2 = X0-X2.
         float y11 = Y11[it];
@@ -237,35 +278,49 @@ public class ImagePainter2 {
         float y21 = Y21[it];
         float y22 = Y22[it];
 
-        // Time T0 computed for one nabor triangle.
-        float t0 = computeTime(e11,e12,e22,u1,u2,y11,y12,y21,y22);
+        // Dot products with respect to tensor E.
+        float s11 = y11*e11*y11+y11*e12*y12+y12*e12*y11+y12*e22*y12;
+        float s12 = y11*e11*y21+y11*e12*y22+y12*e12*y21+y12*e22*y22;
+        float s22 = y21*e11*y21+y21*e12*y22+y22*e12*y21+y22*e22*y22;
 
-        // Update current time if computed time T0 is smaller.
+        // Time T0 computed for one nabor triangle.
+        if (t1==TIME_UNKNOWN) {
+          t0 = t2+sqrt(s22); // a = 0
+          trace("  t1 unknown: t0="+t0);
+        } else if (t2==TIME_UNKNOWN) {
+          t0 = t1+sqrt(s22-2.0f*s12+s11); // a = 1
+          trace("  t2 unknown: t0="+t0);
+        } else {
+          trace("  t1 and t2 known");
+          float u1 = t1-t2;
+          float u2 = t2;
+          float ss = s11*s22-s12*s12;
+          if (ss<0.0f) ss = 0.0f;
+          float su = s11-u1*u1;
+          if (su>0.0f) {
+            float a = (s12-u1*sqrt(ss/su))/s11;
+            if (a<=0.0f) { // a <= 0
+              t0 = t2+sqrt(s22);
+              trace("    a <= 0: t0="+t0);
+            } else if (a>=1.0f) { // a >= 1
+              t0 = t1+sqrt(s22-2.0f*s12+s11);
+              trace("    a >= 1: t0="+t0);
+            } else { // 0 < a < 1
+              float sa = s22-a*(2.0f*s12-a*s11);
+              if (sa<0.0f) sa = 0.0f;
+              t0 = u2+a*u1+sqrt(s22-2.0f*a*s12+a*a*s11);
+              trace("    0 < a < 1: t0="+t0);
+            }
+          } else {
+            trace("    su="+su);
+          }
+        }
+
+        // If computed time T0 is smaller, update the current time.
         if (t0<ti) ti = t0;
       }
 
       return ti;
-    }
-    private static float computeTime(
-      float e11, float e12, float e22,
-      float u1, float u2, float y11, float y12, float y21, float y22)
-    {
-      float t0 = TIME_UNKNOWN;
-      float s11 = y11*e11*y11+y11*e12*y12+y12*e12*y11+y12*e22*y12;
-      float s12 = y11*e11*y21+y11*e12*y22+y12*e12*y21+y12*e22*y22;
-      float s22 = y21*e11*y21+y21*e12*y22+y22*e12*y21+y22*e22*y22;
-      float ss = s11*s22-s12*s12;
-      if (ss<0.0f) ss = 0.0f;
-      float su = s11-u1*u1;
-      if (su>0.0f) {
-        float a = (s12-u1*sqrt(ss/su))/s11;
-        if (a<0.0f) a = 0.0f;
-        if (a>1.0f) a = 1.0f;
-        float sa = s22-a*(2.0f*s12-a*s11);
-        if (sa<0.0f); sa = 0.0f;
-        t0 = u2+a*u1+sqrt(s22-2.0f*a*s12+a*a*s11);
-      }
-      return t0;
     }
   }
 
@@ -400,6 +455,14 @@ public class ImagePainter2 {
   ///////////////////////////////////////////////////////////////////////////
   // testing
 
+  private static void plot(float[][] f) {
+    SimplePlot sp = new SimplePlot(SimplePlot.Origin.UPPER_LEFT);
+    sp.setSize(650,600);
+    PixelsView pv = sp.addPixels(f);
+    pv.setColorModel(ColorMap.JET);
+    pv.setInterpolation(PixelsView.Interpolation.NEAREST);
+  }
+
   private static void testMinTimeHeap() {
     int n1 = 5;
     int n2 = 6;
@@ -435,11 +498,23 @@ public class ImagePainter2 {
     assert hmin.size()==0;
   }
 
+  private static void testTimeMap() {
+    int n1 = 11;
+    int n2 = 11;
+    TimeMap tmap = new TimeMap(n1,n2);
+    byte[][] flags = new byte[n2][n1];
+    flags[n2/2][n1/2] = TimeMap.FIXED;
+    tmap.initialize(flags);
+    //tmap.extrapolate();
+    plot(tmap._tk);
+  }
+
   private static void trace(String s) {
-    System.out.println(s);
+    //System.out.println(s);
   }
 
   public static void main(String[] args) {
-    testMinTimeHeap();
+    //testMinTimeHeap();
+    testTimeMap();
   }
 }
