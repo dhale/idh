@@ -78,6 +78,7 @@ public class EigenTensors3 {
       _b2 = new short[n3][n2][n1];
       _iu = new short[n3][n2][n1];
       _iw = new short[n3][n2][n1];
+      _uss = new UnitSphereSampling(16);
     } else {
       _a1 = new float[n3][n2][n1];
       _a2 = new float[n3][n2][n1];
@@ -108,7 +109,7 @@ public class EigenTensors3 {
     float[][][] a1, float[][][] a2, float[][][] a3,
     boolean compressed)
   {
-    this(a1[0][0].length,a1[0].length,a1.length,compressed);
+    this(u1[0][0].length,u1[0].length,u1.length,compressed);
     for (int i3=0; i3<_n3; ++i3) {
       for (int i2=0; i2<_n2; ++i2) {
         for (int i1=0; i1<_n1; ++i1) {
@@ -507,7 +508,7 @@ public class EigenTensors3 {
 
   private static final float AS_SET = (float)Short.MAX_VALUE;
   private static final float AS_GET = 1.0f/AS_SET;
-  private static UnitSphereSampling _uss = new UnitSphereSampling(16);
+  private static UnitSphereSampling _uss; // for compressing unit vectors
 
   private boolean _compressed; // true if tensors compressed
   private int _n1,_n2,_n3; // array dimensions

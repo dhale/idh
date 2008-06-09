@@ -61,8 +61,6 @@ public class EigenTensors3Test extends TestCase {
 
   private static void checkVectors(float[] u, float[] v, double e) {
     float uv = u[0]*v[0]+u[1]*v[1]+u[2]*v[2];
-    float uu = u[0]*u[0]+u[1]*u[1]+u[2]*u[2];
-    float vv = v[0]*v[0]+v[1]*v[1]+v[2]*v[2];
     double ca = Math.min(uv,1.0f);
     double a = Math.toDegrees(Math.acos(ca));
     assertEquals(0.0,a,e);
