@@ -61,8 +61,6 @@ public class EigenTensors2 {
 
   /**
    * Constructs tensors for specified array dimensions and coefficients.
-   * The 3rd components of eigenvectors u and v are computed from the 1st 
-   * and 2nd components and are assumed to be non-negative.
    * @param u1 array of 1st components of u.
    * @param u2 array of 2nd components of u.
    * @param a1 array of 1D coefficients.
@@ -122,7 +120,7 @@ public class EigenTensors2 {
    * Gets tensor elements for specified indices.
    * @param i1 index for 1st dimension.
    * @param i2 index for 2nd dimension.
-   * @return a array {a11,a12,a13,a22,a23,a33} of tensor elements.
+   * @return a array {a11,a12,a22} of tensor elements.
    */
   public float[] getTensor(int i1, int i2) {
     float[] a = new float[3];
