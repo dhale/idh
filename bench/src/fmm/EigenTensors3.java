@@ -7,7 +7,6 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 package fmm;
 
 import ldf.UnitSphereSampling;
-import static edu.mines.jtk.util.MathPlus.sqrt;
 
 /**
  * An array of eigen-decompositions of tensors for 3D image processing. 
@@ -56,10 +55,11 @@ import static edu.mines.jtk.util.MathPlus.sqrt;
  * component.
  * <p>
  * Storage may be further reduced by compression, whereby coefficients
- * and vectors are quantized. Quantization errors are less than one 
- * percent for coefficients (a1,a2,a3) and less than one degree for 
- * eigenvectors. Memory required to store each tensor is 12 bytes if 
- * compressed, and 28 bytes if not compressed.
+ * and vectors are quantized. Quantization errors for coefficients
+ * (a1,a2,a3) are less than 0.001*(a1+a2+a3). Quantization errors for 
+ * eigenvectors are less than one degree of arc on the unit sphere.
+ * Memory required to store each tensor is 12 bytes if compressed, and
+ * 28 bytes if not compressed.
  *
  * @author Dave Hale, Colorado School of Mines
  * @version 2008.06.07
@@ -128,10 +128,10 @@ public class EigenTensors3 {
     double s1, double s2, double s3,
     boolean compressed)
   {
-    this(a[0][0].length,a[0].length,a.length,s1,s2,s3,compressed);
-    for (int i3=0; i3<n3; ++i3) {
-      for (int i2=0; i2<n2; ++i2) {
-        for (int i1=0; i1<n1; ++i1) {
+    this(a1[0][0].length,a1[0].length,a1.length,s1,s2,s3,compressed);
+    for (int i3=0; i3<_n3; ++i3) {
+      for (int i2=0; i2<_n2; ++i2) {
+        for (int i1=0; i1<_n1; ++i1) {
           float a1i = a1[i3][i2][i1];
           float a2i = a2[i3][i2][i1];
           float a3i = a3[i3][i2][i1];
@@ -383,7 +383,7 @@ public class EigenTensors3 {
    * Sets the eigenvector u for the tensor with specified indices.
    * The specified vector is assumed to have length one. If the 3rd 
    * component is negative, this method stores the negative of the 
-   * specified vector.
+   * specified vector, so that the 3rd component is positive.
    * @param i1 index for 1st dimension.
    * @param i2 index for 2nd dimension.
    * @param i3 index for 3rd dimension.
@@ -411,7 +411,7 @@ public class EigenTensors3 {
    * Sets the eigenvector u for the tensor with specified indices.
    * The specified vector is assumed to have length one. If the 3rd 
    * component is negative, this method stores the negative of the 
-   * specified vector.
+   * specified vector, so that the 3rd component is positive.
    * @param i1 index for 1st dimension.
    * @param i2 index for 2nd dimension.
    * @param i3 index for 3rd dimension.
@@ -425,7 +425,7 @@ public class EigenTensors3 {
    * Sets the eigenvector w for the tensor with specified indices.
    * The specified vector is assumed to have length one. If the 3rd 
    * component is negative, this method stores the negative of the 
-   * specified vector.
+   * specified vector, so that the 3rd component is positive.
    * @param i1 index for 1st dimension.
    * @param i2 index for 2nd dimension.
    * @param i3 index for 3rd dimension.
@@ -453,7 +453,7 @@ public class EigenTensors3 {
    * Sets the eigenvector w for the tensor with specified indices.
    * The specified vector is assumed to have length one. If the 3rd 
    * component is negative, this method stores the negative of the 
-   * specified vector.
+   * specified vector, so that the 3rd component is positive.
    * @param i1 index for 1st dimension.
    * @param i2 index for 2nd dimension.
    * @param i3 index for 3rd dimension.
@@ -466,7 +466,7 @@ public class EigenTensors3 {
   ///////////////////////////////////////////////////////////////////////////
   // private
 
-  private static final float AS_SET = (float)Short.MAX_VALUE)
+  private static final float AS_SET = (float)Short.MAX_VALUE;
   private static final float AS_GET = 1.0f/AS_SET;
   private static UnitSphereSampling _uss = new UnitSphereSampling(16);
 
@@ -487,7 +487,7 @@ public class EigenTensors3 {
 
   private static float c3(float c1, float c2) {
     float c3s = 1.0f-c1*c1-c2*c2;
-    return (c3s>0.0f)?sqrt(c3s):0.0f;
+    return (c3s>0.0f)?(float)Math.sqrt(c3s):0.0f;
   }
 
   ///////////////////////////////////////////////////////////////////////////
@@ -498,19 +498,16 @@ public class EigenTensors3 {
   }
 
   private static void testRandom() {
-    testRandom(false,false,0.1,1.0e-6);
-    testRandom(false,true,0.1,1.0e-6);
-    testRandom(true,false,1.0,1.0e-2);
-    testRandom(true,true,1.0,1.0e-2);
+    testRandom(false,0.1,1.0e-6);
+    testRandom(true,1.0,1.0e-4);
   }
 
   private static void testRandom(
-    boolean compressed, boolean normalized,
-    double errorAngle, double errorCoeff) 
+    boolean compressed, double errorAngle, double errorCoeff) 
   {
     int n1 = 3, n2 = 4, n3 = 5;
-    double s1 = 1.0, s2 = 1.0, s3 = 1.0;
-    EigenTensors3 dt = new EigenTensors3(false,false,n1,n2,n3,s1,s2,s3);
+    double s1 = 1.1, s2 = 1.2, s3 = 1.3;
+    EigenTensors3 dt = new EigenTensors3(n1,n2,n3,s1,s2,s3,false);
     for (int i3=0; i3<n3; ++i3) {
       for (int i2=0; i2<n2; ++i2) {
         for (int i1=0; i1<n1; ++i1) {
