@@ -44,14 +44,40 @@ import static edu.mines.jtk.util.MathPlus.*;
 public class TimeMap2 {
 
   /**
+   * An interface for classes of sloth tensors. Each tensor is a
+   * symmetric positive-definite 2-by-2 matrix {{s11,s12},{s12,s22}}.
+   */
+  public interface Tensors {
+
+    /**
+     * Gets sloth tensor elements for specified indices.
+     * @param i1 index for 1st dimension.
+     * @param i2 index for 2nd dimension.
+     * @param s array {s11,s12,s22} of tensor elements.
+     */
+    public void getTensor(int i1, int i2, float[] s);
+  }
+
+  /**
    * Constructs a time map with constant identity sloth tensors.
    * In this case, time = distance, which is useful for testing.
    * @param n1 number of samples in 1st dimension.
    * @param n2 number of samples in 2nd dimension.
    */
   public TimeMap2(int n1, int n2) {
+    this(n1,n2,new IdentityTensors());
+  }
+  
+  /**
+   * Constructs a time map for the specified sloth tensor field.
+   * @param n1 number of samples in 1st dimension.
+   * @param n2 number of samples in 2nd dimension.
+   * @param st the sloth tensors.
+   */
+  public TimeMap2(int n1, int n2, Tensors st) {
     _n1 = n1;
     _n2 = n2;
+    _st = st;
     _tk = new float[n2][n1];
     _k1 = new int[n2][n1];
     _k2 = new int[n2][n1];
@@ -59,16 +85,6 @@ public class TimeMap2 {
     _imin = new int[n2][n1];
     _imax = new int[n2][n1];
     _hmin = new MinTimeHeap(this);
-    _st = new IdentityTensors();
-  }
-  
-  /**
-   * Constructs a time map for the specified sloth tensor field.
-   * @param et the sloth tensors.
-   */
-  public TimeMap2(EigenTensors2 et) {
-    this(et.getN1(),et.getN2());
-    _st = new EigenTensors(et);
   }
 
   /**
@@ -115,27 +131,17 @@ public class TimeMap2 {
   }
 
   /**
-   * Computes times for all unknown samples by extrapolating from known times.
-   * @param et array of sloth tensors that define a metric tensor field.
+   * Computes times for unknown samples by extrapolating from known times.
+   * This method does nothing if all times are known.
    */
-  public void extrapolate(EigenTensors2 et) {
-    trace("extrapolate: heap size="+_hmin.size());
+  public void extrapolate() {
     while (!_hmin.isEmpty()) {
       Entry e = _hmin.remove();
       int i1 = e.i1;
       int i2 = e.i2;
       _mark[i2][i1] = KNOWN;
-      trace("  i1="+i1+" i2="+i2+" t="+_tk[i2][i1]);
       updateNabors(i1,i2);
-      trace("  heap size="+_hmin.size());
     }
-  }
-
-  private int getMinTimeHeapIndex(int i1, int i2) {
-    return _imin[i2][i1];
-  }
-  private void setMinTimeHeapIndex(Entry e, int i) {
-    _imin[e.i2][e.i1] = i;
   }
 
   // The value for times not yet computed. Also the value returned by
@@ -144,16 +150,11 @@ public class TimeMap2 {
   // it will be larger than any valid times we compute.
   private static final float TIME_UNKNOWN = Float.MAX_VALUE;
 
-  private static final int CLEAR = 0;
-  private static final int FIXED = 1;
-  private static final int EXTRA = 2;
-  private static final int INTER = 3;
-
   private static final int FAR = 0;
   private static final int TRIAL = 1;
   private static final int KNOWN = 2;
 
-  private SlothTensors _st; // the sloth tensor field
+  private Tensors _st; // the sloth tensor field
   private int _n1,_n2; // map dimensions
   private float[][] _tk; // time to nearest painted (known) sample
   private int[][] _k1,_k2; // indices of nearest painted (known) sample
@@ -196,64 +197,24 @@ public class TimeMap2 {
     {-1.0f,-1.0f,-1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f};
 
   // Sloth tensors.
-  private interface SlothTensors {
-    public void getTensor(int i1, int i2, float[] s);
-  }
-  private static class IdentityTensors implements SlothTensors {
+  private static class IdentityTensors implements Tensors {
     public void getTensor(int i1, int i2, float[] s) {
       s[0] = 1.0f; // s11
       s[1] = 0.0f; // s12
       s[2] = 1.0f; // s22
     }
   }
-  private static class EigenTensors implements SlothTensors {
+  private static class EigenTensors implements Tensors {
     EigenTensors(EigenTensors2 et) {
       _et = et;
     }
     public void getTensor(int i1, int i2, float[] s) {
       _et.getTensor(i1,i2,s);
     }
-  }
-
-  private void initializeNabors(int i1, int i2) {
-    float ti = _tk[i2][i1];
-    for (int k=0; k<8; ++k) {
-      int k1 = K11[k];
-      int k2 = K12[k];
-
-      // Sample indices for this nabor; skip if out of bounds.
-      int j1 = i1+k1;
-      int j2 = i2+k2;
-      if (j1<0 || j1>=_n1) continue;
-      if (j2<0 || j2>=_n2) continue;
-
-      // Skip this nabor if time is already known.
-      if (_mark[j2][j1]==KNOWN) continue;
-
-      // Compute time for this nabor.
-      float e11 = 0.75f; // TODO: tensor coefficients
-      float e12 = 0.25f*sqrt(3.0f);
-      float e22 = 0.25f;
-      float y1 = (float)(j1-i1);
-      float y2 = (float)(j2-i2);
-      float tj = _tk[j2][j1];
-      float tc = ti+sqrt(y1*e11*y1+2.0f*y1*e12*y2+y2*e22*y2);
-      trace("  j1="+j1+" j2="+j2+" tj="+tj+" tc="+tc);
-      if (_mark[j2][j1]!=TRIAL) {
-        trace("  inserting tc="+tc);
-        _tk[j2][j1] = tc;
-        _mark[j2][j1] = TRIAL;
-        _hmin.insert(j1,j2,tc);
-      } else if (tc<tj) {
-        trace("  reducing tj="+tj+" to tc="+tc);
-        _tk[j2][j1] = tc;
-        _hmin.reduce(j1,j2,tc);
-      }
-    }
+    private EigenTensors2 _et;
   }
 
   private void updateNabors(int i1, int i2) {
-    //trace("  updateNabors: i1="+i1+" i2="+i2);
 
     // For all eight nabors of (i1,i2) ...
     for (int k=0; k<8; ++k) {
@@ -279,15 +240,10 @@ public class TimeMap2 {
       }
 
       // Compute time for this nabor.
-      float e11 = 0.75f; // TODO: tensor coefficients
-      float e12 = 0.25f*sqrt(3.0f);
-      float e22 = 0.25f;
-      float tc = computeTime(j1,j2,e11,e12,e22);
-      //trace("  j1="+j1+" j2="+j2+" tc="+tc);
+      float tc = computeTime(j1,j2);
 
       // If computed time is smaller, reduce the current time.
       if (tc<tj) {
-        trace("    j1="+j1+" j2="+j2+" tj="+tj+" tc="+tc);
         _tk[j2][j1] = tc;
         _hmin.reduce(j1,j2,tc);
       }
@@ -304,17 +260,20 @@ public class TimeMap2 {
    * @param t array of times; referenced but not modified
    * @return the computed time.
    */
-  private float computeTime(
-    int i1, int i2, float e11, float e12, float e22)
-  {
-    //trace("computeTime: i1="+i1+" i2="+i2);
+  private float computeTime(int i1, int i2) {
+
+    // Elements of sloth tensor.
+    float[] s = new float[3];
+    _st.getTensor(i1,i2,s);
+    float s11 = s[0];
+    float s12 = s[1];
+    float s22 = s[2];
 
     // Current time for the specified sample.
     float ti = _tk[i2][i1];
 
     // For all eight nabor triangles, ...
     for (int it=0; it<8; ++it) {
-      //trace("  it="+it);
 
       // Sample indices of vertices X0, X1 and X2 of nabor triangle.
       int i01 = i1;
@@ -344,41 +303,33 @@ public class TimeMap2 {
       float y21 = Y21[it];
       float y22 = Y22[it];
 
-      // Dot products with respect to tensor E.
-      float s11 = y11*e11*y11+y11*e12*y12+y12*e12*y11+y12*e22*y12;
-      float s12 = y11*e11*y21+y11*e12*y22+y12*e12*y21+y12*e22*y22;
-      float s22 = y21*e11*y21+y21*e12*y22+y22*e12*y21+y22*e22*y22;
+      // Inner products with respect to metric tensor S.
+      float d11 = y11*s11*y11+y11*s12*y12+y12*s12*y11+y12*s22*y12;
+      float d12 = y11*s11*y21+y11*s12*y22+y12*s12*y21+y12*s22*y22;
+      float d22 = y21*s11*y21+y21*s12*y22+y22*s12*y21+y22*s22*y22;
 
       // Time T0 computed for one nabor triangle.
       if (m1!=KNOWN) {
-        t0 = t2+sqrt(s22); // a = 0
-        //trace("  t1 unknown: t0="+t0);
+        t0 = t2+sqrt(d22); // a = 0
       } else if (m2!=KNOWN) {
-        t0 = t1+sqrt(s22-2.0f*s12+s11); // a = 1
-        //trace("  t2 unknown: t0="+t0);
+        t0 = t1+sqrt(d22-2.0f*d12+d11); // a = 1
       } else {
-        //trace("  t1 and t2 known");
         float u1 = t1-t2;
         float u2 = t2;
-        float ss = s11*s22-s12*s12;
-        if (ss<0.0f) ss = 0.0f;
-        float su = s11-u1*u1;
-        if (su>0.0f) {
-          float a = (s12-u1*sqrt(ss/su))/s11;
+        float dd = d11*d22-d12*d12;
+        if (dd<0.0f) dd = 0.0f;
+        float du = d11-u1*u1;
+        if (du>0.0f) {
+          float a = (d12-u1*sqrt(dd/du))/d11;
           if (a<=0.0f) { // a <= 0
-            t0 = t2+sqrt(s22);
-            //trace("    a <= 0: t0="+t0);
+            t0 = t2+sqrt(d22);
           } else if (a>=1.0f) { // a >= 1
-            t0 = t1+sqrt(s22-2.0f*s12+s11);
-            //trace("    a >= 1: t0="+t0);
+            t0 = t1+sqrt(d22-2.0f*d12+d11);
           } else { // 0 < a < 1
-            float sa = s22-a*(2.0f*s12-a*s11);
-            if (sa<0.0f) sa = 0.0f;
-            t0 = u2+a*u1+sqrt(s22-2.0f*a*s12+a*a*s11);
-            //trace("    0 < a < 1: t0="+t0);
+            float da = d22-a*(2.0f*d12-a*d11);
+            if (da<0.0f) da = 0.0f;
+            t0 = u2+a*u1+sqrt(d22-2.0f*a*d12+a*a*d11);
           }
-        } else {
-          //trace("    su="+su);
         }
       }
 
@@ -389,7 +340,20 @@ public class TimeMap2 {
     return ti;
   }
 
-  // An entry in a min-heap or max-heap.
+  // Used by the min-heap to maintain indices of samples in the heap.
+  // Each heap entry has array indices (i1,i2). These methods access 
+  // and update the corresponding index in the heap. They are necessary 
+  // so that times for samples in the heap can be reduced without 
+  // searching through the entire heap looking for the sample with 
+  // indices (i1,i2).
+  private int getMinTimeHeapIndex(int i1, int i2) {
+    return _imin[i2][i1];
+  }
+  private void setMinTimeHeapIndex(Entry e, int i) {
+    _imin[e.i2][e.i1] = i;
+  }
+
+  // An entry in a heap has sample indices (i1,i2) and time t.
   private static class Entry {
     int i1,i2;
     float t;
@@ -410,6 +374,7 @@ public class TimeMap2 {
       _tmap = tmap;
     }
 
+    // Dumps the heap to the console; leading spaces denote level in tree.
     void dump() {
       dump("",0);
     }
@@ -437,8 +402,6 @@ public class TimeMap2 {
       set(i,ei);
       siftUp(i);
       ++_n;
-      //trace("insert: i1="+i1+" i2="+i2+" t="+t);
-      //dump();
     }
 
     // Reduces the time of the entry with specified indices.
@@ -448,8 +411,6 @@ public class TimeMap2 {
       ei.t = t;
       set(i,ei);
       siftUp(i);
-      //trace("reduce: i1="+i1+" i2="+i2+" t="+t);
-      //dump();
     }
 
     // Removes and returns the entry with smallest time.
@@ -459,8 +420,6 @@ public class TimeMap2 {
       set(0,_e[_n]);
       set(_n,e0);
       siftDown(0);
-      //trace("remove:");
-      //dump();
       return e0;
     }
 
@@ -576,7 +535,6 @@ public class TimeMap2 {
     for (int i=0; i<n; ++i) {
       Entry e = hmin.remove();
       float ti = e.t;
-      //trace("ti="+ti+" si="+s[i]);
       assert ti==s[i];
     }
     assert hmin.isEmpty();
@@ -587,9 +545,9 @@ public class TimeMap2 {
     int n1 = 101;
     int n2 = 101;
     TimeMap2 tmap = new TimeMap2(n1,n2);
-    byte[][] flags = new byte[n2][n1];
-    flags[n2/2][n1/2] = TimeMap2.FIXED;
-    tmap.initialize(flags);
+    boolean[][] known = new boolean[n2][n1];
+    known[n2/2][n1/2] = true;
+    tmap.initialize(known);
     tmap.extrapolate();
     //tmap._tk[n2-2][n1-2] = 0.0f;
     //tmap._tk[n2-2][n1-1] = 0.0f;
