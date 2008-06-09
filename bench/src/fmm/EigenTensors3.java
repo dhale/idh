@@ -7,16 +7,17 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 package fmm;
 
 import ldf.UnitSphereSampling;
+import edu.mines.jtk.dsp.Eigen;
 
 /**
- * An array of eigen-decompositions of tensors for 3D image processing. 
+ * An array of eigen-decompositions of tensors for 3D image processing.
  * Each tensor is a symmetric positive-semidefinite 3-by-3 matrix:
  * <pre><code>
  *     |a11 a12 a13|
  * A = |a12 a22 a23|
  *     |a13 a23 a33|
  * </code></pre>
- * Such tensors facilitate anisotropic image processing.
+ * Such tensors can be used to parameterize anisotropic image processing.
  * <p>
  * The eigen-decomposition of the matrix A is
  * <pre><code>
@@ -27,7 +28,7 @@ import ldf.UnitSphereSampling;
  * scaled by the corresponding eigenvalues au, av, and aw.
  * <p>
  * The ordering among eigenvalues is easily ensured by the equivalent 
- * representation
+ * representation in terms of a1 = au-av, a2 = av-aw, and a3 = aw:
  * <pre><code>
  * A = (a1+a2+a3)*u*u' + (a2+a3)*v*v' + a3*w*w' 
  *     a1*u*u' + a2*(u*u'+v*v') + a3*(u*u'+v*v'+w*w')
@@ -41,13 +42,6 @@ import ldf.UnitSphereSampling;
  * to 2D scaling in a plane orthogonal to w, and a3 corresponds to 3D 
  * isotropic scaling.
  * <p>
- * The coefficients (a1,a2,a3) are local; they may vary from sample to
- * sample. To provide additional control for 1D, 2D and 3D scaling, the 
- * coefficients (a1,a2,a3) may be multiplied by non-negative constant 
- * factors (s1,s2,s3), so that
- * <pre><code>
- * A = s1*a1*u*u' + s2*a2*(I-w*w') + s3*a3*I
- * </code></pre>
  * Only the 1st and 2nd components of the eigenvectors u and w are stored. 
  * Except for a sign, the 3rd components may be computed from the 1st and 
  * 2nd. Because the tensors are independent of the choice of sign, the 
@@ -72,22 +66,12 @@ public class EigenTensors3 {
    * @param n1 number of tensors in 1st dimension.
    * @param n2 number of tensors in 2nd dimension.
    * @param n3 number of tensors in 3rd dimension.
-   * @param s1 global scale factor for 1D coefficients.
-   * @param s2 global scale factor for 2D coefficients.
-   * @param s3 global scale factor for 3D coefficients.
    * @param compressed true, for compressed tensors; false, otherwise.
    */
-  public EigenTensors3(
-    int n1, int n2, int n3,
-    double s1, double s2, double s3,
-    boolean compressed)
-  {
+  public EigenTensors3(int n1, int n2, int n3, boolean compressed) {
     _n1 = n1;
     _n2 = n2;
     _n3 = n3;
-    _s1 = (float)s1;
-    _s2 = (float)s2;
-    _s3 = (float)s3;
     _compressed = compressed;
     if (compressed) {
       _b1 = new short[n3][n2][n1];
@@ -116,19 +100,15 @@ public class EigenTensors3 {
    * @param a1 array of 1D coefficients.
    * @param a2 array of 2D coefficients.
    * @param a3 array of 3D coefficients.
-   * @param s1 global scale factor for 1D coefficients.
-   * @param s2 global scale factor for 2D coefficients.
-   * @param s3 global scale factor for 3D coefficients.
    * @param compressed true, for compressed tensors; false, otherwise.
    */
   public EigenTensors3(
     float[][][] u1, float[][][] u2,
     float[][][] w1, float[][][] w2,
     float[][][] a1, float[][][] a2, float[][][] a3,
-    double s1, double s2, double s3,
     boolean compressed)
   {
-    this(a1[0][0].length,a1[0].length,a1.length,s1,s2,s3,compressed);
+    this(a1[0][0].length,a1[0].length,a1.length,compressed);
     for (int i3=0; i3<_n3; ++i3) {
       for (int i2=0; i2<_n2; ++i2) {
         for (int i1=0; i1<_n1; ++i1) {
@@ -174,7 +154,7 @@ public class EigenTensors3 {
   }
 
   /**
-   * Gets tensor elements {a11,a12,a13,a22,a23,a33} for specified indices.
+   * Gets tensor elements for specified indices.
    * @param i1 index for 1st dimension.
    * @param i2 index for 2nd dimension.
    * @param i3 index for 3rd dimension.
@@ -202,15 +182,25 @@ public class EigenTensors3 {
       w3 = c3(w1,w2);
     }
     a3 = asum-a1-a2;
-    a1 *= _s1;
-    a2 *= _s2;
-    a3 *= _s3;
     a[0] = a1*u1*u1+a2*(1.0f-w1*w1)+a3; // a11
     a[1] = a1*u1*u2+a2*(    -w1*w2)   ; // a12
     a[2] = a1*u1*u3+a2*(    -w1*w3)   ; // a13
     a[3] = a1*u2*u2+a2*(1.0f-w2*w2)+a3; // a22
     a[4] = a1*u2*u3+a2*(    -w2*w3)   ; // a23
     a[5] = a1*u3*u3+a2*(1.0f-w3*w3)+a3; // a33
+  }
+
+  /**
+   * Gets tensor elements for specified indices.
+   * @param i1 index for 1st dimension.
+   * @param i2 index for 2nd dimension.
+   * @param i3 index for 3rd dimension.
+   * @return a array {a11,a12,a13,a22,a23,a33} of tensor elements.
+   */
+  public float[] getTensor(int i1, int i2, int i3) {
+    float[] a = new float[6];
+    getTensor(i1,i2,i3,a);
+    return a;
   }
 
 
@@ -345,6 +335,55 @@ public class EigenTensors3 {
   }
 
   /**
+   * Sets tensor elements for specified indices.
+   * This method first computes an eigen-decomposition of the specified
+   * tensor, and then stores the computed eigenvectors and coefficients.
+   * @param i1 index for 1st dimension.
+   * @param i2 index for 2nd dimension.
+   * @param i3 index for 3rd dimension.
+   * @param a array {a11,a12,a13,a22,a23,a33} of tensor elements.
+   */
+  public void setTensor(int i1, int i2, int i3, float[] a) {
+    setTensor(i1,i2,i3,a[0],a[1],a[2],a[3],a[4],a[5]);
+  }
+
+  /**
+   * Sets tensor elements for specified indices.
+   * This method first computes an eigen-decomposition of the specified
+   * tensor, and then stores the computed eigenvectors and coefficients.
+   * @param i1 index for 1st dimension.
+   * @param i2 index for 2nd dimension.
+   * @param i3 index for 3rd dimension.
+   * @param a11 tensor element a11.
+   * @param a12 tensor element a12.
+   * @param a13 tensor element a13.
+   * @param a22 tensor element a22.
+   * @param a23 tensor element a23.
+   * @param a33 tensor element a33.
+   */
+  public void setTensor(
+    int i1, int i2, int i3, 
+    float a11, float a12, float a13, float a22, float a23, float a33)
+  {
+    float[][] aa = {
+      {a11,a12,a13},
+      {a12,a22,a23},
+      {a13,a23,a33}
+    };
+    float[][] vv = new float[3][3];
+    float[] ev = new float[3];
+    Eigen.solveSymmetric33(aa,vv,ev);
+    float[] u = vv[0];
+    float[] w = vv[2];
+    float au = ev[0]; if (au<0.0f) au = 0.0f;
+    float av = ev[1]; if (av<0.0f) av = 0.0f;
+    float aw = ev[2]; if (aw<0.0f) aw = 0.0f;
+    setEigenvectorU(i1,i2,i3,u);
+    setEigenvectorW(i1,i2,i3,w);
+    setCoefficients(i1,i2,i3,au-av,av-aw,aw);
+  }
+
+  /**
    * Sets coefficients for the tensor with specified indices.
    * @param i1 index for 1st dimension.
    * @param i2 index for 2nd dimension.
@@ -472,7 +511,6 @@ public class EigenTensors3 {
 
   private boolean _compressed; // true if tensors compressed
   private int _n1,_n2,_n3; // array dimensions
-  private float _s1,_s2,_s3; // multipliers for (a1,a2,a3)
   private float[][][] _as; // sum a1+a2+a3
   private short[][][] _b1; // a1 compressed
   private short[][][] _b2; // a2 compressed
@@ -488,128 +526,5 @@ public class EigenTensors3 {
   private static float c3(float c1, float c2) {
     float c3s = 1.0f-c1*c1-c2*c2;
     return (c3s>0.0f)?(float)Math.sqrt(c3s):0.0f;
-  }
-
-  ///////////////////////////////////////////////////////////////////////////
-  // testing
-
-  public static void main(String[] args) {
-    testRandom();
-  }
-
-  private static void testRandom() {
-    testRandom(false,0.1,1.0e-6);
-    testRandom(true,1.0,1.0e-4);
-  }
-
-  private static void testRandom(
-    boolean compressed, double errorAngle, double errorCoeff) 
-  {
-    int n1 = 3, n2 = 4, n3 = 5;
-    double s1 = 1.1, s2 = 1.2, s3 = 1.3;
-    EigenTensors3 dt = new EigenTensors3(n1,n2,n3,s1,s2,s3,false);
-    for (int i3=0; i3<n3; ++i3) {
-      for (int i2=0; i2<n2; ++i2) {
-        for (int i1=0; i1<n1; ++i1) {
-          float[] a = makeRandomCoefficients();
-          float[] u = makeRandomVector();
-          float[] w = makeOrthogonalVector(u);
-          dt.setCoefficients(i1,i2,i3,a);
-          dt.setEigenvectorU(i1,i2,i3,u);
-          dt.setEigenvectorW(i1,i2,i3,w);
-          float[] c;
-          c = dt.getEigenvectorU(i1,i2,i3); checkVectors(u,c,errorAngle);
-          c = dt.getEigenvectorW(i1,i2,i3); checkVectors(w,c,errorAngle);
-          c = dt.getCoefficients(i1,i2,i3); checkCoefficients(c,a,errorCoeff);
-        }
-      }
-    }
-  }
-
-  private static void checkCoefficients(float[] c, float[] a, double error) {
-    float e1 = Math.abs(c[0]-a[0]);
-    float e2 = Math.abs(c[1]-a[1]);
-    float e3 = Math.abs(c[2]-a[2]);
-    //System.out.println("e1="+e1+" e2="+e2+" e3="+e3);
-    assert e1<error:"error in a1 less than "+error;
-    assert e2<error:"error in a2 less than "+error;
-    assert e3<error:"error in a3 less than "+error;
-  }
-
-  private static void checkVectors(float[] u, float[] v, double error) {
-    float uv = u[0]*v[0]+u[1]*v[1]+u[2]*v[2];
-    float uu = u[0]*u[0]+u[1]*u[1]+u[2]*u[2];
-    float vv = v[0]*v[0]+v[1]*v[1]+v[2]*v[2];
-    double ca = Math.min(uv,1.0f);
-    double angle = Math.toDegrees(Math.acos(ca));
-    //System.out.println("angle="+angle+" uv="+uv+" uu="+uu+" vv="+vv);
-    assert angle<error:"angle between u and v less than "+error+" degrees";
-  }
-
-  private static void checkTensors(float[] s, float[] t, double error) {
-    edu.mines.jtk.util.Array.dump(s);
-    edu.mines.jtk.util.Array.dump(t);
-    float e = 0.0f, d = 0.0f;
-    e += Math.abs(s[0]-t[0]); d += Math.abs(s[0]);
-    e += Math.abs(s[1]-t[1]); d += Math.abs(s[1]);
-    e += Math.abs(s[2]-t[2]); d += Math.abs(s[2]);
-    e += Math.abs(s[3]-t[3]); d += Math.abs(s[3]);
-    e += Math.abs(s[4]-t[4]); d += Math.abs(s[4]);
-    e += Math.abs(s[5]-t[5]); d += Math.abs(s[5]);
-    System.out.println("e/d="+(e/d));
-  }
-
-  private static float[] normalize(float[] a) {
-    float s = 1.0f/(a[0]+a[1]+a[2]);
-    return new float[]{a[0]*s,a[1]*s,a[2]*s};
-  }
-
-  private static java.util.Random r = new java.util.Random();
-
-  // Random coefficients, not normalized.
-  private static float[] makeRandomCoefficients() {
-    float d1 = r.nextFloat();
-    float d2 = r.nextFloat();
-    float d3 = r.nextFloat();
-    //float ds = 1.0f/(d1+d2+d3);
-    //return new float[]{d1*ds,d2*ds,d3*ds};
-    return new float[]{d1,d2,d3};
-  }
-
-  // Random unit vector.
-  private static float[] makeRandomVector() {
-    float a = r.nextFloat()-0.5f;
-    float b = r.nextFloat()-0.5f;
-    float c = r.nextFloat()-0.5f;
-    if (c<0.0f) {
-      a = -a;
-      b = -b;
-      c = -c;
-    }
-    float s = 1.0f/(float)Math.sqrt(a*a+b*b+c*c);
-    return new float[]{a*s,b*s,c*s};
-  }
-
-  // Random unit vector orthogonal to specified vector.
-  private static float[] makeOrthogonalVector(float[] v1) {
-    float a1 = v1[0];
-    float b1 = v1[1];
-    float c1 = v1[2];
-    float a2 = r.nextFloat()-0.5f;
-    float b2 = r.nextFloat()-0.5f;
-    float c2 = r.nextFloat()-0.5f;
-    float d11 = a1*a1+b1*b1+c1*c1;
-    float d12 = a1*a2+b1*b2+c1*c2;
-    float s = d12/d11;
-    float a = a2-s*a1;
-    float b = b2-s*b1;
-    float c = c2-s*c1;
-    if (c<0.0f) {
-      a = -a;
-      b = -b;
-      c = -c;
-    }
-    s = 1.0f/(float)Math.sqrt(a*a+b*b+c*c);
-    return new float[]{a*s,b*s,c*s};
   }
 }
