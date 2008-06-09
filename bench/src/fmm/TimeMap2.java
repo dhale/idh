@@ -239,28 +239,17 @@ public class TimeMap2 {
         _hmin.insert(j1,j2,tj);
       }
 
-      // Compute time for this nabor.
-      float tc = computeTime(j1,j2);
-
-      // If computed time is smaller, reduce the current time.
-      if (tc<tj) {
-        _tk[j2][j1] = tc;
-        _hmin.reduce(j1,j2,tc);
-      }
+      // Update time for this nabor.
+      updateTime(j1,j2);
     }
   }
 
   /**
-   * Computes the time for one sample using times at eight nabors.
+   * Updates the time for one sample using times at eight nabors.
    * @param i1 sample index in 1st dimension at which to compute the time.
    * @param i2 sample index in 2nd dimension at which to compute the time.
-   * @param e11 sloth tensor coefficient (1,1) at sample (i1,i2).
-   * @param e12 sloth tensor coefficient (1,2) at sample (i1,i2).
-   * @param e22 sloth tensor coefficient (2,2) at sample (i1,i2).
-   * @param t array of times; referenced but not modified
-   * @return the computed time.
    */
-  private float computeTime(int i1, int i2) {
+  private void updateTime(int i1, int i2) {
 
     // Elements of sloth tensor.
     float[] s = new float[3];
@@ -269,11 +258,15 @@ public class TimeMap2 {
     float s12 = s[1];
     float s22 = s[2];
 
-    // Current time for the specified sample.
+    // Current time and indices for the specified sample.
     float ti = _tk[i2][i1];
+    int ki1 = _k1[i2][i1];
+    int ki2 = _k2[i2][i1];
 
     // For all eight nabor triangles, ...
     for (int it=0; it<8; ++it) {
+      int k01 = -1;
+      int k02 = -1;
 
       // Sample indices of vertices X0, X1 and X2 of nabor triangle.
       int i01 = i1;
@@ -311,8 +304,12 @@ public class TimeMap2 {
       // Time T0 computed for one nabor triangle.
       if (m1!=KNOWN) {
         t0 = t2+sqrt(d22); // a = 0
+        k01 = i21;
+        k02 = i22;
       } else if (m2!=KNOWN) {
         t0 = t1+sqrt(d22-2.0f*d12+d11); // a = 1
+        k01 = i11;
+        k02 = i12;
       } else {
         float u1 = t1-t2;
         float u2 = t2;
@@ -323,21 +320,42 @@ public class TimeMap2 {
           float a = (d12-u1*sqrt(dd/du))/d11;
           if (a<=0.0f) { // a <= 0
             t0 = t2+sqrt(d22);
+            k01 = i21;
+            k02 = i22;
           } else if (a>=1.0f) { // a >= 1
             t0 = t1+sqrt(d22-2.0f*d12+d11);
+            k01 = i11;
+            k02 = i12;
           } else { // 0 < a < 1
             float da = d22-a*(2.0f*d12-a*d11);
             if (da<0.0f) da = 0.0f;
             t0 = u2+a*u1+sqrt(d22-2.0f*a*d12+a*a*d11);
+            if (t1<t2) {
+              k01 = i11;
+              k02 = i12;
+            } else {
+              k01 = i21;
+              k02 = i22;
+            }
           }
         }
       }
 
       // If computed time T0 is smaller, update the current time.
-      if (t0<ti) ti = t0;
+      if (t0<ti) {
+        ti = t0;
+        ki1 = k01;
+        ki2 = k02;
+      }
     }
 
-    return ti;
+    // If computed time is smaller, reduce the current time.
+    if (ti<_tk[j2][j1]) {
+      _tk[j2][j1] = ti;
+      _k1[j2][j1] = ki1;
+      _k2[j2][j1] = ki2;
+      _hmin.reduce(j1,j2,ti);
+    }
   }
 
   // Used by the min-heap to maintain indices of samples in the heap.
