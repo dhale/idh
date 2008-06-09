@@ -204,15 +204,6 @@ public class TimeMap2 {
       s[2] = 1.0f; // s22
     }
   }
-  private static class EigenTensors implements Tensors {
-    EigenTensors(EigenTensors2 et) {
-      _et = et;
-    }
-    public void getTensor(int i1, int i2, float[] s) {
-      _et.getTensor(i1,i2,s);
-    }
-    private EigenTensors2 _et;
-  }
 
   private void updateNabors(int i1, int i2) {
 
@@ -350,11 +341,11 @@ public class TimeMap2 {
     }
 
     // If computed time is smaller, reduce the current time.
-    if (ti<_tk[j2][j1]) {
-      _tk[j2][j1] = ti;
-      _k1[j2][j1] = ki1;
-      _k2[j2][j1] = ki2;
-      _hmin.reduce(j1,j2,ti);
+    if (ti<_tk[i2][i1]) {
+      _tk[i2][i1] = ti;
+      _k1[i2][i1] = ki1;
+      _k2[i2][i1] = ki2;
+      _hmin.reduce(i1,i2,ti);
     }
   }
 
@@ -559,12 +550,44 @@ public class TimeMap2 {
     assert hmin.size()==0;
   }
 
-  private static void testTimeMap() {
+  private static class EigenTensors implements Tensors {
+    EigenTensors(int n1, int n2, double s1, double s2, double v1) {
+      float u2 = -(float)v1;
+      float u1 = sqrt(1.0f-u2*u2);
+      float a1 = (float)s1;
+      float a2 = (float)s2;
+      _et = new EigenTensors2(n1,n2);
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          _et.setEigenvectorU(i1,i2,u1,u2);
+          _et.setCoefficients(i1,i2,a1,a2);
+        }
+      }
+    }
+    public void getTensor(int i1, int i2, float[] s) {
+      _et.getTensor(i1,i2,s);
+    }
+    private EigenTensors2 _et;
+  }
+
+  private static void testTimeMaps() {
+    double[] angles = {0.0,1*PI/12,2*PI/12,3*PI/12,4*PI/12};
+    for (double angle:angles)
+      testTimeMap(100,1,sin(angle));
+  }
+  private static void testTimeMap(double s1, double s2, double v1) {
     int n1 = 101;
     int n2 = 101;
-    TimeMap2 tmap = new TimeMap2(n1,n2);
+    EigenTensors et = new EigenTensors(n1,n2,s1,s2,v1);
+    TimeMap2 tmap = new TimeMap2(n1,n2,et);
     boolean[][] known = new boolean[n2][n1];
     known[n2/2][n1/2] = true;
+    known[   0][   0] = true;
+    known[   0][n1-1] = true;
+    known[n2-1][   0] = true;
+    known[n2-1][n1-1] = true;
+    //known[n2/2][1*n1/4] = true;
+    //known[n2/2][3*n1/4] = true;
     tmap.initialize(known);
     tmap.extrapolate();
     //tmap._tk[n2-2][n1-2] = 0.0f;
@@ -580,6 +603,6 @@ public class TimeMap2 {
 
   public static void main(String[] args) {
     //testMinTimeHeap();
-    testTimeMap();
+    testTimeMaps();
   }
 }
