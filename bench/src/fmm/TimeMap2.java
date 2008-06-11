@@ -93,31 +93,55 @@ public class TimeMap2 {
     _imin = new int[n2][n1];
     _imax = new int[n2][n1];
     _hmin = new MinTimeHeap(this);
+    _hmax = new MaxTimeHeap(this);
   }
 
   /**
-   * Initializes this time map to zero time for specified known samples.
+   * Updates this time map from the specified sample with time zero.
+   * Specifically, updates all samples in this time map that are nearest to
+   * the sample with specified indices, when compared with other samples
+   * already known.
+   * <p>
+   * Sets the time for the specified sample to zero. Then recursively
+   * updates nabor times while those times are less than the times currently
+   * stored in this time map. In other words, updates all samples in this
+   * time map that are nearest to the specified sample.
+   * @param k1 index in 1st dimension of known sample.
+   * @param k2 index in 2nd dimension of known sample.
+   */
+  public void updateFrom(int k1, int k2) {
+    _mark[k2][k1] = KNOWN;
+    _tk[k2][k1] = 0.0f;
+    _k1[k2][k1] = k1;
+    _k2[k2][k1] = k2;
+    _hmin.clear();
+    updateNabors(k1,k2);
+    if (_monitor!=null)
+      _monitor.timeSet(k1,k2,k1,k2,_tk[k2][k1]);
+    while (!_hmin.isEmpty()) {
+      Entry e = _hmin.remove();
+      int i1 = e.i1;
+      int i2 = e.i2;
+      _mark[i2][i1] = KNOWN;
+      if (_monitor!=null)
+        _monitor.timeSet(i1,i2,_k1[i2][i1],_k2[i2][i1],_tk[i2][i1]);
+      updateNabors(i1,i2);
+    }
+  }
+
+  /**
+   * Initializes this time map to time zero for specified known samples.
+   * Sets all other samples to time unknown.
    * @param k array of flags; true, if time is zero; false, otherwise.
    */
   public void initialize(boolean[][] k) {
-    initialize(k,null);
-  }
-
-  /**
-   * Initializes this time map to specified times for known samples.
-   * This method uses only those times in the specified array for which
-   * the corresponding known flags are true.
-   * @param k array of flags; true, if time is known; false, otherwise.
-   * @param t array of times; if null, times at known samples are zero.
-   */
-  public void initialize(boolean[][] k, float[][] t) {
 
     // Initialize times for all known samples and mark the rest unknown.
     for (int i2=0; i2<_n2; ++i2) {
       for (int i1=0; i1<_n1; ++i1) {
         if (k[i2][i1]) {
           _mark[i2][i1] = KNOWN;
-          _tk[i2][i1] = (t!=null)?t[i2][i1]:0.0f;
+          _tk[i2][i1] = 0.0f;
           _k1[i2][i1] = i1;
           _k2[i2][i1] = i2;
           if (_monitor!=null)
@@ -182,9 +206,20 @@ public class TimeMap2 {
   // it will be larger than any valid times we compute.
   private static final float TIME_UNKNOWN = Float.MAX_VALUE;
 
-  private static final int FAR = 0;
-  private static final int TRIAL = 1;
-  private static final int KNOWN = 2;
+  private int FAR = 0;
+  private int TRIAL = 1;
+  private int KNOWN = 2;
+  private void clearFlags() {
+    if (KNOWN+3>Integer.MAX_VALUE) {
+      FAR = 0;
+      TRIAL = 1;
+      KNOWN = 2;
+    } else {
+      FAR += 3;
+      TRIAL += 3;
+      KNOWN += 3;
+    }
+  }
 
   private Tensors _st; // the sloth tensor field
   private int _n1,_n2; // map dimensions
@@ -393,39 +428,38 @@ public class TimeMap2 {
     _imin[e.i2][e.i1] = i;
   }
 
+  // Same for max-heap.
+  private int getMaxTimeHeapIndex(int i1, int i2) {
+    return _imax[i2][i1];
+  }
+  private void setMaxTimeHeapIndex(Entry e, int i) {
+    _imax[e.i2][e.i1] = i;
+  }
+
   // An entry in a heap has sample indices (i1,i2) and time t.
   private static class Entry {
     int i1,i2;
     float t;
   }
 
-  // A min-heap of times. This heap is special in that it maintains
-  // indices in a corresponding time map. For specified sample indices 
-  // (i1,i2), those indices enable O(1) access to heap entries. Such
-  // fast access is important when reducing times in the time map.
-  private static class MinTimeHeap {
+  // A min- or max- heap of times. This heap is special in that it 
+  // maintains indices in a corresponding time map. For specified 
+  // sample indices (i1,i2), those indices enable O(1) access to heap 
+  // entries. Such fast access is important when reducing times in the 
+  // time map.
+  private static class TimeHeap {
+
+    enum Type {MIN,MAX};
 
     private int _n; // number of entries in this heap
     private Entry[] _e = new Entry[16]; // array of entries in this heap
     private TimeMap2 _tmap; // time map kept in sync with this heap
+    private Type _type; // the type of this heap
 
     // Constructs a heap with a corresponding time map.
-    MinTimeHeap(TimeMap2 tmap) {
+    TimeHeap(TimeMap2 tmap, Type type) {
       _tmap = tmap;
-    }
-
-    // Dumps the heap to the console; leading spaces denote level in tree.
-    void dump() {
-      dump("",0);
-    }
-    private void dump(String s, int i) {
-      if (i<_n) {
-        s = s+"  ";
-        Entry e = _e[i];
-        trace(s+""+e.i1+" "+e.i2+" "+e.t);
-        dump(s,2*i+1);
-        dump(s,2*i+2);
-      }
+      _type = type;
     }
 
     // Inserts a new entry with specified indices and time.
@@ -478,7 +512,7 @@ public class TimeMap2 {
       return _n==0;
     }
 
-    // If necessary, moves entry e[i] down so not greater than children.
+    // If necessary, moves entry e[i] down so not greater/less than children.
     private void siftDown(int i) {
       Entry ei = _e[i]; // entry ei that may move down
       float eit = ei.t; // cached time for entry ei
@@ -486,28 +520,40 @@ public class TimeMap2 {
       while (i<m) { // while not childless, ...
         int c = (i<<1)+1; // index of left child
         int r = c+1; // index of right child
-        Entry ec = _e[c]; // initially assume left child smallest
-        if (r<_n && _e[r].t<ec.t) // but if right child smallest, ...
-          ec = _e[c=r]; // the smaller of left and right children
-        if (eit<=ec.t) // break if ei not greater than smaller child
-          break;
-        set(i,ec); // ei greater than smaller child, so move smaller child up
+        Entry ec = _e[c]; // initially assume left child smallest/largest
+        if (_type==Type.MIN) { // if min-heap
+          if (r<_n && _e[r].t<ec.t) // but if right child smallest, ...
+            ec = _e[c=r]; // the smaller of left and right children
+          if (eit<=ec.t) // break if ei not greater than smaller child
+            break;
+        } else { // if max-heap
+          if (r<_n && _e[r].t>ec.t) // but if right child largest, ...
+            ec = _e[c=r]; // the larger of left and right children
+          if (eit>=ec.t) // break if ei not less than larger child
+            break;
+        }
+        set(i,ec); // move smaller/larger child up
         i = c;
       }
       if (ei!=_e[i]) // if necessary, ...
         set(i,ei); // set ei where it belongs
     }
 
-    // If necessary, moves entry e[i] up so not less than parent.
+    // If necessary, moves entry e[i] up so not less/greater than parent.
     private void siftUp(int i) {
       Entry ei = _e[i]; // entry ei that may move up
       float eit = ei.t; // cached time for entry ei
       while (i>0) { // while a parent (not the root entry), ...
         int p = (i-1)>>>1; // index of parent
         Entry ep = _e[p]; // the parent
-        if (eit>=ep.t) // break if ei not less than parent
-          break;
-        set(i,ep); // ei less than parent, so move parent down
+        if (_type==Type.MIN) { // if min-heap
+          if (eit>=ep.t) // break if ei not less than parent
+            break;
+        } else {
+          if (eit<=ep.t) // break if ei not greater than parent
+            break;
+        }
+        set(i,ep); // ei less/greater than parent, so move parent down
         i = p;
       }
       if (ei!=_e[i]) // if necessary, ...
@@ -517,7 +563,10 @@ public class TimeMap2 {
     // Sets the i'th entry and updates the time map.
     private void set(int i, Entry ei) {
       _e[i] = ei;
-      _tmap.setMinTimeHeapIndex(ei,i);
+      if (_type==Type.MIN)
+        _tmap.setMinTimeHeapIndex(ei,i);
+      else
+        _tmap.setMaxTimeHeapIndex(ei,i);
     }
 
     // Grows this heap to have at least the specified capacity.
@@ -533,6 +582,30 @@ public class TimeMap2 {
       Entry[] e = new Entry[newCapacity];
       System.arraycopy(_e,0,e,0,oldCapacity);
       _e = e;
+    }
+
+    // Dumps this heap to the console; leading spaces show level in tree.
+    void dump() {
+      dump("",0);
+    }
+    private void dump(String s, int i) {
+      if (i<_n) {
+        s = s+"  ";
+        Entry e = _e[i];
+        trace(s+""+e.i1+" "+e.i2+" "+e.t);
+        dump(s,2*i+1);
+        dump(s,2*i+2);
+      }
+    }
+  }
+  private static class MinTimeHeap extends TimeHeap {
+    MinTimeHeap(TimeMap2 tmap) {
+      super(tmap,Type.MIN);
+    }
+  }
+  private static class MaxTimeHeap extends TimeHeap {
+    MaxTimeHeap(TimeMap2 tmap) {
+      super(tmap,Type.MAX);
     }
   }
 
@@ -775,9 +848,9 @@ public class TimeMap2 {
     final float[][] ev = new float[n2][n1];
     LocalOrientFilter lof = new LocalOrientFilter(4);
     lof.apply(x,null,u1,u2,null,null,eu,ev,null);
-    final float[][] s1 = Array.sub(eu,ev);
-    final float[][] s2 = Array.copy(ev);
-    Array.mul(50.0f,s1,s1);
+    final float[][] s1 = Array.div(Array.sub(eu,ev),eu);
+    final float[][] s2 = Array.div(ev,eu);
+    Array.mul(100.0f,s1,s1);
     return new TimeMap2.Tensors() {
       public void getTensor(int i1, int i2, float[] a) {
         _et.getTensor(i1,i2,a);
