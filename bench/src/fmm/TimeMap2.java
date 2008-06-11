@@ -89,32 +89,52 @@ public class TimeMap2 {
     _tk = new float[n2][n1];
     _k1 = new int[n2][n1];
     _k2 = new int[n2][n1];
-    _mark = new byte[n2][n1];
+    _mark = new int[n2][n1];
     _imin = new int[n2][n1];
     _imax = new int[n2][n1];
     _hmin = new MinTimeHeap(this);
     _hmax = new MaxTimeHeap(this);
+    initialize();
+  }
+
+  public void insertZerosAt(boolean[][] z) {
+
+    // Build the max-heap of samples to be zeroed.
+    _hmax.clear();
+    for (int i2=0; i2<_n2; ++i2) {
+      for (int i1=0; i1<_n1; ++i1) {
+        _imax[i2][i1] = -1;
+        if (z[i2][i1]) {
+          _hmax.insert(i1,i2,_tk[i2][i1]);
+        }
+      }
+    }
+
+    // Zero samples in the max-heap, from farthest to nearest.
+    while (!_hmax.isEmpty()) {
+      Entry e = _hmax.remove();
+      int i1 = e.i1;
+      int i2 = e.i2;
+      insertZeroAt(i1,i2);
+    }
   }
 
   /**
    * Updates this time map from the specified sample with time zero.
    * Specifically, updates all samples in this time map that are nearest to
    * the sample with specified indices, when compared with other samples
-   * already known.
-   * <p>
-   * Sets the time for the specified sample to zero. Then recursively
-   * updates nabor times while those times are less than the times currently
-   * stored in this time map. In other words, updates all samples in this
+   * already known. Afterwards, the specified sample will have zero time.
    * time map that are nearest to the specified sample.
    * @param k1 index in 1st dimension of known sample.
    * @param k2 index in 2nd dimension of known sample.
    */
-  public void updateFrom(int k1, int k2) {
-    _mark[k2][k1] = KNOWN;
+  public void insertZeroAt(int k1, int k2) {
+    clearMarks();
+    _hmin.clear();
+    _mark[k2][k1] = _known;
     _tk[k2][k1] = 0.0f;
     _k1[k2][k1] = k1;
     _k2[k2][k1] = k2;
-    _hmin.clear();
     updateNabors(k1,k2);
     if (_monitor!=null)
       _monitor.timeSet(k1,k2,k1,k2,_tk[k2][k1]);
@@ -122,10 +142,22 @@ public class TimeMap2 {
       Entry e = _hmin.remove();
       int i1 = e.i1;
       int i2 = e.i2;
-      _mark[i2][i1] = KNOWN;
+      _mark[i2][i1] = _known;
       if (_monitor!=null)
         _monitor.timeSet(i1,i2,_k1[i2][i1],_k2[i2][i1],_tk[i2][i1]);
       updateNabors(i1,i2);
+    }
+  }
+
+  // Initialize all times known but invalid.
+  public void initialize() {
+    for (int i2=0; i2<_n2; ++i2) {
+      for (int i1=0; i1<_n1; ++i1) {
+        _mark[i2][i1] = _known;
+        _tk[i2][i1] = TIME_INVALID;
+        _k1[i2][i1] = -1;
+        _k2[i2][i1] = -1;
+      }
     }
   }
 
@@ -140,15 +172,15 @@ public class TimeMap2 {
     for (int i2=0; i2<_n2; ++i2) {
       for (int i1=0; i1<_n1; ++i1) {
         if (k[i2][i1]) {
-          _mark[i2][i1] = KNOWN;
+          _mark[i2][i1] = _known;
           _tk[i2][i1] = 0.0f;
           _k1[i2][i1] = i1;
           _k2[i2][i1] = i2;
           if (_monitor!=null)
             _monitor.timeSet(i1,i2,_k1[i2][i1],_k2[i2][i1],_tk[i2][i1]);
         } else {
-          _mark[i2][i1] = FAR;
-          _tk[i2][i1] = TIME_UNKNOWN;
+          _mark[i2][i1] = _far;
+          _tk[i2][i1] = TIME_INVALID;
         }
       }
     }
@@ -157,7 +189,7 @@ public class TimeMap2 {
     _hmin.clear();
     for (int i2=0; i2<_n2; ++i2) {
       for (int i1=0; i1<_n1; ++i1) {
-        if (_mark[i2][i1]==KNOWN) {
+        if (_mark[i2][i1]==_known) {
           updateNabors(i1,i2);
         }
       }
@@ -173,7 +205,7 @@ public class TimeMap2 {
       Entry e = _hmin.remove();
       int i1 = e.i1;
       int i2 = e.i2;
-      _mark[i2][i1] = KNOWN;
+      _mark[i2][i1] = _known;
       if (_monitor!=null)
         _monitor.timeSet(i1,i2,_k1[i2][i1],_k2[i2][i1],_tk[i2][i1]);
       updateNabors(i1,i2);
@@ -204,20 +236,25 @@ public class TimeMap2 {
   // methods that compute times from nabor times when a valid time
   // cannot be computed. We use the maximum possible float so that
   // it will be larger than any valid times we compute.
-  private static final float TIME_UNKNOWN = Float.MAX_VALUE;
+  private static final float TIME_INVALID = Float.MAX_VALUE;
 
-  private int FAR = 0;
-  private int TRIAL = 1;
-  private int KNOWN = 2;
-  private void clearFlags() {
-    if (KNOWN+3>Integer.MAX_VALUE) {
-      FAR = 0;
-      TRIAL = 1;
-      KNOWN = 2;
+  private int _far = 0;
+  private int _trial = 1;
+  private int _known = 2;
+  private void clearMarks() {
+    if (_known+2>Integer.MAX_VALUE) {
+      _far = 0;
+      _trial = 1;
+      _known = 2;
+      for (int i2=0; i2<_n2; ++i2) {
+        for (int i1=0; i1<_n1; ++i1) {
+          _mark[i2][i1] = _far;
+        }
+      }
     } else {
-      FAR += 3;
-      TRIAL += 3;
-      KNOWN += 3;
+      _far += 2; // all known samples are now far
+      _trial +=2; // no trial samples
+      _known +=2; // no known samples
     }
   }
 
@@ -225,9 +262,10 @@ public class TimeMap2 {
   private int _n1,_n2; // map dimensions
   private float[][] _tk; // time to nearest painted (known) sample
   private int[][] _k1,_k2; // indices of nearest painted (known) sample
-  private byte[][] _mark; // samples are marked FAR, TRIAL or KNOWN
+  private int[][] _mark; // samples are marked far, trial, or known
   private int[][] _imin,_imax; // indices for samples in min/max heaps
   private MinTimeHeap _hmin; // the min heap
+  private MaxTimeHeap _hmax; // the max heap
   private Monitor _monitor; // not null if monitoring changes
 
   // Times for each sample are computed from one of eight nabor triangles.
@@ -287,14 +325,14 @@ public class TimeMap2 {
       if (j2<0 || j2>=_n2) continue;
 
       // Skip this nabor if time is already known.
-      if (_mark[j2][j1]==KNOWN) continue;
+      if (_mark[j2][j1]==_known) continue;
 
       // Current time for this nabor. (May be unknown.)
       float tj = _tk[j2][j1];
 
       // If nabor not already in the trial heap, insert it.
-      if (_mark[j2][j1]!=TRIAL) {
-        _mark[j2][j1] = TRIAL;
+      if (_mark[j2][j1]!=_trial) {
+        _mark[j2][j1] = _trial;
         _hmin.insert(j1,j2,tj);
       }
 
@@ -338,12 +376,12 @@ public class TimeMap2 {
       if (i22<0 || i22>=_n2) continue;
 
       // Need at least one nabor with known time.
-      byte m1 = _mark[i12][i11];
-      byte m2 = _mark[i22][i21];
-      if (m1!=KNOWN && m2!=KNOWN) continue;
+      int m1 = _mark[i12][i11];
+      int m2 = _mark[i22][i21];
+      if (m1!=_known && m2!=_known) continue;
 
       // Times T0, T1 and T2 at vertices X0, X1 and X2 of nabor triangle.
-      float t0 = TIME_UNKNOWN;
+      float t0 = TIME_INVALID;
       float t1 = _tk[i12][i11];
       float t2 = _tk[i22][i21];
 
@@ -359,11 +397,11 @@ public class TimeMap2 {
       float d22 = y21*s11*y21+y21*s12*y22+y22*s12*y21+y22*s22*y22;
 
       // Time T0 computed for one nabor triangle.
-      if (m1!=KNOWN) {
+      if (m1!=_known) {
         t0 = t2+sqrt(d22); // a = 0
         ik1 = i21;
         ik2 = i22;
-      } else if (m2!=KNOWN) {
+      } else if (m2!=_known) {
         t0 = t1+sqrt(d22-2.0f*d12+d11); // a = 1
         ik1 = i11;
         ik2 = i12;
@@ -412,6 +450,7 @@ public class TimeMap2 {
       _k1[i2][i1] = ki1;
       _k2[i2][i1] = ki2;
       _hmin.reduce(i1,i2,ti);
+      _hmax.reduce(i1,i2,ti);
     }
   }
 
@@ -451,11 +490,6 @@ public class TimeMap2 {
 
     enum Type {MIN,MAX};
 
-    private int _n; // number of entries in this heap
-    private Entry[] _e = new Entry[16]; // array of entries in this heap
-    private TimeMap2 _tmap; // time map kept in sync with this heap
-    private Type _type; // the type of this heap
-
     // Constructs a heap with a corresponding time map.
     TimeHeap(TimeMap2 tmap, Type type) {
       _tmap = tmap;
@@ -481,10 +515,12 @@ public class TimeMap2 {
     // Reduces the time of the entry with specified indices.
     void reduce(int i1, int i2, float t) {
       int i = _tmap.getMinTimeHeapIndex(i1,i2);
-      Entry ei = _e[i];
-      ei.t = t;
-      set(i,ei);
-      siftUp(i);
+      if (i>=0) {
+        Entry ei = _e[i];
+        ei.t = t;
+        set(i,ei);
+        siftUp(i);
+      }
     }
 
     // Removes and returns the entry with smallest time.
@@ -512,6 +548,11 @@ public class TimeMap2 {
       return _n==0;
     }
 
+    private int _n; // number of entries in this heap
+    private Entry[] _e = new Entry[1024]; // array of entries in this heap
+    private TimeMap2 _tmap; // time map kept in sync with this heap
+    private Type _type; // the type of this heap
+
     // If necessary, moves entry e[i] down so not greater/less than children.
     private void siftDown(int i) {
       Entry ei = _e[i]; // entry ei that may move down
@@ -522,12 +563,12 @@ public class TimeMap2 {
         int r = c+1; // index of right child
         Entry ec = _e[c]; // initially assume left child smallest/largest
         if (_type==Type.MIN) { // if min-heap
-          if (r<_n && _e[r].t<ec.t) // but if right child smallest, ...
+          if (r<_n && _e[r].t<ec.t) // if right child smallest, ...
             ec = _e[c=r]; // the smaller of left and right children
           if (eit<=ec.t) // break if ei not greater than smaller child
             break;
         } else { // if max-heap
-          if (r<_n && _e[r].t>ec.t) // but if right child largest, ...
+          if (r<_n && _e[r].t>ec.t) // if right child largest, ...
             ec = _e[c=r]; // the larger of left and right children
           if (eit>=ec.t) // break if ei not less than larger child
             break;
@@ -686,7 +727,8 @@ public class TimeMap2 {
 
   private static void plot(float[][] f, IndexColorModel cm) {
     SimplePlot sp = new SimplePlot(SimplePlot.Origin.UPPER_LEFT);
-    sp.setSize(650,600);
+    //sp.setSize(650,600);
+    sp.setSize(1250,1200);
     PixelsView pv = sp.addPixels(f);
     if (cm==null) cm = ColorMap.JET;
     pv.setColorModel(cm);
@@ -753,19 +795,6 @@ public class TimeMap2 {
       }
     }
     return t;
-  }
-
-  private static void diffStats(float[][] a, float[][] b) {
-    int n1 = a[0].length;
-    int n2 = a.length;
-    float[][] bp = Array.add(b,0.000001f*Array.max(b));
-    float[][] ab = Array.abs(Array.sub(a,b));
-    float[][] e = Array.div(ab,bp);
-    //plot(e);
-    float nsum = (float)(n1*n2);
-    float esum = Array.sum(e);
-    float emean = esum/nsum;
-    System.out.println("emean="+emean);
   }
 
   private static void testTimeMaps() {
@@ -888,20 +917,23 @@ public class TimeMap2 {
     float[][] x = readImage(n1,n2,"x174.dat");
     plot(x,ColorMap.GRAY);
     TimeMap2.Tensors st = getStructureTensors(x);
-    //TimeMap2.Tensors st = new LensEigenTensors(n1,n2,0.0,1.0,1.0);
-    boolean[][] known = new boolean[n2][n1];
-    for (int i2=0; i2<n2; i2+=1)
-      known[i2][n1-1] = true;
-    TimeMap2 tmap = new TimeMap2(n1,n2,st);
-    tmap.initialize(known);
-    tmap.extrapolate();
-    float[][] tk = tmap.getTimes();
-    plot(tk,ColorMap.JET);
-    float[][] k2 = getK2(n1,n2,tmap);
-    plot(k2,ColorMap.JET);
-    float[][][] tk2 = slowWay(n1,n2,st);
-    plot(tk2[0],ColorMap.JET);
-    plot(tk2[1],ColorMap.JET);
+    int[] k1 = { 34, 92,172, 27, 25, 12, 81};
+    int[] k2 = { 81,109,109,111,124,138,146};
+    int nk = k1.length;
+    TimeMap2 tmap;
+
+    boolean[][] z = new boolean[n2][n1];
+    for (int ik=0; ik<nk; ++ik)
+      z[k2[ik]][k1[ik]] = true;
+    tmap = new TimeMap2(n1,n2,st);
+    tmap.insertZerosAt(z);
+    
+    tmap = new TimeMap2(n1,n2,st);
+    for (int ik=0; ik<nk; ++ik) {
+      tmap.insertZeroAt(k1[ik],k2[ik]);
+      //plot(tmap.getTimes(),ColorMap.JET);
+    }
+    plot(tmap.getTimes(),ColorMap.JET);
   }
 
   private static float[][][] slowWay(int n1, int n2, TimeMap2.Tensors st) {
@@ -930,7 +962,7 @@ public class TimeMap2 {
   }
 
   private static void trace(String s) {
-    //System.out.println(s);
+    System.out.println(s);
   }
 
   public static void main(String[] args) {
