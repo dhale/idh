@@ -773,15 +773,11 @@ public class TimeMap2 {
     final float[][] u2 = new float[n2][n1];
     final float[][] eu = new float[n2][n1];
     final float[][] ev = new float[n2][n1];
-    LocalOrientFilter lof = new LocalOrientFilter(8);
+    LocalOrientFilter lof = new LocalOrientFilter(4);
     lof.apply(x,null,u1,u2,null,null,eu,ev,null);
     final float[][] s1 = Array.sub(eu,ev);
     final float[][] s2 = Array.copy(ev);
-    Array.mul(1.0f,s1,s1);
-    //Array.fill(0.0f,s1);
-    //Array.fill(1.0f,s2);
-    //Array.fill(1.0f,u1);
-    //Array.fill(0.0f,u2);
+    Array.mul(50.0f,s1,s1);
     return new TimeMap2.Tensors() {
       public void getTensor(int i1, int i2, float[] a) {
         _et.getTensor(i1,i2,a);
@@ -801,7 +797,7 @@ public class TimeMap2 {
         for (int i1=0; i1<n1; ++i1) {
           float d1 = (float)(i1-n1/2);
           float d2 = (float)(i2-n2/2);
-          float as = exp(-0.0001f*(d1*d1+d2*d2));
+          float as = 1.0f-exp(-0.0001f*(d1*d1+d2*d2));
           _et.setEigenvectorU(i1,i2,u1,u2);
           _et.setCoefficients(i1,i2,a1*as,a2*as);
         }
@@ -818,10 +814,10 @@ public class TimeMap2 {
     int n2 = 200;
     float[][] x = readImage(n1,n2,"x174.dat");
     plot(x,ColorMap.GRAY);
-    //TimeMap2.Tensors st = getStructureTensors(x);
-    TimeMap2.Tensors st = new LensEigenTensors(n1,n2,0.0,1.0,1.0);
+    TimeMap2.Tensors st = getStructureTensors(x);
+    //TimeMap2.Tensors st = new LensEigenTensors(n1,n2,0.0,1.0,1.0);
     boolean[][] known = new boolean[n2][n1];
-    for (int i2=0; i2<n2; i2+=10)
+    for (int i2=0; i2<n2; i2+=1)
       known[i2][n1-1] = true;
     TimeMap2 tmap = new TimeMap2(n1,n2,st);
     tmap.initialize(known);
@@ -840,7 +836,7 @@ public class TimeMap2 {
     Array.fill(Float.MAX_VALUE,tk);
     float[][] k2 = new float[n2][n1];
     boolean[][] known = new boolean[n2][n1];
-    for (int j2=0; j2<n2; j2+=10) {
+    for (int j2=0; j2<n2; j2+=1) {
       for (int i2=0; i2<n2; ++i2)
         known[i2][n1-1] = (i2==j2)?true:false;
       TimeMap2 tmap = new TimeMap2(n1,n2,st);
