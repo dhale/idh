@@ -6,11 +6,19 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package fmm;
 
+import static edu.mines.jtk.util.MathPlus.*;
+
+// for testing
+import java.awt.image.*;
+import java.io.*;
 import java.util.*;
+import javax.swing.JFrame;
+import javax.swing.SwingUtilities;
 import edu.mines.jtk.awt.*;
+import edu.mines.jtk.dsp.*;
+import edu.mines.jtk.io.*;
 import edu.mines.jtk.mosaic.*;
 import edu.mines.jtk.util.*;
-import static edu.mines.jtk.util.MathPlus.*;
 
 /**
  * A time map for 2D image processing. A time map is like a distance map
@@ -112,6 +120,8 @@ public class TimeMap2 {
           _tk[i2][i1] = (t!=null)?t[i2][i1]:0.0f;
           _k1[i2][i1] = i1;
           _k2[i2][i1] = i2;
+          if (_monitor!=null)
+            _monitor.timeSet(i1,i2,_k1[i2][i1],_k2[i2][i1],_tk[i2][i1]);
         } else {
           _mark[i2][i1] = FAR;
           _tk[i2][i1] = TIME_UNKNOWN;
@@ -140,8 +150,30 @@ public class TimeMap2 {
       int i1 = e.i1;
       int i2 = e.i2;
       _mark[i2][i1] = KNOWN;
+      if (_monitor!=null)
+        _monitor.timeSet(i1,i2,_k1[i2][i1],_k2[i2][i1],_tk[i2][i1]);
       updateNabors(i1,i2);
     }
+  }
+
+  /**
+   * Sets a monitor for changes to this time map.
+   * @param monitor the monitor; null, if none.
+   */
+  public void setMonitor(Monitor monitor) {
+    _monitor = monitor;
+  }
+
+  /**
+   * Gets the array of times maintained by this time map.
+   * @return the array of times; by reference, not by copy.
+   */
+  public float[][] getTimes() {
+    return _tk;
+  }
+
+  public interface Monitor {
+    public void timeSet(int i1, int i2, int k1, int k2, float tk);
   }
 
   // The value for times not yet computed. Also the value returned by
@@ -161,6 +193,7 @@ public class TimeMap2 {
   private byte[][] _mark; // samples are marked FAR, TRIAL or KNOWN
   private int[][] _imin,_imax; // indices for samples in min/max heaps
   private MinTimeHeap _hmin; // the min heap
+  private Monitor _monitor; // not null if monitoring changes
 
   // Times for each sample are computed from one of eight nabor triangles.
   // These triangles are indexed as follows:
@@ -256,16 +289,14 @@ public class TimeMap2 {
 
     // For all eight nabor triangles, ...
     for (int it=0; it<8; ++it) {
-      int k01 = -1;
-      int k02 = -1;
+      int ik1 = -1;
+      int ik2 = -1;
 
-      // Sample indices of vertices X0, X1 and X2 of nabor triangle.
-      int i01 = i1;
-      int i02 = i2;
-      int i11 = i01+K11[it];
-      int i12 = i02+K12[it];
-      int i21 = i01+K21[it];
-      int i22 = i02+K22[it];
+      // Sample indices of vertices X1 and X2 of nabor triangle.
+      int i11 = i1+K11[it];
+      int i12 = i2+K12[it];
+      int i21 = i1+K21[it];
+      int i22 = i2+K22[it];
       if (i11<0 || i11>=_n1) continue;
       if (i12<0 || i12>=_n2) continue;
       if (i21<0 || i21>=_n1) continue;
@@ -295,12 +326,12 @@ public class TimeMap2 {
       // Time T0 computed for one nabor triangle.
       if (m1!=KNOWN) {
         t0 = t2+sqrt(d22); // a = 0
-        k01 = i21;
-        k02 = i22;
+        ik1 = i21;
+        ik2 = i22;
       } else if (m2!=KNOWN) {
         t0 = t1+sqrt(d22-2.0f*d12+d11); // a = 1
-        k01 = i11;
-        k02 = i12;
+        ik1 = i11;
+        ik2 = i12;
       } else {
         float u1 = t1-t2;
         float u2 = t2;
@@ -311,22 +342,22 @@ public class TimeMap2 {
           float a = (d12-u1*sqrt(dd/du))/d11;
           if (a<=0.0f) { // a <= 0
             t0 = t2+sqrt(d22);
-            k01 = i21;
-            k02 = i22;
+            ik1 = i21;
+            ik2 = i22;
           } else if (a>=1.0f) { // a >= 1
             t0 = t1+sqrt(d22-2.0f*d12+d11);
-            k01 = i11;
-            k02 = i12;
+            ik1 = i11;
+            ik2 = i12;
           } else { // 0 < a < 1
             float da = d22-a*(2.0f*d12-a*d11);
             if (da<0.0f) da = 0.0f;
             t0 = u2+a*u1+sqrt(d22-2.0f*a*d12+a*a*d11);
             if (t1<t2) {
-              k01 = i11;
-              k02 = i12;
+              ik1 = i11;
+              ik2 = i12;
             } else {
-              k01 = i21;
-              k02 = i22;
+              ik1 = i21;
+              ik2 = i22;
             }
           }
         }
@@ -335,8 +366,8 @@ public class TimeMap2 {
       // If computed time T0 is smaller, update the current time.
       if (t0<ti) {
         ti = t0;
-        ki1 = k01;
-        ki2 = k02;
+        ki1 = _k1[ik2][ik1];
+        ki2 = _k2[ik2][ik1];
       }
     }
 
@@ -508,14 +539,6 @@ public class TimeMap2 {
   ///////////////////////////////////////////////////////////////////////////
   // testing
 
-  private static void plot(float[][] f) {
-    SimplePlot sp = new SimplePlot(SimplePlot.Origin.UPPER_LEFT);
-    sp.setSize(650,600);
-    PixelsView pv = sp.addPixels(f);
-    pv.setColorModel(ColorMap.JET);
-    pv.setInterpolation(PixelsView.Interpolation.NEAREST);
-  }
-
   private static void testMinTimeHeap() {
     int n1 = 5;
     int n2 = 6;
@@ -550,6 +573,53 @@ public class TimeMap2 {
     assert hmin.size()==0;
   }
 
+  private static class PlotMonitor implements TimeMap2.Monitor {
+    PlotMonitor(TimeMap2 tmap, float tmax) {
+      _tmap = tmap;
+      _tk = _tmap.getTimes();
+      _n1 = _tk[0].length;
+      _n2 = _tk.length;
+      _tk = Array.fillfloat(tmax,_n1,_n2);
+      _sp = new SimplePlot(SimplePlot.Origin.UPPER_LEFT);
+      _sp.setSize(650,600);
+      _pv = _sp.addPixels(tmap.getTimes());
+      _pv.setColorModel(ColorMap.JET);
+      //_pv.setColorModel(ColorMap.PRISM);
+      _pv.setInterpolation(PixelsView.Interpolation.NEAREST);
+      //_pv.setInterpolation(PixelsView.Interpolation.LINEAR);
+    }
+    public void timeSet(int i1, int i2, int k1, int k2, float tk) {
+      _tk[i2][i1] = tk;
+      SwingUtilities.invokeLater(new Runnable() {
+        public void run() {
+          _pv.set(_tk);
+        }
+      });
+      try {
+        Thread.currentThread().sleep(100);
+      } catch (InterruptedException e) {
+      }
+    }
+    TimeMap2 _tmap;
+    private int _n1,_n2;
+    private SimplePlot _sp;
+    private PixelsView _pv;
+    private float[][] _tk;
+  }
+
+  private static void plot(float[][] f) {
+    plot(f,null);
+  }
+
+  private static void plot(float[][] f, IndexColorModel cm) {
+    SimplePlot sp = new SimplePlot(SimplePlot.Origin.UPPER_LEFT);
+    sp.setSize(650,600);
+    PixelsView pv = sp.addPixels(f);
+    if (cm==null) cm = ColorMap.JET;
+    pv.setColorModel(cm);
+    pv.setInterpolation(PixelsView.Interpolation.NEAREST);
+  }
+
   private static class EigenTensors implements Tensors {
     EigenTensors(int n1, int n2, double s1, double s2, double v1) {
       float u2 = -(float)v1;
@@ -570,31 +640,224 @@ public class TimeMap2 {
     private EigenTensors2 _et;
   }
 
+  private static float[][] timeMapExact(
+    double s1, double s2, double v1, boolean[][] k)
+  {
+    int n1 = k[0].length;
+    int n2 = k.length;
+    float u1 = (float)sqrt(1.0-v1*v1);
+    float u2 = (float)(-v1);
+    float a1 = (float)s1;
+    float a2 = (float)s2;
+    float s11 = a1*u1*u1+a2;
+    float s12 = a1*u1*u2   ;
+    float s22 = a1*u2*u2+a2;
+    int nk = 0;
+    int[] k1 = new int[n1*n2];
+    int[] k2 = new int[n1*n2];
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        if (k[i2][i1]) {
+          k1[nk] = i1;
+          k2[nk] = i2;
+          ++nk;
+        }
+      }
+    }
+    float[][] t = new float[n2][n1];
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        float tmin = Float.MAX_VALUE;
+        for (int ik=0; ik<nk; ++ik) {
+          float d1 = (float)(i1-k1[ik]);
+          float d2 = (float)(i2-k2[ik]);
+          float ti = sqrt(d1*s11*d1+2.0f*d1*s12*d2+d2*s22*d2);
+          if (ti<tmin) {
+            tmin = ti;
+          }
+        }
+        t[i2][i1] = tmin;
+      }
+    }
+    return t;
+  }
+
+  private static void diffStats(float[][] a, float[][] b) {
+    int n1 = a[0].length;
+    int n2 = a.length;
+    float[][] bp = Array.add(b,0.000001f*Array.max(b));
+    float[][] ab = Array.abs(Array.sub(a,b));
+    float[][] e = Array.div(ab,bp);
+    //plot(e);
+    float nsum = (float)(n1*n2);
+    float esum = Array.sum(e);
+    float emean = esum/nsum;
+    System.out.println("emean="+emean);
+  }
+
   private static void testTimeMaps() {
-    double[] angles = {0.0,1*PI/12,2*PI/12,3*PI/12,4*PI/12};
+    //double[] angles = {0.0,1*PI/12,2*PI/12,3*PI/12,4*PI/12};
+    double su = 100;
+    double sv = 1;
+    double s1 = su-sv;
+    double s2 = sv;
+    double[] angles = {PI/8};
     for (double angle:angles)
-      testTimeMap(100,1,sin(angle));
+      testTimeMap(s1,s2,sin(angle));
   }
   private static void testTimeMap(double s1, double s2, double v1) {
-    int n1 = 101;
-    int n2 = 101;
+    int n1 = 128;
+    int n2 = 128;
+    boolean[][] known = new boolean[n2][n1];
+    //known[n2/2][n1/2] = true;
+    //known[   0][   0] = true;
+    //known[   0][n1-1] = true;
+    //known[n2-1][   0] = true;
+    //known[n2-1][n1-1] = true;
+    known[1*n2/4][1*n1/4] = true;
+    known[3*n2/4][3*n1/4] = true;
+    float[][] te = timeMapExact(s1,s2,v1,known);
+    float tmax = Array.max(te);
     EigenTensors et = new EigenTensors(n1,n2,s1,s2,v1);
     TimeMap2 tmap = new TimeMap2(n1,n2,et);
-    boolean[][] known = new boolean[n2][n1];
-    known[n2/2][n1/2] = true;
-    known[   0][   0] = true;
-    known[   0][n1-1] = true;
-    known[n2-1][   0] = true;
-    known[n2-1][n1-1] = true;
-    //known[n2/2][1*n1/4] = true;
-    //known[n2/2][3*n1/4] = true;
+    //PlotMonitor pm = new PlotMonitor(tmap,tmax);
+    //tmap.setMonitor(pm);
     tmap.initialize(known);
     tmap.extrapolate();
-    //tmap._tk[n2-2][n1-2] = 0.0f;
-    //tmap._tk[n2-2][n1-1] = 0.0f;
-    //tmap._tk[n2-1][n1-2] = 0.0f;
-    //tmap._tk[n2-1][n1-1] = 0.0f;
-    plot(tmap._tk);
+    float[][] tk = tmap.getTimes();
+    int[][] k1 = tmap._k1;
+    int k1a = 1*n1/4;
+    int k1b = 3*n1/4;
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        if (k1[i2][i1]==k1a) {
+          tk[i2][i1] = 1.0f;
+        } else {
+          tk[i2][i1] = 2.0f;
+        }
+      }
+    }
+    //diffStats(tk,te);
+    plot(tk);
+    plot(te);
+  }
+
+  private static float[][] getK2(int n1, int n2, TimeMap2 tmap) {
+    int[][] k2 = tmap._k2;
+    float[][] f2 = new float[n2][n1];
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        f2[i2][i1] = (float)k2[i2][i1];
+      }
+    }
+    return f2;
+  }
+
+  private static float[][] readImage(int n1, int n2, String fileName) {
+    String dataDir = "/data/seis/joe/";
+    try {
+      ArrayInputStream ais = new ArrayInputStream(dataDir+fileName);
+      float[][] x = new float[n2][n1];
+      ais.readFloats(x);
+      ais.close();
+      return x;
+    } catch (IOException e) {
+      return null;
+    }
+  }
+
+  private static TimeMap2.Tensors getStructureTensors(float[][] x) {
+    int n1 = x[0].length;
+    int n2 = x.length;
+    final float[][] u1 = new float[n2][n1];
+    final float[][] u2 = new float[n2][n1];
+    final float[][] eu = new float[n2][n1];
+    final float[][] ev = new float[n2][n1];
+    LocalOrientFilter lof = new LocalOrientFilter(8);
+    lof.apply(x,null,u1,u2,null,null,eu,ev,null);
+    final float[][] s1 = Array.sub(eu,ev);
+    final float[][] s2 = Array.copy(ev);
+    Array.mul(1.0f,s1,s1);
+    //Array.fill(0.0f,s1);
+    //Array.fill(1.0f,s2);
+    //Array.fill(1.0f,u1);
+    //Array.fill(0.0f,u2);
+    return new TimeMap2.Tensors() {
+      public void getTensor(int i1, int i2, float[] a) {
+        _et.getTensor(i1,i2,a);
+      }
+      private EigenTensors2 _et = new EigenTensors2(u1,u2,s1,s2);
+    };
+  }
+
+  private static class LensEigenTensors implements Tensors {
+    LensEigenTensors(int n1, int n2, double s1, double s2, double v1) {
+      float u2 = -(float)v1;
+      float u1 = sqrt(1.0f-u2*u2);
+      float a1 = (float)s1;
+      float a2 = (float)s2;
+      _et = new EigenTensors2(n1,n2);
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          float d1 = (float)(i1-n1/2);
+          float d2 = (float)(i2-n2/2);
+          float as = exp(-0.0001f*(d1*d1+d2*d2));
+          _et.setEigenvectorU(i1,i2,u1,u2);
+          _et.setCoefficients(i1,i2,a1*as,a2*as);
+        }
+      }
+    }
+    public void getTensor(int i1, int i2, float[] s) {
+      _et.getTensor(i1,i2,s);
+    }
+    private EigenTensors2 _et;
+  }
+
+  private static void testChannels() {
+    int n1 = 200;
+    int n2 = 200;
+    float[][] x = readImage(n1,n2,"x174.dat");
+    plot(x,ColorMap.GRAY);
+    //TimeMap2.Tensors st = getStructureTensors(x);
+    TimeMap2.Tensors st = new LensEigenTensors(n1,n2,0.0,1.0,1.0);
+    boolean[][] known = new boolean[n2][n1];
+    for (int i2=0; i2<n2; i2+=10)
+      known[i2][n1-1] = true;
+    TimeMap2 tmap = new TimeMap2(n1,n2,st);
+    tmap.initialize(known);
+    tmap.extrapolate();
+    float[][] tk = tmap.getTimes();
+    plot(tk,ColorMap.JET);
+    float[][] k2 = getK2(n1,n2,tmap);
+    plot(k2,ColorMap.JET);
+    float[][][] tk2 = slowWay(n1,n2,st);
+    plot(tk2[0],ColorMap.JET);
+    plot(tk2[1],ColorMap.JET);
+  }
+
+  private static float[][][] slowWay(int n1, int n2, TimeMap2.Tensors st) {
+    float[][] tk = new float[n2][n1];
+    Array.fill(Float.MAX_VALUE,tk);
+    float[][] k2 = new float[n2][n1];
+    boolean[][] known = new boolean[n2][n1];
+    for (int j2=0; j2<n2; j2+=10) {
+      for (int i2=0; i2<n2; ++i2)
+        known[i2][n1-1] = (i2==j2)?true:false;
+      TimeMap2 tmap = new TimeMap2(n1,n2,st);
+      tmap.initialize(known);
+      tmap.extrapolate();
+      float[][] tkj = tmap.getTimes();
+      int[][] k2j = tmap._k2;
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          if (tkj[i2][i1]<tk[i2][i1]) {
+            tk[i2][i1] = tkj[i2][i1];
+            k2[i2][i1] = (float)k2j[i2][i1];
+          }
+        }
+      }
+    }
+    return new float[][][]{tk,k2};
   }
 
   private static void trace(String s) {
@@ -602,7 +865,14 @@ public class TimeMap2 {
   }
 
   public static void main(String[] args) {
-    //testMinTimeHeap();
-    testTimeMaps();
+    testChannels();
+    //testTimeMaps();
+    /*
+    SwingUtilities.invokeLater(new Runnable() {
+      public void run() {
+        testTimeMaps();
+      }
+    });
+    */
   }
 }
