@@ -752,11 +752,11 @@ public class Painting2 {
     final float[][] ev = new float[n2][n1];
     LocalOrientFilter lof = new LocalOrientFilter(4);
     lof.apply(x,null,u1,u2,null,null,eu,ev,null);
-    //final float[][] s1 = Array.div(Array.sub(eu,ev),eu);
-    //final float[][] s2 = Array.div(ev,eu);
-    final float[][] s1 = Array.sub(eu,ev);
-    final float[][] s2 = Array.copy(ev);
-    Array.mul(10.0f,s1,s1);
+    final float[][] s1 = Array.div(Array.sub(eu,ev),eu);
+    final float[][] s2 = Array.div(ev,eu);
+    //final float[][] s1 = Array.sub(eu,ev);
+    //final float[][] s2 = Array.copy(ev);
+    Array.mul(100.0f,s1,s1);
     return new Painting2.Tensors() {
       public void getTensor(int i1, int i2, float[] a) {
         _et.getTensor(i1,i2,a);
@@ -786,7 +786,7 @@ public class Painting2 {
     int[] k2 = new int[nk];
     float[] vk = new float[nk];
     for (int i2=0,ik=0; i2<n2; i2+=m2,++ik) {
-      k1[ik] = n1-1;
+      k1[ik] = n1/2;
       k2[ik] = i2;
       vk[ik] = (float)i2;
     }
