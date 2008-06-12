@@ -736,7 +736,6 @@ public class Painting2 {
           float d1 = (float)(i1-n1/2);
           float d2 = (float)(i2-n2/2);
           float as = exp(-0.0001f*(d1*d1+d2*d2));
-          as = 1.0f;
           _et.setEigenvectorU(i1,i2,u1,u2);
           _et.setCoefficients(i1,i2,a1*as,a2*as);
         }
