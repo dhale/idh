@@ -792,7 +792,7 @@ public class Painting2 {
       vk[ik] = (float)i2;
     }
     */
-    int[] k1 =   {2*n1/4,2*n1/4};
+    int[] k1 =   {3*n1/4,3*n1/4};
     int[] k2 =   {1*n2/4,3*n2/4};
     float[] vk = {  1.0f,  2.0f};
     int nk = vk.length;
