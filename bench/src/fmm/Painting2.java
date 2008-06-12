@@ -774,20 +774,23 @@ public class Painting2 {
     Painting2.Tensors st = getStructureTensors(x);
     //Painting2.Tensors st = new LensEigenTensors(n1,n2,0.0,1.0,1.0);
 
+    /*
     int[] k1 =    { 34,  92, 172,  27,  25,  12,  81, 117,  94,  14,  44};
     int[] k2 =    { 81, 109, 109, 111, 124, 138, 146,  82, 122,  99, 162};
     float[] vk = {1.0f,2.0f,2.0f,2.0f,2.0f,3.0f,3.0f,0.0f,0.0f,0.0f,0.0f};
     int nk = vk.length;
-    /*
-    int nk = n2;
+    */
+    int m2 = 1;
+    int nk = 1+(n2-1)/m2;
     int[] k1 = new int[nk];
     int[] k2 = new int[nk];
     float[] vk = new float[nk];
-    for (int i2=0,ik=0; i2<n2; i2+=1,++ik) {
+    for (int i2=0,ik=0; i2<n2; i2+=m2,++ik) {
       k1[ik] = n1-1;
       k2[ik] = i2;
       vk[ik] = (float)i2;
     }
+    /*
     int[] k1 =   {  n1-1,  n1-1};
     int[] k2 =   {1*n2/4,3*n2/4};
     float[] vk = {  1.0f,  2.0f};
