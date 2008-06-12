@@ -115,7 +115,9 @@ public class TimeMap2 {
       Entry e = _hmax.remove();
       int i1 = e.i1;
       int i2 = e.i2;
+      trace("hmax removed: i1="+i1+" i2="+i2+" t="+e.t);
       insertZeroAt(i1,i2);
+      plot(_tk,ColorMap.JET);
     }
   }
 
@@ -142,7 +144,9 @@ public class TimeMap2 {
       Entry e = _hmin.remove();
       int i1 = e.i1;
       int i2 = e.i2;
+      float t = e.t;
       _mark[i2][i1] = _known;
+      _hmax.reduce(i1,i2,t);
       if (_monitor!=null)
         _monitor.timeSet(i1,i2,_k1[i2][i1],_k2[i2][i1],_tk[i2][i1]);
       updateNabors(i1,i2);
@@ -450,7 +454,6 @@ public class TimeMap2 {
       _k1[i2][i1] = ki1;
       _k2[i2][i1] = ki2;
       _hmin.reduce(i1,i2,ti);
-      _hmax.reduce(i1,i2,ti);
     }
   }
 
@@ -514,8 +517,10 @@ public class TimeMap2 {
 
     // Reduces the time of the entry with specified indices.
     void reduce(int i1, int i2, float t) {
-      int i = _tmap.getMinTimeHeapIndex(i1,i2);
-      if (i>=0) {
+      int i = (_type==Type.MIN) ?
+        _tmap.getMinTimeHeapIndex(i1,i2) :
+        _tmap.getMaxTimeHeapIndex(i1,i2);
+      if (0<=i && i<_n) {
         Entry ei = _e[i];
         ei.t = t;
         set(i,ei);
@@ -727,8 +732,8 @@ public class TimeMap2 {
 
   private static void plot(float[][] f, IndexColorModel cm) {
     SimplePlot sp = new SimplePlot(SimplePlot.Origin.UPPER_LEFT);
-    //sp.setSize(650,600);
-    sp.setSize(1250,1200);
+    sp.setSize(650,600);
+    //sp.setSize(1250,1200);
     PixelsView pv = sp.addPixels(f);
     if (cm==null) cm = ColorMap.JET;
     pv.setColorModel(cm);
