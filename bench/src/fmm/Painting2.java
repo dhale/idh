@@ -124,10 +124,13 @@ public class Painting2 {
   public void extrapolate() {
 
     // Clear all samples that are not fixed, and insert all fixed 
-    // samples into the max-heap with huge (invalid) times.
+    // samples into the max-heap with huge (invalid) times that can
+    // only get smaller. After the max-heap is built, any one of the
+    // fixed samples could be at the top of the heap.
     _hmax.clear();
     for (int i2=0; i2<_n2; ++i2) {
       for (int i1=0; i1<_n1; ++i1) {
+        _tk[i2][i1] = TIME_INVALID;
         _imax[i2][i1] = -1;
         if (_type[i2][i1]==FIXED) {
           _hmax.insert(i1,i2,TIME_INVALID);
