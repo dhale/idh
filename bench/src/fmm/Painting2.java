@@ -173,7 +173,6 @@ public class Painting2 {
 
       // The values to be extrapolated.
       float[] vk = _vk[k2][k1];
-      trace("  vk[0]="+vk[0]);
 
       // Mark all samples as far, mark the fixed sample as known with 
       // time zero, and update its neighbors.
@@ -194,18 +193,19 @@ public class Painting2 {
         int i1 = e.i1;
         int i2 = e.i2;
         float t = e.t;
-        if (_type[i2][i1]!=FIXED) {
+        _mark[i2][i1] = _known;
+        if (_type[i2][i1]==FIXED) {
+          _hmax.reduce(i1,i2,t);
+        } else {
           _type[i2][i1] = EXTRA;
           _k1[i2][i1] = k1;
           _k2[i2][i1] = k2;
           _vk[i2][i1] = vk;
         }
-        _mark[i2][i1] = _known;
-        _hmax.reduce(i1,i2,t);
         updateNabors(i1,i2);
       }
       trace("  nset="+nset);
-      plot(_tk); // DEBUG
+      //plot(_tk); // DEBUG
     }
   }
 
@@ -525,7 +525,11 @@ public class Painting2 {
         Entry ei = _e[i];
         ei.t = t;
         set(i,ei);
-        siftUp(i);
+        if (_type==Type.MIN) {
+          siftUp(i);
+        } else {
+          siftDown(i);
+        }
       }
     }
 
@@ -767,11 +771,11 @@ public class Painting2 {
   }
 
   private static void testChannels() {
-    int n1 = 200;
-    int n2 = 200;
+    int n1 = 201;
+    int n2 = 201;
     int nv = 1;
-    float[][] x = readImage(n1,n2,"x174.dat");
-    plot(x,ColorMap.GRAY);
+    //float[][] x = readImage(n1,n2,"x174.dat");
+    //plot(x,ColorMap.GRAY);
     //Painting2.Tensors st = getStructureTensors(x);
     Painting2.Tensors st = new LensEigenTensors(n1,n2,0.0,1.0,1.0);
 
@@ -781,21 +785,21 @@ public class Painting2 {
     float[] vk = {1.0f,2.0f,2.0f,2.0f,2.0f,3.0f,3.0f,0.0f,0.0f,0.0f,0.0f};
     int nk = vk.length;
     */
-    /*
-    int nk = n2/5;
+    int nk = 1+(n2-1)/20;
     int[] k1 = new int[nk];
     int[] k2 = new int[nk];
     float[] vk = new float[nk];
-    for (int i2=0,ik=0; i2<n2; i2+=5,++ik) {
+    for (int i2=0,ik=0; i2<n2; i2+=20,++ik) {
       k1[ik] = n1-1;
       k2[ik] = i2;
       vk[ik] = (float)i2;
     }
-    */
-    int[] k1 =   {3*n1/4,3*n1/4};
+    /*
+    int[] k1 =   {  n1-1,  n1-1};
     int[] k2 =   {1*n2/4,3*n2/4};
     float[] vk = {  1.0f,  2.0f};
     int nk = vk.length;
+    */
     
     Painting2 p = new Painting2(n1,n2,nv,st);
     for (int ik=0; ik<nk; ++ik) {
