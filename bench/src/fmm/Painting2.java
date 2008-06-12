@@ -70,7 +70,7 @@ public class Painting2 {
     _k1 = new int[n2][n1];
     _k2 = new int[n2][n1];
     _tk = new float[n2][n1];
-    _vk = new float[n2][n1][nv];
+    _vk = new float[n2][n1][];
     _type = new byte[n2][n1];
     _mark = new int[n2][n1];
     _imin = new int[n2][n1];
@@ -96,6 +96,22 @@ public class Painting2 {
         _vk[i2][i1] = null;
       }
     }
+  }
+
+  /**
+   * Paints the specified sample with one specified value at index zero.
+   * Paints zero values for indices greater than zero.
+   * @param k1 index in 1st dimension of painted sample.
+   * @param k2 index in 2nd dimension of painted sample.
+   * @param vk value at index zero for the painted sample.
+   */
+  public void paintAt(int k1, int k2, float vk) {
+    _type[k2][k1] = FIXED;
+    _k1[k2][k1] = k1;
+    _k2[k2][k1] = k2;
+    _tk[k2][k1] = TIME_INVALID;
+    _vk[k2][k1] = new float[_nv];
+    _vk[k2][k1][0] = vk;
   }
 
   /**
@@ -157,35 +173,39 @@ public class Painting2 {
 
       // The values to be extrapolated.
       float[] vk = _vk[k2][k1];
+      trace("  vk[0]="+vk[0]);
 
       // Mark all samples as far, mark the fixed sample as known with 
-      // time zero, and update all its neighbors.
+      // time zero, and update its neighbors.
       clearMarks();
       _hmin.clear();
       _mark[k2][k1] = _known;
-      _tk[k2][k1] = 0.0f;
       _k1[k2][k1] = k1;
       _k2[k2][k1] = k2;
+      _tk[k2][k1] = 0.0f;
       updateNabors(k1,k2);
 
       // Extrapolate from the fixed sample to all samples that are
       // nearer to the fixed sample than to any other fixed sample.
+      int nset = 0;
       while (!_hmin.isEmpty()) {
+        ++nset;
         Entry e = _hmin.remove();
         int i1 = e.i1;
         int i2 = e.i2;
         float t = e.t;
+        if (_type[i2][i1]!=FIXED) {
+          _type[i2][i1] = EXTRA;
+          _k1[i2][i1] = k1;
+          _k2[i2][i1] = k2;
+          _vk[i2][i1] = vk;
+        }
         _mark[i2][i1] = _known;
-        _type[i2][i1] = EXTRA;
-        _k1[i2][i1] = k1;
-        _k2[i2][i1] = k2;
-        _vk[i2][i1] = vk;
         _hmax.reduce(i1,i2,t);
         updateNabors(i1,i2);
       }
-
-      // DEBUG
-      plot(_tk);
+      trace("  nset="+nset);
+      //plot(_tk); // DEBUG
     }
   }
 
@@ -199,15 +219,16 @@ public class Painting2 {
   }
 
   /**
-   * Gets the array of painted values.
-   * @return array of values; by reference, not by copy.
+   * Gets a copy of the painted values with index zero.
+   * @return array of values; by copy, not by reference.
    */
-  public float[][][] getValues() {
-    return _vk;
+  public float[][] getValues() {
+    return getValues(0);
   }
 
   /**
    * Gets a copy of the painted values with specified index.
+   * Zero values are returned for any samples not yet painted.
    * @param iv index of values to get.
    * @return array of values; by copy, not by reference.
    */
@@ -215,7 +236,8 @@ public class Painting2 {
     float[][] v = new float[_n2][_n1];
     for (int i2=0; i2<_n2; ++i2) {
       for (int i1=0; i1<_n1; ++i1) {
-        v[i2][i1] = _vk[i2][i1][iv];
+        float[] vk = _vk[i2][i1];
+        v[i2][i1] = (vk!=null)?vk[iv]:0.0f;
       }
     }
     return v;
@@ -228,7 +250,7 @@ public class Painting2 {
   private static final float TIME_INVALID = Float.MAX_VALUE;
 
   // Type of paint.
-  private static final byte CLEAR = 0; // values null
+  private static final byte CLEAR = 0; // values null (not painted)
   private static final byte FIXED = 1; // values painted explicitly
   private static final byte EXTRA = 2; // values painted by extrapolation
   private static final byte INTER = 3; // values painted by interpolation
@@ -311,6 +333,9 @@ public class Painting2 {
 
   private void updateNabors(int i1, int i2) {
 
+    // Time for the specified sample.
+    float ti = _tk[i2][i1];
+
     // For all eight nabors of (i1,i2) ...
     for (int k=0; k<8; ++k) {
       int k1 = K11[k];
@@ -327,6 +352,9 @@ public class Painting2 {
 
       // Current time for this nabor. (May be unknown.)
       float tj = _tk[j2][j1];
+
+      // Skip this nabor if it has a smaller time.
+      if (tj<ti) continue;
 
       // If nabor not already in the trial heap, insert it.
       if (_mark[j2][j1]!=_trial) {
@@ -353,10 +381,8 @@ public class Painting2 {
     float s12 = s[1];
     float s22 = s[2];
 
-    // Current time and indices for the specified sample.
+    // Current time for the specified sample.
     float ti = _tk[i2][i1];
-    int ki1 = _k1[i2][i1];
-    int ki2 = _k2[i2][i1];
 
     // For all eight nabor triangles, ...
     for (int it=0; it<8; ++it) {
@@ -672,7 +698,7 @@ public class Painting2 {
   private static void plot(float[][] f, IndexColorModel cm) {
     SimplePlot sp = new SimplePlot(SimplePlot.Origin.UPPER_LEFT);
     //sp.setSize(650,600);
-    sp.setSize(1550,1500);
+    sp.setSize(1050,1000);
     PixelsView pv = sp.addPixels(f);
     if (cm==null) cm = ColorMap.JET;
     pv.setColorModel(cm);
@@ -726,7 +752,7 @@ public class Painting2 {
     lof.apply(x,null,u1,u2,null,null,eu,ev,null);
     final float[][] s1 = Array.div(Array.sub(eu,ev),eu);
     final float[][] s2 = Array.div(ev,eu);
-    Array.mul(100.0f,s1,s1);
+    Array.mul(10.0f,s1,s1);
     return new Painting2.Tensors() {
       public void getTensor(int i1, int i2, float[] a) {
         _et.getTensor(i1,i2,a);
@@ -738,21 +764,22 @@ public class Painting2 {
   private static void testChannels() {
     int n1 = 200;
     int n2 = 200;
-    int nv = 0;
+    int nv = 1;
     float[][] x = readImage(n1,n2,"x174.dat");
     plot(x,ColorMap.GRAY);
     Painting2.Tensors st = getStructureTensors(x);
-    int[] k1 = { 34, 92,172, 27, 25, 12, 81};
-    int[] k2 = { 81,109,109,111,124,138,146};
-    int nk = k1.length;
+    int[] k1 =    { 34,  92, 172,  27,  25,  12,  81, 117,  94,  14,  44};
+    int[] k2 =    { 81, 109, 109, 111, 124, 138, 146,  82, 122,  99, 162};
+    float[] vk = {1.0f,2.0f,2.0f,2.0f,2.0f,3.0f,3.0f,0.0f,0.0f,0.0f,0.0f};
+    int nk = vk.length;
     
     Painting2 p = new Painting2(n1,n2,nv,st);
     for (int ik=0; ik<nk; ++ik) {
-      p.paintAt(k1[ik],k2[ik],null);
-      //plot(p.getTimes(),ColorMap.JET);
+      p.paintAt(k1[ik],k2[ik],vk[ik]);
     }
     p.extrapolate();
     plot(p.getTimes(),ColorMap.JET);
+    plot(p.getValues(),ColorMap.JET);
   }
 
   private static void trace(String s) {
