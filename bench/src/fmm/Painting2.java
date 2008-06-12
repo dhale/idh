@@ -110,7 +110,7 @@ public class Painting2 {
     _type[k2][k1] = FIXED;
     _k1[k2][k1] = k1;
     _k2[k2][k1] = k2;
-    _tk[k2][k1] = 0.0f;
+    _tk[k2][k1] = TIME_INVALID;
     _vk[k2][k1] = new float[_nv];
     float[] vs = _vk[k2][k1];
     for (int iv=0; iv<_nv; ++iv)
@@ -180,6 +180,9 @@ public class Painting2 {
         _hmax.reduce(i1,i2,t);
         updateNabors(i1,i2);
       }
+
+      // DEBUG
+      plot(_tk);
     }
   }
 
@@ -354,8 +357,6 @@ public class Painting2 {
 
     // For all eight nabor triangles, ...
     for (int it=0; it<8; ++it) {
-      int ik1 = -1;
-      int ik2 = -1;
 
       // Sample indices of vertices X1 and X2 of nabor triangle.
       int i11 = i1+K11[it];
@@ -391,12 +392,8 @@ public class Painting2 {
       // Time T0 computed for one nabor triangle.
       if (m1!=_known) {
         t0 = t2+sqrt(d22); // a = 0
-        ik1 = i21;
-        ik2 = i22;
       } else if (m2!=_known) {
         t0 = t1+sqrt(d22-2.0f*d12+d11); // a = 1
-        ik1 = i11;
-        ik2 = i12;
       } else {
         float u1 = t1-t2;
         float u2 = t2;
@@ -407,23 +404,12 @@ public class Painting2 {
           float a = (d12-u1*sqrt(dd/du))/d11;
           if (a<=0.0f) { // a <= 0
             t0 = t2+sqrt(d22);
-            ik1 = i21;
-            ik2 = i22;
           } else if (a>=1.0f) { // a >= 1
             t0 = t1+sqrt(d22-2.0f*d12+d11);
-            ik1 = i11;
-            ik2 = i12;
           } else { // 0 < a < 1
             float da = d22-a*(2.0f*d12-a*d11);
             if (da<0.0f) da = 0.0f;
             t0 = u2+a*u1+sqrt(d22-2.0f*a*d12+a*a*d11);
-            if (t1<t2) {
-              ik1 = i11;
-              ik2 = i12;
-            } else {
-              ik1 = i21;
-              ik2 = i22;
-            }
           }
         }
       }
@@ -431,16 +417,12 @@ public class Painting2 {
       // If computed time T0 is smaller, update the current time.
       if (t0<ti) {
         ti = t0;
-        ki1 = _k1[ik2][ik1];
-        ki2 = _k2[ik2][ik1];
       }
     }
 
     // If computed time is smaller, reduce the current time.
     if (ti<_tk[i2][i1]) {
       _tk[i2][i1] = ti;
-      _k1[i2][i1] = ki1;
-      _k2[i2][i1] = ki2;
       _hmin.reduce(i1,i2,ti);
     }
   }
@@ -766,6 +748,7 @@ public class Painting2 {
       p.paintAt(k1[ik],k2[ik],null);
       //plot(p.getTimes(),ColorMap.JET);
     }
+    p.extrapolate();
     plot(p.getTimes(),ColorMap.JET);
   }
 
