@@ -329,9 +329,6 @@ public class Painting2 {
 
   private void updateNabors(int i1, int i2) {
 
-    // Time for the specified sample.
-    float ti = _tk[i2][i1];
-
     // For all eight nabors of specified sample at (i1,i2) ...
     for (int k=0; k<8; ++k) {
       int k1 = K11[k];
@@ -639,7 +636,7 @@ public class Painting2 {
       if (i<_n) {
         s = s+"  ";
         Entry e = _e[i];
-        trace(s+""+e.i1+" "+e.i2+" "+e.t);
+        System.out.println(s+""+e.i1+" "+e.i2+" "+e.t);
         dump(s,2*i+1);
         dump(s,2*i+2);
       }
@@ -750,7 +747,7 @@ public class Painting2 {
     final float[][] u2 = new float[n2][n1];
     final float[][] eu = new float[n2][n1];
     final float[][] ev = new float[n2][n1];
-    LocalOrientFilter lof = new LocalOrientFilter(4);
+    LocalOrientFilter lof = new LocalOrientFilter(6);
     lof.apply(x,null,u1,u2,null,null,eu,ev,null);
     final float[][] s1 = Array.div(Array.sub(eu,ev),eu);
     final float[][] s2 = Array.div(ev,eu);
@@ -774,22 +771,28 @@ public class Painting2 {
     Painting2.Tensors st = getStructureTensors(x);
     //Painting2.Tensors st = new LensEigenTensors(n1,n2,0.0,1.0,1.0);
 
+    int[] k1 =   {  92,  92,  92, 100, 100, 100};
+    int[] k2 =   { 109, 102, 116, 132, 125, 139};
+    float[] vk = {1.0f,2.0f,2.0f,1.0f,2.0f,2.0f};
+    int nk = vk.length;
     /*
     int[] k1 =    { 34,  92, 172,  27,  25,  12,  81, 117,  94,  14,  44};
     int[] k2 =    { 81, 109, 109, 111, 124, 138, 146,  82, 122,  99, 162};
     float[] vk = {1.0f,2.0f,2.0f,2.0f,2.0f,3.0f,3.0f,0.0f,0.0f,0.0f,0.0f};
     int nk = vk.length;
     */
+    /*
     int m2 = 1;
     int nk = 1+(n2-1)/m2;
     int[] k1 = new int[nk];
     int[] k2 = new int[nk];
     float[] vk = new float[nk];
     for (int i2=0,ik=0; i2<n2; i2+=m2,++ik) {
-      k1[ik] = n1/2;
+      k1[ik] = 130;
       k2[ik] = i2;
       vk[ik] = (float)i2;
     }
+    */
     /*
     int[] k1 =   {  n1-1,  n1-1};
     int[] k2 =   {1*n2/4,3*n2/4};
