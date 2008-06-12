@@ -205,7 +205,7 @@ public class Painting2 {
         updateNabors(i1,i2);
       }
       trace("  nset="+nset);
-      //plot(_tk); // DEBUG
+      plot(_tk); // DEBUG
     }
   }
 
@@ -336,34 +336,20 @@ public class Painting2 {
     // Time for the specified sample.
     float ti = _tk[i2][i1];
 
-    // For all eight nabors of (i1,i2) ...
+    // For all eight nabors of specified sample at (i1,i2) ...
     for (int k=0; k<8; ++k) {
       int k1 = K11[k];
       int k2 = K12[k];
 
-      // Sample indices for this nabor; skip if out of bounds.
+      // Sample indices (j1,j2) for this nabor; skip if out of bounds.
       int j1 = i1+k1;
       int j2 = i2+k2;
       if (j1<0 || j1>=_n1) continue;
       if (j2<0 || j2>=_n2) continue;
 
-      // Skip this nabor if time is already known.
-      if (_mark[j2][j1]==_known) continue;
-
-      // Current time for this nabor. (May be unknown.)
-      float tj = _tk[j2][j1];
-
-      // Skip this nabor if it has a smaller time.
-      if (tj<ti) continue;
-
-      // If nabor not already in the trial heap, insert it.
-      if (_mark[j2][j1]!=_trial) {
-        _mark[j2][j1] = _trial;
-        _hmin.insert(j1,j2,tj);
-      }
-
-      // Update time for this nabor.
-      updateTime(j1,j2);
+      // If time for nabor not already known, update it.
+      if (_mark[j2][j1]!=_known)
+        updateTime(j1,j2);
     }
   }
 
@@ -381,8 +367,11 @@ public class Painting2 {
     float s12 = s[1];
     float s22 = s[2];
 
-    // Current time for the specified sample.
-    float ti = _tk[i2][i1];
+    // The current minimum time.
+    float tmin = _tk[i2][i1];
+
+    // Initally assume that no computed time will be less than current min.
+    boolean reduced = false;
 
     // For all eight nabor triangles, ...
     for (int it=0; it<8; ++it) {
@@ -443,16 +432,29 @@ public class Painting2 {
         }
       }
 
-      // If computed time T0 is smaller, update the current time.
-      if (t0<ti) {
-        ti = t0;
+      // If computed time T0 is smaller than the min time, update the min time.
+      if (t0<tmin) {
+        tmin = t0;
+        reduced = true;
       }
     }
 
-    // If computed time is smaller, reduce the current time.
-    if (ti<_tk[i2][i1]) {
-      _tk[i2][i1] = ti;
-      _hmin.reduce(i1,i2,ti);
+    // If the minimum time has been reduced, ...
+    if (reduced) {
+
+      // Remember the minimum time.
+      _tk[i2][i1] = tmin;
+
+      // If this sample not already in the min-heap, insert it.
+      if (_mark[i2][i1]!=_trial) {
+        _mark[i2][i1] = _trial;
+        _hmin.insert(i1,i2,tmin);
+      } 
+
+      // else, reduce the time already stored in the min-heap.
+      else {
+        _hmin.reduce(i1,i2,tmin);
+      }
     }
   }
 
@@ -729,7 +731,8 @@ public class Painting2 {
         for (int i1=0; i1<n1; ++i1) {
           float d1 = (float)(i1-n1/2);
           float d2 = (float)(i2-n2/2);
-          float as = 1.0f-exp(-0.0001f*(d1*d1+d2*d2));
+          float as = exp(-0.0001f*(d1*d1+d2*d2));
+          as = 1.0f;
           _et.setEigenvectorU(i1,i2,u1,u2);
           _et.setCoefficients(i1,i2,a1*as,a2*as);
         }
@@ -750,9 +753,11 @@ public class Painting2 {
     final float[][] ev = new float[n2][n1];
     LocalOrientFilter lof = new LocalOrientFilter(4);
     lof.apply(x,null,u1,u2,null,null,eu,ev,null);
-    final float[][] s1 = Array.div(Array.sub(eu,ev),eu);
-    final float[][] s2 = Array.div(ev,eu);
-    Array.mul(10.0f,s1,s1);
+    //final float[][] s1 = Array.div(Array.sub(eu,ev),eu);
+    //final float[][] s2 = Array.div(ev,eu);
+    final float[][] s1 = Array.sub(eu,ev);
+    final float[][] s2 = Array.copy(ev);
+    Array.mul(1.0f,s1,s1);
     return new Painting2.Tensors() {
       public void getTensor(int i1, int i2, float[] a) {
         _et.getTensor(i1,i2,a);
@@ -767,10 +772,29 @@ public class Painting2 {
     int nv = 1;
     float[][] x = readImage(n1,n2,"x174.dat");
     plot(x,ColorMap.GRAY);
-    Painting2.Tensors st = getStructureTensors(x);
+    //Painting2.Tensors st = getStructureTensors(x);
+    Painting2.Tensors st = new LensEigenTensors(n1,n2,0.0,1.0,1.0);
+
+    /*
     int[] k1 =    { 34,  92, 172,  27,  25,  12,  81, 117,  94,  14,  44};
     int[] k2 =    { 81, 109, 109, 111, 124, 138, 146,  82, 122,  99, 162};
     float[] vk = {1.0f,2.0f,2.0f,2.0f,2.0f,3.0f,3.0f,0.0f,0.0f,0.0f,0.0f};
+    int nk = vk.length;
+    */
+    /*
+    int nk = n2/5;
+    int[] k1 = new int[nk];
+    int[] k2 = new int[nk];
+    float[] vk = new float[nk];
+    for (int i2=0,ik=0; i2<n2; i2+=5,++ik) {
+      k1[ik] = n1-1;
+      k2[ik] = i2;
+      vk[ik] = (float)i2;
+    }
+    */
+    int[] k1 =   {2*n1/4,2*n1/4};
+    int[] k2 =   {1*n2/4,3*n2/4};
+    float[] vk = {  1.0f,  2.0f};
     int nk = vk.length;
     
     Painting2 p = new Painting2(n1,n2,nv,st);
