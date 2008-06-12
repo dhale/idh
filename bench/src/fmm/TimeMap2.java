@@ -233,7 +233,7 @@ public class TimeMap2 {
   }
 
   public interface Monitor {
-    public void timeSet(int i1, int i2, int k1, int k2, float tk);
+    public void timeSet(int i1, int i2, int k1, int k2, float ts);
   }
 
   // The value for times not yet computed. Also the value returned by
@@ -264,9 +264,10 @@ public class TimeMap2 {
 
   private Tensors _st; // the sloth tensor field
   private int _n1,_n2; // map dimensions
-  private float[][] _tk; // time to nearest painted (known) sample
-  private int[][] _k1,_k2; // indices of nearest painted (known) sample
+  private float[][] _tk; // time to nearest painted sample
+  private int[][] _k1,_k2; // indices of nearest painted sample
   private int[][] _mark; // samples are marked far, trial, or known
+  private byte[][] _type; // fixed, extra, 
   private int[][] _imin,_imax; // indices for samples in min/max heaps
   private MinTimeHeap _hmin; // the min heap
   private MaxTimeHeap _hmax; // the max heap
@@ -732,8 +733,8 @@ public class TimeMap2 {
 
   private static void plot(float[][] f, IndexColorModel cm) {
     SimplePlot sp = new SimplePlot(SimplePlot.Origin.UPPER_LEFT);
-    sp.setSize(650,600);
-    //sp.setSize(1250,1200);
+    //sp.setSize(650,600);
+    sp.setSize(1550,1500);
     PixelsView pv = sp.addPixels(f);
     if (cm==null) cm = ColorMap.JET;
     pv.setColorModel(cm);
