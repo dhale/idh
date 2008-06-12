@@ -169,7 +169,6 @@ public class Painting2 {
       Entry ef = _hmax.remove();
       int k1 = ef.i1;
       int k2 = ef.i2;
-      trace("removed fixed sample: k1="+k1+" k2="+k2+" t="+ef.t);
 
       // The values to be extrapolated.
       float[] vk = _vk[k2][k1];
@@ -186,9 +185,7 @@ public class Painting2 {
 
       // Extrapolate from the fixed sample to all samples that are
       // nearer to the fixed sample than to any other fixed sample.
-      int nset = 0;
       while (!_hmin.isEmpty()) {
-        ++nset;
         Entry e = _hmin.remove();
         int i1 = e.i1;
         int i2 = e.i2;
@@ -204,7 +201,6 @@ public class Painting2 {
         }
         updateNabors(i1,i2);
       }
-      trace("  nset="+nset);
       //plot(_tk); // DEBUG
     }
   }
@@ -760,7 +756,7 @@ public class Painting2 {
     //final float[][] s2 = Array.div(ev,eu);
     final float[][] s1 = Array.sub(eu,ev);
     final float[][] s2 = Array.copy(ev);
-    Array.mul(1.0f,s1,s1);
+    Array.mul(10.0f,s1,s1);
     return new Painting2.Tensors() {
       public void getTensor(int i1, int i2, float[] a) {
         _et.getTensor(i1,i2,a);
@@ -770,30 +766,28 @@ public class Painting2 {
   }
 
   private static void testChannels() {
-    int n1 = 201;
-    int n2 = 201;
+    int n1 = 200;
+    int n2 = 200;
     int nv = 1;
-    //float[][] x = readImage(n1,n2,"x174.dat");
-    //plot(x,ColorMap.GRAY);
-    //Painting2.Tensors st = getStructureTensors(x);
-    Painting2.Tensors st = new LensEigenTensors(n1,n2,0.0,1.0,1.0);
+    float[][] x = readImage(n1,n2,"x174.dat");
+    plot(x,ColorMap.GRAY);
+    Painting2.Tensors st = getStructureTensors(x);
+    //Painting2.Tensors st = new LensEigenTensors(n1,n2,0.0,1.0,1.0);
 
-    /*
     int[] k1 =    { 34,  92, 172,  27,  25,  12,  81, 117,  94,  14,  44};
     int[] k2 =    { 81, 109, 109, 111, 124, 138, 146,  82, 122,  99, 162};
     float[] vk = {1.0f,2.0f,2.0f,2.0f,2.0f,3.0f,3.0f,0.0f,0.0f,0.0f,0.0f};
     int nk = vk.length;
-    */
-    int nk = 1+(n2-1)/20;
+    /*
+    int nk = n2;
     int[] k1 = new int[nk];
     int[] k2 = new int[nk];
     float[] vk = new float[nk];
-    for (int i2=0,ik=0; i2<n2; i2+=20,++ik) {
+    for (int i2=0,ik=0; i2<n2; i2+=1,++ik) {
       k1[ik] = n1-1;
       k2[ik] = i2;
       vk[ik] = (float)i2;
     }
-    /*
     int[] k1 =   {  n1-1,  n1-1};
     int[] k2 =   {1*n2/4,3*n2/4};
     float[] vk = {  1.0f,  2.0f};
