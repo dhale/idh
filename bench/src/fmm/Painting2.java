@@ -67,7 +67,7 @@ public class Painting2 {
    * @param n1 number of samples in 1st dimension.
    * @param n2 number of samples in 2nd dimension.
    * @param nv number of values painted for each sample
-   * @param st the structure tensors.
+   * @param st structure tensors.
    */
   public Painting2(int n1, int n2, int nv, Tensors st) {
     _n1 = n1;
@@ -82,8 +82,8 @@ public class Painting2 {
     _mark = new int[n2][n1];
     _imin = new int[n2][n1];
     _imax = new int[n2][n1];
-    _hmin = new MinTimeHeap(this);
-    _hmax = new MaxTimeHeap(this);
+    _hmin = new TimeHeap2(TimeHeap2.Type.MIN,n1,n2);
+    _hmax = new TimeHeap2(TimeHeap2.Type.MAX,n1,n2);
     clear();
   }
 
@@ -173,7 +173,7 @@ public class Painting2 {
     while (!_hmax.isEmpty()) {
 
       // Remove from the max-heap the fixed sample with largest time.
-      Entry ef = _hmax.remove();
+      TimeHeap2.Entry ef = _hmax.remove();
       int k1 = ef.i1;
       int k2 = ef.i2;
 
@@ -193,7 +193,7 @@ public class Painting2 {
       // Extrapolate from the fixed sample to all samples that are
       // nearer to the fixed sample than to any other fixed sample.
       while (!_hmin.isEmpty()) {
-        Entry e = _hmin.remove();
+        TimeHeap2.Entry e = _hmin.remove();
         int i1 = e.i1;
         int i2 = e.i2;
         float t = e.t;
@@ -288,8 +288,8 @@ public class Painting2 {
   private int[][] _mark; // samples are marked far, trial, or known
   private byte[][] _type; // fixed, extra, 
   private int[][] _imin,_imax; // indices for samples in min/max heaps
-  private MinTimeHeap _hmin; // the min heap
-  private MaxTimeHeap _hmax; // the max heap
+  private TimeHeap2 _hmin; // the min heap
+  private TimeHeap2 _hmax; // the max heap
 
   // Times for each sample are computed from one of eight nabor triangles.
   // These triangles are indexed as follows:
@@ -325,7 +325,7 @@ public class Painting2 {
   private static final float[] Y22 =
     {-1.0f,-1.0f,-1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f};
 
-  // Sloth tensors.
+  // Structure tensors.
   private static class IdentityTensors implements Tensors {
     public void getTensor(int i1, int i2, float[] s) {
       s[0] = 1.0f; // s11
@@ -458,244 +458,8 @@ public class Painting2 {
     }
   }
 
-  // Used by the min-heap to maintain indices of samples in the heap.
-  // Each heap entry has array indices (i1,i2). These methods access 
-  // and update the corresponding index in the heap. They are necessary 
-  // so that times for samples in the heap can be reduced without 
-  // searching through the entire heap looking for the sample with 
-  // indices (i1,i2).
-  private int getMinTimeHeapIndex(int i1, int i2) {
-    return _imin[i2][i1];
-  }
-  private void setMinTimeHeapIndex(Entry e, int i) {
-    _imin[e.i2][e.i1] = i;
-  }
-
-  // Same for max-heap.
-  private int getMaxTimeHeapIndex(int i1, int i2) {
-    return _imax[i2][i1];
-  }
-  private void setMaxTimeHeapIndex(Entry e, int i) {
-    _imax[e.i2][e.i1] = i;
-  }
-
-  // An entry in a heap has sample indices (i1,i2) and time t.
-  private static class Entry {
-    int i1,i2;
-    float t;
-  }
-
-  // A min- or max- heap of times. This heap is special in that it 
-  // maintains indices in a corresponding painting. For specified 
-  // sample indices (i1,i2), those indices enable O(1) access to heap 
-  // entries. Such fast access is important when reducing times in the 
-  // painting.
-  private static class TimeHeap {
-
-    enum Type {MIN,MAX};
-
-    // Constructs a heap with a corresponding painting.
-    TimeHeap(Painting2 painting, Type type) {
-      _painting = painting;
-      _type = type;
-    }
-
-    // Inserts a new entry with specified indices and time.
-    void insert(int i1, int i2, float t) {
-      int i = _n; // index at which to insert the entry
-      if (_n==_e.length) // if necessary, ...
-        grow(_n+1); // increase the capacity of this heap
-      Entry ei = _e[i];
-      if (ei==null) // if an entry does not already exist, ...
-        ei = new Entry(); // make a new entry
-      ei.i1 = i1;
-      ei.i2 = i2;
-      ei.t = t;
-      set(i,ei);
-      siftUp(i);
-      ++_n;
-    }
-
-    // Reduces the time of the entry with specified indices.
-    void reduce(int i1, int i2, float t) {
-      int i = (_type==Type.MIN) ?
-        _painting.getMinTimeHeapIndex(i1,i2) :
-        _painting.getMaxTimeHeapIndex(i1,i2);
-      if (0<=i && i<_n) {
-        Entry ei = _e[i];
-        ei.t = t;
-        set(i,ei);
-        if (_type==Type.MIN) {
-          siftUp(i);
-        } else {
-          siftDown(i);
-        }
-      }
-    }
-
-    // Removes and returns the entry with smallest time.
-    Entry remove() {
-      Entry e0 = _e[0];
-      --_n;
-      set(0,_e[_n]);
-      set(_n,e0);
-      siftDown(0);
-      return e0;
-    }
-
-    // Removes all entries from this heap.
-    void clear() {
-      _n = 0;
-    }
-
-    // Returns number of entries in this heap.
-    int size() {
-      return _n;
-    }
-
-    // Returns true if this heap is empty; false, otherwise.
-    boolean isEmpty() {
-      return _n==0;
-    }
-
-    private int _n; // number of entries in this heap
-    private Entry[] _e = new Entry[1024]; // array of entries in this heap
-    private Painting2 _painting; // painting kept in sync with this heap
-    private Type _type; // the type of this heap
-
-    // If necessary, moves entry e[i] down so not greater/less than children.
-    private void siftDown(int i) {
-      Entry ei = _e[i]; // entry ei that may move down
-      float eit = ei.t; // cached time for entry ei
-      int m = _n>>>1; // number of entries with at least one child
-      while (i<m) { // while not childless, ...
-        int c = (i<<1)+1; // index of left child
-        int r = c+1; // index of right child
-        Entry ec = _e[c]; // initially assume left child smallest/largest
-        if (_type==Type.MIN) { // if min-heap
-          if (r<_n && _e[r].t<ec.t) // if right child smallest, ...
-            ec = _e[c=r]; // the smaller of left and right children
-          if (eit<=ec.t) // break if ei not greater than smaller child
-            break;
-        } else { // if max-heap
-          if (r<_n && _e[r].t>ec.t) // if right child largest, ...
-            ec = _e[c=r]; // the larger of left and right children
-          if (eit>=ec.t) // break if ei not less than larger child
-            break;
-        }
-        set(i,ec); // move smaller/larger child up
-        i = c;
-      }
-      if (ei!=_e[i]) // if necessary, ...
-        set(i,ei); // set ei where it belongs
-    }
-
-    // If necessary, moves entry e[i] up so not less/greater than parent.
-    private void siftUp(int i) {
-      Entry ei = _e[i]; // entry ei that may move up
-      float eit = ei.t; // cached time for entry ei
-      while (i>0) { // while a parent (not the root entry), ...
-        int p = (i-1)>>>1; // index of parent
-        Entry ep = _e[p]; // the parent
-        if (_type==Type.MIN) { // if min-heap
-          if (eit>=ep.t) // break if ei not less than parent
-            break;
-        } else {
-          if (eit<=ep.t) // break if ei not greater than parent
-            break;
-        }
-        set(i,ep); // ei less/greater than parent, so move parent down
-        i = p;
-      }
-      if (ei!=_e[i]) // if necessary, ...
-        set(i,ei); // set ei where it belongs
-    }
-
-    // Sets the i'th entry and updates the painting.
-    private void set(int i, Entry ei) {
-      _e[i] = ei;
-      if (_type==Type.MIN)
-        _painting.setMinTimeHeapIndex(ei,i);
-      else
-        _painting.setMaxTimeHeapIndex(ei,i);
-    }
-
-    // Grows this heap to have at least the specified capacity.
-    private void grow(int minCapacity) {
-      if (minCapacity<0) // overflow
-        throw new OutOfMemoryError();
-      int oldCapacity = _e.length;
-      int newCapacity = oldCapacity*2;
-      if (newCapacity<0) // overflow
-        newCapacity = Integer.MAX_VALUE;
-      if (newCapacity<minCapacity)
-        newCapacity = minCapacity;
-      Entry[] e = new Entry[newCapacity];
-      System.arraycopy(_e,0,e,0,oldCapacity);
-      _e = e;
-    }
-
-    // Dumps this heap to the console; leading spaces show level in tree.
-    void dump() {
-      dump("",0);
-    }
-    private void dump(String s, int i) {
-      if (i<_n) {
-        s = s+"  ";
-        Entry e = _e[i];
-        System.out.println(s+""+e.i1+" "+e.i2+" "+e.t);
-        dump(s,2*i+1);
-        dump(s,2*i+2);
-      }
-    }
-  }
-  private static class MinTimeHeap extends TimeHeap {
-    MinTimeHeap(Painting2 painting) {
-      super(painting,Type.MIN);
-    }
-  }
-  private static class MaxTimeHeap extends TimeHeap {
-    MaxTimeHeap(Painting2 painting) {
-      super(painting,Type.MAX);
-    }
-  }
-
   ///////////////////////////////////////////////////////////////////////////
   // testing
-
-  private static void testMinTimeHeap() {
-    int n1 = 5;
-    int n2 = 6;
-    int n = n1*n2;
-    Painting2 painting = new Painting2(n1,n2,0);
-    MinTimeHeap hmin = new MinTimeHeap(painting);
-    float[] s = Array.randfloat(n);
-    float[][] t = Array.reshape(n1,n2,s);
-    for (int i2=0,i=0; i2<n2; ++i2) {
-      for (int i1=0; i1<n1; ++i1,++i) {
-        float ti = t[i2][i1];
-        hmin.insert(i1,i2,ti);
-        s[i] = ti;
-      }
-    }
-    for (int i2=0,i=0; i2<n2; ++i2) {
-      for (int i1=0; i1<n1; ++i1,++i) {
-        s[i] -= 0.5f;
-        t[i2][i1] -= 0.5f;
-        hmin.reduce(i1,i2,t[i2][i1]);
-      }
-    }
-    assert !hmin.isEmpty();
-    assert hmin.size()==n;
-    Array.quickSort(s);
-    for (int i=0; i<n; ++i) {
-      Entry e = hmin.remove();
-      float ti = e.t;
-      assert ti==s[i];
-    }
-    assert hmin.isEmpty();
-    assert hmin.size()==0;
-  }
 
   private static void plot(float[][] f) {
     plot(f,null);
