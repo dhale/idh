@@ -21,20 +21,27 @@ import edu.mines.jtk.mosaic.*;
 import edu.mines.jtk.util.*;
 
 /**
- * A 2D array of painted values.
+ * A 2D array of painted values, where most values are painted automatically.
+ * Except for a relatively small number of fixed samples painted explicitly, 
+ * most samples are painted by extrapolation and interpolation guided by
+ * structure tensors. Intuitively, paint flows around locations that have
+ * relatively high structure. Structure tensors may also cause paint to
+ * flow anisotropically, in directions corresponding to relatively low
+ * structure.
+ * 
  * @author Dave Hale, Colorado School of Mines
  * @version 2008.06.12
  */
 public class Painting2 {
 
   /**
-   * An interface for classes of sloth tensors. Each tensor is a
+   * An interface for classes of structure tensors. Each tensor is a
    * symmetric positive-definite 2-by-2 matrix {{s11,s12},{s12,s22}}.
    */
   public interface Tensors {
 
     /**
-     * Gets sloth tensor elements for specified indices.
+     * Gets structure tensor elements for specified indices.
      * @param i1 index for 1st dimension.
      * @param i2 index for 2nd dimension.
      * @param s array {s11,s12,s22} of tensor elements.
@@ -43,7 +50,7 @@ public class Painting2 {
   }
 
   /**
-   * Constructs a painting with constant identity sloth tensors.
+   * Constructs a painting with constant identity structure tensors.
    * In this case, time = distance, which is useful for testing.
    * Painted values are initially clear (null).
    * @param n1 number of samples in 1st dimension.
@@ -55,12 +62,12 @@ public class Painting2 {
   }
   
   /**
-   * Constructs a painting for the specified sloth tensor field.
+   * Constructs a painting for the specified structure tensor field.
    * All painted values are initially clear (null).
    * @param n1 number of samples in 1st dimension.
    * @param n2 number of samples in 2nd dimension.
    * @param nv number of values painted for each sample
-   * @param st the sloth tensors.
+   * @param st the structure tensors.
    */
   public Painting2(int n1, int n2, int nv, Tensors st) {
     _n1 = n1;
@@ -147,7 +154,7 @@ public class Painting2 {
     for (int i2=0; i2<_n2; ++i2) {
       for (int i1=0; i1<_n1; ++i1) {
         _tk[i2][i1] = TIME_INVALID;
-        _imax[i2][i1] = -1;
+        //_imax[i2][i1] = -1;
         if (_type[i2][i1]==FIXED) {
           _hmax.insert(i1,i2,TIME_INVALID);
         } else {
@@ -272,12 +279,12 @@ public class Painting2 {
     }
   }
 
-  private Tensors _st; // the sloth tensor field
+  private Tensors _st; // the structure tensor field
   private int _n1,_n2; // painting dimensions
-  private int _nv; // number of painted values
-  private float[][][] _vk; // painted values
-  private float[][] _tk; // time to nearest painted sample
-  private int[][] _k1,_k2; // indices of nearest painted sample
+  private int _nv; // number of values associated with each sample
+  private float[][][] _vk; // painted values; null for clear samples
+  private float[][] _tk; // time to nearest fixed or interpolated sample
+  private int[][] _k1,_k2; // indices of nearest fixed or interp sample
   private int[][] _mark; // samples are marked far, trial, or known
   private byte[][] _type; // fixed, extra, 
   private int[][] _imin,_imax; // indices for samples in min/max heaps
@@ -353,7 +360,7 @@ public class Painting2 {
    */
   private void updateTime(int i1, int i2) {
 
-    // Elements of sloth tensor.
+    // Elements of structure tensor.
     float[] s = new float[3];
     _st.getTensor(i1,i2,s);
     float s11 = s[0];
