@@ -746,8 +746,8 @@ public class Painting2 {
     for (int i1=0,ik=0; i1<n1; i1+=m1,++ik) {
       k1[ik] = i1;
       k2[ik] = n2/2;
-      vk[ik] = x[k2[ik]][k1[ik]];
-      //vk[ik] = (float)i1;
+      //vk[ik] = x[k2[ik]][k1[ik]];
+      vk[ik] = (float)i1;
       //vk[ik] = (ik%2==0)?1.0f:2.0f;
     }
 
