@@ -9,6 +9,7 @@ package fmm;
 import static edu.mines.jtk.util.MathPlus.*;
 
 // for testing
+import java.awt.*;
 import java.awt.image.*;
 import java.io.*;
 import java.util.*;
@@ -80,8 +81,6 @@ public class Painting2 {
     _vk = new float[n2][n1][];
     _type = new byte[n2][n1];
     _mark = new int[n2][n1];
-    _imin = new int[n2][n1];
-    _imax = new int[n2][n1];
     _hmin = new TimeHeap2(TimeHeap2.Type.MIN,n1,n2);
     _hmax = new TimeHeap2(TimeHeap2.Type.MAX,n1,n2);
     clear();
@@ -95,8 +94,6 @@ public class Painting2 {
       for (int i1=0; i1<_n1; ++i1) {
         _type[i2][i1] = CLEAR;
         _mark[i2][i1] = _known;
-        _imin[i2][i1] = -1;
-        _imax[i2][i1] = -1;
         _k1[i2][i1] = -1;
         _k2[i2][i1] = -1;
         _tk[i2][i1] = TIME_INVALID;
@@ -127,17 +124,14 @@ public class Painting2 {
    * not change in any subsequent extrapolation or interpolation.
    * @param k1 index in 1st dimension of painted sample.
    * @param k2 index in 2nd dimension of painted sample.
-   * @param vk array of values for painted sample.
+   * @param vk array of values for painted sample; by copy, not by reference.
    */
   public void paintAt(int k1, int k2, float[] vk) {
     _type[k2][k1] = FIXED;
     _k1[k2][k1] = k1;
     _k2[k2][k1] = k2;
     _tk[k2][k1] = TIME_INVALID;
-    _vk[k2][k1] = new float[_nv];
-    float[] vs = _vk[k2][k1];
-    for (int iv=0; iv<_nv; ++iv)
-      vs[iv] = vk[iv];
+    _vk[k2][k1] = copy(vk);
   }
 
   /**
@@ -154,7 +148,6 @@ public class Painting2 {
     for (int i2=0; i2<_n2; ++i2) {
       for (int i1=0; i1<_n1; ++i1) {
         _tk[i2][i1] = TIME_INVALID;
-        //_imax[i2][i1] = -1;
         if (_type[i2][i1]==FIXED) {
           _hmax.insert(i1,i2,TIME_INVALID);
         } else {
@@ -168,8 +161,8 @@ public class Painting2 {
     // top of the max-heap. As we extrapolate from this fixed sample, times 
     // for other fixed samples that remain in the heap may be reduced, so 
     // that their order may change. We choose a decreasing order to reduce 
-    // the number of samples that must be modified during extrapolation 
-    // from each fixed sample. 
+    // the number of times that must be reduced during extrapolation 
+    // from each fixed sample.
     while (!_hmax.isEmpty()) {
 
       // Remove from the max-heap the fixed sample with largest time.
@@ -208,6 +201,107 @@ public class Painting2 {
         }
         updateNabors(i1,i2);
       }
+      //plot(getValues(),ColorMap.JET);
+      //plot(_tk); // DEBUG
+    }
+  }
+
+  /**
+   * Interpolates values from all fixed samples, using extrapolated samples.
+   * After interpolation, all samples are either fixed or interpolated.
+   */
+  public void interpolate() {
+
+    //Plot plot = new Plot(getValues(),ColorMap.JET); // DEBUG
+
+    // Insert all extrapolated samples into the max-heap with their
+    // current times. After the max-heap is built, the extrpolated
+    // sample with largest time is at the top of the heap.
+    _hmax.clear();
+    for (int i2=0; i2<_n2; ++i2) {
+      for (int i1=0; i1<_n1; ++i1) {
+        if (_type[i2][i1]==EXTRA) {
+          _hmax.insert(i1,i2,_tk[i2][i1]);
+        }
+      }
+    }
+
+    // Interpolate all extrapolated (not-fixed) samples, one at a time, 
+    // in order of decreasing time. The extrapolated sample with the 
+    // largest time is at the top of the max-heap. As we interpolate 
+    // this sample, times for other extrapolated samples that remain in 
+    // the heap may be reduced, so that their order may change. We choose 
+    // a decreasing order to reduce the number of extrapolated samples 
+    // that must be modified during interpolation.
+    while (!_hmax.isEmpty()) {
+
+      // Remove from the max-heap the extrapolated sample with largest time.
+      // This is the sample to be interpolated; the "interpolated sample".
+      TimeHeap2.Entry ee = _hmax.remove();
+      int k1 = ee.i1;
+      int k2 = ee.i2;
+
+      // The values to be interpolated. This array will be assigned to all
+      // extrapolated samples during the march away from the interpolated
+      // sample. This is one reason that an array of values is so useful, 
+      // for we will not actually know the interpolated values until the 
+      // march is complete. Then, when we compute the interpolated values, 
+      // those values will already be referenced by all extrapolated samples
+      // nearest to the interpolated sample.
+      float[] vk = _vk[k2][k1] = copy(_vk[k2][k1]);
+
+      // Count of values accumulated for the interpolated sample.
+      int nk = 1;
+
+      // Mark all samples as far, set the type of the interpolated sample,
+      // mark the interpolated sample as known with time zero, and update 
+      // its neighbors.
+      clearMarks();
+      _hmin.clear();
+      _type[k2][k1] = INTER;
+      _mark[k2][k1] = _known;
+      _k1[k2][k1] = k1;
+      _k2[k2][k1] = k2;
+      _tk[k2][k1] = 0.0f;
+      updateNabors(k1,k2);
+
+      // March away from the interpolated sample to all extrapolated
+      // samples that are nearer to the interpolated sample than to any 
+      // other fixed or interpolated samples. While marching, accumulate 
+      // values needed for interpolation.
+      while (!_hmin.isEmpty()) {
+
+        // Get the extrapolated sample with minimum time.
+        TimeHeap2.Entry e = _hmin.remove();
+        int i1 = e.i1;
+        int i2 = e.i2;
+        float t = e.t;
+
+        // Accumulate existing values for the extrapolated sample.
+        float[] vki = _vk[i2][i1];
+        for (int iv=0; iv<_nv; ++iv)
+          vk[iv] += vki[iv];
+        ++nk;
+
+        // Mark the extrapolated sample known with reduced time.
+        // It's values will be those of the interpolated sample.
+        // Continue the march by updating the nabor samples.
+        _mark[i2][i1] = _known;
+        _hmax.reduce(i1,i2,t);
+        _k1[i2][i1] = k1;
+        _k2[i2][i1] = k2;
+        _vk[i2][i1] = vk;
+        updateNabors(i1,i2);
+      }
+
+      // The march is complete, and nearby values have been accumulated.
+      // Now divide by the number of values accumulated.
+      float vs = 1.0f/(float)nk;
+      for (int iv=0; iv<_nv; ++iv)
+        vk[iv] *= vs;
+      
+      //trace("k1="+k1+" k2="+k2+" nk="+nk);
+      //plot(getValues()); // DEBUG
       //plot(_tk); // DEBUG
     }
   }
@@ -258,12 +352,14 @@ public class Painting2 {
   private static final byte EXTRA = 2; // values painted by extrapolation
   private static final byte INTER = 3; // values painted by interpolation
 
-  // Marks used during computation of times.
+  // Marks used during computation of times. For efficiency, we do not
+  // loop over all the marks to clear them before beginning a fast 
+  // marching loop. Instead, we simply modify the mark values.
   private int _far = 0; // samples with no time
-  private int _trial = 1; // samples (in min-heap) with a proposed time
+  private int _trial = 1; // samples in min-heap with a proposed time
   private int _known = 2; // samples with a known time
   private void clearMarks() {
-    if (_known+2>Integer.MAX_VALUE) {
+    if (_known+2>Integer.MAX_VALUE) { // if we must loop over all marks, ...
       _far = 0;
       _trial = 1;
       _known = 2;
@@ -273,9 +369,9 @@ public class Painting2 {
         }
       }
     } else {
-      _far += 2; // known samples become far samples
-      _trial +=2; // no trial samples
-      _known +=2; // no known samples
+      _far += 2; // all known samples instantly become far samples
+      _trial +=2; // no samples are trial
+      _known +=2; // no samples are known
     }
   }
 
@@ -287,7 +383,6 @@ public class Painting2 {
   private int[][] _k1,_k2; // indices of nearest fixed or interp sample
   private int[][] _mark; // samples are marked far, trial, or known
   private byte[][] _type; // fixed, extra, 
-  private int[][] _imin,_imax; // indices for samples in min/max heaps
   private TimeHeap2 _hmin; // the min heap
   private TimeHeap2 _hmax; // the max heap
 
@@ -442,7 +537,7 @@ public class Painting2 {
     // If the minimum time has been reduced, ...
     if (reduced) {
 
-      // Remember the minimum time.
+      // Remember the reduced minimum time.
       _tk[i2][i1] = tmin;
 
       // If this sample not already in the min-heap, insert it.
@@ -458,27 +553,78 @@ public class Painting2 {
     }
   }
 
+  private float[] copy(float[] v) {
+    int nv = v.length;
+    float[] cv = new float[nv];
+    for (int iv=0; iv<nv; ++iv)
+      cv[iv] = v[iv];
+    return cv;
+  }
+
   ///////////////////////////////////////////////////////////////////////////
   // testing
+
+  private static void sleep(int ms) {
+    try {
+      Thread.currentThread().sleep(1000);
+    } catch (InterruptedException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  private static void plotImageTensors(float[][] x, StructureTensors st) {
+    SimplePlot sp = new SimplePlot(SimplePlot.Origin.UPPER_LEFT);
+    sp.setSize(1050,1000);
+    PixelsView pv = sp.addPixels(x);
+    pv.setInterpolation(PixelsView.Interpolation.NEAREST);
+    int n1 = x[0].length;
+    int n2 = x.length;
+    float[][][] x12 = getTensorEllipses(n1,n2,10,st);
+    float[][] x1 = x12[0];
+    float[][] x2 = x12[1];
+    PointsView ev = new PointsView(x1,x2);
+    ev.setOrientation(PointsView.Orientation.X1DOWN_X2RIGHT);
+    ev.setLineColor(Color.RED);
+    sp.getPlotPanel().getTile(0,0).addTiledView(ev);
+  }
+
+  private static class Plot {
+    Plot(float[][] f) {
+      this(f,null);
+    }
+    Plot(float[][] f, IndexColorModel icm) {
+      _sp = new SimplePlot(SimplePlot.Origin.UPPER_LEFT);
+      //_sp.setSize(650,600);
+      _sp.setSize(1050,1000);
+      _pv = _sp.addPixels(f);
+      if (icm==null) icm = ColorMap.JET;
+      _pv.setColorModel(icm);
+      _pv.setInterpolation(PixelsView.Interpolation.NEAREST);
+    }
+    void set(final float[][] f) {
+      sleep(1000);
+      SwingUtilities.invokeLater(new Runnable() {
+        public void run() {
+          _pv.set(f);
+        }
+      });
+    }
+    final private SimplePlot _sp;
+    final private PixelsView _pv;
+  }
 
   private static void plot(float[][] f) {
     plot(f,null);
   }
 
-  private static void plot(float[][] f, IndexColorModel cm) {
-    SimplePlot sp = new SimplePlot(SimplePlot.Origin.UPPER_LEFT);
-    //sp.setSize(650,600);
-    sp.setSize(1050,1000);
-    PixelsView pv = sp.addPixels(f);
-    if (cm==null) cm = ColorMap.JET;
-    pv.setColorModel(cm);
-    pv.setInterpolation(PixelsView.Interpolation.NEAREST);
+  private static void plot(float[][] f, IndexColorModel icm) {
+    new Plot(f,icm);
   }
 
   private static float[][] readImage(int n1, int n2, String fileName) {
-    String dataDir = "/data/seis/joe/";
     try {
-      ArrayInputStream ais = new ArrayInputStream(dataDir+fileName);
+      java.nio.ByteOrder bo = java.nio.ByteOrder.LITTLE_ENDIAN;
+      ArrayInputStream ais = new ArrayInputStream(fileName,bo);
       float[][] x = new float[n2][n1];
       ais.readFloats(x);
       ais.close();
@@ -500,6 +646,7 @@ public class Painting2 {
           float d1 = (float)(i1-n1/2);
           float d2 = (float)(i2-n2/2);
           float as = exp(-0.0001f*(d1*d1+d2*d2));
+          as = 1.0f;
           _et.setEigenvectorU(i1,i2,u1,u2);
           _et.setCoefficients(i1,i2,a1*as,a2*as);
         }
@@ -511,49 +658,139 @@ public class Painting2 {
     private EigenTensors2 _et;
   }
 
-  private static Painting2.Tensors getStructureTensors(float[][] x) {
-    int n1 = x[0].length;
-    int n2 = x.length;
-    final float[][] u1 = new float[n2][n1];
-    final float[][] u2 = new float[n2][n1];
-    final float[][] eu = new float[n2][n1];
-    final float[][] ev = new float[n2][n1];
-    LocalOrientFilter lof = new LocalOrientFilter(6);
-    lof.apply(x,null,u1,u2,null,null,eu,ev,null);
-    final float[][] s1 = Array.div(Array.sub(eu,ev),eu);
-    final float[][] s2 = Array.div(ev,eu);
-    //final float[][] s1 = Array.sub(eu,ev);
-    //final float[][] s2 = Array.copy(ev);
-    Array.mul(100.0f,s1,s1);
-    return new Painting2.Tensors() {
-      public void getTensor(int i1, int i2, float[] a) {
-        _et.getTensor(i1,i2,a);
+  private static class StructureTensors implements Painting2.Tensors {
+    StructureTensors(double sigma, float[][] x) {
+      int n1 = x[0].length;
+      int n2 = x.length;
+      float[][] u1 = new float[n2][n1];
+      float[][] u2 = new float[n2][n1];
+      float[][] su = new float[n2][n1];
+      float[][] sv = new float[n2][n1];
+      LocalOrientFilter lof = new LocalOrientFilter(sigma);
+      lof.setGradientSmoothing(max(1,sigma/4));
+      lof.apply(x,null,u1,u2,null,null,su,sv,null);
+      final float[][] s1 = Array.div(Array.sub(su,sv),su);
+      final float[][] s2 = Array.div(sv,su);
+      //final float[][] s1 = Array.sub(su,sv);
+      //final float[][] s2 = Array.copy(sv);
+      Array.mul(100.0f,s1,s1);
+      _et = new EigenTensors2(u1,u2,s1,s2);
+    }
+    public void getTensor(int i1, int i2, float[] a) {
+      _et.getTensor(i1,i2,a);
+    }
+    float[] getU(int i1, int i2) {
+      return _et.getEigenvectorU(i1,i2);
+    }
+    float[] getV(int i1, int i2) {
+      return _et.getEigenvectorV(i1,i2);
+    }
+    float[] getS(int i1, int i2) {
+      return _et.getCoefficients(i1,i2);
+    }
+    private EigenTensors2 _et;
+  }
+
+  private static float[][][] getTensorEllipses(
+    int n1, int n2, int ns, StructureTensors st) 
+  {
+    int nt = 51;
+    int m1 = (n1-1)/ns;
+    int m2 = (n2-1)/ns;
+    int j1 = (n1-1-(m1-1)*ns)/2;
+    int j2 = (n2-1-(m2-1)*ns)/2;
+    int nm = m1*m2;
+    double r = 0.45*ns;
+    float[][] x1 = new float[nm][nt];
+    float[][] x2 = new float[nm][nt];
+    double dt = 2.0*PI/(nt-1);
+    double ft = 0.0f;
+    for (int i2=j2,im=0; i2<n2; i2+=ns) {
+      double y2 = i2+r;
+      for (int i1=j1; i1<n1; i1+=ns,++im) {
+        float[] u = st.getU(i1,i2);
+        float[] s = st.getS(i1,i2);
+        double u1 = u[0];
+        double u2 = u[1];
+        double v1 = -u2;
+        double v2 =  u1;
+        double s1 = s[0];
+        double s2 = s[1];
+        double a = r*s2/(s1+s2);
+        double b = r;
+        for (int it=0; it<nt; ++it) {
+          double t = ft+it*dt;
+          double cost = cos(t);
+          double sint = sin(t);
+          x1[im][it] = (float)(i1+a*cost*u1-b*sint*u2);
+          x2[im][it] = (float)(i2+b*sint*u1+a*cost*u2);
+        }
       }
-      private EigenTensors2 _et = new EigenTensors2(u1,u2,s1,s2);
-    };
+    }
+    return new float[][][]{x1,x2};
+  }
+
+  private static void testSeismic() {
+    int n1 = 315;
+    int n2 = 315;
+    int nv = 1;
+    float[][] v;
+
+    float[][] x = readImage(n1,n2,"/data/seis/vg/junks.dat");
+
+    int m1 = 20;
+    int nk = 1+(n1-1)/m1;
+    int[] k1 = new int[nk];
+    int[] k2 = new int[nk];
+    float[] vk = new float[nk];
+    for (int i1=0,ik=0; i1<n1; i1+=m1,++ik) {
+      k1[ik] = i1;
+      k2[ik] = n2/2;
+      vk[ik] = x[k2[ik]][k1[ik]];
+      //vk[ik] = (float)i1;
+      //vk[ik] = (ik%2==0)?1.0f:2.0f;
+    }
+
+    StructureTensors st = new StructureTensors(4,x);
+    Painting2 p = new Painting2(n1,n2,nv,st);
+    for (int ik=0; ik<nk; ++ik) {
+      p.paintAt(k1[ik],k2[ik],vk[ik]);
+    }
+    plotImageTensors(x,st);
+
+    p.extrapolate();
+    v = p.getValues();
+    plot(v,ColorMap.JET);
+    //plot(v,ColorMap.PRISM);
+
+    p.interpolate();
+    v = p.getValues();
+    plot(v,ColorMap.JET);
+    //plot(v,ColorMap.PRISM);
   }
 
   private static void testChannels() {
     int n1 = 200;
     int n2 = 200;
     int nv = 1;
-    float[][] x = readImage(n1,n2,"x174.dat");
+    float[][] x = readImage(n1,n2,"/data/seis/joe/x174.dat");
     plot(x,ColorMap.GRAY);
-    Painting2.Tensors st = getStructureTensors(x);
-    //Painting2.Tensors st = new LensEigenTensors(n1,n2,0.0,1.0,1.0);
+    StructureTensors st = new StructureTensors(8,x);
+    //StructureTensors st = new LensEigenTensors(n1,n2,0.0,1.0,1.0);
 
-    int[] k1 =   {  92,  92,  92, 100, 100, 100};
-    int[] k2 =   { 109, 102, 116, 132, 125, 139};
-    float[] vk = {1.0f,2.0f,2.0f,1.0f,2.0f,2.0f};
+    /*
+    int[] k1 =   {  92,  92,  92, 100, 100, 100,  60,  25,  20,  19};
+    int[] k2 =   { 109, 102, 116, 132, 125, 139, 116, 124, 110, 117};
+    float[] vk = {1.0f,2.0f,2.0f,1.0f,2.0f,2.0f,1.0f,1.0f,1.0f,2.0f};
     int nk = vk.length;
+    */
     /*
     int[] k1 =    { 34,  92, 172,  27,  25,  12,  81, 117,  94,  14,  44};
     int[] k2 =    { 81, 109, 109, 111, 124, 138, 146,  82, 122,  99, 162};
     float[] vk = {1.0f,2.0f,2.0f,2.0f,2.0f,3.0f,3.0f,0.0f,0.0f,0.0f,0.0f};
     int nk = vk.length;
     */
-    /*
-    int m2 = 1;
+    int m2 = 5;
     int nk = 1+(n2-1)/m2;
     int[] k1 = new int[nk];
     int[] k2 = new int[nk];
@@ -563,21 +800,89 @@ public class Painting2 {
       k2[ik] = i2;
       vk[ik] = (float)i2;
     }
-    */
     /*
     int[] k1 =   {  n1-1,  n1-1};
     int[] k2 =   {1*n2/4,3*n2/4};
     float[] vk = {  1.0f,  2.0f};
     int nk = vk.length;
     */
-    
     Painting2 p = new Painting2(n1,n2,nv,st);
     for (int ik=0; ik<nk; ++ik) {
       p.paintAt(k1[ik],k2[ik],vk[ik]);
     }
+    float[][] v;
     p.extrapolate();
-    plot(p.getTimes(),ColorMap.JET);
-    plot(p.getValues(),ColorMap.JET);
+    v = p.getValues();
+    plot(v,ColorMap.PRISM);
+    p.interpolate();
+    v = p.getValues();
+    plot(v,ColorMap.PRISM);
+  }
+
+  private static void testIsotropic() {
+    int n1 = 101;
+    int n2 = 101;
+    int nv = 1;
+    float s1 = 100.0f;
+    float s2 = 1.0f;
+    float v1 = sin(0.0f*FLT_PI/8.0f);
+    LensEigenTensors st = new LensEigenTensors(n1,n2,s1,s2,v1);
+    Painting2 p = new Painting2(n1,n2,nv,st);
+    p.paintAt(   1,   1,1.0f);
+    p.paintAt(n1-1,   1,1.0f);
+    p.paintAt(   1,n2-1,1.0f);
+    p.paintAt(n1-1,n2-1,1.0f);
+    p.paintAt(n1/2,n2/2,2.0f);
+    p.extrapolate();
+    plot(p.getValues());
+    p.interpolate();
+    plot(p.getValues());
+  }
+
+  private static float[][] makeTargetImage(int n1, int n2) {
+    float k = 0.3f;
+    float[][] x = new float[n2][n1];
+    for (int i2=0; i2<n2; ++i2) {
+      float d2 = (float)(i2-n2/2);
+      for (int i1=0; i1<n1; ++i1) {
+        float d1 = (float)(i1-n1/2);
+        x[i2][i1] = 10.0f*sin(k*sqrt(d1*d1+d2*d2));
+      }
+    }
+    return x;
+  }
+
+  private static void testTarget() {
+    int n1 = 315;
+    int n2 = 315;
+    int nv = 1;
+    float[][] x = makeTargetImage(n1,n2);
+    StructureTensors st = new StructureTensors(8,x);
+    Painting2 p = new Painting2(n1,n2,nv,st);
+    int m1 = 1;
+    int m2 = 1;
+    int nk = 1+(n2-1)/m2+1+(n1-1)/m1;
+    int[] k1 = new int[nk];
+    int[] k2 = new int[nk];
+    float[] vk = new float[nk];
+    int ik = 0;
+    for (int i2=0; i2<n2; i2+=m2,++ik) {
+      k1[ik] = n1/2;
+      k2[ik] = i2;
+      vk[ik] = x[k2[ik]][k1[ik]];
+    }
+    for (int i1=0; i1<n1; i1+=m1,++ik) {
+      k1[ik] = i1;
+      k2[ik] = n2/2;
+      vk[ik] = x[k2[ik]][k1[ik]];
+    }
+    for (ik=0; ik<nk; ++ik)
+      p.paintAt(k1[ik],k2[ik],vk[ik]);
+    plotImageTensors(x,st);
+    p.extrapolate();
+    plot(p.getValues());
+    p.interpolate();
+    plot(p.getValues());
   }
 
   private static void trace(String s) {
@@ -587,7 +892,10 @@ public class Painting2 {
   public static void main(String[] args) {
     SwingUtilities.invokeLater(new Runnable() {
       public void run() {
-        testChannels();
+        //testChannels();
+        testSeismic();
+        //testIsotropic();
+        //testTarget();
       }
     });
   }
