@@ -19,25 +19,14 @@ import edu.mines.jtk.dsp.Eigen;
  * <p>
  * The eigen-decomposition of the matrix A is
  * <pre><code>
- * A = au*u*u' + av*v*v'; au &gt;= av &gt;= 0
+ * A = au*u*u' + av*v*v'
+ *   = (au-av)*u*u' + av*I
  * </code></pre>
- * where u and v are orthogonal unit eigenvectors of A. (The notation 
- * u' denotes the transpose of u.) The outer products of eigenvectors are
- * scaled by the corresponding eigenvalues au and av.
- * <p>
- * The ordering among eigenvalues is easily ensured by the equivalent 
- * representation in terms of a1 = au-av and a2 = av:
- * <pre><code>
- * A = (a1+a2)*u*u' + a2*v*v'
- *     a1*u*u' + a2*(u*u'+v*v')
- *   = a1*u*u' + a2*I
- * </code></pre>
- * With this representation, the non-negative coefficients (a1,a2)
- * are unordered, and the redundancy of the eigenvector v is apparent.
- * <p>
- * An intuitive interpretation of the coefficients (a1,a2) is that a1 
- * corresponds to 1D scaling in the direction of u and a2 corresponds 
- * to 2D isotropic scaling.
+ * where u and v are orthogonal unit eigenvectors of A. (The notation u' 
+ * denotes the transpose of u.) The outer products of eigenvectors are
+ * scaled by the non-negative eigenvalues au and av. The second equation 
+ * exploits the identity u*u' + v*v' = I, and makes apparent the redundancy 
+ * of the vector v.
  *
  * @author Dave Hale, Colorado School of Mines
  * @version 2008.06.09
@@ -45,40 +34,40 @@ import edu.mines.jtk.dsp.Eigen;
 public class EigenTensors2 {
 
   /**
-   * Constructs tensors for specified array dimensions. All coefficients 
-   * (a1,a2) and eigenvectors u are not set and are initially zero.
+   * Constructs tensors for specified array dimensions. All eigenvalues 
+   * (au,av) and eigenvectors u are not set and are initially zero.
    * @param n1 number of tensors in 1st dimension.
    * @param n2 number of tensors in 2nd dimension.
    */
   public EigenTensors2(int n1, int n2) {
     _n1 = n1;
     _n2 = n2;
-    _a1 = new float[n2][n1];
-    _a2 = new float[n2][n1];
+    _au = new float[n2][n1];
+    _av = new float[n2][n1];
     _u1 = new float[n2][n1];
     _u2 = new float[n2][n1];
   }
 
   /**
-   * Constructs tensors for specified array dimensions and coefficients.
+   * Constructs tensors for specified array dimensions and eigenvalues.
    * @param u1 array of 1st components of u.
    * @param u2 array of 2nd components of u.
-   * @param a1 array of 1D coefficients.
-   * @param a2 array of 2D coefficients.
+   * @param au array of 1D eigenvalues.
+   * @param av array of 2D eigenvalues.
    * @param compressed true, for compressed tensors; false, otherwise.
    */
   public EigenTensors2(
     float[][] u1, float[][] u2,
-    float[][] a1, float[][] a2)
+    float[][] au, float[][] av)
   {
     this(u1[0].length,u1.length);
     for (int i2=0; i2<_n2; ++i2) {
       for (int i1=0; i1<_n1; ++i1) {
-        float a1i = a1[i2][i1];
-        float a2i = a2[i2][i1];
+        float aui = au[i2][i1];
+        float avi = av[i2][i1];
         float u1i = u1[i2][i1];
         float u2i = u2[i2][i1];
-        setCoefficients(i1,i2,a1i,a2i);
+        setEigenvalues(i1,i2,aui,avi);
         setEigenvectorU(i1,i2,u1i,u2i);
       }
     }
@@ -107,13 +96,14 @@ public class EigenTensors2 {
    * @param a array {a11,a12,a22} of tensor elements.
    */
   public void getTensor(int i1, int i2, float[] a) {
-    float a1 = _a1[i2][i1];
-    float a2 = _a2[i2][i1];
+    float au = _au[i2][i1];
+    float av = _av[i2][i1];
     float u1 = _u1[i2][i1];
     float u2 = _u2[i2][i1];
-    a[0] = a1*u1*u1+a2; // a11
-    a[1] = a1*u1*u2   ; // a12
-    a[2] = a1*u2*u2+a2; // a22
+    au -= av;
+    a[0] = au*u1*u1+av; // a11
+    a[1] = au*u1*u2   ; // a12
+    a[2] = au*u2*u2+av; // a22
   }
 
   /**
@@ -130,25 +120,25 @@ public class EigenTensors2 {
 
 
   /**
-   * Gets coefficients for the tensor with specified indices.
+   * Gets eigenvalues for the tensor with specified indices.
    * @param i1 index for 1st dimension.
    * @param i2 index for 2nd dimension.
-   * @param a array {a1,a2} of coefficients.
+   * @param a array {au,av} of eigenvalues.
    */
-  public void getCoefficients(int i1, int i2, float[] a) {
-    a[0] = _a1[i2][i1];
-    a[1] = _a2[i2][i1];
+  public void getEigenvalues(int i1, int i2, float[] a) {
+    a[0] = _au[i2][i1];
+    a[1] = _av[i2][i1];
   }
 
   /**
-   * Gets coefficients for the tensor with specified indices.
+   * Gets eigenvalues for the tensor with specified indices.
    * @param i1 index for 1st dimension.
    * @param i2 index for 2nd dimension.
-   * @return array {a1,a2} of coefficients.
+   * @return array {au,av} of eigenvalues.
    */
-  public float[] getCoefficients(int i1, int i2) {
+  public float[] getEigenvalues(int i1, int i2) {
     float[] a = new float[2];
-    getCoefficients(i1,i2,a);
+    getEigenvalues(i1,i2,a);
     return a;
   }
 
@@ -201,7 +191,7 @@ public class EigenTensors2 {
   /**
    * Sets tensor elements for specified indices.
    * This method first computes an eigen-decomposition of the specified
-   * tensor, and then stores the computed eigenvectors and coefficients.
+   * tensor, and then stores the computed eigenvectors and eigenvalues.
    * @param i1 index for 1st dimension.
    * @param i2 index for 2nd dimension.
    * @param a array {a11,a12,a22} of tensor elements.
@@ -213,7 +203,7 @@ public class EigenTensors2 {
   /**
    * Sets tensor elements for specified indices.
    * This method first computes an eigen-decomposition of the specified
-   * tensor, and then stores the computed eigenvectors and coefficients.
+   * tensor, and then stores the computed eigenvectors and eigenvalues.
    * @param i1 index for 1st dimension.
    * @param i2 index for 2nd dimension.
    * @param a11 tensor element a11.
@@ -232,29 +222,29 @@ public class EigenTensors2 {
     float au = ev[0]; if (au<0.0f) au = 0.0f;
     float av = ev[1]; if (av<0.0f) av = 0.0f;
     setEigenvectorU(i1,i2,u);
-    setCoefficients(i1,i2,au-av,av);
+    setEigenvalues(i1,i2,au-av,av);
   }
 
   /**
-   * Sets coefficients for the tensor with specified indices.
+   * Sets eigenvalues for the tensor with specified indices.
    * @param i1 index for 1st dimension.
    * @param i2 index for 2nd dimension.
-   * @param a1 1D coefficient.
-   * @param a2 2D coefficient.
+   * @param au eigenvalue au.
+   * @param av eigenvalue av.
    */
-  public void setCoefficients(int i1, int i2, float a1, float a2) {
-    _a1[i2][i1] = a1;
-    _a2[i2][i1] = a2;
+  public void setEigenvalues(int i1, int i2, float au, float av) {
+    _au[i2][i1] = au;
+    _av[i2][i1] = av;
   }
 
   /**
-   * Sets coefficients for the tensor with specified indices.
+   * Sets eigenvalues for the tensor with specified indices.
    * @param i1 index for 1st dimension.
    * @param i2 index for 2nd dimension.
-   * @param a array {a1,a2} of coefficients.
+   * @param a array {au,av} of eigenvalues.
    */
-  public void setCoefficients(int i1, int i2, float[] a) {
-    setCoefficients(i1,i2,a[0],a[1]);
+  public void setEigenvalues(int i1, int i2, float[] a) {
+    setEigenvalues(i1,i2,a[0],a[1]);
   }
 
   /**
@@ -285,8 +275,8 @@ public class EigenTensors2 {
   // private
 
   private int _n1,_n2;
-  private float[][] _a1;
-  private float[][] _a2;
+  private float[][] _au;
+  private float[][] _av;
   private float[][] _u1;
   private float[][] _u2;
 }
