@@ -634,30 +634,6 @@ public class Painting2 {
     }
   }
 
-  private static class LensEigenTensors implements Tensors {
-    LensEigenTensors(int n1, int n2, double s1, double s2, double v1) {
-      float u2 = -(float)v1;
-      float u1 = sqrt(1.0f-u2*u2);
-      float a1 = (float)s1;
-      float a2 = (float)s2;
-      _et = new EigenTensors2(n1,n2);
-      for (int i2=0; i2<n2; ++i2) {
-        for (int i1=0; i1<n1; ++i1) {
-          float d1 = (float)(i1-n1/2);
-          float d2 = (float)(i2-n2/2);
-          float as = exp(-0.0001f*(d1*d1+d2*d2));
-          as = 1.0f;
-          _et.setEigenvectorU(i1,i2,u1,u2);
-          _et.setCoefficients(i1,i2,a1*as,a2*as);
-        }
-      }
-    }
-    public void getTensor(int i1, int i2, float[] s) {
-      _et.getTensor(i1,i2,s);
-    }
-    private EigenTensors2 _et;
-  }
-
   private static class StructureTensors implements Painting2.Tensors {
     StructureTensors(double sigma, float[][] x) {
       int n1 = x[0].length;
@@ -734,10 +710,7 @@ public class Painting2 {
     int n1 = 315;
     int n2 = 315;
     int nv = 1;
-    float[][] v;
-
     float[][] x = readImage(n1,n2,"/data/seis/vg/junks.dat");
-
     int m1 = 20;
     int nk = 1+(n1-1)/m1;
     int[] k1 = new int[nk];
@@ -750,23 +723,17 @@ public class Painting2 {
       vk[ik] = (float)i1;
       //vk[ik] = (ik%2==0)?1.0f:2.0f;
     }
-
     StructureTensors st = new StructureTensors(4,x);
     Painting2 p = new Painting2(n1,n2,nv,st);
     for (int ik=0; ik<nk; ++ik) {
       p.paintAt(k1[ik],k2[ik],vk[ik]);
     }
     plotImageTensors(x,st);
-
     p.extrapolate();
-    v = p.getValues();
-    plot(v,ColorMap.JET);
-    //plot(v,ColorMap.PRISM);
-
+    plot(p.getValues(),ColorMap.JET);
+    plot(p.getTimes(),ColorMap.JET);
     p.interpolate();
-    v = p.getValues();
-    plot(v,ColorMap.JET);
-    //plot(v,ColorMap.PRISM);
+    plot(p.getValues(),ColorMap.JET);
   }
 
   private static void testChannels() {
@@ -819,21 +786,53 @@ public class Painting2 {
     plot(v,ColorMap.PRISM);
   }
 
+  private static class LensEigenTensors implements Tensors {
+    LensEigenTensors(int n1, int n2, double s1, double s2, double v1) {
+      float u2 = -(float)v1;
+      float u1 = sqrt(1.0f-u2*u2);
+      float a1 = (float)s1;
+      float a2 = (float)s2;
+      _et = new EigenTensors2(n1,n2);
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          float d1 = (float)(i1-n1/2);
+          float d2 = (float)(i2-n2/2);
+          float as = exp(-0.0001f*(d1*d1+d2*d2));
+          if (i1==n1/3 && 1*n2/4<i2 && i2<3*n2/4)
+            as = 10000.0f;
+          else
+            as = 1.0f;
+          _et.setCoefficients(i1,i2,a1*as,a2*as);
+          _et.setEigenvectorU(i1,i2,u1,u2);
+        }
+      }
+    }
+    public void getTensor(int i1, int i2, float[] s) {
+      _et.getTensor(i1,i2,s);
+    }
+    private EigenTensors2 _et;
+  }
+
   private static void testIsotropic() {
-    int n1 = 101;
-    int n2 = 101;
+    int n1 = 301;
+    int n2 = 301;
     int nv = 1;
-    float s1 = 100.0f;
+    float s1 = 15.0f;
     float s2 = 1.0f;
     float v1 = sin(0.0f*FLT_PI/8.0f);
     LensEigenTensors st = new LensEigenTensors(n1,n2,s1,s2,v1);
     Painting2 p = new Painting2(n1,n2,nv,st);
+    p.paintAt(1*n1/4,2*n2/4,1.0f);
+    p.paintAt(3*n1/4,2*n2/4,2.0f);
+    /*
     p.paintAt(   1,   1,1.0f);
     p.paintAt(n1-1,   1,1.0f);
     p.paintAt(   1,n2-1,1.0f);
     p.paintAt(n1-1,n2-1,1.0f);
     p.paintAt(n1/2,n2/2,2.0f);
+    */
     p.extrapolate();
+    plot(p.getTimes());
     plot(p.getValues());
     p.interpolate();
     plot(p.getValues());
@@ -893,8 +892,8 @@ public class Painting2 {
     SwingUtilities.invokeLater(new Runnable() {
       public void run() {
         //testChannels();
-        testSeismic();
-        //testIsotropic();
+        //testSeismic();
+        testIsotropic();
         //testTarget();
       }
     });
