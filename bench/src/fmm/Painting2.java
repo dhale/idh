@@ -572,14 +572,14 @@ public class Painting2 {
     }
   }
 
-  private static void plotImageTensors(float[][] x, StructureTensors st) {
+  private static void plotImageTensors(float[][] x, EigenTensors2 et) {
     SimplePlot sp = new SimplePlot(SimplePlot.Origin.UPPER_LEFT);
     sp.setSize(1050,1000);
     PixelsView pv = sp.addPixels(x);
     pv.setInterpolation(PixelsView.Interpolation.NEAREST);
     int n1 = x[0].length;
     int n2 = x.length;
-    float[][][] x12 = getTensorEllipses(n1,n2,10,st);
+    float[][][] x12 = getTensorEllipses(n1,n2,10,et);
     float[][] x1 = x12[0];
     float[][] x2 = x12[1];
     PointsView ev = new PointsView(x1,x2);
@@ -634,8 +634,12 @@ public class Painting2 {
     }
   }
 
-  private static class StructureTensors implements Painting2.Tensors {
+  private static class StructureTensors 
+    extends EigenTensors2
+    implements Painting2.Tensors 
+  {
     StructureTensors(double sigma, float[][] x) {
+      super(x[0].length,x.length);
       int n1 = x[0].length;
       int n2 = x.length;
       float[][] u1 = new float[n2][n1];
@@ -650,25 +654,94 @@ public class Painting2 {
       //final float[][] s1 = Array.sub(su,sv);
       //final float[][] s2 = Array.copy(sv);
       Array.mul(100.0f,s1,s1);
-      _et = new EigenTensors2(u1,u2,s1,s2);
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          setCoefficients(i1,i2,s1[i2][i1],s2[i2][i1]);
+          setEigenvectorU(i1,i2,u1[i2][i1],u2[i2][i1]);
+        }
+      }
+      float[][] ss = getScale(100.0f,x);
+      trace("ss min="+Array.min(ss)+" max="+Array.max(ss));
+      plot(ss);
+      Array.mul(ss,s1,s1);
+      Array.mul(ss,s2,s2);
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          setCoefficients(i1,i2,s1[i2][i1],s2[i2][i1]);
+        }
+      }
     }
-    public void getTensor(int i1, int i2, float[] a) {
-      _et.getTensor(i1,i2,a);
+  }
+
+  private static float[][] getScale(float alpha, float[][] x) {
+    int n1 = x[0].length;
+    int n2 = x.length;
+    float[][] s = new float[n2][n1];
+    float xl = Quantiler.estimate(0.05f,x);
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        s[i2][i1] = (xl<x[i2][i1])?1.0f:alpha;
+      }
     }
-    float[] getU(int i1, int i2) {
-      return _et.getEigenvectorU(i1,i2);
+    return s;
+  }
+
+  private static float[][] getScaleX(
+    float alpha, float[][] x, EigenTensors2 et) 
+  {
+    int n1 = x[0].length;
+    int n2 = x.length;
+    float[][] e = getEdges(x,et);
+    plot(e);
+    float[][] s = new float[n2][n1];
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        s[i2][i1] = (e[i2][i1]>0.0f)?alpha:1.0f;
+      }
     }
-    float[] getV(int i1, int i2) {
-      return _et.getEigenvectorV(i1,i2);
+    return s;
+  }
+
+  private static float[][] getDerivativeU(float[][] x, EigenTensors2 et) {
+    int n1 = x[0].length;
+    int n2 = x.length;
+    float[][] g1 = new float[n2][n1];
+    float[][] g2 = new float[n2][n1];
+    float[][] d = new float[n2][n1];
+    RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(2.0);
+    rgf.apply10(x,g1);
+    rgf.apply01(x,g2);
+    float[] u = new float[2];
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        et.getEigenvectorU(i1,i2,u);
+        float u1 = u[0];
+        float u2 = u[1];
+        d[i2][i1] = u1*g1[i2][i1]+u2*g2[i2][i1];
+      }
     }
-    float[] getS(int i1, int i2) {
-      return _et.getCoefficients(i1,i2);
+    return d;
+  }
+
+  private static float[][] getEdges(float[][] x, EigenTensors2 et) {
+    int n1 = x[0].length;
+    int n2 = x.length;
+    float[][] d = getDerivativeU(x,et);
+    float[][] e = new float[n2][n1];
+    for (int i2=1; i2<n2-1; ++i2) {
+      for (int i1=1; i1<n1-1; ++i1) {
+        float xi = x[i2][i1];
+        float d1 = d[i2][i1+1]*d[i2][i1-1];
+        float d2 = d[i2+1][i1]*d[i2-1][i1];
+        if ((d1<0.0f || d2<0.0f) && xi>0.0f)
+          e[i2][i1] = 1.0f;
+      }
     }
-    private EigenTensors2 _et;
+    return e;
   }
 
   private static float[][][] getTensorEllipses(
-    int n1, int n2, int ns, StructureTensors st) 
+    int n1, int n2, int ns, EigenTensors2 et) 
   {
     int nt = 51;
     int m1 = (n1-1)/ns;
@@ -684,15 +757,15 @@ public class Painting2 {
     for (int i2=j2,im=0; i2<n2; i2+=ns) {
       double y2 = i2+r;
       for (int i1=j1; i1<n1; i1+=ns,++im) {
-        float[] u = st.getU(i1,i2);
-        float[] s = st.getS(i1,i2);
+        float[] u = et.getEigenvectorU(i1,i2);
+        float[] s = et.getCoefficients(i1,i2);
         double u1 = u[0];
         double u2 = u[1];
         double v1 = -u2;
         double v2 =  u1;
         double s1 = s[0];
         double s2 = s[1];
-        double a = r*s2/(s1+s2);
+        double a = r*sqrt(s2/(s1+s2));
         double b = r;
         for (int it=0; it<nt; ++it) {
           double t = ft+it*dt;
@@ -743,7 +816,7 @@ public class Painting2 {
     float[][] x = readImage(n1,n2,"/data/seis/joe/x174.dat");
     plot(x,ColorMap.GRAY);
     StructureTensors st = new StructureTensors(8,x);
-    //StructureTensors st = new LensEigenTensors(n1,n2,0.0,1.0,1.0);
+    //StructureTensors st = new SimpleTensors(n1,n2,0.0,1.0,1.0);
 
     /*
     int[] k1 =   {  92,  92,  92, 100, 100, 100,  60,  25,  20,  19};
@@ -786,41 +859,40 @@ public class Painting2 {
     plot(v,ColorMap.PRISM);
   }
 
-  private static class LensEigenTensors implements Tensors {
-    LensEigenTensors(int n1, int n2, double s1, double s2, double v1) {
+  private static class SimpleTensors 
+    extends EigenTensors2 
+    implements Painting2.Tensors 
+  {
+    SimpleTensors(int n1, int n2, double s1, double s2, double v1) {
+      super(n1,n2);
       float u2 = -(float)v1;
       float u1 = sqrt(1.0f-u2*u2);
       float a1 = (float)s1;
       float a2 = (float)s2;
-      _et = new EigenTensors2(n1,n2);
       for (int i2=0; i2<n2; ++i2) {
         for (int i1=0; i1<n1; ++i1) {
           float d1 = (float)(i1-n1/2);
           float d2 = (float)(i2-n2/2);
           float as = exp(-0.0001f*(d1*d1+d2*d2));
           if (i1==n1/3 && 1*n2/4<i2 && i2<3*n2/4)
-            as = 10000.0f;
+            as = 1000.0f;
           else
             as = 1.0f;
-          _et.setCoefficients(i1,i2,a1*as,a2*as);
-          _et.setEigenvectorU(i1,i2,u1,u2);
+          setCoefficients(i1,i2,a1*as,a2*as);
+          setEigenvectorU(i1,i2,u1,u2);
         }
       }
     }
-    public void getTensor(int i1, int i2, float[] s) {
-      _et.getTensor(i1,i2,s);
-    }
-    private EigenTensors2 _et;
   }
 
   private static void testIsotropic() {
     int n1 = 301;
     int n2 = 301;
     int nv = 1;
-    float s1 = 15.0f;
+    float s1 = 3.0f;
     float s2 = 1.0f;
     float v1 = sin(0.0f*FLT_PI/8.0f);
-    LensEigenTensors st = new LensEigenTensors(n1,n2,s1,s2,v1);
+    SimpleTensors st = new SimpleTensors(n1,n2,s1,s2,v1);
     Painting2 p = new Painting2(n1,n2,nv,st);
     p.paintAt(1*n1/4,2*n2/4,1.0f);
     p.paintAt(3*n1/4,2*n2/4,2.0f);
@@ -832,7 +904,7 @@ public class Painting2 {
     p.paintAt(n1/2,n2/2,2.0f);
     */
     p.extrapolate();
-    plot(p.getTimes());
+    plotImageTensors(p.getTimes(),st);
     plot(p.getValues());
     p.interpolate();
     plot(p.getValues());
@@ -892,8 +964,8 @@ public class Painting2 {
     SwingUtilities.invokeLater(new Runnable() {
       public void run() {
         //testChannels();
-        //testSeismic();
-        testIsotropic();
+        testSeismic();
+        //testIsotropic();
         //testTarget();
       }
     });
