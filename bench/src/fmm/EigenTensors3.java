@@ -214,8 +214,8 @@ public class EigenTensors3 {
       aw = _aw[i3][i2][i1];
     }
     a[0] = au; 
-    a[1] = aw; 
-    a[2] = asum-au-aw;
+    a[1] = asum-au-aw;
+    a[2] = aw; 
   }
 
   /**
@@ -329,6 +329,7 @@ public class EigenTensors3 {
    * Sets tensor elements for specified indices.
    * This method first computes an eigen-decomposition of the specified
    * tensor, and then stores the computed eigenvectors and eigenvalues.
+   * The eigenvalues are ordered such that au &gt;= av &gt;= aw &gt;= 0.
    * @param i1 index for 1st dimension.
    * @param i2 index for 2nd dimension.
    * @param i3 index for 3rd dimension.
@@ -342,6 +343,7 @@ public class EigenTensors3 {
    * Sets tensor elements for specified indices.
    * This method first computes an eigen-decomposition of the specified
    * tensor, and then stores the computed eigenvectors and eigenvalues.
+   * The eigenvalues are ordered such that au &gt;= av &gt;= aw &gt;= 0.
    * @param i1 index for 1st dimension.
    * @param i2 index for 2nd dimension.
    * @param i3 index for 3rd dimension.

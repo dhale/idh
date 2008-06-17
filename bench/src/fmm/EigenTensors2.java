@@ -35,7 +35,7 @@ public class EigenTensors2 {
 
   /**
    * Constructs tensors for specified array dimensions. All eigenvalues 
-   * (au,av) and eigenvectors u are not set and are initially zero.
+   * and eigenvectors are not set and are initially zero.
    * @param n1 number of tensors in 1st dimension.
    * @param n2 number of tensors in 2nd dimension.
    */
@@ -192,6 +192,7 @@ public class EigenTensors2 {
    * Sets tensor elements for specified indices.
    * This method first computes an eigen-decomposition of the specified
    * tensor, and then stores the computed eigenvectors and eigenvalues.
+   * The eigenvalues are ordered such that au &gt;= av &gt;= 0.
    * @param i1 index for 1st dimension.
    * @param i2 index for 2nd dimension.
    * @param a array {a11,a12,a22} of tensor elements.
@@ -204,6 +205,7 @@ public class EigenTensors2 {
    * Sets tensor elements for specified indices.
    * This method first computes an eigen-decomposition of the specified
    * tensor, and then stores the computed eigenvectors and eigenvalues.
+   * The eigenvalues are ordered such that au &gt;= av &gt;= 0.
    * @param i1 index for 1st dimension.
    * @param i2 index for 2nd dimension.
    * @param a11 tensor element a11.
@@ -222,7 +224,7 @@ public class EigenTensors2 {
     float au = ev[0]; if (au<0.0f) au = 0.0f;
     float av = ev[1]; if (av<0.0f) av = 0.0f;
     setEigenvectorU(i1,i2,u);
-    setEigenvalues(i1,i2,au-av,av);
+    setEigenvalues(i1,i2,au,av);
   }
 
   /**

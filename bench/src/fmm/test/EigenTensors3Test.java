@@ -34,32 +34,32 @@ public class EigenTensors3Test extends TestCase {
     for (int i3=0; i3<n3; ++i3) {
       for (int i2=0; i2<n2; ++i2) {
         for (int i1=0; i1<n1; ++i1) {
-          float[] a = makeRandomCoefficients();
-          float[] u = makeRandomVector();
+          float[] a = makeRandomEigenvalues();
+          float[] u = makeRandomEigenvector();
           float[] w = makeOrthogonalVector(u);
-          et.setCoefficients(i1,i2,i3,a);
+          et.setEigenvalues(i1,i2,i3,a);
           et.setEigenvectorU(i1,i2,i3,u);
           et.setEigenvectorW(i1,i2,i3,w);
           float[] c;
-          c = et.getEigenvectorU(i1,i2,i3); checkVectors(u,c,errorAngle);
-          c = et.getEigenvectorW(i1,i2,i3); checkVectors(w,c,errorAngle);
-          c = et.getCoefficients(i1,i2,i3); checkCoefficients(c,a,errorCoeff);
+          c = et.getEigenvectorU(i1,i2,i3); checkEigenvectors(u,c,errorAngle);
+          c = et.getEigenvectorW(i1,i2,i3); checkEigenvectors(w,c,errorAngle);
+          c = et.getEigenvalues(i1,i2,i3); checkEigenvalues(c,a,errorCoeff);
           et.setTensor(i1,i2,i3,et.getTensor(i1,i2,i3));
-          c = et.getEigenvectorU(i1,i2,i3); checkVectors(u,c,errorAngle);
-          c = et.getEigenvectorW(i1,i2,i3); checkVectors(w,c,errorAngle);
-          c = et.getCoefficients(i1,i2,i3); checkCoefficients(c,a,errorCoeff);
+          c = et.getEigenvectorU(i1,i2,i3); checkEigenvectors(u,c,errorAngle);
+          c = et.getEigenvectorW(i1,i2,i3); checkEigenvectors(w,c,errorAngle);
+          c = et.getEigenvalues(i1,i2,i3); checkEigenvalues(c,a,errorCoeff);
         }
       }
     }
   }
 
-  private static void checkCoefficients(float[] c, float[] a, double e) {
+  private static void checkEigenvalues(float[] c, float[] a, double e) {
     assertEquals(c[0],a[0],e);
     assertEquals(c[1],a[1],e);
     assertEquals(c[2],a[2],e);
   }
 
-  private static void checkVectors(float[] u, float[] v, double e) {
+  private static void checkEigenvectors(float[] u, float[] v, double e) {
     float uv = u[0]*v[0]+u[1]*v[1]+u[2]*v[2];
     double ca = Math.min(uv,1.0f);
     double a = Math.toDegrees(Math.acos(ca));
@@ -68,16 +68,19 @@ public class EigenTensors3Test extends TestCase {
 
   private static java.util.Random r = new java.util.Random();
 
-  // Random coefficients.
-  private static float[] makeRandomCoefficients() {
+  // Random eigenvalues.
+  private static float[] makeRandomEigenvalues() {
     float a1 = r.nextFloat();
     float a2 = r.nextFloat();
     float a3 = r.nextFloat();
-    return new float[]{a1,a2,a3};
+    float au = Math.max(Math.max(a1,a2),a3);
+    float aw = Math.min(Math.min(a1,a2),a3);
+    float av = a1+a2+a3-au-aw;
+    return new float[]{au,av,aw};
   }
 
   // Random unit vector with non-negative 3rd component.
-  private static float[] makeRandomVector() {
+  private static float[] makeRandomEigenvector() {
     float a = r.nextFloat()-0.5f;
     float b = r.nextFloat()-0.5f;
     float c = r.nextFloat()-0.5f;

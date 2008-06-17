@@ -30,26 +30,26 @@ public class EigenTensors2Test extends TestCase {
     EigenTensors2 et = new EigenTensors2(n1,n2);
     for (int i2=0; i2<n2; ++i2) {
       for (int i1=0; i1<n1; ++i1) {
-        float[] a = makeRandomCoefficients();
-        float[] u = makeRandomVector();
-        et.setCoefficients(i1,i2,a);
+        float[] a = makeRandomEigenvalues();
+        float[] u = makeRandomEigenvector();
+        et.setEigenvalues(i1,i2,a);
         et.setEigenvectorU(i1,i2,u);
         float[] c;
-        c = et.getEigenvectorU(i1,i2); checkVectors(u,c,errorAngle);
-        c = et.getCoefficients(i1,i2); checkCoefficients(c,a,errorCoeff);
+        c = et.getEigenvectorU(i1,i2); checkEigenvectors(u,c,errorAngle);
+        c = et.getEigenvalues(i1,i2); checkEigenvalues(c,a,errorCoeff);
         et.setTensor(i1,i2,et.getTensor(i1,i2));
-        c = et.getEigenvectorU(i1,i2); checkVectors(u,c,errorAngle);
-        c = et.getCoefficients(i1,i2); checkCoefficients(c,a,errorCoeff);
+        c = et.getEigenvectorU(i1,i2); checkEigenvectors(u,c,errorAngle);
+        c = et.getEigenvalues(i1,i2); checkEigenvalues(c,a,errorCoeff);
       }
     }
   }
 
-  private static void checkCoefficients(float[] c, float[] a, double e) {
+  private static void checkEigenvalues(float[] c, float[] a, double e) {
     assertEquals(c[0],a[0],e);
     assertEquals(c[1],a[1],e);
   }
 
-  private static void checkVectors(float[] u, float[] v, double e) {
+  private static void checkEigenvectors(float[] u, float[] v, double e) {
     float uv = u[0]*v[0]+u[1]*v[1];
     double ca = Math.max(-1.0,Math.min(uv,1.0f));
     double a = Math.toDegrees(Math.acos(ca));
@@ -60,15 +60,17 @@ public class EigenTensors2Test extends TestCase {
 
   private static java.util.Random r = new java.util.Random();
 
-  // Random coefficients.
-  private static float[] makeRandomCoefficients() {
+  // Random eigenvalues with eu>=ev.
+  private static float[] makeRandomEigenvalues() {
     float a1 = r.nextFloat();
     float a2 = r.nextFloat();
-    return new float[]{a1,a2};
+    float au = Math.max(a1,a2);
+    float av = Math.min(a1,a2);
+    return new float[]{au,av};
   }
 
   // Random unit vector with non-negative 3rd component.
-  private static float[] makeRandomVector() {
+  private static float[] makeRandomEigenvector() {
     float a = r.nextFloat()-0.5f;
     float b = r.nextFloat()-0.5f;
     float s = 1.0f/(float)Math.sqrt(a*a+b*b);
