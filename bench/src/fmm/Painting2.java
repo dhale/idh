@@ -657,7 +657,9 @@ public class Painting2 {
       lof.apply(x,null,u1,u2,null,null,su,sv,null);
       float[][] sr = Array.div(sv,su); // linearity
       float[][] sa = Array.pow(sr,(float)alpha);
-      float[][] sb = Array.pow(sr,(float)beta);
+      float[][] sb = Array.sub(1.0f,coherence(sigma,x));
+      sb = Array.pow(sb,(float)beta);
+      plot(sb);
       su = sb;
       sv = Array.mul(sb,sa);
       //plot(sr);
@@ -677,6 +679,50 @@ public class Painting2 {
         }
       }
     }
+  }
+
+  private static float[][] coherence(double sigma, float[][] x) {
+    int n1 = x[0].length;
+    int n2 = x.length;
+    LocalOrientFilter lof1 = new LocalOrientFilter(sigma);
+    LocalOrientFilter lof2 = new LocalOrientFilter(sigma*4);
+    float[][] u11 = new float[n2][n1];
+    float[][] u21 = new float[n2][n1];
+    float[][] su1 = new float[n2][n1];
+    float[][] sv1 = new float[n2][n1];
+    float[][] u12 = new float[n2][n1];
+    float[][] u22 = new float[n2][n1];
+    float[][] su2 = new float[n2][n1];
+    float[][] sv2 = new float[n2][n1];
+    lof1.apply(x,null,u11,u21,null,null,su1,sv1,null);
+    lof2.apply(x,null,u12,u22,null,null,su2,sv2,null);
+    float[][] c = u11;
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        float u11i = u11[i2][i1];
+        float u21i = u21[i2][i1];
+        float su1i = su1[i2][i1];
+        float sv1i = sv1[i2][i1];
+        float u12i = u12[i2][i1];
+        float u22i = u22[i2][i1];
+        float su2i = su2[i2][i1];
+        float sv2i = sv2[i2][i1];
+        float s111 = (su1i-sv1i)*u11i*u11i+sv1i;
+        float s121 = (su1i-sv1i)*u11i*u21i     ;
+        float s221 = (su1i-sv1i)*u21i*u21i+sv1i;
+        float s112 = (su2i-sv2i)*u12i*u12i+sv2i;
+        float s122 = (su2i-sv2i)*u12i*u22i     ;
+        float s222 = (su2i-sv2i)*u22i*u22i+sv2i;
+        float s113 = s111*s112+s121*s122;
+        float s223 = s121*s122+s221*s222;
+        float t1 = s111+s221;
+        float t2 = s112+s222;
+        float t3 = s113+s223;
+        float t12 = t1*t2;
+        c[i2][i1] = (t12>0.0f)?t3/t12:0.0f;
+      }
+    }
+    return c;
   }
 
   private static float[][][] getTensorEllipses(
@@ -729,7 +775,7 @@ public class Painting2 {
     int n2 = 357;
     int nv = 1;
     float[][] x = readImage(n1,n2,"/data/seis/tp/tp73.dat");
-    int m1 = 1;
+    int m1 = 20;
     int nk = 1+(n1-1)/m1;
     int[] k1 = new int[nk];
     int[] k2 = new int[nk];
@@ -741,7 +787,7 @@ public class Painting2 {
       vk[ik] = (float)i1;
       //vk[ik] = (ik%2==0)?1.0f:2.0f;
     }
-    StructureTensors st = new StructureTensors(4,3,0,x);
+    StructureTensors st = new StructureTensors(3,2,0.75,x);
     Painting2 p = new Painting2(n1,n2,nv,st);
     for (int ik=0; ik<nk; ++ik) {
       p.paintAt(k1[ik],k2[ik],vk[ik]);

@@ -41,15 +41,15 @@ n2=161;  d2=0.025; f2=0.000
 n3=357;  d3=0.025; f3=0.000
 
 def main(args):
-  #testFormat()
+  testFormat()
   #readFormat()
   #readSegy()
   #resample()
-  ais = ArrayInputStream(dataDir+"tp3r.dat")
-  y = Array.zerofloat(n1,n2,n3)
-  ais.readFloats(y)
-  ais.close()
-  plot3d(y)
+  #ais = ArrayInputStream(dataDir+"tp3r.dat")
+  #y = Array.zerofloat(n1,n2,n3)
+  #ais.readFloats(y)
+  #ais.close()
+  #plot3d(y)
   #ais = ArrayInputStream(dataDir+"tp3.dat")
   #y = Array.zerofloat(n1i,n2i,n3i)
   #ais.readFloats(y)
