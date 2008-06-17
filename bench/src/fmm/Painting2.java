@@ -649,25 +649,12 @@ public class Painting2 {
       LocalOrientFilter lof = new LocalOrientFilter(sigma);
       lof.setGradientSmoothing(max(1,sigma/4));
       lof.apply(x,null,u1,u2,null,null,su,sv,null);
-      final float[][] s1 = Array.div(Array.sub(su,sv),su);
-      final float[][] s2 = Array.div(sv,su);
-      //final float[][] s1 = Array.sub(su,sv);
-      //final float[][] s2 = Array.copy(sv);
-      Array.mul(100.0f,s1,s1);
+      sv = Array.div(sv,su);
+      su = Array.fillfloat(1.0f,n1,n2);
       for (int i2=0; i2<n2; ++i2) {
         for (int i1=0; i1<n1; ++i1) {
-          setCoefficients(i1,i2,s1[i2][i1],s2[i2][i1]);
+          setEigenvalues(i1,i2,su[i2][i1],sv[i2][i1]);
           setEigenvectorU(i1,i2,u1[i2][i1],u2[i2][i1]);
-        }
-      }
-      float[][] ss = getScale(100.0f,x);
-      trace("ss min="+Array.min(ss)+" max="+Array.max(ss));
-      plot(ss);
-      Array.mul(ss,s1,s1);
-      Array.mul(ss,s2,s2);
-      for (int i2=0; i2<n2; ++i2) {
-        for (int i1=0; i1<n1; ++i1) {
-          setCoefficients(i1,i2,s1[i2][i1],s2[i2][i1]);
         }
       }
     }
@@ -758,14 +745,14 @@ public class Painting2 {
       double y2 = i2+r;
       for (int i1=j1; i1<n1; i1+=ns,++im) {
         float[] u = et.getEigenvectorU(i1,i2);
-        float[] s = et.getCoefficients(i1,i2);
+        float[] s = et.getEigenvalues(i1,i2);
         double u1 = u[0];
         double u2 = u[1];
         double v1 = -u2;
         double v2 =  u1;
-        double s1 = s[0];
-        double s2 = s[1];
-        double a = r*sqrt(s2/(s1+s2));
+        double su = s[0];
+        double sv = s[1];
+        double a = r*sqrt(sv/su);
         double b = r;
         for (int it=0; it<nt; ++it) {
           double t = ft+it*dt;
@@ -816,7 +803,6 @@ public class Painting2 {
     float[][] x = readImage(n1,n2,"/data/seis/joe/x174.dat");
     plot(x,ColorMap.GRAY);
     StructureTensors st = new StructureTensors(8,x);
-    //StructureTensors st = new SimpleTensors(n1,n2,0.0,1.0,1.0);
 
     /*
     int[] k1 =   {  92,  92,  92, 100, 100, 100,  60,  25,  20,  19};
@@ -863,12 +849,12 @@ public class Painting2 {
     extends EigenTensors2 
     implements Painting2.Tensors 
   {
-    SimpleTensors(int n1, int n2, double s1, double s2, double v1) {
+    SimpleTensors(int n1, int n2, double su, double sv, double v1) {
       super(n1,n2);
       float u2 = -(float)v1;
       float u1 = sqrt(1.0f-u2*u2);
-      float a1 = (float)s1;
-      float a2 = (float)s2;
+      float au = (float)su;
+      float av = (float)sv;
       for (int i2=0; i2<n2; ++i2) {
         for (int i1=0; i1<n1; ++i1) {
           float d1 = (float)(i1-n1/2);
@@ -878,7 +864,7 @@ public class Painting2 {
             as = 1000.0f;
           else
             as = 1.0f;
-          setCoefficients(i1,i2,a1*as,a2*as);
+          setEigenvalues(i1,i2,au*as,av*as);
           setEigenvectorU(i1,i2,u1,u2);
         }
       }
@@ -889,10 +875,10 @@ public class Painting2 {
     int n1 = 301;
     int n2 = 301;
     int nv = 1;
-    float s1 = 3.0f;
-    float s2 = 1.0f;
+    float su = 4.0f;
+    float sv = 1.0f;
     float v1 = sin(0.0f*FLT_PI/8.0f);
-    SimpleTensors st = new SimpleTensors(n1,n2,s1,s2,v1);
+    SimpleTensors st = new SimpleTensors(n1,n2,su,sv,v1);
     Painting2 p = new Painting2(n1,n2,nv,st);
     p.paintAt(1*n1/4,2*n2/4,1.0f);
     p.paintAt(3*n1/4,2*n2/4,2.0f);
