@@ -638,7 +638,7 @@ public class Painting2 {
     extends EigenTensors2
     implements Painting2.Tensors 
   {
-    StructureTensors(double sigma, float[][] x) {
+    StructureTensors(double sigma, double alpha, double beta, float[][] x) {
       super(x[0].length,x.length);
       int n1 = x[0].length;
       int n2 = x.length;
@@ -649,8 +649,11 @@ public class Painting2 {
       LocalOrientFilter lof = new LocalOrientFilter(sigma);
       lof.setGradientSmoothing(max(1,sigma/4));
       lof.apply(x,null,u1,u2,null,null,su,sv,null);
-      sv = Array.div(sv,su);
       su = Array.fillfloat(1.0f,n1,n2);
+      sv = Array.pow(Array.div(sv,su),(float)alpha);
+      ss = Array.pow(Array.div(sv,su),(float)beta);
+      su = Array.mul(ss,su);
+      sv = Array.mul(ss,sv);
       for (int i2=0; i2<n2; ++i2) {
         for (int i1=0; i1<n1; ++i1) {
           setEigenvalues(i1,i2,su[i2][i1],sv[i2][i1]);
@@ -658,73 +661,6 @@ public class Painting2 {
         }
       }
     }
-  }
-
-  private static float[][] getScale(float alpha, float[][] x) {
-    int n1 = x[0].length;
-    int n2 = x.length;
-    float[][] s = new float[n2][n1];
-    float xl = Quantiler.estimate(0.05f,x);
-    for (int i2=0; i2<n2; ++i2) {
-      for (int i1=0; i1<n1; ++i1) {
-        s[i2][i1] = (xl<x[i2][i1])?1.0f:alpha;
-      }
-    }
-    return s;
-  }
-
-  private static float[][] getScaleX(
-    float alpha, float[][] x, EigenTensors2 et) 
-  {
-    int n1 = x[0].length;
-    int n2 = x.length;
-    float[][] e = getEdges(x,et);
-    plot(e);
-    float[][] s = new float[n2][n1];
-    for (int i2=0; i2<n2; ++i2) {
-      for (int i1=0; i1<n1; ++i1) {
-        s[i2][i1] = (e[i2][i1]>0.0f)?alpha:1.0f;
-      }
-    }
-    return s;
-  }
-
-  private static float[][] getDerivativeU(float[][] x, EigenTensors2 et) {
-    int n1 = x[0].length;
-    int n2 = x.length;
-    float[][] g1 = new float[n2][n1];
-    float[][] g2 = new float[n2][n1];
-    float[][] d = new float[n2][n1];
-    RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(2.0);
-    rgf.apply10(x,g1);
-    rgf.apply01(x,g2);
-    float[] u = new float[2];
-    for (int i2=0; i2<n2; ++i2) {
-      for (int i1=0; i1<n1; ++i1) {
-        et.getEigenvectorU(i1,i2,u);
-        float u1 = u[0];
-        float u2 = u[1];
-        d[i2][i1] = u1*g1[i2][i1]+u2*g2[i2][i1];
-      }
-    }
-    return d;
-  }
-
-  private static float[][] getEdges(float[][] x, EigenTensors2 et) {
-    int n1 = x[0].length;
-    int n2 = x.length;
-    float[][] d = getDerivativeU(x,et);
-    float[][] e = new float[n2][n1];
-    for (int i2=1; i2<n2-1; ++i2) {
-      for (int i1=1; i1<n1-1; ++i1) {
-        float xi = x[i2][i1];
-        float d1 = d[i2][i1+1]*d[i2][i1-1];
-        float d2 = d[i2+1][i1]*d[i2-1][i1];
-        if ((d1<0.0f || d2<0.0f) && xi>0.0f)
-          e[i2][i1] = 1.0f;
-      }
-    }
-    return e;
   }
 
   private static float[][][] getTensorEllipses(
@@ -783,7 +719,7 @@ public class Painting2 {
       vk[ik] = (float)i1;
       //vk[ik] = (ik%2==0)?1.0f:2.0f;
     }
-    StructureTensors st = new StructureTensors(4,x);
+    StructureTensors st = new StructureTensors(4,2,2,x);
     Painting2 p = new Painting2(n1,n2,nv,st);
     for (int ik=0; ik<nk; ++ik) {
       p.paintAt(k1[ik],k2[ik],vk[ik]);
