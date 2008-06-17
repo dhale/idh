@@ -45,8 +45,18 @@ def main(args):
   #goPaint()
   #goPaintWells(20)
   #goPaint()
-  doPlot3dList(["pp20w2d.dat","pp.dat"],[cjet,cjet])
+  #doPlot3dList(["pp20w2d.dat","pp.dat"],[cjet,cjet])
+  doPlot3dList(["tp3s.dat"],[cgray])
+  #goSubset2d()
 
+def goSubset2d():
+  x = readFloats("tp3s.dat",n1,n2,n3)
+  s = Array.copy(n1,1,n3,0,73,0,x);
+  s = Array.flatten(s);
+  s = Array.reshape(n1,n3,s);
+  SimplePlot.asPixels(s);
+  writeFloats("tp73.dat",s)
+  
 def goPaint():
   dt3 = makeDiffusionTensors3(0.0,1.0,0.001)
   p = readFloats("pw20.dat",n1,n2,n3)

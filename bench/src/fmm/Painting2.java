@@ -577,7 +577,8 @@ public class Painting2 {
     //sp.setSize(650,600);
     sp.setSize(950,900);
     PixelsView pv = sp.addPixels(x);
-    pv.setInterpolation(PixelsView.Interpolation.NEAREST);
+    //pv.setInterpolation(PixelsView.Interpolation.NEAREST);
+    pv.setInterpolation(PixelsView.Interpolation.LINEAR);
     int n1 = x[0].length;
     int n2 = x.length;
     float[][][] x12 = getTensorEllipses(n1,n2,10,et);
@@ -600,7 +601,8 @@ public class Painting2 {
       _pv = _sp.addPixels(f);
       if (icm==null) icm = ColorMap.JET;
       _pv.setColorModel(icm);
-      _pv.setInterpolation(PixelsView.Interpolation.NEAREST);
+      //_pv.setInterpolation(PixelsView.Interpolation.NEAREST);
+      _pv.setInterpolation(PixelsView.Interpolation.LINEAR);
     }
     void set(final float[][] f) {
       sleep(1000);
@@ -624,7 +626,8 @@ public class Painting2 {
 
   private static float[][] readImage(int n1, int n2, String fileName) {
     try {
-      java.nio.ByteOrder bo = java.nio.ByteOrder.LITTLE_ENDIAN;
+      //java.nio.ByteOrder bo = java.nio.ByteOrder.LITTLE_ENDIAN;
+      java.nio.ByteOrder bo = java.nio.ByteOrder.BIG_ENDIAN;
       ArrayInputStream ais = new ArrayInputStream(fileName,bo);
       float[][] x = new float[n2][n1];
       ais.readFloats(x);
@@ -639,7 +642,9 @@ public class Painting2 {
     extends EigenTensors2
     implements Painting2.Tensors 
   {
-    StructureTensors(double sigma, double alpha, double beta, float[][] x) {
+    StructureTensors(
+      double sigma, double alpha, double beta, float[][] x) 
+    {
       super(x[0].length,x.length);
       int n1 = x[0].length;
       int n2 = x.length;
@@ -648,17 +653,27 @@ public class Painting2 {
       float[][] su = new float[n2][n1];
       float[][] sv = new float[n2][n1];
       LocalOrientFilter lof = new LocalOrientFilter(sigma);
-      lof.setGradientSmoothing(max(1,sigma/4));
+      //lof.setGradientSmoothing(max(1,sigma/4));
       lof.apply(x,null,u1,u2,null,null,su,sv,null);
-      sv = Array.pow(Array.div(sv,su),(float)alpha);
-      su = Array.fillfloat(1.0f,n1,n2);
-      //float[][] ss = Array.pow(Array.div(sv,su),(float)beta);
-      //sv = Array.mul(ss,sv);
-      //su = Array.mul(ss,su);
+      float[][] sr = Array.div(sv,su); // linearity
+      float[][] sa = Array.pow(sr,(float)alpha);
+      float[][] sb = Array.pow(sr,(float)beta);
+      su = sb;
+      sv = Array.mul(sb,sa);
+      //plot(sr);
+      //plot(sa);
       for (int i2=0; i2<n2; ++i2) {
         for (int i1=0; i1<n1; ++i1) {
           setEigenvalues(i1,i2,su[i2][i1],sv[i2][i1]);
           setEigenvectorU(i1,i2,u1[i2][i1],u2[i2][i1]);
+          /*
+          if (i1==n1/2+80 && i2==n2/2+84 ||
+              i1==n1/2+84 && i2==n2/2+80 ||
+              i1==n1/2+0 && i2==n2/2+116 ||
+              i1==n1/2+116 && i2==n2/2+0) {
+            trace("i1="+i1+" i2="+i2+" sv="+sv[i2][i1]+" su="+su[i2][i1]);
+          }
+          */
         }
       }
     }
@@ -704,11 +719,17 @@ public class Painting2 {
   }
 
   private static void testSeismic() {
+    /*
     int n1 = 315;
     int n2 = 315;
     int nv = 1;
     float[][] x = readImage(n1,n2,"/data/seis/vg/junks.dat");
-    int m1 = 20;
+    */
+    int n1 = 251;
+    int n2 = 357;
+    int nv = 1;
+    float[][] x = readImage(n1,n2,"/data/seis/tp/tp73.dat");
+    int m1 = 1;
     int nk = 1+(n1-1)/m1;
     int[] k1 = new int[nk];
     int[] k2 = new int[nk];
@@ -720,17 +741,17 @@ public class Painting2 {
       vk[ik] = (float)i1;
       //vk[ik] = (ik%2==0)?1.0f:2.0f;
     }
-    StructureTensors st = new StructureTensors(6,2,0.01,x);
+    StructureTensors st = new StructureTensors(4,3,0,x);
     Painting2 p = new Painting2(n1,n2,nv,st);
     for (int ik=0; ik<nk; ++ik) {
       p.paintAt(k1[ik],k2[ik],vk[ik]);
     }
     plotImageTensors(x,st);
     p.extrapolate();
+    plot(p.getTimes(),ColorMap.JET);
     plot(p.getValues(),ColorMap.JET);
-    //plot(p.getTimes(),ColorMap.JET);
-    //p.interpolate();
-    //plot(p.getValues(),ColorMap.JET);
+    p.interpolate();
+    plot(p.getValues(),ColorMap.JET);
   }
 
   private static void testChannels() {
@@ -739,7 +760,7 @@ public class Painting2 {
     int nv = 1;
     float[][] x = readImage(n1,n2,"/data/seis/joe/x174.dat");
     plot(x,ColorMap.GRAY);
-    StructureTensors st = new StructureTensors(8,2,0.01,x);
+    StructureTensors st = new StructureTensors(8,2,0,x);
 
     /*
     int[] k1 =   {  92,  92,  92, 100, 100, 100,  60,  25,  20,  19};
@@ -851,7 +872,7 @@ public class Painting2 {
     int n2 = 315;
     int nv = 1;
     float[][] x = makeTargetImage(n1,n2);
-    StructureTensors st = new StructureTensors(8,1,1,x);
+    StructureTensors st = new StructureTensors(8,1,0,x);
     Painting2 p = new Painting2(n1,n2,nv,st);
     int m1 = 1;
     int m2 = 1;
@@ -879,6 +900,22 @@ public class Painting2 {
     plot(p.getValues());
   }
 
+  private static float[][] sigmoid(float p, float q, float[][] s) {
+    int n1 = s[0].length;
+    int n2 = s.length;
+    float[][] t = new float[n2][n1];
+    float pio2 = 0.5f*FLT_PI;
+    float tanq = tan(pio2*q);
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        float tans = tan(pio2*s[i2][i1]);
+        float tanr = tans/tanq;
+        t[i2][i1] = 1.0f-1.0f/(1.0f+pow(tanr,p));
+      }
+    }
+    return t;
+  }
+
   private static void trace(String s) {
     System.out.println(s);
   }
@@ -886,10 +923,10 @@ public class Painting2 {
   public static void main(String[] args) {
     SwingUtilities.invokeLater(new Runnable() {
       public void run() {
+        testSeismic();
         //testChannels();
-        //testSeismic();
         //testIsotropic();
-        testTarget();
+        //testTarget();
       }
     });
   }
