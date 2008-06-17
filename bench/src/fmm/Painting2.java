@@ -586,7 +586,7 @@ public class Painting2 {
     float[][] x2 = x12[1];
     PointsView ev = new PointsView(x1,x2);
     ev.setOrientation(PointsView.Orientation.X1DOWN_X2RIGHT);
-    ev.setLineColor(Color.RED);
+    ev.setLineColor(Color.YELLOW);
     sp.getPlotPanel().getTile(0,0).addTiledView(ev);
   }
 
@@ -787,7 +787,7 @@ public class Painting2 {
       vk[ik] = (float)i1;
       //vk[ik] = (ik%2==0)?1.0f:2.0f;
     }
-    StructureTensors st = new StructureTensors(3,2,0.75,x);
+    StructureTensors st = new StructureTensors(3,2,0.5,x);
     Painting2 p = new Painting2(n1,n2,nv,st);
     for (int ik=0; ik<nk; ++ik) {
       p.paintAt(k1[ik],k2[ik],vk[ik]);

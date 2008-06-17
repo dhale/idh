@@ -41,17 +41,17 @@ n2=161;  d2=0.025; f2=0.000
 n3=357;  d3=0.025; f3=0.000
 
 def main(args):
-  testFormat()
+  #testFormat()
   #readFormat()
   #readSegy()
-  #resample()
-  #ais = ArrayInputStream(dataDir+"tp3r.dat")
-  #y = Array.zerofloat(n1,n2,n3)
+  #ais = ArrayInputStream(dataDir+"tp3.dat")
+  #y = Array.zerofloat(n1i,n2i,n3i)
   #ais.readFloats(y)
   #ais.close()
   #plot3d(y)
-  #ais = ArrayInputStream(dataDir+"tp3.dat")
-  #y = Array.zerofloat(n1i,n2i,n3i)
+  #resample()
+  #ais = ArrayInputStream(dataDir+"tp3r.dat")
+  #y = Array.zerofloat(n1,n2,n3)
   #ais.readFloats(y)
   #ais.close()
   #plot3d(y)
@@ -161,14 +161,14 @@ def readSegy():
   ais = ArrayInputStream(infile)
   aos = ArrayOutputStream(outfile)
   ais.skipBytes(nhead+nbhed)
-  x = Array.zerofloat(n1i)
+  x = Array.zeroint(n1i)
   y = Array.zerofloat(n1i)
   for i in range(n2i*n3i):
     if i%1000==0:
       print "i =",i
     ais.skipBytes(nthed)
-    ais.readFloats(x)
-    Array.copy(n1i,x,y)
+    ais.readInts(x)
+    Convert.ibmToFloat(x,y)
     #Array.dump(y)
     #print "y min =",Array.min(y)," max =",Array.max(y)
     aos.writeFloats(y)
