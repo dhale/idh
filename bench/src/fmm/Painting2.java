@@ -803,7 +803,7 @@ public class Painting2 {
     }
     return k2;
   }
-  private static float[] getVkSeisLayerIndex() {
+  private static float[] getVkSeisLayer() {
     int nk = VK_SEIS_LAYER.length;
     float[] vk = new float[2*nk];
     for (int ik=0,jk=0; ik<nk; ++ik,jk+=2) {
@@ -811,6 +811,20 @@ public class Painting2 {
       int vkb = (int)(VK_SEIS_LAYER[ik]+0.01);
       vk[jk  ] = (float)vka;
       vk[jk+1] = (float)vkb;
+    }
+    return vk;
+  }
+  private static int[] getK1Seis() {
+    return Array.copy(K1_SEIS);
+  }
+  private static int[] getK2Seis() {
+    return Array.copy(K2_SEIS);
+  }
+  private static float[] getVkSeisTime() {
+    int nk = VK_SEIS_TIME.length;
+    float[] vk = new float[nk];
+    for (int ik=0; ik<nk; ++ik) {
+      vk[ik] = (float)VK_SEIS_TIME[ik];
     }
     return vk;
   }
@@ -838,7 +852,7 @@ public class Painting2 {
     Painting2 p = new Painting2(n1,n2,nv,st);
     int[] k1 = getK1SeisAboveBelow();
     int[] k2 = getK2SeisAboveBelow();
-    float[] vk = getVkSeisLayerIndex();
+    float[] vk = getVkSeisLayer();
     int nk = k1.length;
     for (int ik=0; ik<nk; ++ik) {
       p.paintAt(k1[ik],k2[ik],vk[ik]);
