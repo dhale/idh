@@ -577,8 +577,8 @@ public class Painting2 {
     //sp.setSize(650,600);
     sp.setSize(950,900);
     PixelsView pv = sp.addPixels(x);
-    //pv.setInterpolation(PixelsView.Interpolation.NEAREST);
-    pv.setInterpolation(PixelsView.Interpolation.LINEAR);
+    pv.setInterpolation(PixelsView.Interpolation.NEAREST);
+    //pv.setInterpolation(PixelsView.Interpolation.LINEAR);
     int n1 = x[0].length;
     int n2 = x.length;
     float[][][] x12 = getTensorEllipses(n1,n2,10,et);
@@ -601,8 +601,8 @@ public class Painting2 {
       _pv = _sp.addPixels(f);
       if (icm==null) icm = ColorMap.JET;
       _pv.setColorModel(icm);
-      //_pv.setInterpolation(PixelsView.Interpolation.NEAREST);
-      _pv.setInterpolation(PixelsView.Interpolation.LINEAR);
+      _pv.setInterpolation(PixelsView.Interpolation.NEAREST);
+      //_pv.setInterpolation(PixelsView.Interpolation.LINEAR);
     }
     void set(final float[][] f) {
       sleep(1000);
@@ -655,13 +655,14 @@ public class Painting2 {
       LocalOrientFilter lof = new LocalOrientFilter(sigma);
       //lof.setGradientSmoothing(max(1,sigma/4));
       lof.apply(x,null,u1,u2,null,null,su,sv,null);
+      float a = (float)alpha;
+      float b = (float)beta;
       float[][] sr = Array.div(sv,su); // linearity
-      float[][] sa = Array.pow(sr,(float)alpha);
-      float[][] sb = Array.sub(1.0f,coherence(sigma,x));
-      sb = Array.pow(sb,(float)beta);
-      plot(sb);
+      float[][] sa = Array.pow(sr,a);
+      float[][] sb = Array.sub(1.0f,Array.pow(coherence(sigma,x),b));
       su = sb;
       sv = Array.mul(sb,sa);
+      plot(su);
       //plot(sr);
       //plot(sa);
       for (int i2=0; i2<n2; ++i2) {
@@ -764,17 +765,62 @@ public class Painting2 {
     return new float[][][]{x1,x2};
   }
 
+  private static int[] K1_SEIS = {
+      43,  87, 110, 147, 167, 188,
+      39,  82, 105, 142, 160, 180,
+      40,  86, 107, 144, 158, 185,
+  };
+  private static int[] K2_SEIS = {
+     100, 100, 100, 100, 100, 100,
+     170, 170, 170, 170, 170, 170,
+     280, 280, 280, 280, 280, 280,
+  };
+  private static double[] VK_SEIS_LAYER = {
+       1,   2,   3,   4,   5,   6,
+       1,   2,   3,   4,   5,   6,
+       1,   2,   3,   4,   5,   6,
+  };
+  private static double[] VK_SEIS_TIME = {
+      43,  87, 110, 147, 167, 188,
+      43,  87, 110, 147, 167, 188,
+      43,  87, 110, 147, 167, 188,
+  };
+  private static int[] getK1SeisAboveBelow() {
+    int nk = K1_SEIS.length;
+    int[] k1 = new int[2*nk];
+    for (int ik=0,jk=0; ik<nk; ++ik,jk+=2) {
+      k1[jk  ] = K1_SEIS[ik]-2;
+      k1[jk+1] = K1_SEIS[ik]+2;
+    }
+    return k1;
+  }
+  private static int[] getK2SeisAboveBelow() {
+    int nk = K2_SEIS.length;
+    int[] k2 = new int[2*nk];
+    for (int ik=0,jk=0; ik<nk; ++ik,jk+=2) {
+      k2[jk  ] = K2_SEIS[ik];
+      k2[jk+1] = K2_SEIS[ik];
+    }
+    return k2;
+  }
+  private static float[] getVkSeisLayerIndex() {
+    int nk = VK_SEIS_LAYER.length;
+    float[] vk = new float[2*nk];
+    for (int ik=0,jk=0; ik<nk; ++ik,jk+=2) {
+      int vka = (int)(VK_SEIS_LAYER[ik]-0.01);
+      int vkb = (int)(VK_SEIS_LAYER[ik]+0.01);
+      vk[jk  ] = (float)vka;
+      vk[jk+1] = (float)vkb;
+    }
+    return vk;
+  }
+
   private static void testSeismic() {
-    /*
-    int n1 = 315;
-    int n2 = 315;
-    int nv = 1;
-    float[][] x = readImage(n1,n2,"/data/seis/vg/junks.dat");
-    */
     int n1 = 251;
     int n2 = 357;
     int nv = 1;
     float[][] x = readImage(n1,n2,"/data/seis/tp/tp73.dat");
+    /*
     int m1 = 20;
     int nk = 1+(n1-1)/m1;
     int[] k1 = new int[nk];
@@ -787,11 +833,17 @@ public class Painting2 {
       vk[ik] = (float)i1;
       //vk[ik] = (ik%2==0)?1.0f:2.0f;
     }
-    StructureTensors st = new StructureTensors(3,2,0.5,x);
+    */
+    StructureTensors st = new StructureTensors(3,3,6,x);
     Painting2 p = new Painting2(n1,n2,nv,st);
+    int[] k1 = getK1SeisAboveBelow();
+    int[] k2 = getK2SeisAboveBelow();
+    float[] vk = getVkSeisLayerIndex();
+    int nk = k1.length;
     for (int ik=0; ik<nk; ++ik) {
       p.paintAt(k1[ik],k2[ik],vk[ik]);
     }
+    plot(p.getValues(),ColorMap.JET);
     plotImageTensors(x,st);
     p.extrapolate();
     plot(p.getTimes(),ColorMap.JET);
