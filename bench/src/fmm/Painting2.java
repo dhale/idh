@@ -575,10 +575,11 @@ public class Painting2 {
   private static void plotImageTensors(float[][] x, EigenTensors2 et) {
     SimplePlot sp = new SimplePlot(SimplePlot.Origin.UPPER_LEFT);
     //sp.setSize(650,600);
-    sp.setSize(950,900);
+    //sp.setSize(950,900);
+    sp.setSize(1130,820);
     PixelsView pv = sp.addPixels(x);
-    pv.setInterpolation(PixelsView.Interpolation.NEAREST);
-    //pv.setInterpolation(PixelsView.Interpolation.LINEAR);
+    //pv.setInterpolation(PixelsView.Interpolation.NEAREST);
+    pv.setInterpolation(PixelsView.Interpolation.LINEAR);
     int n1 = x[0].length;
     int n2 = x.length;
     float[][][] x12 = getTensorEllipses(n1,n2,10,et);
@@ -597,12 +598,13 @@ public class Painting2 {
     Plot(float[][] f, IndexColorModel icm) {
       _sp = new SimplePlot(SimplePlot.Origin.UPPER_LEFT);
       //_sp.setSize(650,600);
-      _sp.setSize(950,900);
+      //_sp.setSize(950,900);
+      _sp.setSize(1130,820);
       _pv = _sp.addPixels(f);
       if (icm==null) icm = ColorMap.JET;
       _pv.setColorModel(icm);
-      _pv.setInterpolation(PixelsView.Interpolation.NEAREST);
-      //_pv.setInterpolation(PixelsView.Interpolation.LINEAR);
+      //_pv.setInterpolation(PixelsView.Interpolation.NEAREST);
+      _pv.setInterpolation(PixelsView.Interpolation.LINEAR);
     }
     void set(final float[][] f) {
       sleep(1000);
@@ -642,9 +644,7 @@ public class Painting2 {
     extends EigenTensors2
     implements Painting2.Tensors 
   {
-    StructureTensors(
-      double sigma, double alpha, double beta, float[][] x) 
-    {
+    StructureTensors(double sigma, float[][] x) {
       super(x[0].length,x.length);
       int n1 = x[0].length;
       int n2 = x.length;
@@ -653,30 +653,15 @@ public class Painting2 {
       float[][] su = new float[n2][n1];
       float[][] sv = new float[n2][n1];
       LocalOrientFilter lof = new LocalOrientFilter(sigma);
-      //lof.setGradientSmoothing(max(1,sigma/4));
       lof.apply(x,null,u1,u2,null,null,su,sv,null);
-      float a = (float)alpha;
-      float b = (float)beta;
-      float[][] sr = Array.div(sv,su); // linearity
-      float[][] sa = Array.pow(sr,a);
-      float[][] sb = Array.sub(1.0f,Array.pow(coherence(sigma,x),b));
-      su = sb;
-      sv = Array.mul(sb,sa);
+      float[][] sc = Array.sub(1.0f,coherence(sigma,x));
+      su = Array.mul(su,sc);
+      sv = Array.mul(sv,sc);
       plot(su);
-      //plot(sr);
-      //plot(sa);
       for (int i2=0; i2<n2; ++i2) {
         for (int i1=0; i1<n1; ++i1) {
           setEigenvalues(i1,i2,su[i2][i1],sv[i2][i1]);
           setEigenvectorU(i1,i2,u1[i2][i1],u2[i2][i1]);
-          /*
-          if (i1==n1/2+80 && i2==n2/2+84 ||
-              i1==n1/2+84 && i2==n2/2+80 ||
-              i1==n1/2+0 && i2==n2/2+116 ||
-              i1==n1/2+116 && i2==n2/2+0) {
-            trace("i1="+i1+" i2="+i2+" sv="+sv[i2][i1]+" su="+su[i2][i1]);
-          }
-          */
         }
       }
     }
@@ -768,29 +753,39 @@ public class Painting2 {
   private static int[] K1_SEIS = {
       43,  87, 110, 147, 167, 188,
       39,  82, 105, 142, 160, 180,
-      40,  86, 107, 144, 158, 185,
+      40,  86, 107, 144, 165, 185,
   };
   private static int[] K2_SEIS = {
      100, 100, 100, 100, 100, 100,
      170, 170, 170, 170, 170, 170,
      280, 280, 280, 280, 280, 280,
   };
-  private static double[] VK_SEIS_LAYER = {
+  private static double[] VK_SEIS = {
        1,   2,   3,   4,   5,   6,
        1,   2,   3,   4,   5,   6,
        1,   2,   3,   4,   5,   6,
   };
-  private static double[] VK_SEIS_TIME = {
-      43,  87, 110, 147, 167, 188,
-      43,  87, 110, 147, 167, 188,
-      43,  87, 110, 147, 167, 188,
+  private static int[] K1_SEISB = {
+      20,  75, 100, 130, 155, 180, 210,
+      20,  70,  95, 142, 160, 180,
+      40,  86, 107, 144, 165, 185,
+  };
+  private static int[] K2_SEISB = {
+     100, 100, 100, 100, 100, 100,
+     170, 170, 170, 170, 170, 170,
+     280, 280, 280, 280, 280, 280,
+  };
+  private static double[] VK_SEISB = {
+       1,   2,   3,   4,   5,   6,
+       1,   2,   3,   4,   5,   6,
+       1,   2,   3,   4,   5,   6,
   };
   private static int[] getK1SeisAboveBelow() {
     int nk = K1_SEIS.length;
     int[] k1 = new int[2*nk];
     for (int ik=0,jk=0; ik<nk; ++ik,jk+=2) {
-      k1[jk  ] = K1_SEIS[ik]-2;
-      k1[jk+1] = K1_SEIS[ik]+2;
+      k1[jk  ] = K1_SEIS[ik]-4;
+      k1[jk+1] = K1_SEIS[ik]+4;
     }
     return k1;
   }
@@ -804,29 +799,44 @@ public class Painting2 {
     return k2;
   }
   private static float[] getVkSeisLayer() {
-    int nk = VK_SEIS_LAYER.length;
+    int nk = VK_SEIS.length;
     float[] vk = new float[2*nk];
     for (int ik=0,jk=0; ik<nk; ++ik,jk+=2) {
-      int vka = (int)(VK_SEIS_LAYER[ik]-0.01);
-      int vkb = (int)(VK_SEIS_LAYER[ik]+0.01);
+      int vka = (int)(VK_SEIS[ik]-0.01);
+      int vkb = (int)(VK_SEIS[ik]+0.01);
       vk[jk  ] = (float)vka;
       vk[jk+1] = (float)vkb;
     }
     return vk;
   }
-  private static int[] getK1Seis() {
-    return Array.copy(K1_SEIS);
-  }
-  private static int[] getK2Seis() {
-    return Array.copy(K2_SEIS);
-  }
-  private static float[] getVkSeisTime() {
-    int nk = VK_SEIS_TIME.length;
-    float[] vk = new float[nk];
-    for (int ik=0; ik<nk; ++ik) {
-      vk[ik] = (float)VK_SEIS_TIME[ik];
+
+  private static void insertFaults(StructureTensors st) {
+    int[] k1 = {  25, 193,  27, 106, 107, 200};
+    int[] k2 = { 135, 145, 232, 213, 213, 206};
+    int nk = k1.length;
+    float ehuge = 10000.0f;
+    for (int ik=0; ik<nk; ik+=2) {
+      int k1a = k1[ik  ];
+      int k1b = k1[ik+1];
+      int k2a = k2[ik  ];
+      int k2b = k2[ik+1];
+      double kscale = (double)(k2b-k2a)/(double)(k1b-k1a);
+      for (int j1=k1a; j1<=k1b; ++j1) {
+        double x2 = k2a+(j1-k1a)*kscale; 
+        int j2l = (int)x2;
+        int j2r = j2l+1;
+        float[] el = st.getEigenvalues(j1,j2l);
+        float[] er = st.getEigenvalues(j1,j2r);
+        float e2r = (float)(x2-j2l);
+        float e2l = (1.0f-e2r);
+        el[0] *= e2l*ehuge;
+        el[1] *= e2l*ehuge;
+        er[0] *= e2r*ehuge;
+        er[1] *= e2r*ehuge;
+        st.setEigenvalues(j1,j2l,el);
+        st.setEigenvalues(j1,j2r,er);
+      }
     }
-    return vk;
   }
 
   private static void testSeismic() {
@@ -848,7 +858,8 @@ public class Painting2 {
       //vk[ik] = (ik%2==0)?1.0f:2.0f;
     }
     */
-    StructureTensors st = new StructureTensors(3,3,6,x);
+    StructureTensors st = new StructureTensors(3,x);
+    plotImageTensors(x,st);
     Painting2 p = new Painting2(n1,n2,nv,st);
     int[] k1 = getK1SeisAboveBelow();
     int[] k2 = getK2SeisAboveBelow();
@@ -857,8 +868,7 @@ public class Painting2 {
     for (int ik=0; ik<nk; ++ik) {
       p.paintAt(k1[ik],k2[ik],vk[ik]);
     }
-    plot(p.getValues(),ColorMap.JET);
-    plotImageTensors(x,st);
+    plot(x,ColorMap.GRAY);
     p.extrapolate();
     plot(p.getTimes(),ColorMap.JET);
     plot(p.getValues(),ColorMap.JET);
@@ -872,7 +882,7 @@ public class Painting2 {
     int nv = 1;
     float[][] x = readImage(n1,n2,"/data/seis/joe/x174.dat");
     plot(x,ColorMap.GRAY);
-    StructureTensors st = new StructureTensors(8,2,0,x);
+    StructureTensors st = new StructureTensors(8,x);
 
     /*
     int[] k1 =   {  92,  92,  92, 100, 100, 100,  60,  25,  20,  19};
@@ -984,7 +994,7 @@ public class Painting2 {
     int n2 = 315;
     int nv = 1;
     float[][] x = makeTargetImage(n1,n2);
-    StructureTensors st = new StructureTensors(8,1,0,x);
+    StructureTensors st = new StructureTensors(8,x);
     Painting2 p = new Painting2(n1,n2,nv,st);
     int m1 = 1;
     int m2 = 1;
@@ -1010,22 +1020,6 @@ public class Painting2 {
     plot(p.getValues());
     p.interpolate();
     plot(p.getValues());
-  }
-
-  private static float[][] sigmoid(float p, float q, float[][] s) {
-    int n1 = s[0].length;
-    int n2 = s.length;
-    float[][] t = new float[n2][n1];
-    float pio2 = 0.5f*FLT_PI;
-    float tanq = tan(pio2*q);
-    for (int i2=0; i2<n2; ++i2) {
-      for (int i1=0; i1<n1; ++i1) {
-        float tans = tan(pio2*s[i2][i1]);
-        float tanr = tans/tanq;
-        t[i2][i1] = 1.0f-1.0f/(1.0f+pow(tanr,p));
-      }
-    }
-    return t;
   }
 
   private static void trace(String s) {
