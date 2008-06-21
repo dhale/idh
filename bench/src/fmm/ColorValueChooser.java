@@ -40,6 +40,12 @@ public class ColorValueChooser extends JPanel implements ColorMapListener {
   public ColorValueChooser(ColorMap cmap, String label) {
     super();
 
+    // Values from the specified color map.
+    _cmap = cmap;
+    double vmin = cmap.getMinValue();
+    double vmax = cmap.getMaxValue();
+    double vavg = 0.5*(vmin+vmax);
+
     // The mosaic contains one tile that contains a pixels view.
     // The pixels view is constructed later.
     _mosaic = new Mosaic(1,1,EnumSet.of(Mosaic.AxesPlacement.RIGHT));
@@ -56,12 +62,10 @@ public class ColorValueChooser extends JPanel implements ColorMapListener {
     _swatch = new JPanel();
     _swatch.setBorder(BorderFactory.createLineBorder(Color.black));
     _swatch.setPreferredSize(new Dimension(cbWidth+2,0));
-    _swatch.setBackground(Color.RED);
-    double vmin = cmap.getMinValue();
-    double vmax = cmap.getMaxValue();
-    double vavg = 0.5*(vmin+vmax);
+    _swatch.setBackground(cmap.getColor(vavg));
     _vfield = new NumberTextField(vmin,vmax);
     _vfield.setValue(vavg);
+    _vfield.setFormat("%1.3g");
     JPanel vpanel = new JPanel();
     vpanel.setLayout(new GridBagLayout());
     GridBagConstraints gbc = new GridBagConstraints();
@@ -83,8 +87,36 @@ public class ColorValueChooser extends JPanel implements ColorMapListener {
     this.add(_mosaic,BorderLayout.CENTER);
     this.add(vpanel,BorderLayout.SOUTH);
 
-    // Listen for changes to the colormap.
-    cmap.addListener(this);
+    // Listen for value entered in text field.
+    _vfield.addActionListener(new ActionListener() {
+      public void actionPerformed(ActionEvent e) {
+        NumberTextField ntf = (NumberTextField)e.getSource();
+        setValue(ntf.getDouble());
+      }
+    });
+
+    // Listen for mouse events in color bar.
+    _tile.addMouseListener(new ValueAdjuster());
+
+    // Listen for changes to the color map.
+    _cmap.addListener(this);
+  }
+
+  /**
+   * Sets the currently chosen value.
+   * @param v the value.
+   */
+  public void setValue(double v) {
+    _vfield.setDouble(v);
+    _swatch.setBackground(_cmap.getColor(v));
+  }
+
+  /**
+   * Gets the currently chosen value.
+   * @return the value.
+   */
+  public double getValue() {
+    return _vfield.getDouble();
   }
 
   public void colorMapChanged(ColorMap cm) {
@@ -94,6 +126,7 @@ public class ColorValueChooser extends JPanel implements ColorMapListener {
       vmin -= Math.ulp(vmin);
       vmax += Math.ulp(vmax);
     }
+    setValueRange(vmin,vmax);
     int nv = 256;
     double dv = (vmax-vmin)/(nv-1);
     double fv = vmin;
@@ -144,11 +177,6 @@ public class ColorValueChooser extends JPanel implements ColorMapListener {
   ///////////////////////////////////////////////////////////////////////////
   // protected
 
-  protected void paintComponent(Graphics g) {
-    super.paintComponent(g);
-    //paintToRect((Graphics2D)g,0,0,getWidth(),getHeight());
-  }
-
   protected Mosaic getMosaic() {
     return _mosaic;
   }
@@ -156,67 +184,18 @@ public class ColorValueChooser extends JPanel implements ColorMapListener {
   ///////////////////////////////////////////////////////////////////////////
   // private
 
+  private ColorMap _cmap;
   private Mosaic _mosaic;
   private Tile _tile;
   private PixelsView _pixels;
   private JPanel _swatch;
-  private JFormattedTextField _vfield;
+  private NumberTextField _vfield;
 
-  ///////////////////////////////////////////////////////////////////////////
-  // testing
-
-  public static void main(String[] args) {
-    ColorValueChooser cvc = new ColorValueChooser("Velocity (km/s)");
-    ColorMap cmap = new ColorMap(0.0,100.0,ColorMap.getJet());
-    cmap.addListener(cvc);
-    JFrame frame = new JFrame();
-    frame.setSize(100,500);
-    frame.add(cvc);
-    frame.setVisible(true);
-  }
-}
-
-/*
-  ///////////////////////////////////////////////////////////////////////////
-  // private
-
-  boolean _hasRange = false; // true only after range has been set
-  float _vb,_ve; // begin and end of range (begin may exceed end)
-  private PointsView _points; // points view that shows the range
-
-  private void updatePointsView() {
-    if (!_hasRange)
-      return;
-    Mosaic mosaic = super.getMosaic();
-    Tile tile = mosaic.getTile(0,0);
-    tile.addMouseListener(new RangeAdjuster());
-    Projector hp = tile.getHorizontalProjector();
-    Projector vp = tile.getVerticalProjector();
-    float h0 = (float)hp.v0();
-    float h1 = (float)hp.v1();
-    float hm = 0.5f*(h0+h1);
-    float[][] x1 = new float[3][2];
-    float[][] x2 = new float[3][2];
-    x1[0][0] = h0;  x2[0][0] = _vb;
-    x1[0][1] = h1;  x2[0][1] = _vb;
-    x1[1][0] = h0;  x2[1][0] = _ve;
-    x1[1][1] = h1;  x2[1][1] = _ve;
-    x1[2][0] = hm;  x2[2][0] = _vb;
-    x1[2][1] = hm;  x2[2][1] = _ve;
-    if (_points==null) {
-      _points = new PointsView(x1,x2);
-      tile.addTiledView(_points);
-    } else {
-      _points.set(x1,x2);
-    }
-  }
-
-  private class RangeAdjuster extends MouseAdapter {
+  private class ValueAdjuster extends MouseAdapter {
     public void mousePressed(MouseEvent e) {
       Tile tile = (Tile)e.getSource();
       _adjusting = true;
-      _vbegin = _vmouse = getValue(e);
-      setRange(_vbegin,_vmouse);
+      setValue(getValue(e));
       tile.addMouseMotionListener(_mml);
     }
     public void mouseReleased(MouseEvent e) {
@@ -227,11 +206,9 @@ public class ColorValueChooser extends JPanel implements ColorMapListener {
       }
     }
     private boolean _adjusting;
-    private float _vbegin,_vmouse;
     private MouseMotionListener _mml = new MouseMotionAdapter() {
       public void mouseDragged(MouseEvent e) {
-        _vmouse = getValue(e);
-        setRange(_vbegin,_vmouse);
+        setValue(getValue(e));
       }
     };
     private float getValue(MouseEvent e) {
@@ -243,4 +220,26 @@ public class ColorValueChooser extends JPanel implements ColorMapListener {
       return (float)v;
     }
   }
-*/
+
+  private void setValueRange(double vmin, double vmax) {
+    _vfield.setValueRange(vmin,vmax);
+    double v = getValue();
+    if (v<vmin || v>vmax) {
+      if (v<vmin) v = vmin;
+      if (v>vmax) v = vmax;
+      setValue(v);
+    }
+  }
+
+  ///////////////////////////////////////////////////////////////////////////
+  // testing
+
+  public static void main(String[] args) {
+    ColorMap cmap = new ColorMap(0.0,100.0,ColorMap.getJet());
+    ColorValueChooser cvc = new ColorValueChooser(cmap,"Velocity (km/s)");
+    JFrame frame = new JFrame();
+    frame.setSize(100,500);
+    frame.add(cvc);
+    frame.setVisible(true);
+  }
+}

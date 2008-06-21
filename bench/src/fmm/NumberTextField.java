@@ -79,6 +79,16 @@ public class NumberTextField extends JFormattedTextField {
   }
 
   /**
+   * Sets the printf-style format used to display the value in this field.
+   * @param format the format.
+   */
+  public void setFormat(String format) {
+    CustomFormatter cf = (CustomFormatter)getFormatter();
+    cf.setFormat(format);
+    repaint();
+  }
+
+  /**
    * Sets the min-max range of values.
    * @param vmin the minimum value.
    * @param vmax the maximum value.
@@ -169,6 +179,9 @@ public class NumberTextField extends JFormattedTextField {
       setOverwriteMode(true);
       setAllowsInvalid(false);
     }
+    public void setFormat(String format) {
+      _format = format;
+    }
     public String valueToString(Object v) throws ParseException {
       if (!(v instanceof Double)) 
         throw new ParseException("value is not a double",0);
@@ -195,7 +208,7 @@ public class NumberTextField extends JFormattedTextField {
     public Object stringToValue(String s) throws ParseException {
       Double v = null;
       try {
-        v = Double.parseDouble(s);
+        v = Double.parseDouble(s.trim());
       } catch (NumberFormatException e) {
         throw new ParseException("cannot convert string to double",0);
       }
