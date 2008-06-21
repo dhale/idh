@@ -79,6 +79,16 @@ public class NumberTextField extends JFormattedTextField {
   }
 
   /**
+   * Sets the min-max range of values.
+   * @param vmin the minimum value.
+   * @param vmax the maximum value.
+   */
+  public void setValueRange(double vmin, double vmax) {
+    _vmin = vmin;
+    _vmax = vmax;
+  }
+
+  /**
    * Sets the value of this number text field.
    * @param object the value object; must be a Number.
    */

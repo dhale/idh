@@ -10,16 +10,14 @@ import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.*;
 import java.util.EnumSet;
-import java.text.*;
 import javax.swing.*;
-import javax.swing.text.*;
 
 import edu.mines.jtk.awt.*;
 import edu.mines.jtk.dsp.*;
 import edu.mines.jtk.mosaic.*;
 
 /**
- * A color bar with associated values and an interface for choosing a value.
+ * A color bar with an interface for choosing a color-mapped value.
  * @author Dave Hale, Colorado School of Mines
  * @version 2008.06.19
  */
@@ -27,38 +25,51 @@ public class ColorValueChooser extends JPanel implements ColorMapListener {
   private static final long serialVersionUID = 1L;
 
   /**
-   * Constructs a new color value chooser.
+   * Constructs a new color value chooser for the specified color map.
+   * @param cmap the color map.
    */
-  public ColorValueChooser() {
-    this(null);
+  public ColorValueChooser(ColorMap cmap) {
+    this(cmap,null);
   }
 
   /**
    * Constructs a new color value chooser with specified label.
+   * @param cmap the color map.
    * @param label the label; null, if none.
    */
-  public ColorValueChooser(String label) {
+  public ColorValueChooser(ColorMap cmap, String label) {
     super();
+
+    // The mosaic contains one tile that contains a pixels view.
+    // The pixels view is constructed later.
     _mosaic = new Mosaic(1,1,EnumSet.of(Mosaic.AxesPlacement.RIGHT));
     if (label!=null)
       _mosaic.getTileAxisRight(0).setLabel(label);
-    _mosaic.setWidthMinimum(0,25);
-    _mosaic.setWidthElastic(0,0);
     _tile = _mosaic.getTile(0,0);
-    JPanel vpanel = new JPanel();
+
+    // Color bar (not including the axis) will have width 25 pixels.
+    int cbWidth = 25;
+    _mosaic.setWidthMinimum(0,cbWidth);
+    _mosaic.setWidthElastic(0,0);
+
+    // Swatch and text field display the current color and value.
     _swatch = new JPanel();
     _swatch.setBorder(BorderFactory.createLineBorder(Color.black));
-    _swatch.setPreferredSize(new Dimension(27,0));
+    _swatch.setPreferredSize(new Dimension(cbWidth+2,0));
     _swatch.setBackground(Color.RED);
-    _vfield = new NumberTextField(0,100,true);
-    _vfield.setValue(50);
+    double vmin = cmap.getMinValue();
+    double vmax = cmap.getMaxValue();
+    double vavg = 0.5*(vmin+vmax);
+    _vfield = new NumberTextField(vmin,vmax);
+    _vfield.setValue(vavg);
+    JPanel vpanel = new JPanel();
     vpanel.setLayout(new GridBagLayout());
     GridBagConstraints gbc = new GridBagConstraints();
     gbc.fill = GridBagConstraints.VERTICAL;
     gbc.gridx = 0;
     gbc.weightx = 0;
-    gbc.insets.top = 3;
-    gbc.insets.bottom = 3;
+    gbc.insets.top = 3; // some fine tuning to align 
+    gbc.insets.bottom = 3; // with the text field
     vpanel.add(_swatch,gbc);
     gbc.fill = GridBagConstraints.HORIZONTAL;
     gbc.gridx = 1;
@@ -66,39 +77,15 @@ public class ColorValueChooser extends JPanel implements ColorMapListener {
     gbc.insets.top = 0;
     gbc.insets.bottom = 0;
     vpanel.add(_vfield,gbc);
+
+    // Layout for everything.
     this.setLayout(new BorderLayout());
     this.add(_mosaic,BorderLayout.CENTER);
     this.add(vpanel,BorderLayout.SOUTH);
-    this.add(new JTextField(),BorderLayout.NORTH);
-  }
 
-  /**
-   * Sets the range.
-   * @param vb begin value of range.
-   * @param ve end value of range.
-   */
-   /*
-  public void setRange(double vb, double ve) {
-    if (!_hasRange || _vb!=vb || _ve!=ve) {
-      _vb = (float)vb;
-      _ve = (float)ve;
-      _hasRange = true;
-      updatePointsView();
-    }
+    // Listen for changes to the colormap.
+    cmap.addListener(this);
   }
-
-  public float getRangeBegin() {
-    return _vb;
-  }
-
-  public float getRangeEnd() {
-    return _ve;
-  }
-
-  public boolean hasRange() {
-    return _hasRange;
-  }
-  */
 
   public void colorMapChanged(ColorMap cm) {
     float vmin = (float)cm.getMinValue();
