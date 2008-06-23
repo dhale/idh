@@ -13,183 +13,174 @@ import java.util.EnumSet;
 import javax.swing.*;
 
 import edu.mines.jtk.awt.*;
-import edu.mines.jtk.dsp.*;
+import edu.mines.jtk.dsp.Sampling;
 import edu.mines.jtk.mosaic.*;
+import edu.mines.jtk.util.StringUtil;
 
 /**
- * A color bar with an interface for choosing a color-mapped value.
+ * An interface for choosing a color-mapped value.
  * @author Dave Hale, Colorado School of Mines
  * @version 2008.06.19
  */
-public class ColorValueChooser extends JPanel implements ColorMapListener {
+public class ColorValueChooser extends JPanel {
   private static final long serialVersionUID = 1L;
 
   /**
-   * Constructs a new color value chooser for the specified color map.
-   * @param cmap the color map.
+   * Constructs a new color value chooser.
+   * @param colorMap the color map.
    */
-  public ColorValueChooser(ColorMap cmap) {
-    this(cmap,null);
-  }
-
-  /**
-   * Constructs a new color value chooser with specified label.
-   * @param cmap the color map.
-   * @param label the label; null, if none.
-   */
-  public ColorValueChooser(ColorMap cmap, String label) {
+  public ColorValueChooser(ColorMap colorMap) {
     super();
 
     // Values from the specified color map.
-    _cmap = cmap;
-    double vmin = cmap.getMinValue();
-    double vmax = cmap.getMaxValue();
-    double vavg = 0.5*(vmin+vmax);
+    _colorMap = colorMap;
+    double vmin = colorMap.getMinValue();
+    double vmax = colorMap.getMaxValue();
+    double vnow = 0.5*(vmin+vmax);
 
-    // The mosaic contains one tile that contains a pixels view.
-    // The pixels view is constructed later.
-    _mosaic = new Mosaic(1,1,EnumSet.of(Mosaic.AxesPlacement.RIGHT));
-    if (label!=null)
-      _mosaic.getTileAxisRight(0).setLabel(label);
-    _tile = _mosaic.getTile(0,0);
+    // Swatch of color corresponding to the current value.
+    _colorSwatch = new JPanel();
+    _colorSwatch.setBorder(BorderFactory.createLineBorder(Color.black));
+    _colorSwatch.setPreferredSize(new Dimension(25,0));
 
-    // Color bar (not including the axis) will have width 25 pixels.
-    int cbWidth = 25;
-    _mosaic.setWidthMinimum(0,cbWidth);
-    _mosaic.setWidthElastic(0,0);
+    // Number text field for current value.
+    _vnowField = new NumberTextField(vmin,vmax);
+    _vnowField.setFormat(_format);
+    _vnowField.setValue(vnow);
 
-    // Swatch and text field display the current color and value.
-    _swatch = new JPanel();
-    _swatch.setBorder(BorderFactory.createLineBorder(Color.black));
-    _swatch.setPreferredSize(new Dimension(cbWidth+2,0));
-    _swatch.setBackground(cmap.getColor(vavg));
-    _vfield = new NumberTextField(vmin,vmax);
-    _vfield.setValue(vavg);
-    _vfield.setFormat("%1.3g");
-    JPanel vpanel = new JPanel();
-    vpanel.setLayout(new GridBagLayout());
-    GridBagConstraints gbc = new GridBagConstraints();
+    // Labels for min and max values.
+    _vminLabel = new JLabel(formatValue(vmin));
+    _vmaxLabel = new JLabel(formatValue(vmax));
+
+    // Layout.
+    this.setLayout(new GridBagLayout());
+    GridBagConstraints gbc;
+    gbc = new GridBagConstraints();
     gbc.fill = GridBagConstraints.VERTICAL;
     gbc.gridx = 0;
+    gbc.gridy = 0;
+    gbc.insets.left = 3; // align with text in number text field
+    gbc.weightx = 0;
+    this.add(new JLabel("max:"),gbc);
+    gbc = new GridBagConstraints();
+    gbc.fill = GridBagConstraints.HORIZONTAL;
+    gbc.gridx = 1;
+    gbc.gridy = 0;
+    gbc.insets.left = 5; // align with text in number text field
+    gbc.weightx = 100;
+    this.add(_vmaxLabel,gbc);
+    gbc = new GridBagConstraints();
+    gbc.fill = GridBagConstraints.VERTICAL;
+    gbc.gridx = 0;
+    gbc.gridy = 1;
     gbc.weightx = 0;
     gbc.insets.top = 3; // some fine tuning to align 
     gbc.insets.bottom = 3; // with the text field
-    vpanel.add(_swatch,gbc);
+    this.add(_colorSwatch,gbc);
+    gbc = new GridBagConstraints();
     gbc.fill = GridBagConstraints.HORIZONTAL;
     gbc.gridx = 1;
+    gbc.gridy = 1;
     gbc.weightx = 100;
     gbc.insets.top = 0;
     gbc.insets.bottom = 0;
-    vpanel.add(_vfield,gbc);
+    this.add(_vnowField,gbc);
+    gbc = new GridBagConstraints();
+    gbc.fill = GridBagConstraints.VERTICAL;
+    gbc.gridx = 0;
+    gbc.gridy = 2;
+    gbc.insets.left = 3; // align with text in number text field
+    gbc.weightx = 0;
+    this.add(new JLabel("min:"),gbc);
+    gbc = new GridBagConstraints();
+    gbc.fill = GridBagConstraints.HORIZONTAL;
+    gbc.gridx = 1;
+    gbc.gridy = 2;
+    gbc.insets.left = 5; // align with text in number text field
+    gbc.weightx = 100;
+    this.add(_vminLabel,gbc);
 
-    // Layout for everything.
-    this.setLayout(new BorderLayout());
-    this.add(_mosaic,BorderLayout.CENTER);
-    this.add(vpanel,BorderLayout.SOUTH);
-
-    // Listen for value entered in text field.
-    _vfield.addActionListener(new ActionListener() {
-      public void actionPerformed(ActionEvent e) {
-        NumberTextField ntf = (NumberTextField)e.getSource();
-        setValue(ntf.getDouble());
+    // Listen for changes to color map.
+    _colorMap.addListener(new ColorMapListener() {
+      public void colorMapChanged(ColorMap cm) {
+        _vminLabel.setText(formatValue(cm.getMinValue()));
+        _vmaxLabel.setText(formatValue(cm.getMaxValue()));
+        updateColorSwatch();
       }
     });
 
-    // Listen for mouse events in color bar.
-    _tile.addMouseListener(new ValueAdjuster());
-
-    // Listen for changes to the color map.
-    _cmap.addListener(this);
+    // Listen for value entered in number text field.
+    _vnowField.addActionListener(new ActionListener() {
+      public void actionPerformed(ActionEvent e) {
+        NumberTextField ntf = (NumberTextField)e.getSource();
+        System.out.println("actionPerformed: value="+ntf.getDouble());
+        setValue(ntf.getDouble());
+      }
+    });
+    _vnowField.addFocusListener(new FocusAdapter() {
+      public void focusLost(FocusEvent e) {
+        NumberTextField ntf = (NumberTextField)e.getSource();
+        System.out.println("focusLost: value="+ntf.getDouble());
+        //setValue(ntf.getDouble());
+      }
+    });
   }
 
   /**
-   * Sets the currently chosen value.
-   * @param v the value.
+   * Sets the color bar that may be used to choose a color.
+   * @param colorBar the color bar.
    */
-  public void setValue(double v) {
-    _vfield.setDouble(v);
-    _swatch.setBackground(_cmap.getColor(v));
+  public void setColorBar(ColorBar colorBar) {
+    if (_colorBar!=null) {
+      _colorBar.getTile().removeMouseListener(_valueAdjuster);
+    }
+    _colorBar = colorBar;
+    if (_colorBar!=null) {
+      _valueAdjuster = new ValueAdjuster();
+      _colorBar.addMouseListener(_valueAdjuster);
+    }
   }
 
   /**
-   * Gets the currently chosen value.
+   * Gets the current chosen value.
    * @return the value.
    */
   public double getValue() {
-    return _vfield.getDouble();
+    return _vnowField.getDouble();
   }
 
-  public void colorMapChanged(ColorMap cm) {
-    float vmin = (float)cm.getMinValue();
-    float vmax = (float)cm.getMaxValue();
-    if (vmin==vmax) {
-      vmin -= Math.ulp(vmin);
-      vmax += Math.ulp(vmax);
-    }
-    setValueRange(vmin,vmax);
-    int nv = 256;
-    double dv = (vmax-vmin)/(nv-1);
-    double fv = vmin;
-    Sampling vs = new Sampling(nv,dv,fv);
-    float[][] va = new float[nv][1];
-    Color[] ca = new Color[nv];
-    for (int iv=0; iv<nv; ++iv) {
-      float vi = (float)vs.getValue(iv);
-      va[iv][0] = vi;
-      ca[iv] = cm.getColor(vi);
-    }
-    if (_pixels==null) {
-      _pixels = new PixelsView(va);
-      _pixels.setOrientation(PixelsView.Orientation.X1RIGHT_X2UP);
-      _pixels.setInterpolation(PixelsView.Interpolation.LINEAR);
-      _tile.addTiledView(_pixels);
-    }
-    IndexColorModel icm = ColorMap.makeIndexColorModel(ca);
-    _pixels.setClips(vmin,vmax);
-    _pixels.setColorModel(icm);
-    Sampling s1 = new Sampling(1);
-    Sampling s2 = vs;
-    _pixels.set(s1,s2,va);
-  }
-
-  // Override base class implementation.
-  public void setFont(Font font) {
-    super.setFont(font);
-    if (_mosaic!=null)
-      _mosaic.setFont(font);
-    revalidate();
-  }
-
-  // Override base class implementation.
-  public void setForeground(Color color) {
-    super.setForeground(color);
-    if (_mosaic!=null)
-      _mosaic.setForeground(color);
-  }
-
-  // Override base class implementation.
-  public void setBackground(Color color) {
-    super.setBackground(color);
-    if (_mosaic!=null)
-      _mosaic.setBackground(color);
-  }
-
-  ///////////////////////////////////////////////////////////////////////////
-  // protected
-
-  protected Mosaic getMosaic() {
-    return _mosaic;
+  /**
+   * Sets the current chosen value. If necessary, the specified value
+   * will be adjusted to be within current minimum and maximum values.
+   * @param v the value.
+   */
+  public void setValue(double v) {
+    _vnowField.setDouble(v);
+    updateColorSwatch();
   }
 
   ///////////////////////////////////////////////////////////////////////////
   // private
 
-  private ColorMap _cmap;
-  private Mosaic _mosaic;
-  private Tile _tile;
-  private PixelsView _pixels;
-  private JPanel _swatch;
-  private NumberTextField _vfield;
+  private static final String _format = "%1.3g";
+
+  private ColorMap _colorMap;
+  private ColorBar _colorBar;
+  private ValueAdjuster _valueAdjuster;
+  private JPanel _colorSwatch;
+  private JLabel _vminLabel;
+  private JLabel _vmaxLabel;
+  private NumberTextField _vnowField;
+
+  private static String formatValue(double v) {
+    String s = String.format(_format,v);
+    s = StringUtil.removeTrailingZeros(s);
+    return s;
+  }
+
+  private void updateColorSwatch() {
+    _colorSwatch.setBackground(_colorMap.getColor(getValue()));
+  }
 
   private class ValueAdjuster extends MouseAdapter {
     public void mousePressed(MouseEvent e) {
@@ -221,25 +212,16 @@ public class ColorValueChooser extends JPanel implements ColorMapListener {
     }
   }
 
-  private void setValueRange(double vmin, double vmax) {
-    _vfield.setValueRange(vmin,vmax);
-    double v = getValue();
-    if (v<vmin || v>vmax) {
-      if (v<vmin) v = vmin;
-      if (v>vmax) v = vmax;
-      setValue(v);
-    }
-  }
-
   ///////////////////////////////////////////////////////////////////////////
   // testing
 
   public static void main(String[] args) {
-    ColorMap cmap = new ColorMap(0.0,100.0,ColorMap.getJet());
-    ColorValueChooser cvc = new ColorValueChooser(cmap,"Velocity (km/s)");
+    ColorMap colorMap = new ColorMap(0.0,100.0,ColorMap.getJet());
+    ColorValueChooser cvc = new ColorValueChooser(colorMap);
     JFrame frame = new JFrame();
-    frame.setSize(100,500);
-    frame.add(cvc);
+    frame.setSize(100,200);
+    frame.add(new JTextField("hello"),BorderLayout.NORTH);
+    frame.add(cvc,BorderLayout.CENTER);
     frame.setVisible(true);
   }
 }
