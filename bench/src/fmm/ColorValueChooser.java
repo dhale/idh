@@ -9,6 +9,7 @@ package fmm;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.*;
+import java.beans.*;
 import java.util.EnumSet;
 import javax.swing.*;
 
@@ -59,7 +60,7 @@ public class ColorValueChooser extends JPanel {
     gbc.fill = GridBagConstraints.VERTICAL;
     gbc.gridx = 0;
     gbc.gridy = 0;
-    gbc.insets.left = 3; // align with text in number text field
+    gbc.insets.left = 3; // a narrow margin
     gbc.weightx = 0;
     this.add(new JLabel("max:"),gbc);
     gbc = new GridBagConstraints();
@@ -74,8 +75,8 @@ public class ColorValueChooser extends JPanel {
     gbc.gridx = 0;
     gbc.gridy = 1;
     gbc.weightx = 0;
-    gbc.insets.top = 3; // some fine tuning to align 
-    gbc.insets.bottom = 3; // with the text field
+    gbc.insets.top = 3; // align with number text field
+    gbc.insets.bottom = 3; // align with number text field
     this.add(_colorSwatch,gbc);
     gbc = new GridBagConstraints();
     gbc.fill = GridBagConstraints.HORIZONTAL;
@@ -89,7 +90,7 @@ public class ColorValueChooser extends JPanel {
     gbc.fill = GridBagConstraints.VERTICAL;
     gbc.gridx = 0;
     gbc.gridy = 2;
-    gbc.insets.left = 3; // align with text in number text field
+    gbc.insets.left = 3; // a narrow margin
     gbc.weightx = 0;
     this.add(new JLabel("min:"),gbc);
     gbc = new GridBagConstraints();
@@ -103,32 +104,56 @@ public class ColorValueChooser extends JPanel {
     // Listen for changes to color map.
     _colorMap.addListener(new ColorMapListener() {
       public void colorMapChanged(ColorMap cm) {
-        _vminLabel.setText(formatValue(cm.getMinValue()));
-        _vmaxLabel.setText(formatValue(cm.getMaxValue()));
+        double vmin = cm.getMinValue();
+        double vmax = cm.getMaxValue();
+        _vminLabel.setText(formatValue(vmin));
+        _vmaxLabel.setText(formatValue(vmax));
+        if (getValue()<vmin)
+          setValue(vmin);
+        if (getValue()>vmax)
+          setValue(vmax);
         updateColorSwatch();
       }
     });
 
-    // Listen for value entered in number text field.
-    _vnowField.addActionListener(new ActionListener() {
-      public void actionPerformed(ActionEvent e) {
-        NumberTextField ntf = (NumberTextField)e.getSource();
-        System.out.println("actionPerformed: value="+ntf.getDouble());
-        setValue(ntf.getDouble());
+    // Listen for changes to value in number text field.
+    _vnowField.addPropertyChangeListener("value",new PropertyChangeListener() {
+      public void propertyChange(PropertyChangeEvent e) {
+        if (_vnowField==e.getSource())
+          updateColorSwatch();
       }
     });
+
+    // Select all in the number text field to make changes easier.
+    // Note that invokeLater is necessary to workaround some internal
+    // handling of the selection by JFormattedTextField.
     _vnowField.addFocusListener(new FocusAdapter() {
-      public void focusLost(FocusEvent e) {
-        NumberTextField ntf = (NumberTextField)e.getSource();
-        System.out.println("focusLost: value="+ntf.getDouble());
-        //setValue(ntf.getDouble());
+      public void focusGained(FocusEvent e) {
+        if (_vnowField==e.getSource()) {
+          SwingUtilities.invokeLater(new Runnable() {
+            public void run(){
+              _vnowField.selectAll();
+            }
+          });
+        }
+      }
+    });
+    _vnowField.addMouseListener(new MouseAdapter() {
+      public void mouseReleased(MouseEvent e) {
+        if (_vnowField==e.getSource()) {
+          SwingUtilities.invokeLater(new Runnable() {
+            public void run(){
+              _vnowField.selectAll();
+            }
+          });
+        }
       }
     });
   }
 
   /**
    * Sets the color bar that may be used to choose a color.
-   * @param colorBar the color bar.
+   * @param colorBar the color bar; null, if none.
    */
   public void setColorBar(ColorBar colorBar) {
     if (_colorBar!=null) {
@@ -137,7 +162,7 @@ public class ColorValueChooser extends JPanel {
     _colorBar = colorBar;
     if (_colorBar!=null) {
       _valueAdjuster = new ValueAdjuster();
-      _colorBar.addMouseListener(_valueAdjuster);
+      _colorBar.getTile().addMouseListener(_valueAdjuster);
     }
   }
 
@@ -182,11 +207,12 @@ public class ColorValueChooser extends JPanel {
     _colorSwatch.setBackground(_colorMap.getColor(getValue()));
   }
 
+  // Listens for mouse events in tile of color bar.
   private class ValueAdjuster extends MouseAdapter {
     public void mousePressed(MouseEvent e) {
-      Tile tile = (Tile)e.getSource();
       _adjusting = true;
       setValue(getValue(e));
+      Tile tile = (Tile)e.getSource();
       tile.addMouseMotionListener(_mml);
     }
     public void mouseReleased(MouseEvent e) {
@@ -204,11 +230,7 @@ public class ColorValueChooser extends JPanel {
     };
     private float getValue(MouseEvent e) {
       Tile tile = (Tile)e.getSource();
-      Transcaler ts = tile.getTranscaler();
-      Projector vp = tile.getVerticalProjector();
-      double y = ts.y(e.getY());
-      double v = vp.v(y);
-      return (float)v;
+      return (float)tile.pixelToWorldVertical(e.getY());
     }
   }
 
@@ -216,12 +238,16 @@ public class ColorValueChooser extends JPanel {
   // testing
 
   public static void main(String[] args) {
-    ColorMap colorMap = new ColorMap(0.0,100.0,ColorMap.getJet());
-    ColorValueChooser cvc = new ColorValueChooser(colorMap);
+    ColorMap cm = new ColorMap(0.0,100.0,ColorMap.getJet());
+    ColorBar cb = new ColorBar("Velocity (km/s)");
+    cm.addListener(cb);
+    ColorValueChooser cvc = new ColorValueChooser(cm);
+    cvc.setColorBar(cb);
     JFrame frame = new JFrame();
-    frame.setSize(100,200);
-    frame.add(new JTextField("hello"),BorderLayout.NORTH);
-    frame.add(cvc,BorderLayout.CENTER);
+    frame.setSize(200,500);
+    frame.add(cvc);
+    frame.add(cb,BorderLayout.EAST);
+    frame.add(new JTextField(),BorderLayout.NORTH);
     frame.setVisible(true);
   }
 }

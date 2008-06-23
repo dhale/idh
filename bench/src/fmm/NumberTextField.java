@@ -57,12 +57,7 @@ public class NumberTextField extends JFormattedTextField {
    * @param vint true, for values constrained to integers; false, otherwise.
    */
   public NumberTextField(double vmin, double vmax, final boolean vint) {
-    super(new CustomFormatter() {
-      protected DocumentFilter getDocumentFilter() {
-        return _filter;
-      }
-      private CustomFilter _filter = new CustomFilter(vint);
-    });
+    super(new CustomFormatter(vmin,vmax,vint));
     _vmin = vmin;
     _vmax = vmax;
     _vint = vint;
@@ -91,13 +86,20 @@ public class NumberTextField extends JFormattedTextField {
   }
 
   /**
-   * Sets the min-max range of values.
+   * Sets the min-max range of values. If necessary, this method modifies
+   * the current value to be within the specified range of values.
    * @param vmin the minimum value.
    * @param vmax the maximum value.
    */
   public void setValueRange(double vmin, double vmax) {
     _vmin = vmin;
     _vmax = vmax;
+    CustomFormatter cf = (CustomFormatter)getFormatter();
+    cf.setValueRange(_vmin,_vmax);
+    if (getDouble()<_vmin)
+      setDouble(_vmin);
+    if (getDouble()>_vmax)
+      setDouble(_vmax);
   }
 
   /**
@@ -143,7 +145,7 @@ public class NumberTextField extends JFormattedTextField {
    * @return the value.
    */
   public double getDouble() {
-    Number value = (Number)super.getValue();
+    Number value = (Number)getValue();
     return value.doubleValue();
   }
 
@@ -170,19 +172,39 @@ public class NumberTextField extends JFormattedTextField {
   private double _vmax = Double.MAX_VALUE; // max value
   private boolean _vint = false; // true for only integer values
 
+  private static double constrainValue(
+    double v, double vmin, double vmax, boolean vint) 
+  {
+    if (v<vmin) v = vmin;
+    if (v>vmax) v = vmax;
+    if (vint)
+      v = (int)v;
+    return v;
+  }
+
   // Formatter that uses a specified printf-style format for display.
   // Also removes any insignificant trailing zeros or decimal point.
   private static class CustomFormatter extends DefaultFormatter {
-    public CustomFormatter() {
-      this("%1.6g");
+    public CustomFormatter(double vmin, double vmax, boolean vint) {
+      this(vmin,vmax,vint,"%1.6g");
     }
-    public CustomFormatter(String format) {
+    public CustomFormatter(
+      double vmin, double vmax, boolean vint, String format) 
+    {
+      _vmin = vmin;
+      _vmax = vmax;
+      _vint = vint;
       _format = format;
+      _filter = new CustomFilter(vint);
       setOverwriteMode(true);
       setAllowsInvalid(false);
     }
     public void setFormat(String format) {
       _format = format;
+    }
+    public void setValueRange(double vmin, double vmax) {
+      _vmin = vmin;
+      _vmax = vmax;
     }
     public String valueToString(Object v) throws ParseException {
       if (!(v instanceof Double)) 
@@ -194,13 +216,20 @@ public class NumberTextField extends JFormattedTextField {
     public Object stringToValue(String s) throws ParseException {
       Double v = null;
       try {
-        v = Double.parseDouble(s.trim());
+        v = (_vint)?Integer.parseInt(s):Double.parseDouble(s);
+        if (v<_vmin || v>_vmax) throw new ParseException("out of range",0);
       } catch (NumberFormatException e) {
         throw new ParseException("cannot convert string to double",0);
       }
       return v;
     }
+    protected DocumentFilter getDocumentFilter() {
+      return _filter;
+    }
+    private CustomFilter _filter;
     private String _format;
+    private double _vmin,_vmax;
+    private boolean _vint;
   }
 
   // Ensures that the text in the field is always a valid part of a 

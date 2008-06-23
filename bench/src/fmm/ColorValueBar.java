@@ -233,6 +233,7 @@ public class ColorValueBar extends JPanel implements ColorMapListener {
     JFrame frame = new JFrame();
     frame.setSize(100,500);
     frame.add(cvb);
+    frame.add(new JTextField(),BorderLayout.NORTH);
     frame.setVisible(true);
   }
 }
