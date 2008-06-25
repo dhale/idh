@@ -515,7 +515,7 @@ public class ImagePainter2 {
         sm[i2][i1] = u[0];
       }
     }
-    float smq = Quantiler.estimate(0.00f,sm);
+    float smq = Quantiler.estimate(0.50f,sm);
     double r = 0.45*ns*sqrt(smq);
     float[][] x1 = new float[nm][nt];
     float[][] x2 = new float[nm][nt];
