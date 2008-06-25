@@ -25,7 +25,7 @@ import edu.mines.jtk.util.*;
  * A 2D array of painted values, where most values are painted automatically.
  * Except for a relatively small number of fixed samples painted explicitly, 
  * most samples are painted by extrapolation and interpolation guided by
- * structure tensors. Intuitively, paint flows around locations that have
+ * structure tensors. Intuitively, paint flows slowly through locations with
  * relatively high structure. Structure tensors may also cause paint to
  * flow anisotropically, in directions corresponding to relatively low
  * structure.
@@ -75,6 +75,7 @@ public class Painting2 {
     _n2 = n2;
     _nv = nv;
     _st = st;
+    _dv = new float[nv];
     _k1 = new int[n2][n1];
     _k2 = new int[n2][n1];
     _tk = new float[n2][n1];
@@ -83,28 +84,63 @@ public class Painting2 {
     _mark = new int[n2][n1];
     _hmin = new TimeHeap2(TimeHeap2.Type.MIN,n1,n2);
     _hmax = new TimeHeap2(TimeHeap2.Type.MAX,n1,n2);
-    clear();
+    clearAll();
+  }
+
+  /**
+   * Sets the default value for value index zero.
+   * Default values are used for all clear (not painted) samples.
+   * @param value the default value.
+   */
+  public void setDefaultValue(float value) {
+    _dv[0] = value;
+  }
+
+  /**
+   * Sets all default values.
+   * Default values are used for all clear (not painted) samples.
+   * @param value array[nv] of default values.
+   */
+  public void setDefaultValues(float[] values) {
+    for (int kv=0; kv<_nv; ++kv)
+      _dv[kv] = values[kv];
   }
 
   /**
    * Clears all painted values, including all fixed values.
    */
-  public void clear() {
+  public void clearAll() {
     for (int i2=0; i2<_n2; ++i2) {
       for (int i1=0; i1<_n1; ++i1) {
-        _type[i2][i1] = CLEAR;
-        _mark[i2][i1] = _known;
-        _k1[i2][i1] = -1;
-        _k2[i2][i1] = -1;
-        _tk[i2][i1] = TIME_INVALID;
-        _vk[i2][i1] = null;
+        clear(i1,i2);
       }
     }
   }
 
   /**
+   * Clears painted values that are not fixed.
+   */
+  public void clearNotFixed() {
+    for (int i2=0; i2<_n2; ++i2) {
+      for (int i1=0; i1<_n1; ++i1) {
+        if (_type[i2][i1]!=FIXED) {
+          clear(i1,i2);
+        }
+      }
+    }
+  }
+  private void clear(int i1, int i2) {
+    _type[i2][i1] = CLEAR;
+    _mark[i2][i1] = _known;
+    _k1[i2][i1] = -1;
+    _k2[i2][i1] = -1;
+    _tk[i2][i1] = TIME_INVALID;
+    _vk[i2][i1] = null;
+  }
+
+  /**
    * Paints the specified sample with one specified value at index zero.
-   * Paints zero values for indices greater than zero.
+   * Paints default values for indices greater than zero.
    * @param k1 index in 1st dimension of painted sample.
    * @param k2 index in 2nd dimension of painted sample.
    * @param vk value at index zero for the painted sample.
@@ -116,6 +152,8 @@ public class Painting2 {
     _tk[k2][k1] = TIME_INVALID;
     _vk[k2][k1] = new float[_nv];
     _vk[k2][k1][0] = vk;
+    for (int kv=1; kv<_nv; ++kv)
+      _vk[k2][k1][kv] = _dv[kv];
   }
 
   /**
@@ -325,7 +363,7 @@ public class Painting2 {
 
   /**
    * Gets a copy of the painted values with specified index.
-   * Zero values are returned for any samples not yet painted.
+   * Returns default values for any samples not painted.
    * @param iv index of values to get.
    * @return array of values; by copy, not by reference.
    */
@@ -334,7 +372,7 @@ public class Painting2 {
     for (int i2=0; i2<_n2; ++i2) {
       for (int i1=0; i1<_n1; ++i1) {
         float[] vk = _vk[i2][i1];
-        v[i2][i1] = (vk!=null)?vk[iv]:0.0f;
+        v[i2][i1] = (vk!=null)?vk[iv]:_dv[iv];
       }
     }
     return v;
@@ -378,6 +416,7 @@ public class Painting2 {
   private Tensors _st; // the structure tensor field
   private int _n1,_n2; // painting dimensions
   private int _nv; // number of values associated with each sample
+  private float[] _dv; // default values for clear samples
   private float[][][] _vk; // painted values; null for clear samples
   private float[][] _tk; // time to nearest fixed or interpolated sample
   private int[][] _k1,_k2; // indices of nearest fixed or interp sample
