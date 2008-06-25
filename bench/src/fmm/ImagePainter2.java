@@ -438,11 +438,9 @@ public class ImagePainter2 {
       LocalOrientFilter lof = new LocalOrientFilter(sigma);
       lof.apply(x,null,u1,u2,null,null,su,sv,null);
       /*
-      float[][] st = su;
-      su = sv;
-      sv = st;
-      su = Array.div(1.0f,su);
-      sv = Array.div(1.0f,sv);
+      float[][] st = Array.copy(su);
+      su = Array.div(su,st);
+      sv = Array.div(sv,st);
       */
       float[][] sc = Array.sub(1.0f,coherence(sigma,x));
       su = Array.mul(su,sc);
@@ -509,7 +507,16 @@ public class ImagePainter2 {
     int j1 = (n1-1-(m1-1)*ns)/2;
     int j2 = (n2-1-(m2-1)*ns)/2;
     int nm = m1*m2;
-    double r = 0.45*ns;
+    //double r = 0.45*ns;
+    float[][] sm = new float[n2][n1];
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        float[] u = et.getEigenvectorU(i1,i2);
+        sm[i2][i1] = u[0];
+      }
+    }
+    float smq = Quantiler.estimate(0.00f,sm);
+    double r = 0.45*ns*sqrt(smq);
     float[][] x1 = new float[nm][nt];
     float[][] x2 = new float[nm][nt];
     double dt = 2.0*PI/(nt-1);
@@ -525,8 +532,10 @@ public class ImagePainter2 {
         double v2 =  u1;
         double su = s[0];
         double sv = s[1];
-        double a = r*sqrt(sv/su);
-        double b = r;
+        //double a = r*sqrt(sv/su);
+        //double b = r;
+        double a = r*sqrt(sv)/su;
+        double b = r/sqrt(su);
         for (int it=0; it<nt; ++it) {
           double t = ft+it*dt;
           double cost = cos(t);
