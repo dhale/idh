@@ -129,6 +129,17 @@ public class Painting2 {
       }
     }
   }
+
+  /**
+   * Erases values for any fixed sample with specified indices.
+   * If the specified sample is not fixed, this method does nothing.
+   * @param i1 index in 1st dimension of sample to erase.
+   * @param i2 index in 2nd dimension of sample to erase.
+   */
+  public void eraseFixedAt(int i1, int i2) {
+    if (_type[i2][i1]==FIXED)
+      clear(i1,i2);
+  }
   private void clear(int i1, int i2) {
     _type[i2][i1] = CLEAR;
     _mark[i2][i1] = _known;
@@ -141,35 +152,35 @@ public class Painting2 {
   /**
    * Paints the specified sample with one specified value at index zero.
    * Paints default values for indices greater than zero.
-   * @param k1 index in 1st dimension of painted sample.
-   * @param k2 index in 2nd dimension of painted sample.
-   * @param vk value at index zero for the painted sample.
+   * @param i1 index in 1st dimension of sample to paint.
+   * @param i2 index in 2nd dimension of sample to paint.
+   * @param v value at index zero for the painted sample.
    */
-  public void paintAt(int k1, int k2, float vk) {
-    _type[k2][k1] = FIXED;
-    _k1[k2][k1] = k1;
-    _k2[k2][k1] = k2;
-    _tk[k2][k1] = TIME_INVALID;
-    _vk[k2][k1] = new float[_nv];
-    _vk[k2][k1][0] = vk;
-    for (int kv=1; kv<_nv; ++kv)
-      _vk[k2][k1][kv] = _dv[kv];
+  public void paintAt(int i1, int i2, float v) {
+    _type[i2][i1] = FIXED;
+    _k1[i2][i1] = i1;
+    _k2[i2][i1] = i2;
+    _tk[i2][i1] = TIME_INVALID;
+    _vk[i2][i1] = new float[_nv];
+    _vk[i2][i1][0] = v;
+    for (int iv=1; iv<_nv; ++iv)
+      _vk[i2][i1][iv] = _dv[iv];
   }
 
   /**
    * Paints the specified sample with specified values.
    * After painting, the specified sample is fixed; its values will
    * not change in any subsequent extrapolation or interpolation.
-   * @param k1 index in 1st dimension of painted sample.
-   * @param k2 index in 2nd dimension of painted sample.
-   * @param vk array of values for painted sample; by copy, not by reference.
+   * @param i1 index in 1st dimension of sample to paint.
+   * @param i2 index in 2nd dimension of sample to paint.
+   * @param v array of values for painted sample; by copy, not by reference.
    */
-  public void paintAt(int k1, int k2, float[] vk) {
-    _type[k2][k1] = FIXED;
-    _k1[k2][k1] = k1;
-    _k2[k2][k1] = k2;
-    _tk[k2][k1] = TIME_INVALID;
-    _vk[k2][k1] = copy(vk);
+  public void paintAt(int i1, int i2, float[] v) {
+    _type[i2][i1] = FIXED;
+    _k1[i2][i1] = i1;
+    _k2[i2][i1] = i2;
+    _tk[i2][i1] = TIME_INVALID;
+    _vk[i2][i1] = copy(v);
   }
 
   /**
@@ -354,7 +365,30 @@ public class Painting2 {
   }
 
   /**
+   * Gets the painted value with index zero for the specified sample.
+   * Returns a default value if the specified sample is not painted.
+   * @param i1 sample index in 1st dimension.
+   * @param i2 sample index in 2nd dimension.
+   */
+  public float getValue(int i1, int i2) {
+    return getValue(i1,i2,0);
+  }
+
+  /**
+   * Gets the painted value for the specified sample.
+   * Returns a default value if the specified sample is not painted.
+   * @param i1 sample index in 1st dimension.
+   * @param i2 sample index in 2nd dimension.
+   * @param iv index of value to get.
+   */
+  public float getValue(int i1, int i2, int iv) {
+    float[] vk = _vk[i2][i1];
+    return (vk!=null)?vk[iv]:_dv[iv];
+  }
+
+  /**
    * Gets a copy of the painted values with index zero.
+   * Returns default values for any samples not painted.
    * @return array of values; by copy, not by reference.
    */
   public float[][] getValues() {
@@ -371,8 +405,7 @@ public class Painting2 {
     float[][] v = new float[_n2][_n1];
     for (int i2=0; i2<_n2; ++i2) {
       for (int i1=0; i1<_n1; ++i1) {
-        float[] vk = _vk[i2][i1];
-        v[i2][i1] = (vk!=null)?vk[iv]:_dv[iv];
+        v[i2][i1] = getValue(i1,i2,iv);
       }
     }
     return v;

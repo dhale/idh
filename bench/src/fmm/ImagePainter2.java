@@ -36,8 +36,6 @@ public class ImagePainter2 {
     StructureTensors st = new StructureTensors(3,image);
     _painting = new Painting2(_n1,_n2,_nv,st);
     _painting.setDefaultValue(0.0f);
-    //_painting.paintAt(0,0,0.5f);
-    //_painting.extrapolate();
 
     // Plot panel.
     int fontSize = 24;
@@ -58,6 +56,14 @@ public class ImagePainter2 {
     _paintView = _panel.addPixels(_painting.getValues());
     _paintView.setInterpolation(PixelsView.Interpolation.NEAREST);
     _paintView.setColorModel(ColorMap.JET);
+
+    // Tensors view, if visible, on top of paint view.
+    float[][][] x12 = getTensorEllipses(_n1,_n2,10,st);
+    float[][] x1 = x12[0];
+    float[][] x2 = x12[1];
+    _tensorsView = new PointsView(x1,x2);
+    _tensorsView.setOrientation(PointsView.Orientation.X1DOWN_X2RIGHT);
+    _tensorsView.setLineColor(Color.YELLOW);
 
     // Color map.
     _colorMap = _paintView.getColorMap();
@@ -81,7 +87,9 @@ public class ImagePainter2 {
    * @param vmax the maximum value.
    */
   public void setValueRange(double vmin, double vmax) {
-    _paintView.setClips((float)vmin,(float)vmax);
+    _valueMin = (float)vmin;
+    _valueMax = (float)vmax;
+    _paintView.setClips(_valueMin,_valueMax);
   }
 
   ///////////////////////////////////////////////////////////////////////////
@@ -89,12 +97,14 @@ public class ImagePainter2 {
 
   private int _n1,_n2,_nv;
   private float[][] _image;
+  private float _valueMin,_valueMax;
   private Painting2 _painting;
 
   private PlotPanel _panel;
   private PlotFrame _frame;
   private PixelsView _imageView;
   private PixelsView _paintView;
+  private PointsView _tensorsView;
   private ColorMap _colorMap;
   private ColorBar _colorBar;
   private PaintControl _paintControl;
@@ -131,9 +141,13 @@ public class ImagePainter2 {
       panel.add(_ac,BorderLayout.SOUTH);
       this.add(panel);
       this.pack();
+      this.setLocation(new Point(_frame.getWidth(),0));
     }
     public float getValue() {
       return (float)_cvc.getValue();
+    }
+    public void setValue(float value) {
+      _cvc.setValue(value);
     }
     public float getAlpha() {
       return _alpha;
@@ -188,27 +202,30 @@ public class ImagePainter2 {
         }
       }
     }
-    private boolean _inPaint; // true, if currently painting
+    private boolean _down; // true, if mouse is down (painting or erasing)
+    private boolean _erasing; // true, if erasing instead of painting
+    private float _value; // the paint value
     private int _i1Paint,_i2Paint; // indices of last sample painted
     private Tile _tile; // tile in which painting began
     private MouseListener _ml = new MouseAdapter() {;
       public void mousePressed(MouseEvent e) {
+        _erasing = e.isControlDown() || e.isAltDown();
         if (beginPaint(e)) {
-          _inPaint = true;
+          _down = true;
           _tile.addMouseMotionListener(_mml);
         }
       }
       public void mouseReleased(MouseEvent e) {
-        if (_inPaint) {
+        if (_down) {
           _tile.removeMouseMotionListener(_mml);
           endPaint(e);
-          _inPaint = false;
+          _down = false;
         }
       }
     };
     private MouseMotionListener _mml = new MouseMotionAdapter() {
       public void mouseDragged(MouseEvent e) {
-        if (_inPaint)
+        if (_down)
           duringPaint(e);
       }
     };
@@ -227,7 +244,13 @@ public class ImagePainter2 {
     private boolean beginPaint(MouseEvent e) {
       int i1 = getIndex1(e);
       int i2 = getIndex2(e);
-      return paintAt(i1,i2);
+      if (e.isShiftDown()) {
+        _paintControl.setValue(valueAt(i1,i2));
+        return false;
+      } else {
+        _value = _paintControl.getValue();
+        return paintAt(i1,i2);
+      }
     }
     private void duringPaint(MouseEvent e) {
       int i1 = getIndex1(e);
@@ -236,16 +259,34 @@ public class ImagePainter2 {
     }
     private void endPaint(MouseEvent e) {
       duringPaint(e);
-      _inPaint = false;
       _i1Paint = -1;
       _i2Paint = -1;
     }
+    private float valueAt(int i1, int i2) {
+      if (0<=i1 && i1<_n1 &&
+          0<=i2 && i2<_n2) {
+        return _painting.getValue(i1,i2);
+      }
+      return _paintControl.getValue();
+    }
     private boolean paintAt(int i1, int i2) {
-      if (i1>=0 && i2>=0 && (i1!=_i1Paint || i2!=_i2Paint)) {
+      if ((i1!=_i1Paint || i2!=_i2Paint) &&
+          0<=i1 && i1<_n1 &&
+          0<=i2 && i2<_n2) {
         _i1Paint = i1;
         _i2Paint = i2;
         float vi = _paintControl.getValue();
-        _painting.paintAt(i1,i2,vi);
+        if (_erasing) { // eraser size is 3x3 pixels
+          for (int j2=i2-1; j2<=i2+1; ++j2) {
+            for (int j1=i1-1; j1<=i1+1; ++j1) {
+               if (0<i1 && i1<_n1-1 &&
+                   0<i2 && i2<_n2-1) 
+                 _painting.eraseFixedAt(j1,j2);
+            }
+          }
+        } else {
+          _painting.paintAt(i1,i2,_value);
+        }
         _paintView.set(_painting.getValues());
         return true;
       }
@@ -269,9 +310,12 @@ public class ImagePainter2 {
     modeMenu.setMnemonic('M');
     modeMenu.add(new ModeMenuItem(tzm));
     modeMenu.add(new ModeMenuItem(pm));
+    JMenu viewMenu = new JMenu("View");
+    viewMenu.add(new JCheckBoxMenuItem(new ShowTensorsAction()));
     JMenuBar menuBar = new JMenuBar();
     menuBar.add(fileMenu);
     menuBar.add(modeMenu);
+    menuBar.add(viewMenu);
     _frame.setJMenuBar(menuBar);
 
     // Tool bar.
@@ -283,30 +327,49 @@ public class ImagePainter2 {
       public void actionPerformed(ActionEvent e) {
         _painting.clearAll();
         _paintView.set(_painting.getValues());
+        _paintView.setClips(_valueMin,_valueMax);
       }
     }));
     toolBar.add(new JButton(new AbstractAction("F") {
       public void actionPerformed(ActionEvent e) {
         _painting.clearNotFixed();
         _paintView.set(_painting.getValues());
+        _paintView.setClips(_valueMin,_valueMax);
       }
     }));
     toolBar.add(new JButton(new AbstractAction("E") {
       public void actionPerformed(ActionEvent e) {
         _painting.extrapolate();
         _paintView.set(_painting.getValues());
+        _paintView.setClips(_valueMin,_valueMax);
       }
     }));
     toolBar.add(new JButton(new AbstractAction("I") {
       public void actionPerformed(ActionEvent e) {
         _painting.interpolate();
         _paintView.set(_painting.getValues());
+        _paintView.setClips(_valueMin,_valueMax);
+      }
+    }));
+    toolBar.add(new JButton(new AbstractAction("T") {
+      public void actionPerformed(ActionEvent e) {
+        _painting.extrapolate();
+        _paintView.set(_painting.getTimes());
+        _paintView.setPercentiles(0.0f,100.0f);
       }
     }));
     _frame.add(toolBar,BorderLayout.WEST);
 
     // Initially activate paint mode.
     pm.setActive(true);
+  }
+
+  public void showTensors(boolean show) {
+    if (show) {
+      _panel.getTile(0,0).addTiledView(_tensorsView);
+    } else {
+      _panel.getTile(0,0).removeTiledView(_tensorsView);
+    }
   }
 
   // Actions.
@@ -333,6 +396,16 @@ public class ImagePainter2 {
         _plotFrame.paintToPng(300,6,filename);
       }
     }
+  }
+  private class ShowTensorsAction extends AbstractAction {
+    private ShowTensorsAction() {
+      super("Tensors");
+    }
+    public void actionPerformed(ActionEvent event) {
+      _show = !_show;
+      showTensors(_show);
+    }
+    boolean _show = false;
   }
 
   ///////////////////////////////////////////////////////////////////////////
@@ -364,6 +437,13 @@ public class ImagePainter2 {
       float[][] sv = new float[n2][n1];
       LocalOrientFilter lof = new LocalOrientFilter(sigma);
       lof.apply(x,null,u1,u2,null,null,su,sv,null);
+      /*
+      float[][] st = su;
+      su = sv;
+      sv = st;
+      su = Array.div(1.0f,su);
+      sv = Array.div(1.0f,sv);
+      */
       float[][] sc = Array.sub(1.0f,coherence(sigma,x));
       su = Array.mul(su,sc);
       sv = Array.mul(sv,sc);
@@ -418,6 +498,45 @@ public class ImagePainter2 {
       }
     }
     return c;
+  }
+
+  private static float[][][] getTensorEllipses(
+    int n1, int n2, int ns, EigenTensors2 et) 
+  {
+    int nt = 51;
+    int m1 = (n1-1)/ns;
+    int m2 = (n2-1)/ns;
+    int j1 = (n1-1-(m1-1)*ns)/2;
+    int j2 = (n2-1-(m2-1)*ns)/2;
+    int nm = m1*m2;
+    double r = 0.45*ns;
+    float[][] x1 = new float[nm][nt];
+    float[][] x2 = new float[nm][nt];
+    double dt = 2.0*PI/(nt-1);
+    double ft = 0.0f;
+    for (int i2=j2,im=0; i2<n2; i2+=ns) {
+      double y2 = i2+r;
+      for (int i1=j1; i1<n1; i1+=ns,++im) {
+        float[] u = et.getEigenvectorU(i1,i2);
+        float[] s = et.getEigenvalues(i1,i2);
+        double u1 = u[0];
+        double u2 = u[1];
+        double v1 = -u2;
+        double v2 =  u1;
+        double su = s[0];
+        double sv = s[1];
+        double a = r*sqrt(sv/su);
+        double b = r;
+        for (int it=0; it<nt; ++it) {
+          double t = ft+it*dt;
+          double cost = cos(t);
+          double sint = sin(t);
+          x1[im][it] = (float)(i1+a*cost*u1-b*sint*u2);
+          x2[im][it] = (float)(i2+b*sint*u1+a*cost*u2);
+        }
+      }
+    }
+    return new float[][][]{x1,x2};
   }
 
   private static void testImagePainter() {
