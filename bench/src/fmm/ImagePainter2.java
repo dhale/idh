@@ -423,6 +423,21 @@ public class ImagePainter2 {
     }
   }
 
+  private static float[][] gain(float[][] x) {
+    int n1 = x[0].length;
+    int n2 = x.length;
+    float[][] y = new float[n2][n1];
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        float xi = x[i2][i1];
+        float ai = abs(xi);
+        float si = (xi>=0.0f)?1.0f:-1.0f;
+        y[i2][i1] = si*pow(ai,1.00f);
+      }
+    }
+    return y;
+  }
+
   private static class StructureTensors 
     extends EigenTensors2
     implements Painting2.Tensors 
@@ -439,9 +454,12 @@ public class ImagePainter2 {
       lof.apply(x,null,u1,u2,null,null,su,sv,null);
       /*
       float[][] st = Array.copy(su);
+      su = Array.mul(su,st);
+      sv = Array.mul(sv,st);
+      */
+      float[][] st = Array.pow(su,2.0f);
       su = Array.div(su,st);
       sv = Array.div(sv,st);
-      */
       float[][] sc = Array.sub(1.0f,coherence(sigma,x));
       su = Array.mul(su,sc);
       sv = Array.mul(sv,sc);
@@ -511,11 +529,12 @@ public class ImagePainter2 {
     float[][] sm = new float[n2][n1];
     for (int i2=0; i2<n2; ++i2) {
       for (int i1=0; i1<n1; ++i1) {
-        float[] u = et.getEigenvectorU(i1,i2);
-        sm[i2][i1] = u[0];
+        float[] s = et.getEigenvalues(i1,i2);
+        sm[i2][i1] = s[1];
       }
     }
-    float smq = Quantiler.estimate(0.001f,sm);
+    float smq = Quantiler.estimate(0.01f,sm);
+    trace("smq = "+smq);
     double r = 0.45*ns*sqrt(smq);
     float[][] x1 = new float[nm][nt];
     float[][] x2 = new float[nm][nt];
@@ -534,8 +553,13 @@ public class ImagePainter2 {
         double sv = s[1];
         //double a = r*sqrt(sv/su);
         //double b = r;
-        double a = r*sqrt(sv)/su;
-        double b = r/sqrt(su);
+        // a/b = sqrt(sv/su)
+        // su,sv large -> a,b small
+        // su,sv small -> a,b large (but b<=1)
+        su = max(su,smq);
+        sv = max(sv,smq);
+        double a = r/sqrt(su);
+        double b = r/sqrt(sv);
         for (int it=0; it<nt; ++it) {
           double t = ft+it*dt;
           double cost = cos(t);
@@ -552,12 +576,13 @@ public class ImagePainter2 {
     int n1 = 251;
     int n2 = 357;
     float[][] image = readImage(n1,n2,"/data/seis/tp/tp73.dat");
+    image = gain(image);
     ImagePainter2 ip = new ImagePainter2(image);
     ip.setValueRange(0.0,1.0);
   }
 
   private static void trace(String s) {
-    //System.out.println(s);
+    System.out.println(s);
   }
 
   public static void main(String[] args) {
