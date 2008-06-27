@@ -452,14 +452,14 @@ public class ImagePainter2 {
       float[][] sv = new float[n2][n1];
       LocalOrientFilter lof = new LocalOrientFilter(sigma);
       lof.apply(x,null,u1,u2,null,null,su,sv,null);
-      /*
       float[][] st = Array.copy(su);
       su = Array.mul(su,st);
       sv = Array.mul(sv,st);
-      */
+      /*
       float[][] st = Array.pow(su,2.0f);
       su = Array.div(su,st);
       sv = Array.div(sv,st);
+      */
       float[][] sc = Array.sub(1.0f,coherence(sigma,x));
       su = Array.mul(su,sc);
       sv = Array.mul(sv,sc);

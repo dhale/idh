@@ -6,6 +6,7 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package fmm;
 
+import edu.mines.jtk.util.*;
 import static edu.mines.jtk.util.MathPlus.*;
 
 // for testing
@@ -19,7 +20,6 @@ import edu.mines.jtk.awt.*;
 import edu.mines.jtk.dsp.*;
 import edu.mines.jtk.io.*;
 import edu.mines.jtk.mosaic.*;
-import edu.mines.jtk.util.*;
 
 /**
  * A 2D array of painted values, where most values are painted automatically.
@@ -180,7 +180,7 @@ public class Painting2 {
     _k1[i2][i1] = i1;
     _k2[i2][i1] = i2;
     _tk[i2][i1] = TIME_INVALID;
-    _vk[i2][i1] = copy(v);
+    _vk[i2][i1] = Array.copy(v);
   }
 
   /**
@@ -230,7 +230,7 @@ public class Painting2 {
       _k1[k2][k1] = k1;
       _k2[k2][k1] = k2;
       _tk[k2][k1] = 0.0f;
-      updateNabors(k1,k2);
+      updateNabors(k1,k2,null);
 
       // Extrapolate from the fixed sample to all samples that are
       // nearer to the fixed sample than to any other fixed sample.
@@ -248,10 +248,8 @@ public class Painting2 {
           _k2[i2][i1] = k2;
           _vk[i2][i1] = vk;
         }
-        updateNabors(i1,i2);
+        updateNabors(i1,i2,null);
       }
-      //plot(getValues(),ColorMap.JET);
-      //plot(_tk); // DEBUG
     }
   }
 
@@ -261,10 +259,8 @@ public class Painting2 {
    */
   public void interpolate() {
 
-    //Plot plot = new Plot(getValues(),ColorMap.JET); // DEBUG
-
     // Insert all extrapolated samples into the max-heap with their
-    // current times. After the max-heap is built, the extrpolated
+    // current times. After the max-heap is built, the extrapolated
     // sample with largest time is at the top of the heap.
     _hmax.clear();
     for (int i2=0; i2<_n2; ++i2) {
@@ -275,29 +271,64 @@ public class Painting2 {
       }
     }
 
+    // Interpolation occurs in two stages. Both stages compute times by 
+    // fast marching away from the sample to be interpolated. In stage 1, 
+    // times and values for samples reached during marching are modified,
+    // so that values interpolated in this first stage will affect values 
+    // interpolated later. In the second stage 2, times (but not values) 
+    // are again modified during marching, but are restored after marching. 
+    // Therefore, values interpolated in stage 2 do not affect other 
+    // interpolated values. 
+    boolean stage1 = true;
+    boolean stage2 = false;
+
+    // In stage 2, times that must be restored are saved in a list while 
+    // marching, and values interpolated are saved in a separate array so
+    // that they will not affect other interpolated values. At the end of
+    // stage 2, we will merge the two arrays of values. In stage 1, both
+    // the time list and values array are null and not used.
+    TimeList tl = null;
+    float[][][] va = null;
+
     // Interpolate all extrapolated (not-fixed) samples, one at a time, 
     // in order of decreasing time. The extrapolated sample with the 
-    // largest time is at the top of the max-heap. As we interpolate 
-    // this sample, times for other extrapolated samples that remain in 
-    // the heap may be reduced, so that their order may change. We choose 
-    // a decreasing order to reduce the number of extrapolated samples 
-    // that must be modified during interpolation.
+    // largest time is at the top of the max-heap. In stage 1, as we 
+    // interpolate this sample, times for other extrapolated samples 
+    // that remain in the heap may be reduced, so that their order may 
+    // change. We choose a decreasing order in stage 1 to reduce the 
+    // number of extrapolated samples that are reached while marching.
+    // In stage 2, the order will not matter.
     while (!_hmax.isEmpty()) {
 
       // Remove from the max-heap the extrapolated sample with largest time.
       // This is the sample to be interpolated; the "interpolated sample".
-      TimeHeap2.Entry ee = _hmax.remove();
-      int k1 = ee.i1;
-      int k2 = ee.i2;
+      TimeHeap2.Entry te = _hmax.remove();
+      int k1 = te.i1;
+      int k2 = te.i2;
 
-      // The values to be interpolated. This array will be assigned to all
-      // extrapolated samples during the march away from the interpolated
-      // sample. This is one reason that an array of values is so useful, 
-      // for we will not actually know the interpolated values until the 
-      // march is complete. Then, when we compute the interpolated values, 
-      // those values will already be referenced by all extrapolated samples
+      // The values to be interpolated. In stage 1, this array will be
+      // assigned to all extrapolated samples during the march away from 
+      // the interpolated sample. This assignment is one reason that an 
+      // array of values is so useful, for we will not actually know the 
+      // interpolated values until the march is complete. Later, when we 
+      // have completed the computation of the interpolated values, those 
+      // values will already be referenced by all extrapolated samples 
       // nearest to the interpolated sample.
-      float[] vk = _vk[k2][k1] = copy(_vk[k2][k1]);
+      // In stage 2, interpolated values are not extrapolated, and must not
+      // affect other interpolated values, so we store them in a separate
+      // array of values to be merged later.
+      float[] vk = Array.copy(_vk[k2][k1]);
+      if (stage1) {
+        _vk[k2][k1] = vk;
+      } else {
+        va[k2][k1] = vk;
+      }
+
+      // In stage 2, save the time for the interpolated sample.
+      if (stage2) {
+        tl.clear();
+        tl.append(k1,k2,_tk[k2][k1]);
+      }
 
       // Count of values accumulated for the interpolated sample.
       int nk = 1;
@@ -312,7 +343,7 @@ public class Painting2 {
       _k1[k2][k1] = k1;
       _k2[k2][k1] = k2;
       _tk[k2][k1] = 0.0f;
-      updateNabors(k1,k2);
+      updateNabors(k1,k2,tl);
 
       // March away from the interpolated sample to all extrapolated
       // samples that are nearer to the interpolated sample than to any 
@@ -332,26 +363,58 @@ public class Painting2 {
           vk[iv] += vki[iv];
         ++nk;
 
-        // Mark the extrapolated sample known with reduced time.
-        // It's values will be those of the interpolated sample.
-        // Continue the march by updating the nabor samples.
+        // Mark the extrapolated sample known with reduced time. During
+        // stage 1, it's values will be those of the interpolated sample.
+        // Continue marching by updating the nabor samples.
         _mark[i2][i1] = _known;
-        _hmax.reduce(i1,i2,t);
-        _k1[i2][i1] = k1;
-        _k2[i2][i1] = k2;
-        _vk[i2][i1] = vk;
-        updateNabors(i1,i2);
+        if (stage1) {
+          _hmax.reduce(i1,i2,t);
+        } else {
+          tl.append(i1,i2,t);
+        }
+        if (stage1) {
+          _k1[i2][i1] = k1;
+          _k2[i2][i1] = k2;
+          _vk[i2][i1] = vk;
+        }
+        updateNabors(i1,i2,tl);
       }
 
       // The march is complete, and nearby values have been accumulated.
-      // Now divide by the number of values accumulated.
+      // Now simply divide by the number of values accumulated.
       float vs = 1.0f/(float)nk;
       for (int iv=0; iv<_nv; ++iv)
         vk[iv] *= vs;
-      
-      //trace("k1="+k1+" k2="+k2+" nk="+nk);
-      //plot(getValues()); // DEBUG
-      //plot(_tk); // DEBUG
+
+      // In stage 2, restore any times saved during marching.
+      if (stage2) {
+        int nt = tl.n;
+        int[] k1t = tl.k1List;
+        int[] k2t = tl.k2List;
+        float[] tkt = tl.tkList;
+        for (int it=0; it<nt; ++it)
+          _tk[k2t[it]][k1t[it]] = tkt[it];
+      }
+
+      // If stage 1 and the number of samples accumulated is small, 
+      // then switch to stage 2.
+      if (stage1 && nk<16) {
+        stage1 = false;
+        stage2 = true;
+        tl = new TimeList();
+        va = new float[_n2][_n1][_nv];
+      }
+    }
+
+    // Finally, merge any interpolated values that were saved in stage 2.
+    if (va!=null) {
+      for (int i2=0; i2<_n2; ++i2) {
+        for (int i1=0; i1<_n1; ++i1) {
+          float[] vi = va[i2][i1];
+          if (vi!=null)
+            _vk[i2][i1] = vi;
+        }
+      }
     }
   }
 
@@ -410,6 +473,9 @@ public class Painting2 {
     }
     return v;
   }
+
+  ///////////////////////////////////////////////////////////////////////////
+  // private
 
   // The value for times not yet computed. Also the value returned by
   // methods that compute times from nabor times when a valid time
@@ -501,7 +567,7 @@ public class Painting2 {
     }
   }
 
-  private void updateNabors(int i1, int i2) {
+  private void updateNabors(int i1, int i2, TimeList tl) {
 
     // For all eight nabors of specified sample at (i1,i2) ...
     for (int k=0; k<8; ++k) {
@@ -516,16 +582,16 @@ public class Painting2 {
 
       // If time for nabor not already known, update it.
       if (_mark[j2][j1]!=_known)
-        updateTime(j1,j2);
+        updateTime(j1,j2,tl);
     }
   }
 
   /**
    * Updates the time for one sample using times at eight nabors.
-   * @param i1 sample index in 1st dimension at which to compute the time.
-   * @param i2 sample index in 2nd dimension at which to compute the time.
+   * If not null, the time list is used to store times before they
+   * are updated, so that they can later be restored.
    */
-  private void updateTime(int i1, int i2) {
+  private void updateTime(int i1, int i2, TimeList tl) {
 
     // Elements of structure tensor.
     float[] s = new float[3];
@@ -609,30 +675,158 @@ public class Painting2 {
     // If the minimum time has been reduced, ...
     if (reduced) {
 
-      // Remember the reduced minimum time.
-      _tk[i2][i1] = tmin;
-
-      // If this sample not already in the min-heap, insert it.
+      // If not been here before, so this sample not already in the min-heap, 
+      // then insert this sample into the min-heap, and (optionally) save the
+      // the current stored time if it must be restored later.
       if (_mark[i2][i1]!=_trial) {
         _mark[i2][i1] = _trial;
         _hmin.insert(i1,i2,tmin);
-      } 
+        if (tl!=null) 
+          tl.append(i1,i2,_tk[i2][i1]);
+      }
 
-      // else, reduce the time already stored in the min-heap.
+      // Else, reduce the time already stored in the min-heap.
       else {
         _hmin.reduce(i1,i2,tmin);
       }
+
+      // Store the reduced minimum time.
+      _tk[i2][i1] = tmin;
     }
   }
 
-  private float[] copy(float[] v) {
-    int nv = v.length;
-    float[] cv = new float[nv];
-    for (int iv=0; iv<nv; ++iv)
-      cv[iv] = v[iv];
-    return cv;
+  /**
+   * For times that must be restored during interpolation.
+   */
+  private static class TimeList {
+    private int n = 0;
+    private int[] k1List = new int[1024];
+    private int[] k2List = new int[1024];
+    private float[] tkList = new float[1024];
+    public void append(int k1, int k2, float tk) {
+      if (n==tkList.length) {
+        int[] k1New = new int[2*k1List.length];
+        int[] k2New = new int[2*k2List.length];
+        float[] tkNew = new float[2*tkList.length];
+        Array.copy(n,k1List,k1New);
+        Array.copy(n,k2List,k2New);
+        Array.copy(n,tkList,tkNew);
+        k1List = k1New;
+        k2List = k2New;
+        tkList = tkNew;
+      }
+      k1List[n] = k1;
+      k2List[n] = k2;
+      tkList[n] = tk;
+      ++n;
+    }
+    public void clear() {
+      n = 0;
+    }
   }
 
+  /**
+   * Interpolates values from all fixed samples, using extrapolated samples.
+   * After interpolation, all samples are either fixed or interpolated.
+   */
+  public void interpolateOldMethod() {
+
+    //Plot plot = new Plot(getValues(),ColorMap.JET); // DEBUG
+
+    // Insert all extrapolated samples into the max-heap with their
+    // current times. After the max-heap is built, the extrpolated
+    // sample with largest time is at the top of the heap.
+    _hmax.clear();
+    for (int i2=0; i2<_n2; ++i2) {
+      for (int i1=0; i1<_n1; ++i1) {
+        if (_type[i2][i1]==EXTRA) {
+          _hmax.insert(i1,i2,_tk[i2][i1]);
+        }
+      }
+    }
+
+    // Interpolate all extrapolated (not-fixed) samples, one at a time, 
+    // in order of decreasing time. The extrapolated sample with the 
+    // largest time is at the top of the max-heap. As we interpolate 
+    // this sample, times for other extrapolated samples that remain in 
+    // the heap may be reduced, so that their order may change. We choose 
+    // a decreasing order to reduce the number of extrapolated samples 
+    // that must be modified during interpolation.
+    while (!_hmax.isEmpty()) {
+
+      // Remove from the max-heap the extrapolated sample with largest time.
+      // This is the sample to be interpolated; the "interpolated sample".
+      TimeHeap2.Entry ee = _hmax.remove();
+      int k1 = ee.i1;
+      int k2 = ee.i2;
+
+      // The values to be interpolated. This array will be assigned to all
+      // extrapolated samples during the march away from the interpolated
+      // sample. This is one reason that an array of values is so useful, 
+      // for we will not actually know the interpolated values until the 
+      // march is complete. Then, when we compute the interpolated values, 
+      // those values will already be referenced by all extrapolated samples
+      // nearest to the interpolated sample.
+      float[] vk = _vk[k2][k1] = Array.copy(_vk[k2][k1]);
+
+      // Count of values accumulated for the interpolated sample.
+      int nk = 1;
+
+      // Mark all samples as far, set the type of the interpolated sample,
+      // mark the interpolated sample as known with time zero, and update 
+      // its neighbors.
+      clearMarks();
+      _hmin.clear();
+      _type[k2][k1] = INTER;
+      _mark[k2][k1] = _known;
+      _k1[k2][k1] = k1;
+      _k2[k2][k1] = k2;
+      _tk[k2][k1] = 0.0f;
+      updateNabors(k1,k2,null);
+
+      // March away from the interpolated sample to all extrapolated
+      // samples that are nearer to the interpolated sample than to any 
+      // other fixed or interpolated samples. While marching, accumulate 
+      // values needed for interpolation.
+      while (!_hmin.isEmpty()) {
+
+        // Get the extrapolated sample with minimum time.
+        TimeHeap2.Entry e = _hmin.remove();
+        int i1 = e.i1;
+        int i2 = e.i2;
+        float t = e.t;
+
+        // Accumulate existing values for the extrapolated sample.
+        float[] vki = _vk[i2][i1];
+        for (int iv=0; iv<_nv; ++iv)
+          vk[iv] += vki[iv];
+        ++nk;
+
+        // Mark the extrapolated sample known with reduced time.
+        // It's values will be those of the interpolated sample.
+        // Continue the march by updating the nabor samples.
+        _mark[i2][i1] = _known;
+        _hmax.reduce(i1,i2,t);
+        _k1[i2][i1] = k1;
+        _k2[i2][i1] = k2;
+        _vk[i2][i1] = vk;
+        updateNabors(i1,i2,null);
+      }
+
+      // The march is complete, and nearby values have been accumulated.
+      // Now divide by the number of values accumulated.
+      float vs = 1.0f/(float)nk;
+      for (int iv=0; iv<_nv; ++iv)
+        vk[iv] *= vs;
+      
+      //trace("k1="+k1+" k2="+k2+" nk="+nk);
+      //plot(getValues()); // DEBUG
+      //plot(_tk); // DEBUG
+    }
+  }
+
+  ///////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////////////
   // testing
 
