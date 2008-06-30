@@ -33,15 +33,16 @@ public class ImagePainter2 {
     _n2 = image.length;
     _nv = 1;
     _image = image;
-    StructureTensors st = new StructureTensors(3,image);
-    _painting = new Painting2(_n1,_n2,_nv,st);
+    _st = new StructureTensors(SIGMA,1.0f,1.0f,1.0f,_image);
+    _painting = new Painting2(_n1,_n2,_nv,_st);
     _painting.setDefaultValue(0.0f);
 
-    // Plot panel.
     int fontSize = 24;
-    int width = 900;
-    int height = 750;
+    int width = 1330;
+    int height = 860;
     int widthColorBar = 80;
+
+    // Plot panel.
     PlotPanel.Orientation ppo = PlotPanel.Orientation.X1DOWN_X2RIGHT;
     PlotPanel.AxesPlacement ppap = PlotPanel.AxesPlacement.LEFT_TOP;
     _panel = new PlotPanel(1,1,ppo,ppap);
@@ -58,7 +59,7 @@ public class ImagePainter2 {
     _paintView.setColorModel(ColorMap.JET);
 
     // Tensors view, if visible, on top of paint view.
-    float[][][] x12 = getTensorEllipses(_n1,_n2,10,st);
+    float[][][] x12 = getTensorEllipses(_n1,_n2,10,_st);
     float[][] x1 = x12[0];
     float[][] x2 = x12[1];
     _tensorsView = new PointsView(x1,x2);
@@ -95,10 +96,13 @@ public class ImagePainter2 {
   ///////////////////////////////////////////////////////////////////////////
   // private
 
+  private static float SIGMA = 3.0f;
+
   private int _n1,_n2,_nv;
   private float[][] _image;
   private float _valueMin,_valueMax;
   private Painting2 _painting;
+  private StructureTensors _st;
 
   private PlotPanel _panel;
   private PlotFrame _frame;
@@ -312,10 +316,46 @@ public class ImagePainter2 {
     modeMenu.add(new ModeMenuItem(pm));
     JMenu viewMenu = new JMenu("View");
     viewMenu.add(new JCheckBoxMenuItem(new ShowTensorsAction()));
+    JMenu structureMenu = new JMenu("Structure");
+    JMenuItem isotropicItem = new JRadioButtonMenuItem(
+      new AbstractAction("Isotropic") {
+        public void actionPerformed(ActionEvent e) {
+          updateStructureTensors(0.0f,0.0f,0.0f);
+        }
+      });
+    JMenuItem linearItem = new JRadioButtonMenuItem(
+      new AbstractAction("Linear") {
+        public void actionPerformed(ActionEvent e) {
+          updateStructureTensors(0.0f,100.0f,1.0f);
+        }
+      });
+    JMenuItem layersItem = new JRadioButtonMenuItem(
+      new AbstractAction("Layers") {
+        public void actionPerformed(ActionEvent e) {
+          updateStructureTensors(1.0f,1.0f,1.0f);
+        }
+      });
+    JMenuItem interfacesItem = new JRadioButtonMenuItem(
+      new AbstractAction("Interfaces") {
+        public void actionPerformed(ActionEvent e) {
+          updateStructureTensors(0.0f,1.0f,1.0f);
+        }
+      });
+    structureMenu.add(isotropicItem);
+    structureMenu.add(linearItem);
+    structureMenu.add(layersItem);
+    structureMenu.add(interfacesItem);
+    ButtonGroup structureGroup = new ButtonGroup();
+    structureGroup.add(isotropicItem);
+    structureGroup.add(linearItem);
+    structureGroup.add(layersItem);
+    structureGroup.add(interfacesItem);
+    layersItem.setSelected(true);
     JMenuBar menuBar = new JMenuBar();
     menuBar.add(fileMenu);
     menuBar.add(modeMenu);
     menuBar.add(viewMenu);
+    menuBar.add(structureMenu);
     _frame.setJMenuBar(menuBar);
 
     // Tool bar.
@@ -407,6 +447,65 @@ public class ImagePainter2 {
     }
     boolean _show = false;
   }
+  private void updateStructureTensors(float alpha, float beta, float gamma) {
+    _st = new StructureTensors(SIGMA,alpha,beta,gamma,_image);
+    _painting.setTensors(_st);
+    float[][][] x12 = getTensorEllipses(_n1,_n2,10,_st);
+    float[][] x1 = x12[0];
+    float[][] x2 = x12[1];
+    _tensorsView.set(x1,x2);
+  }
+
+  private static float[][][] getTensorEllipses(
+    int n1, int n2, int ns, EigenTensors2 et) 
+  {
+    int nt = 51;
+    int m1 = (n1-1)/ns;
+    int m2 = (n2-1)/ns;
+    int j1 = (n1-1-(m1-1)*ns)/2;
+    int j2 = (n2-1-(m2-1)*ns)/2;
+    int nm = m1*m2;
+    //double r = 0.45*ns;
+    float[][] sm = new float[n2][n1];
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        float[] s = et.getEigenvalues(i1,i2);
+        sm[i2][i1] = s[1];
+      }
+    }
+    sm = Array.copy(m1,m2,j1,j2,ns,ns,sm);
+    float smq = Quantiler.estimate(0.05f,sm);
+    double r = 0.45*ns*sqrt(smq);
+    float[][] x1 = new float[nm][nt];
+    float[][] x2 = new float[nm][nt];
+    double dt = 2.0*PI/(nt-1);
+    double ft = 0.0f;
+    for (int i2=j2,im=0; i2<n2; i2+=ns) {
+      double y2 = i2+r;
+      for (int i1=j1; i1<n1; i1+=ns,++im) {
+        float[] u = et.getEigenvectorU(i1,i2);
+        float[] s = et.getEigenvalues(i1,i2);
+        double u1 = u[0];
+        double u2 = u[1];
+        double v1 = -u2;
+        double v2 =  u1;
+        double su = s[0];
+        double sv = s[1];
+        su = max(su,smq);
+        sv = max(sv,smq);
+        double a = r/sqrt(sv);
+        double b = r/sqrt(su);
+        for (int it=0; it<nt; ++it) {
+          double t = ft+it*dt;
+          double cost = cos(t);
+          double sint = sin(t);
+          x1[im][it] = (float)(i1+b*cost*u1-a*sint*u2);
+          x2[im][it] = (float)(i2+a*sint*u1+b*cost*u2);
+        }
+      }
+    }
+    return new float[][][]{x1,x2};
+  }
 
   ///////////////////////////////////////////////////////////////////////////
   // testing
@@ -442,7 +541,12 @@ public class ImagePainter2 {
     extends EigenTensors2
     implements Painting2.Tensors 
   {
-    StructureTensors(double sigma, float[][] x) {
+    StructureTensors(float sigma, float[][] x) {
+      this(sigma,-1.0f,1.0f,1.0f,x);
+    }
+    StructureTensors(
+      float sigma, float alpha, float beta, float gamma, float[][] x) 
+    {
       super(x[0].length,x.length);
       int n1 = x[0].length;
       int n2 = x.length;
@@ -452,17 +556,13 @@ public class ImagePainter2 {
       float[][] sv = new float[n2][n1];
       LocalOrientFilter lof = new LocalOrientFilter(sigma);
       lof.apply(x,null,u1,u2,null,null,su,sv,null);
-      float[][] st = Array.copy(su);
-      su = Array.mul(su,st);
-      sv = Array.mul(sv,st);
-      /*
-      float[][] st = Array.pow(su,2.0f);
-      su = Array.div(su,st);
-      sv = Array.div(sv,st);
-      */
-      float[][] sc = Array.sub(1.0f,coherence(sigma,x));
-      su = Array.mul(su,sc);
-      sv = Array.mul(sv,sc);
+      float[][] sa = Array.pow(su,alpha);
+      float[][] sb = Array.pow(Array.div(sv,su),beta);
+      float[][] sc = Array.pow(Array.sub(1.0f,coherence(sigma,x)),gamma);
+      su = Array.mul(sa,sc);
+      sv = Array.mul(sb,su);
+      //SimplePlot.asPixels(su);
+      //SimplePlot.asPixels(sv);
       for (int i2=0; i2<n2; ++i2) {
         for (int i1=0; i1<n1; ++i1) {
           setEigenvalues(i1,i2,su[i2][i1],sv[i2][i1]);
@@ -514,62 +614,6 @@ public class ImagePainter2 {
       }
     }
     return c;
-  }
-
-  private static float[][][] getTensorEllipses(
-    int n1, int n2, int ns, EigenTensors2 et) 
-  {
-    int nt = 51;
-    int m1 = (n1-1)/ns;
-    int m2 = (n2-1)/ns;
-    int j1 = (n1-1-(m1-1)*ns)/2;
-    int j2 = (n2-1-(m2-1)*ns)/2;
-    int nm = m1*m2;
-    //double r = 0.45*ns;
-    float[][] sm = new float[n2][n1];
-    for (int i2=0; i2<n2; ++i2) {
-      for (int i1=0; i1<n1; ++i1) {
-        float[] s = et.getEigenvalues(i1,i2);
-        sm[i2][i1] = s[1];
-      }
-    }
-    float smq = Quantiler.estimate(0.01f,sm);
-    trace("smq = "+smq);
-    double r = 0.45*ns*sqrt(smq);
-    float[][] x1 = new float[nm][nt];
-    float[][] x2 = new float[nm][nt];
-    double dt = 2.0*PI/(nt-1);
-    double ft = 0.0f;
-    for (int i2=j2,im=0; i2<n2; i2+=ns) {
-      double y2 = i2+r;
-      for (int i1=j1; i1<n1; i1+=ns,++im) {
-        float[] u = et.getEigenvectorU(i1,i2);
-        float[] s = et.getEigenvalues(i1,i2);
-        double u1 = u[0];
-        double u2 = u[1];
-        double v1 = -u2;
-        double v2 =  u1;
-        double su = s[0];
-        double sv = s[1];
-        //double a = r*sqrt(sv/su);
-        //double b = r;
-        // a/b = sqrt(sv/su)
-        // su,sv large -> a,b small
-        // su,sv small -> a,b large (but b<=1)
-        su = max(su,smq);
-        sv = max(sv,smq);
-        double a = r/sqrt(su);
-        double b = r/sqrt(sv);
-        for (int it=0; it<nt; ++it) {
-          double t = ft+it*dt;
-          double cost = cos(t);
-          double sint = sin(t);
-          x1[im][it] = (float)(i1+a*cost*u1-b*sint*u2);
-          x2[im][it] = (float)(i2+b*sint*u1+a*cost*u2);
-        }
-      }
-    }
-    return new float[][][]{x1,x2};
   }
 
   private static void testImagePainter() {

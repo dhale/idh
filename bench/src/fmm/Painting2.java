@@ -88,6 +88,14 @@ public class Painting2 {
   }
 
   /**
+   * Sets the structure tensors used in this painting.
+   * @param st structure tensors.
+   */
+  public void setTensors(Tensors st) {
+    _st = st;
+  }
+
+  /**
    * Sets the default value for value index zero.
    * Default values are used for all clear (not painted) samples.
    * @param value the default value.
@@ -259,23 +267,11 @@ public class Painting2 {
    */
   public void interpolate() {
 
-    // Insert all extrapolated samples into the max-heap with their
-    // current times. After the max-heap is built, the extrapolated
-    // sample with largest time is at the top of the heap.
-    _hmax.clear();
-    for (int i2=0; i2<_n2; ++i2) {
-      for (int i1=0; i1<_n1; ++i1) {
-        if (_type[i2][i1]==EXTRA) {
-          _hmax.insert(i1,i2,_tk[i2][i1]);
-        }
-      }
-    }
-
     // Interpolation occurs in two stages. Both stages compute times by 
     // fast marching away from the sample to be interpolated. In stage 1, 
-    // times and values for samples reached during marching are modified,
-    // so that values interpolated in this first stage will affect values 
-    // interpolated later. In the second stage 2, times (but not values) 
+    // times and values for samples reached while marching are modified,
+    // so that each sample interpolated in this first stage will affect
+    // samples interpolated later. In stage 2, times (but not values) 
     // are again modified during marching, but are restored after marching. 
     // Therefore, values interpolated in stage 2 do not affect other 
     // interpolated values. 
@@ -290,6 +286,24 @@ public class Painting2 {
     TimeList tl = null;
     float[][][] va = null;
 
+    // Minimum number of samples to interpolate in stage 2, a fraction 
+    // of the the total number of samples. This is an important parameter. 
+    // Higher fractions close to one yield smoother interpolations, but
+    // can be much more costly than lower fractions.
+    int nstage2 = (int)(0.05*_n1*_n2);
+
+    // Insert all extrapolated samples into the max-heap with their
+    // current times. After the max-heap is built, the extrapolated
+    // sample with largest time is at the top of the heap.
+    _hmax.clear();
+    for (int i2=0; i2<_n2; ++i2) {
+      for (int i1=0; i1<_n1; ++i1) {
+        if (_type[i2][i1]==EXTRA) {
+          _hmax.insert(i1,i2,_tk[i2][i1]);
+        }
+      }
+    }
+
     // Interpolate all extrapolated (not-fixed) samples, one at a time, 
     // in order of decreasing time. The extrapolated sample with the 
     // largest time is at the top of the max-heap. In stage 1, as we 
@@ -300,11 +314,20 @@ public class Painting2 {
     // In stage 2, the order will not matter.
     while (!_hmax.isEmpty()) {
 
+      // Switch to stage 2 when number of samples left is small enough. 
+      if (stage1 && _hmax.size()<nstage2) {
+        stage1 = false;
+        stage2 = true;
+        tl = new TimeList();
+        va = new float[_n2][_n1][];
+      }
+
       // Remove from the max-heap the extrapolated sample with largest time.
       // This is the sample to be interpolated; the "interpolated sample".
       TimeHeap2.Entry te = _hmax.remove();
       int k1 = te.i1;
       int k2 = te.i2;
+      float tk = te.t;
 
       // The values to be interpolated. In stage 1, this array will be
       // assigned to all extrapolated samples during the march away from 
@@ -327,7 +350,7 @@ public class Painting2 {
       // In stage 2, save the time for the interpolated sample.
       if (stage2) {
         tl.clear();
-        tl.append(k1,k2,_tk[k2][k1]);
+        tl.append(k1,k2,tk);
       }
 
       // Count of values accumulated for the interpolated sample.
@@ -347,32 +370,29 @@ public class Painting2 {
 
       // March away from the interpolated sample to all extrapolated
       // samples that are nearer to the interpolated sample than to any 
-      // other fixed or interpolated samples. While marching, accumulate 
-      // values needed for interpolation.
+      // fixed samples or samples previously interpolated in stage 1.
+      // While marching, accumulate values needed for interpolation.
       while (!_hmin.isEmpty()) {
 
         // Get the extrapolated sample with minimum time.
         TimeHeap2.Entry e = _hmin.remove();
         int i1 = e.i1;
         int i2 = e.i2;
-        float t = e.t;
+        float ti = e.t;
 
-        // Accumulate existing values for the extrapolated sample.
+        // Accumulate values for the extrapolated sample.
         float[] vki = _vk[i2][i1];
         for (int iv=0; iv<_nv; ++iv)
           vk[iv] += vki[iv];
         ++nk;
 
-        // Mark the extrapolated sample known with reduced time. During
-        // stage 1, it's values will be those of the interpolated sample.
-        // Continue marching by updating the nabor samples.
+        // Mark the extrapolated sample known. In stage 1, reduce it's
+        // time in the max-heap. Also, in stage 1, it's values will be 
+        // those of the interpolated sample. Continue marching by updating 
+        // the nabor samples.
         _mark[i2][i1] = _known;
         if (stage1) {
-          _hmax.reduce(i1,i2,t);
-        } else {
-          tl.append(i1,i2,t);
-        }
-        if (stage1) {
+          _hmax.reduce(i1,i2,ti);
           _k1[i2][i1] = k1;
           _k2[i2][i1] = k2;
           _vk[i2][i1] = vk;
@@ -388,21 +408,12 @@ public class Painting2 {
 
       // In stage 2, restore any times saved during marching.
       if (stage2) {
-        int nt = tl.n;
-        int[] k1t = tl.k1List;
-        int[] k2t = tl.k2List;
-        float[] tkt = tl.tkList;
-        for (int it=0; it<nt; ++it)
-          _tk[k2t[it]][k1t[it]] = tkt[it];
-      }
-
-      // If stage 1 and the number of samples accumulated is small, 
-      // then switch to stage 2.
-      if (stage1 && nk<16) {
-        stage1 = false;
-        stage2 = true;
-        tl = new TimeList();
-        va = new float[_n2][_n1][_nv];
+        int nl = tl.n;
+        int[] k1l = tl.k1List;
+        int[] k2l = tl.k2List;
+        float[] tkl = tl.tkList;
+        for (int il=0; il<nl; ++il)
+          _tk[k2l[il]][k1l[il]] = tkl[il];
       }
     }
 
@@ -582,7 +593,7 @@ public class Painting2 {
 
       // If time for nabor not already known, update it.
       if (_mark[j2][j1]!=_known)
-        updateTime(j1,j2,tl);
+        updateTime(i1,i2,j1,j2,tl);
     }
   }
 
@@ -591,49 +602,54 @@ public class Painting2 {
    * If not null, the time list is used to store times before they
    * are updated, so that they can later be restored.
    */
-  private void updateTime(int i1, int i2, TimeList tl) {
+  private void updateTime(int i1, int i2, int j1, int j2, TimeList tl) {
 
     // Elements of structure tensor.
     float[] s = new float[3];
-    _st.getTensor(i1,i2,s);
+    _st.getTensor(j1,j2,s);
     float s11 = s[0];
     float s12 = s[1];
     float s22 = s[2];
 
     // The current minimum time.
-    float tmin = _tk[i2][i1];
+    float tmin = _tk[j2][j1];
 
     // Initally assume that no computed time will be less than current min.
-    boolean reduced = false;
+    boolean smallerTimeFound = false;
 
     // For all eight nabor triangles, ...
-    for (int it=0; it<8; ++it) {
+    for (int jt=0; jt<8; ++jt) {
 
       // Sample indices of vertices X1 and X2 of nabor triangle.
-      int i11 = i1+K11[it];
-      int i12 = i2+K12[it];
-      int i21 = i1+K21[it];
-      int i22 = i2+K22[it];
-      if (i11<0 || i11>=_n1) continue;
-      if (i12<0 || i12>=_n2) continue;
-      if (i21<0 || i21>=_n1) continue;
-      if (i22<0 || i22>=_n2) continue;
+      int j11 = j1+K11[jt];
+      int j12 = j2+K12[jt];
+      int j21 = j1+K21[jt];
+      int j22 = j2+K22[jt];
+
+      // Either X1 or X2 must be newly known.
+      if (j11!=i1 && j21!=i1 || j12!=i2 && j22!=i2) continue;
+
+      // All indices must be in bounds.
+      if (j11<0 || j11>=_n1) continue;
+      if (j12<0 || j12>=_n2) continue;
+      if (j21<0 || j21>=_n1) continue;
+      if (j22<0 || j22>=_n2) continue;
 
       // Need at least one nabor with known time.
-      int m1 = _mark[i12][i11];
-      int m2 = _mark[i22][i21];
+      int m1 = _mark[j12][j11];
+      int m2 = _mark[j22][j21];
       if (m1!=_known && m2!=_known) continue;
 
       // Times T0, T1 and T2 at vertices X0, X1 and X2 of nabor triangle.
       float t0 = TIME_INVALID;
-      float t1 = _tk[i12][i11];
-      float t2 = _tk[i22][i21];
+      float t1 = _tk[j12][j11];
+      float t2 = _tk[j22][j21];
 
       // Components of vectors Y1 = X1-X2 and Y2 = X0-X2.
-      float y11 = Y11[it];
-      float y12 = Y12[it];
-      float y21 = Y21[it];
-      float y22 = Y22[it];
+      float y11 = Y11[jt];
+      float y12 = Y12[jt];
+      float y21 = Y21[jt];
+      float y22 = Y22[jt];
 
       // Inner products with respect to metric tensor S.
       float d11 = y11*s11*y11+y11*s12*y12+y12*s12*y11+y12*s22*y12;
@@ -668,30 +684,30 @@ public class Painting2 {
       // If computed time T0 is smaller than the min time, update the min time.
       if (t0<tmin) {
         tmin = t0;
-        reduced = true;
+        smallerTimeFound = true;
       }
     }
 
-    // If the minimum time has been reduced, ...
-    if (reduced) {
+    // If a smaller time has been found, ...
+    if (smallerTimeFound) {
 
       // If not been here before, so this sample not already in the min-heap, 
-      // then insert this sample into the min-heap, and (optionally) save the
-      // the current stored time if it must be restored later.
-      if (_mark[i2][i1]!=_trial) {
-        _mark[i2][i1] = _trial;
-        _hmin.insert(i1,i2,tmin);
+      // then insert this sample into the min-heap, and if the time list is
+      // not null, save the current stored time so it can be restored later.
+      if (_mark[j2][j1]!=_trial) {
+        _mark[j2][j1] = _trial;
+        _hmin.insert(j1,j2,tmin);
         if (tl!=null) 
-          tl.append(i1,i2,_tk[i2][i1]);
+          tl.append(j1,j2,_tk[j2][j1]);
       }
 
-      // Else, reduce the time already stored in the min-heap.
+      // Else, simply reduce the time already stored in the min-heap.
       else {
-        _hmin.reduce(i1,i2,tmin);
+        _hmin.reduce(j1,j2,tmin);
       }
 
-      // Store the reduced minimum time.
-      _tk[i2][i1] = tmin;
+      // Store the smaller time.
+      _tk[j2][j1] = tmin;
     }
   }
 
