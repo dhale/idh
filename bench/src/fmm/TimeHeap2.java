@@ -9,7 +9,7 @@ package fmm;
 import edu.mines.jtk.util.Check;
 
 /**
- * A min- or max-heap of times sampled in a 2-D array. 
+ * A min- or max-heap of times sampled in a 2D array. 
  * Such a heap is typically used in fast marching methods. It enhances
  * a conventional heap by maintaining a map of heap entries in a 2D array 
  * of indices. Given array indices (i1,i2), this index map enables O(1) 
@@ -277,7 +277,7 @@ public class TimeHeap2 {
     if (i<_n) {
       s = s+"  ";
       Entry e = _e[i];
-      System.out.println(s+""+e.i1+" "+e.i2+" "+e.t);
+      System.out.println(s+e.i1+" "+e.i2+" "+e.t);
       dump(s,2*i+1);
       dump(s,2*i+2);
     }
@@ -292,8 +292,8 @@ public class TimeHeap2 {
   }
 
   private static void testHeap(TimeHeap2 heap) {
-    int n1 = 5;
-    int n2 = 6;
+    int n1 = heap.getN1();
+    int n2 = heap.getN2();
     int n = n1*n2;
     float[] s = edu.mines.jtk.util.Array.randfloat(n);
     float[][] t = edu.mines.jtk.util.Array.reshape(n1,n2,s);
