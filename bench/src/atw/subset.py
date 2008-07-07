@@ -12,7 +12,7 @@ from edu.mines.jtk.util import *
 from edu.mines.jtk.sgl import *
 from edu.mines.jtk.sgl.test import *
 
-import tp.Convert as Convert
+import atw.Convert as Convert
 
 dataDir = "/data/seis/atw/"
 
@@ -44,13 +44,13 @@ n3= 401; d3=0.0200; f3=0.0000
 def main(args):
   #plot12(0);
   #plot12(100);
-  #testFormat()
-  subset(i1s,i2s,i3s)
-  ais = ArrayInputStream(dataDir+"atws.dat")
-  y = Array.zerofloat(n1,n2,n3)
-  ais.readFloats(y)
-  ais.close()
-  plot3d(y)
+  testFormat()
+  #subset(i1s,i2s,i3s)
+  #ais = ArrayInputStream(dataDir+"atws.dat")
+  #y = Array.zerofloat(n1,n2,n3)
+  #ais.readFloats(y)
+  #ais.close()
+  #plot3d(y)
   return
 
 def subset(i1s,i2s,i3s):
@@ -101,26 +101,18 @@ def plot3d(x):
   frame.setVisible(True)
 
 def testFormat():
-  nhead = 0 # no headers
-  nthed = 0 # no headers
-  xi = Array.zeroint(n1i)
-  x1 = Array.zerofloat(n1i)
-  x2 = Array.zerofloat(n1i)
-  infile = dataDir+"atw10_L10036to10437.dat";
+  xi = Array.zeroint(n1i,n2i)
+  x1 = Array.zerofloat(n1i,n2i)
+  x2 = Array.zerofloat(n1i,n2i)
+  infile = dataDir+"atw.dat";
   ais = ArrayInputStream(infile)
-  ais.skipBytes(nhead+nbhed)
-  ais.skipBytes(n3i/2*n2i*(nthed+4*n1i))
-  ais.skipBytes(n2i/2*(nthed+4*n1i))
-  ais.skipBytes(nthed)
   ais.readInts(xi)
   ais.close()
-  Convert.ibmToFloat(xi,x1)
-  Convert.ieeeToFloat(xi,x2)
-  SimplePlot.asPoints(x1)
-  SimplePlot.asPoints(x2)
-  #Array.dump(xi)
-  #Array.dump(x1)
-  #Array.dump(x2)
+  for i2 in range(n2i):
+    Convert.ibmToFloat(xi[i2],x1[i2])
+    Convert.ieeeToFloat(xi[i2],x2[i2])
+  SimplePlot.asPixels(x1)
+  SimplePlot.asPixels(x2)
 
 #############################################################################
 class RunMain(Runnable):
