@@ -662,6 +662,195 @@ public class Painting3 {
     }
   }
 
+  // Returns the parameter a (alpha) that minimizes
+  // t(a) = a*u1+sqrt((y2-a*y1)'*S*(y2-a*y1))
+  // subject to the constraint 0 <= a <= 1.
+  public static float computeAlpha(
+    float s11, float s12, float s13, float s22, float s23, float s33,
+    float u1,
+    float y11, float y12, float y13,
+    float y21, float y22, float y23)
+  {
+    float z11 = s11*y11+s12*y12+s13*y13;
+    float z12 = s12*y11+s22*y12+s23*y13;
+    float z13 = s13*y11+s23*y12+s33*y13;
+    float z21 = s11*y21+s12*y22+s13*y23;
+    float z22 = s12*y21+s22*y22+s23*y23;
+    float z23 = s13*y21+s23*y22+s33*y23;
+    float d11 = y11*z11+y12*z12+y13*z13;
+    float d12 = y11*z21+y12*z22+y13*z23;
+    float d22 = y21*z21+y22*z22+y23*z23;
+    return computeAlpha(u1,d11,d12,d22);
+  }
+
+  // Returns the parameter a (alpha) that minimizes
+  // t(a) = a*u1+sqrt(d22-2.0f*a*d12+a*a*d11)
+  // subject to the constraint 0 <= a <= 1.
+  public static float computeAlpha(
+    float u1, float d11, float d12, float d22) 
+  {
+    float alpha;
+    float dd = d11*d22-d12*d12;
+    if (dd<0.0f)
+      dd = 0.0f;
+    float du = d11-u1*u1;
+    if (du<=0.0f) {
+      alpha = (u1>=0.0f)?0.0f:1.0f;
+    } else {
+      alpha = (d12-u1*sqrt(dd/du))/d11;
+      if (alpha<=0.0f) {
+        alpha = 0.0f;
+      } else if (alpha>=1.0f) {
+        alpha = 1.0f;
+      }
+    }
+    return alpha;
+  }
+
+  // Returns the time t that minimizes
+  // t(a) = u2+a*u1+sqrt((y2-a*y1)'*S*(y2-a*y1))
+  // subject to the constraint 0 <= a <= 1.
+  public static float computeTime(
+    float s11, float s12, float s13, float s22, float s23, float s33,
+    float u1, float u2,
+    float y11, float y12, float y13,
+    float y21, float y22, float y23)
+  {
+    float z11 = s11*y11+s12*y12+s13*y13;
+    float z12 = s12*y11+s22*y12+s23*y13;
+    float z13 = s13*y11+s23*y12+s33*y13;
+    float z21 = s11*y21+s12*y22+s13*y23;
+    float z22 = s12*y21+s22*y22+s23*y23;
+    float z23 = s13*y21+s23*y22+s33*y23;
+    float d11 = y11*z11+y12*z12+y13*z13;
+    float d12 = y11*z21+y12*z22+y13*z23;
+    float d22 = y21*z21+y22*z22+y23*z23;
+    float alpha = computeAlpha(u1,d11,d12,d22);
+    return u2+alpha*u1+sqrt(d22-2.0f*alpha*d12+alpha*alpha*d11);
+  }
+
+  // Returns the time t that minimizes
+  // t(a1,a2) = u3+a1*u1+a2*u2+sqrt((y3-a1*y1-a2*y2)'*S*(y3-a1*y1-a2*y2))
+  // subject to the constraints 0 <= a1, 0 <= a2, and 0 <= a3 = 1-a1-a2.
+  public static float computeTime(
+    float s11, float s12, float s13, float s22, float s23, float s33,
+    float u1, float u2, float u3,
+    float y11, float y12, float y13,
+    float y21, float y22, float y23,
+    float y31, float y32, float y33)
+  {
+    // Inner products with respect to metric tensor S.
+    float z11 = s11*y11+s12*y12+s13*y13;
+    float z12 = s12*y11+s22*y12+s23*y13;
+    float z13 = s13*y11+s23*y12+s33*y13;
+    float z21 = s11*y21+s12*y22+s13*y23;
+    float z22 = s12*y21+s22*y22+s23*y23;
+    float z23 = s13*y21+s23*y22+s33*y23;
+    float z31 = s11*y31+s12*y32+s13*y33;
+    float z32 = s12*y31+s22*y32+s23*y33;
+    float z33 = s13*y31+s23*y32+s33*y33;
+    float d11 = y11*z11+y12*z12+y13*z13;
+    float d12 = y11*z21+y12*z22+y13*z23;
+    float d13 = y11*z31+y12*z32+y13*z33;
+    float d22 = y21*z21+y22*z22+y23*z23;
+    float d23 = y21*z31+y22*z32+y23*z33;
+
+    // Parameters alpha1, alpha2, and alpha3.
+    float a1 = u1*d12-u2*d11;
+    float a2 = u1*d22-u2*d12;
+    float bb = u2*d13-u1*d23;
+    float aa1 = (a1>=0.0f)?a1:-a1;
+    float aa2 = (a2>=0.0f)?a2:-a2;
+    float v11,v12,v13,v21,v22,v23;
+    float alpha1,alpha2,alpha3;
+
+    // If abs(a1) < abs(a2), solve for alpha1 first, then alpha2.
+    if (aa1<aa2) {
+      float aoa = a1/a2;
+      float boa = bb/a2;
+      float v1 = u1-aoa*u2;
+      float w21 = y31+boa*y21;
+      float w22 = y32+boa*y22;
+      float w23 = y33+boa*y23;
+      float w11 = y11-aoa*y21;
+      float w12 = y12-aoa*y22;
+      float w13 = y13-aoa*y23;
+      alpha1 = computeAlpha(s11,s12,s13,s22,s23,s33,
+                            v1,w11,w12,w13,w21,w22,w23);
+      alpha2 = -boa-aoa*alpha1;
+    }
+
+    // Else if abs(a2) < abs(a1), solve for alpha2 first, then alpha1.
+    else if (aa2<aa1) {
+      float aoa = a2/a1;
+      float boa = bb/a1;
+      float v1 = u2-aoa*u1;
+      float w21 = y31+boa*y11;
+      float w22 = y32+boa*y12;
+      float w23 = y33+boa*y13;
+      float w11 = y21-aoa*y11;
+      float w12 = y22-aoa*y12;
+      float w13 = y23-aoa*y13;
+      alpha2 = computeAlpha(s11,s12,s13,s22,s23,s33,
+                            v1,w11,w12,w13,w21,w22,w23);
+      alpha1 = -boa-aoa*alpha2;
+    } 
+    
+    // Else if a1 = a2 = bb = 0, solve easily for both alpha1 and alpha2.
+    else {
+      float dd = d11*d22-d12*d12;
+      alpha1 = (d12*d23-d13*d22)/dd;
+      alpha2 = (d13*d12-d23*d11)/dd;
+    }
+
+    // The sum alpha1 + alpha2 + alpha3 = 1.
+    alpha3 = 1.0-alpha1-alpha2;
+
+    // Initial time is huge.
+    float t = TIME_INVALID;
+
+    // If minimum is strictly inside the triangle 123, ...
+    if (alpha1>0.0f && alpha2>0.0f && alpha3>0.0f) {
+      t = u3+alpha1*u1+alpha2*u2 + 
+        sqrt(d33+alpha1*alpha1*d11+alpha2*alpha2*d22 +
+             2.0f*alpha1*alpha2*d12-2.0f*alpha1*d13-2.0f*alpha2*d23);
+
+    // Else if the minimum is not strictly inside the triangle 123,
+    // search for the minimum on the edges of the triangle.
+    } else {
+
+      // If minimum could be on the edge 23 (alpha1=0), ...
+      if (alpha1<=0.0f) {
+        alpha2 = computeAlpha(s11,s12,s13,s22,s23,s33,
+                              u2,u3,y21,y22,y23,y31,y32,y33);
+        float t23 = u3+alpha2*u2+sqrt(d33+alpha2*alpha2*d22-2.0f*alpha2*d23);
+        if (t23<t) t = t23;
+      }
+
+      // If minimum could be on the edge 13 (alpha2=0), ...
+      if (alpha2<=0.0f) {
+        alpha1 = computeAlpha(s11,s12,s13,s22,s23,s33,
+                              u1,u3,y11,y12,y13,y31,y32,y33);
+        float t13 = u3+alpha1*u1+sqrt(d33+alpha1*alpha1*d11-2.0f*alpha1*d13);
+        if (t13<t) t = t13;
+      }
+
+      // If minimum could be on the edge 12 (alpha3=0), ...
+      if (alpha3<=0.0f) {
+        alpha1 = computeAlpha(s11,s12,s13,s22,s23,s33,
+                              u1-u2,u3+u2,
+                              y11-y21,y12-y22,y13-y23,
+                              y31-y21,y32-y22,y33-y23);
+        alpha2 = 1.0f-alpha1;
+        float t12 = u3+alpha1*u1+alpha2*u2 + 
+          sqrt(d33+alpha1*alpha1*d11+alpha2*alpha2*d22 +
+               2.0f*alpha1*alpha2*d12-2.0f*alpha1*d13-2.0f*alpha2*d23);
+        if (t12<t) t = t12;
+      }
+    }
+    return t;
+  }
+
   /**
    * Updates the time for one sample using times at eight nabors.
    * If not null, the time list is used to store the time before it
