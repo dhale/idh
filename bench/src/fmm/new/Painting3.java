@@ -547,21 +547,6 @@ public class Painting3 {
   private TimeHeap2 _hmin; // the min heap
   private TimeHeap2 _hmax; // the max heap
 
-  // Times for each sample are computed from one of eight nabor triangles.
-  // These triangles are indexed as follows:
-  //      i2 ^                 i2 ^
-  //   * - - * - - *      * - - * - - *
-  //   | \ 2 | 1 / |      | \ 10| 9 / | 
-  //   | 3 \ | / 0 |      | 11\ | / 8 |
-  //   * - - * - - *  >   * - - X - - *  >
-  //   | 4 / | \ 7 | i1   | 12/ | \ 7 | i1
-  //   | / 5 | 6 \ | 
-  //   * - - * - - *
-  //      i3 = -1           i3 = 0
-  // The symbol X represents the vertex X0 shared by all eight triangles. 
-  // The symbol * represents the other two triangle vertices X1 and X2, 
-  // which are indexed in counter-clockwise order around X0.
-
   // Sample index offsets for vertices X1 of the 48 nabor tetrahedra.
   private static final int[] K11 = { 1, 1, 0,-1,-1,-1, 0, 1,
                                      1, 1, 0,-1,-1,-1, 0, 1,
@@ -622,24 +607,15 @@ public class Painting3 {
                                      0, 0, 0, 0, 0, 0, 0, 0,
                                      0, 0, 0, 0, 0, 0, 0, 0};
 
-  // Components of vectors Y1 = X1-X2 for the eight nabor triangles.
-  private static final float[] Y11 =
-    { 0.0f, 1.0f, 1.0f, 0.0f, 0.0f,-1.0f,-1.0f, 0.0f};
-  private static final float[] Y12 =
-    {-1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f,-1.0f};
-
-  // Components of vectors Y2 = X0-X2 for the eight nabor triangles.
-  private static final float[] Y21 =
-    {-1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f,-1.0f,-1.0f};
-  private static final float[] Y22 =
-    {-1.0f,-1.0f,-1.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f};
-
   // Structure tensors.
   private static class IdentityTensors implements Tensors {
-    public void getTensor(int i1, int i2, float[] s) {
+    public void getTensor(int i1, int i2, int i3, float[] s) {
       s[0] = 1.0f; // s11
       s[1] = 0.0f; // s12
-      s[2] = 1.0f; // s22
+      s[2] = 0.0f; // s13
+      s[3] = 1.0f; // s22
+      s[4] = 0.0f; // s23
+      s[5] = 1.0f; // s33
     }
   }
 
@@ -707,8 +683,19 @@ public class Painting3 {
     return alpha;
   }
 
-  // Returns the time t that minimizes
-  // t(a) = u2+a*u1+sqrt((y2-a*y1)'*S*(y2-a*y1))
+  // Returns the time t+sqrt(y'*S*y).
+  public static float computeTime(
+    float s11, float s12, float s13, float s22, float s23, float s33,
+    float t, float y1, float y2, float y3)
+  {
+    float z1 = s11*y1+s12*y2+s13*y3;
+    float z2 = s12*y1+s22*y2+s23*y3;
+    float z3 = s13*y1+s23*y2+s33*y3;
+    float d = y1*z1+y2*z2+y3*z3;
+    return t1+sqrt(d);
+  }
+
+  // Returns the minimum time t(a) = u2+a*u1+sqrt((y2-a*y1)'*S*(y2-a*y1))
   // subject to the constraint 0 <= a <= 1.
   public static float computeTime(
     float s11, float s12, float s13, float s22, float s23, float s33,
@@ -754,15 +741,15 @@ public class Painting3 {
     float d13 = y11*z31+y12*z32+y13*z33;
     float d22 = y21*z21+y22*z22+y23*z23;
     float d23 = y21*z31+y22*z32+y23*z33;
+    float d33 = y31*z31+y32*z32+y33*z33;
 
-    // Parameters alpha1, alpha2, and alpha3.
+    // The minimum lies on the line a1*alpha1 + a2*alpha2 + bb = 0.
     float a1 = u1*d12-u2*d11;
     float a2 = u1*d22-u2*d12;
     float bb = u2*d13-u1*d23;
     float aa1 = (a1>=0.0f)?a1:-a1;
     float aa2 = (a2>=0.0f)?a2:-a2;
-    float v11,v12,v13,v21,v22,v23;
-    float alpha1,alpha2,alpha3;
+    float alpha1,alpha2;
 
     // If abs(a1) < abs(a2), solve for alpha1 first, then alpha2.
     if (aa1<aa2) {
@@ -804,7 +791,7 @@ public class Painting3 {
     }
 
     // The sum alpha1 + alpha2 + alpha3 = 1.
-    alpha3 = 1.0-alpha1-alpha2;
+    float alpha3 = 1.0-alpha1-alpha2;
 
     // Initial time is huge.
     float t = TIME_INVALID;
@@ -852,87 +839,109 @@ public class Painting3 {
   }
 
   /**
-   * Updates the time for one sample using times at eight nabors.
+   * Updates the time for one sample using times at 48 neighbors.
    * If not null, the time list is used to store the time before it
    * is updated, so that it can later be restored.
    */
-  private void updateTime(int i1, int i2, int j1, int j2, TimeList tl) {
+  private void updateTime(
+    int i1, int i2, int i3, 
+    int j1, int j2, int j3,
+    TimeList tl) 
+  {
 
     // Elements of structure tensor.
-    float[] s = new float[3];
-    _st.getTensor(j1,j2,s);
+    float[] s = new float[6];
+    _st.getTensor(j1,j2,j3,s);
     float s11 = s[0];
     float s12 = s[1];
-    float s22 = s[2];
+    float s13 = s[2];
+    float s22 = s[3];
+    float s23 = s[4];
+    float s33 = s[5];
 
     // The current minimum time.
-    float tmin = _tk[j2][j1];
+    float tmin = _tk[j3][j2][j1];
 
     // Initally assume that no computed time will be less than current min.
     boolean smallerTimeFound = false;
 
-    // For all eight nabor triangles, ...
-    for (int jt=0; jt<8; ++jt) {
+    // For all 48 neighbor triangles, ...
+    for (int jt=0; jt<48; ++jt) {
 
       // Sample indices of vertices X1 and X2 of nabor triangle.
       int j11 = j1+K11[jt];
       int j12 = j2+K12[jt];
+      int j13 = j3+K13[jt];
       int j21 = j1+K21[jt];
       int j22 = j2+K22[jt];
+      int j23 = j3+K23[jt];
+      int j31 = j1+K31[jt];
+      int j32 = j2+K32[jt];
+      int j33 = j3+K33[jt];
 
-      // Either X1 or X2 must be newly known.
-      if (j11!=i1 && j21!=i1 || j12!=i2 && j22!=i2) continue;
+      // Either X1, X2, or X3 must be the specified neighbor vertex.
+      if (j11!=i1 && j21!=i1 && j31!=i1 || 
+          j12!=i2 && j22!=i2 && j32!=i2 ||
+          j13!=i3 && j23!=i3 && j33!=i3) continue;
 
       // All indices must be in bounds.
       if (j11<0 || j11>=_n1) continue;
       if (j12<0 || j12>=_n2) continue;
+      if (j13<0 || j13>=_n3) continue;
       if (j21<0 || j21>=_n1) continue;
       if (j22<0 || j22>=_n2) continue;
+      if (j23<0 || j23>=_n3) continue;
+      if (j31<0 || j31>=_n1) continue;
+      if (j32<0 || j32>=_n2) continue;
+      if (j33<0 || j33>=_n3) continue;
 
-      // Need at least one nabor with known time.
-      int m1 = _mark[j12][j11];
-      int m2 = _mark[j22][j21];
-      if (m1!=_known && m2!=_known) continue;
+      // Require at least one nabor with known time.
+      int m1 = _mark[j13][j12][j11];
+      int m2 = _mark[j23][j22][j21];
+      int m3 = _mark[j33][j32][j31];
+      if (m1!=_known && m2!=_known && m3!=known) continue;
 
-      // Times T0, T1 and T2 at vertices X0, X1 and X2 of nabor triangle.
+      // Times T0, T1, T2 and T3 at vertices X0, X1, X2 and X3 of tet.
       float t0 = TIME_INVALID;
-      float t1 = _tk[j12][j11];
-      float t2 = _tk[j22][j21];
+      float t1 = _tk[j13][j12][j11];
+      float t2 = _tk[j23][j22][j21];
+      float t3 = _tk[j33][j32][j31];
 
-      // Components of vectors Y1 = X1-X2 and Y2 = X0-X2.
-      float y11 = Y11[jt];
-      float y12 = Y12[jt];
-      float y21 = Y21[jt];
-      float y22 = Y22[jt];
-
-      // Inner products with respect to metric tensor S.
-      float d11 = y11*s11*y11+y11*s12*y12+y12*s12*y11+y12*s22*y12;
-      float d12 = y11*s11*y21+y11*s12*y22+y12*s12*y21+y12*s22*y22;
-      float d22 = y21*s11*y21+y21*s12*y22+y22*s12*y21+y22*s22*y22;
-
-      // Time T0 computed for one nabor triangle.
-      if (m1!=_known) {
-        t0 = t2+sqrt(d22); // a = 0
-      } else if (m2!=_known) {
-        t0 = t1+sqrt(d22-2.0f*d12+d11); // a = 1
-      } else {
-        float u1 = t1-t2;
-        float u2 = t2;
-        float dd = d11*d22-d12*d12;
-        if (dd<0.0f) dd = 0.0f;
-        float du = d11-u1*u1;
-        if (du>0.0f) {
-          float a = (d12-u1*sqrt(dd/du))/d11;
-          if (a<=0.0f) { // a <= 0
-            t0 = t2+sqrt(d22);
-          } else if (a>=1.0f) { // a >= 1
-            t0 = t1+sqrt(d22-2.0f*d12+d11);
-          } else { // 0 < a < 1
-            float da = d22-a*(2.0f*d12-a*d11);
-            if (da<0.0f) da = 0.0f;
-            t0 = u2+a*u1+sqrt(d22-2.0f*a*d12+a*a*d11);
+      if (m1==known) {
+        if (m2==known) {
+          if (m3==known) { // 123
+            t0 = computeTime(s11,s12,s13,s22,s23,s33,
+                             t1-t3,t2-t3,t3,
+                             j11-j31,j12-j32,j13-j33,
+                             j21-j31,j22-j32,j23-j33,
+                             j01-j31,j02-j32,j03-j33);
+          } else { // 12
+            t0 = computeTime(s11,s12,s13,s22,s23,s33,
+                             t1-t2,t2,
+                             j11-j21,j12-j22,j13-j23,
+                             j01-j21,j02-j22,j03-j23);
+          }
+        } else {
+          if (m3==known) { // 13
+            t0 = computeTime(s11,s12,s13,s22,s23,s33,
+                             t1-t3,t3,
+                             j11-j31,j12-j32,j13-j33,
+                             j01-j31,j02-j32,j03-j33);
+          } else { // 1
+            t0 = computeTime(t1,j01-j11,j02-j12,j03-j13);
           }
         }
+      } else if (m2==known) {
+        if (m3==known) { // 23
+          t0 = computeTime(s11,s12,s13,s22,s23,s33,
+                           t2-t3,t3,
+                           j21-j31,j22-j32,j23-j33,
+                           j01-j31,j02-j32,j03-j33);
+        } else { // 2
+          t0 = computeTime(t2,j01-j21,j02-j22,j03-j23);
+        }
+      } else if (m3==known) { // 3
+        t0 = computeTime(t3,j01-j31,j02-j32,j03-j33);
       }
 
       // If computed time T0 is smaller than the min time, update the min time.
@@ -948,20 +957,20 @@ public class Painting3 {
       // If not been here before, so this sample not already in the min-heap, 
       // then insert this sample into the min-heap, and if the time list is
       // not null, save the current stored time so it can be restored later.
-      if (_mark[j2][j1]!=_trial) {
-        _mark[j2][j1] = _trial;
-        _hmin.insert(j1,j2,tmin);
+      if (_mark[j3][j2][j1]!=_trial) {
+        _mark[j3][j2][j1] = _trial;
+        _hmin.insert(j1,j2,j3,tmin);
         if (tl!=null) 
-          tl.append(j1,j2,_tk[j2][j1]);
+          tl.append(j1,j2,j3,_tk[j2][j1]);
       }
 
       // Else, simply reduce the time already stored in the min-heap.
       else {
-        _hmin.reduce(j1,j2,tmin);
+        _hmin.reduce(j1,j2,j3,tmin);
       }
 
       // Store the smaller time.
-      _tk[j2][j1] = tmin;
+      _tk[j3][j2][j1] = tmin;
     }
   }
 
@@ -973,20 +982,24 @@ public class Painting3 {
     private int[] k1List = new int[1024];
     private int[] k2List = new int[1024];
     private float[] tkList = new float[1024];
-    public void append(int k1, int k2, float tk) {
+    public void append(int k1, int k2, int k3, float tk) {
       if (n==tkList.length) {
         int[] k1New = new int[2*k1List.length];
         int[] k2New = new int[2*k2List.length];
+        int[] k3New = new int[2*k3List.length];
         float[] tkNew = new float[2*tkList.length];
         Array.copy(n,k1List,k1New);
         Array.copy(n,k2List,k2New);
+        Array.copy(n,k3List,k3New);
         Array.copy(n,tkList,tkNew);
         k1List = k1New;
         k2List = k2New;
+        k3List = k3New;
         tkList = tkNew;
       }
       k1List[n] = k1;
       k2List[n] = k2;
+      k3List[n] = k3;
       tkList[n] = tk;
       ++n;
     }
