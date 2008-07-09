@@ -6,6 +6,8 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package fmm;
 
+import java.util.concurrent.atomic.*;
+
 import edu.mines.jtk.util.*;
 import static edu.mines.jtk.util.MathPlus.*;
 
@@ -83,6 +85,7 @@ public class Painting3 {
     _dv = new float[nv];
     _k1 = new int[n3][n2][n1];
     _k2 = new int[n3][n2][n1];
+    _k3 = new int[n3][n2][n1];
     _tk = new float[n3][n2][n1];
     _vk = new float[n3][n2][n1][];
     _type = new byte[n3][n2][n1];
@@ -411,7 +414,7 @@ public class Painting3 {
         // Mark the extrapolated sample known. In stage 1, reduce it's
         // time in the max-heap. Also, in stage 1, it's values will be 
         // those of the interpolated sample. Continue marching by updating 
-        // the nabor samples.
+        // the neighbor samples.
         _mark[i3][i2][i1] = _known;
         if (stage1) {
           _hmax.reduce(i1,i2,i3,ti);
@@ -519,7 +522,7 @@ public class Painting3 {
   // private
 
   // The value for times not yet computed. Also the value returned by
-  // methods that compute times from nabor times when a valid time
+  // methods that compute times from neighbor times when a valid time
   // cannot be computed. We use the maximum possible float so that
   // it will be larger than any valid times we compute.
   private static final float TIME_INVALID = Float.MAX_VALUE;
@@ -566,6 +569,23 @@ public class Painting3 {
   private byte[][][] _type; // sample types: clear, fixed, extra, inter
   private TimeHeap3 _hmin; // the min heap
   private TimeHeap3 _hmax; // the max heap
+
+  // Sample index offsets for 26 neighbor samples.
+  private static final int[] K1 = {
+    -1, 0, 1, -1, 0, 1, -1, 0, 1,
+    -1, 0, 1, -1,    1, -1, 0, 1,
+    -1, 0, 1, -1, 0, 1, -1, 0, 1
+  };
+  private static final int[] K2 = {
+    -1,-1,-1,  0, 0, 0,  1, 1, 1,
+    -1,-1,-1,  0,    0,  1, 1, 1,
+    -1,-1,-1,  0, 0, 0,  1, 1, 1
+  };
+  private static final int[] K3 = {
+    -1,-1,-1, -1,-1,-1, -1,-1,-1,
+     0, 0, 0,  0,    0,  0, 0, 0,
+     1, 1, 1,  1, 1, 1,  1, 1, 1
+  };
 
   // Sample index offsets for vertices X1 of the 48 neighbor tets.
   private static final int[] K11 = { 1, 1, 0,-1,-1,-1, 0, 1,
@@ -647,7 +667,7 @@ public class Painting3 {
     {16,17,18,19,20,21,22,23},
     {16,23,43,44},
     {32,33,34,35,36,37,38,39},
-    {}, // no tets for the center of the 3x3x3 cube of 27 samples
+    // no tets for the center of the 3x3x3 cube of 27 samples
     {40,41,42,43,44,45,46,47},
     {27,28,32,39},
     {24,25,26,27,28,29,30,31},
@@ -680,27 +700,56 @@ public class Painting3 {
    * If not null, the time list is used to store times before they are
    * updated, so that they can later be restored.
    */
-  private void updateNabors(int i1, int i2, int i3, TimeList tl) {
+  private void updateNabors(
+    final int i1, final int i2, final int i3, final TimeList tl) 
+  {
+    Thread[] threads = Threads.makeArray();
+    int nthread = threads.length;
+    trace("updateNabors: nthread="+nthread+" i1="+i1+" i2="+i2+" i3="+i3);
+    final AtomicInteger ak = new AtomicInteger();
+    for (int ithread=0; ithread<nthread; ++ithread) {
+      threads[ithread] = new Thread(new Runnable() {
+        public void run() {
+          for (int k=ak.getAndIncrement(); k<26; k=ak.getAndIncrement()) {
+            trace("  k="+k);
+            int k1 = K1[k];
+            int k2 = K2[k];
+            int k3 = K3[k];
 
-    // For all 26 neighbors of sample with indices (i1,i2,i3) ...
-    for (int k3=-1,k=0; k3<=1; ++k3) {
-      for (int k2=-1; k2<=1; ++k2) {
-        for (int k1=-1; k1<=1; ++k1,++k) {
-          if (k==13) continue; // skip center of 3x3x3 cube of 27 samples
+            // Neighbor sample indices (j1,j2,j3); skip if out of bounds.
+            int j1 = i1+k1;
+            int j2 = i2+k2;
+            int j3 = i3+k3;
+            if (j1<0 || j1>=_n1) continue;
+            if (j2<0 || j2>=_n2) continue;
+            if (j3<0 || j3>=_n3) continue;
 
-          // Neighbor sample indices (j1,j2,j3); skip if out of bounds.
-          int j1 = i1+k1;
-          int j2 = i2+k2;
-          int j3 = i3+k3;
-          if (j1<0 || j1>=_n1) continue;
-          if (j2<0 || j2>=_n2) continue;
-          if (j3<0 || j3>=_n3) continue;
-
-          // If time for nabor not already known, update it.
-          if (_mark[j3][j2][j1]!=_known)
+            // Update time for the neighbor sample.
             updateTime(j1,j2,j3,KT[k],tl);
+          }
         }
-      }
+      });
+    }
+    Threads.startAndJoin(threads);
+  }
+  private void updateNaborsX(
+    final int i1, final int i2, final int i3, final TimeList tl) 
+  {
+    for (int k=0; k<26; ++k) {
+      int k1 = K1[k];
+      int k2 = K2[k];
+      int k3 = K3[k];
+
+      // Neighbor sample indices (j1,j2,j3); skip if out of bounds.
+      int j1 = i1+k1;
+      int j2 = i2+k2;
+      int j3 = i3+k3;
+      if (j1<0 || j1>=_n1) continue;
+      if (j2<0 || j2>=_n2) continue;
+      if (j3<0 || j3>=_n3) continue;
+
+      // Update time for the neighbor sample.
+      updateTime(j1,j2,j3,KT[k],tl);
     }
   }
 
@@ -729,21 +778,22 @@ public class Painting3 {
     boolean smallerTimeFound = false;
 
     // For all relevant neighbor tets, ...
-    for (int it=0,jt=kt[it]; it<kt.length; ++it,jt=kt[it]) {
+    for (int it=0; it<kt.length; ++it) {
+      int jt = kt[it];
 
       // Sample indices of vertices X0, X1, X2, and X3 of neighbor tet.
       int j01 = j1;
       int j02 = j2;
       int j03 = j3;
-      int j11 = j1+K11[jt];
-      int j12 = j2+K12[jt];
-      int j13 = j3+K13[jt];
-      int j21 = j1+K21[jt];
-      int j22 = j2+K22[jt];
-      int j23 = j3+K23[jt];
-      int j31 = j1+K31[jt];
-      int j32 = j2+K32[jt];
-      int j33 = j3+K33[jt];
+      int j11 = j1-K11[jt];
+      int j12 = j2-K12[jt];
+      int j13 = j3-K13[jt];
+      int j21 = j1-K21[jt];
+      int j22 = j2-K22[jt];
+      int j23 = j3-K23[jt];
+      int j31 = j1-K31[jt];
+      int j32 = j2-K32[jt];
+      int j33 = j3-K33[jt];
 
       // All indices must be in bounds.
       if (j11<0 || j11>=_n1) continue;
@@ -1048,7 +1098,7 @@ public class Painting3 {
     private int[] k2List = new int[1024];
     private int[] k3List = new int[1024];
     private float[] tkList = new float[1024];
-    public void append(int k1, int k2, int k3, float tk) {
+    public synchronized void append(int k1, int k2, int k3, float tk) {
       if (n==tkList.length) {
         int[] k1New = new int[2*k1List.length];
         int[] k2New = new int[2*k2List.length];
@@ -1069,7 +1119,7 @@ public class Painting3 {
       tkList[n] = tk;
       ++n;
     }
-    public void clear() {
+    public synchronized void clear() {
       n = 0;
     }
   }
@@ -1144,15 +1194,47 @@ public class Painting3 {
     }
   }
 
-  private static void testIsotropic() {
-    int n1 = 31;
-    int n2 = 31;
-    int n3 = 31;
+  private static class ConstantTensors 
+    extends EigenTensors3
+    implements Painting3.Tensors 
+  {
+    ConstantTensors(
+      int n1, int n2, int n3,
+      float su, float sv, float sw) 
+    {
+      super(n1,n2,n3,false);
+      float u1 = 1.0f, u2 = 0.0f, u3 = 0.0f;
+      float v1 = 0.0f, v2 = 1.0f, v3 = 0.0f;
+      float w1 = 0.0f, w2 = 0.0f, w3 = 1.0f;
+      for (int i3=0; i3<n3; ++i3) {
+        for (int i2=0; i2<n2; ++i2) {
+          for (int i1=0; i1<n1; ++i1) {
+            setEigenvalues(i1,i2,i3,su,sv,sw);
+            setEigenvectorU(i1,i2,i3,u1,u2,u3);
+            setEigenvectorW(i1,i2,i3,w1,w2,w3);
+          }
+        }
+      }
+    }
+  }
+
+  private static void testConstant() {
+    int n1 = 25;
+    int n2 = 25;
+    int n3 = 25;
     int nv = 1;
-    Painting3 p = new Painting3(n1,n2,n3,nv);
+    float su = 1.0f;
+    float sv = 4.0f;
+    float sw = 1.0f;
+    ConstantTensors ct = new ConstantTensors(n1,n2,n3,su,sv,sw);
+    Painting3 p = new Painting3(n1,n2,n3,nv,ct);
     p.paintAt(n1/2,n2/2,n3/2,1.0f);
+    //p.paintAt(   0,   0,   0,1.0f);
+    //p.paintAt(n1-1,n2-1,n3-1,1.0f);
+    trace("extrapolate ...");
     p.extrapolate();
-    plot(p.getTimes());
+    trace("done");
+    //Array.dump(p.getTimes());
     //plot(p.getValues());
   }
 
@@ -1163,7 +1245,7 @@ public class Painting3 {
   public static void main(String[] args) {
     SwingUtilities.invokeLater(new Runnable() {
       public void run() {
-        testIsotropic();
+        testConstant();
       }
     });
   }

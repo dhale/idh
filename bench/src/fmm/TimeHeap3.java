@@ -99,7 +99,7 @@ public class TimeHeap3 {
    * @param i3 the sample index in 2nd dimension.
    * @param t the time.
    */
-  public void insert(int i1, int i2, int i3, float t) {
+  public synchronized void insert(int i1, int i2, int i3, float t) {
     int i = indexOf(i1,i2,i3); // index of entry with time to reduce
     Check.argument(i<0,"entry with indices (i1,i2) is not in the heap");
     i = _n; // index at which to insert the entry
@@ -126,7 +126,7 @@ public class TimeHeap3 {
    * @param i3 the sample index in 2nd dimension.
    * @param t the reduced time.
    */
-  public void reduce(int i1, int i2, int i3, float t) {
+  public synchronized void reduce(int i1, int i2, int i3, float t) {
     int i = indexOf(i1,i2,i3); // index of entry with time to reduce
     Check.argument(i>=0,"entry with indices (i1,i2) is in the heap");
     Check.argument(t<_e[i].t,"specified time less than time in heap");
@@ -142,7 +142,7 @@ public class TimeHeap3 {
    * Removes and returns the heap entry with smallest/largest time.
    * The heap must not be empty.
    */
-  public Entry remove() {
+  public synchronized Entry remove() {
     Check.state(_n>0,"heap is not empty");
     Entry e0 = _e[0];
     --_n;
@@ -157,7 +157,7 @@ public class TimeHeap3 {
   /**
    * Removes all entries from this heap.
    */
-  public void clear() {
+  public synchronized void clear() {
     _n = 0;
   }
 
@@ -178,7 +178,7 @@ public class TimeHeap3 {
   /**
    * Dumps this heap to standard output; leading spaces show level in tree.
    */
-  public void dump() {
+  public synchronized void dump() {
     dump("",0);
   }
 
