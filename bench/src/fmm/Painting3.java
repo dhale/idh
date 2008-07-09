@@ -631,7 +631,8 @@ public class Painting3 {
   // These arrays enable us to loop over only the relevant tets for
   // each of the 26 neighbor samples. For example, for the neighbor with
   // offsets {-1,-1,-1}, the six relevant tets are { 4, 5,20,21,36,37},
-  // and the other 42 tets can be ignored.
+  // and the other 42 tets can be ignored. Note that each tet index should
+  // appear in these arrays exactly three times.
   private static final int[][] KT  = {
     { 4, 5,20,21,36,37},
     { 5, 6,21,22},
