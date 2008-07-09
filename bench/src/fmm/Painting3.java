@@ -237,7 +237,7 @@ public class Painting3 {
     while (!_hmax.isEmpty()) {
 
       // Remove from the max-heap the fixed sample with largest time.
-      TimeHeap2.Entry ef = _hmax.remove();
+      TimeHeap3.Entry ef = _hmax.remove();
       int k1 = ef.i1;
       int k2 = ef.i2;
       int k3 = ef.i3;
@@ -259,7 +259,7 @@ public class Painting3 {
       // Extrapolate from the fixed sample to all samples that are
       // nearer to the fixed sample than to any other fixed sample.
       while (!_hmin.isEmpty()) {
-        TimeHeap2.Entry e = _hmin.remove();
+        TimeHeap3.Entry e = _hmin.remove();
         int i1 = e.i1;
         int i2 = e.i2;
         int i3 = e.i3;
@@ -316,7 +316,7 @@ public class Painting3 {
     for (int i3=0; i3<_n3; ++i3) {
       for (int i2=0; i2<_n2; ++i2) {
         for (int i1=0; i1<_n1; ++i1) {
-          if (_type[i2][i1]==EXTRA) {
+          if (_type[i3][i2][i1]==EXTRA) {
             _hmax.insert(i1,i2,i3,_tk[i3][i2][i1]);
           }
         }
@@ -343,7 +343,7 @@ public class Painting3 {
 
       // Remove from the max-heap the extrapolated sample with largest time.
       // This is the sample to be interpolated; the "interpolated sample".
-      TimeHeap2.Entry te = _hmax.remove();
+      TimeHeap3.Entry te = _hmax.remove();
       int k1 = te.i1;
       int k2 = te.i2;
       int k3 = te.i3;
@@ -396,7 +396,7 @@ public class Painting3 {
       while (!_hmin.isEmpty()) {
 
         // Get the extrapolated sample with minimum time.
-        TimeHeap2.Entry e = _hmin.remove();
+        TimeHeap3.Entry e = _hmin.remove();
         int i1 = e.i1;
         int i2 = e.i2;
         int i3 = e.i3;
@@ -446,9 +446,9 @@ public class Painting3 {
       for (int i3=0; i3<_n3; ++i3) {
         for (int i2=0; i2<_n2; ++i2) {
           for (int i1=0; i1<_n1; ++i1) {
-            float[] vi = va[i2][i1];
+            float[] vi = va[i3][i2][i1];
             if (vi!=null)
-              _vk[i2][i1] = vi;
+              _vk[i3][i2][i1] = vi;
           }
         }
       }
@@ -541,9 +541,11 @@ public class Painting3 {
       _far = 0;
       _trial = 1;
       _known = 2;
-      for (int i2=0; i2<_n2; ++i2) {
-        for (int i1=0; i1<_n1; ++i1) {
-          _mark[i2][i1] = _far;
+      for (int i3=0; i3<_n3; ++i3) {
+        for (int i2=0; i2<_n2; ++i2) {
+          for (int i1=0; i1<_n1; ++i1) {
+            _mark[i3][i2][i1] = _far;
+          }
         }
       }
     } else {
@@ -728,7 +730,10 @@ public class Painting3 {
     // For all relevant neighbor tets, ...
     for (int it=0,jt=kt[it]; it<kt.length; ++it,jt=kt[it]) {
 
-      // Sample indices of vertices X1, X2, and X3 of neighbor tet.
+      // Sample indices of vertices X0, X1, X2, and X3 of neighbor tet.
+      int j01 = j1;
+      int j02 = j2;
+      int j03 = j3;
       int j11 = j1+K11[jt];
       int j12 = j2+K12[jt];
       int j13 = j3+K13[jt];
@@ -762,9 +767,9 @@ public class Painting3 {
       float t3 = _tk[j33][j32][j31];
 
       // Use only known times in {T1,T2,T3} to compute candidate time T0.
-      if (m1==known) {
-        if (m2==known) {
-          if (m3==known) { // use triangle 123
+      if (m1==_known) {
+        if (m2==_known) {
+          if (m3==_known) { // use triangle 123
             t0 = computeTime(s11,s12,s13,s22,s23,s33,
                              t1-t3,t2-t3,t3,
                              j11-j31,j12-j32,j13-j33,
@@ -777,26 +782,29 @@ public class Painting3 {
                              j01-j21,j02-j22,j03-j23);
           }
         } else {
-          if (m3==known) { // use segment 13
+          if (m3==_known) { // use segment 13
             t0 = computeTime(s11,s12,s13,s22,s23,s33,
                              t1-t3,t3,
                              j11-j31,j12-j32,j13-j33,
                              j01-j31,j02-j32,j03-j33);
           } else { // use vertex 1
-            t0 = computeTime(t1,j01-j11,j02-j12,j03-j13);
+            t0 = computeTime(s11,s12,s13,s22,s23,s33,
+                             t1,j01-j11,j02-j12,j03-j13);
           }
         }
-      } else if (m2==known) {
-        if (m3==known) { // use segment 23
+      } else if (m2==_known) {
+        if (m3==_known) { // use segment 23
           t0 = computeTime(s11,s12,s13,s22,s23,s33,
                            t2-t3,t3,
                            j21-j31,j22-j32,j23-j33,
                            j01-j31,j02-j32,j03-j33);
         } else { // use vertex 2
-          t0 = computeTime(t2,j01-j21,j02-j22,j03-j23);
+          t0 = computeTime(s11,s12,s13,s22,s23,s33,
+                           t2,j01-j21,j02-j22,j03-j23);
         }
-      } else if (m3==known) { // use vertex 3
-        t0 = computeTime(t3,j01-j31,j02-j32,j03-j33);
+      } else if (m3==_known) { // use vertex 3
+        t0 = computeTime(s11,s12,s13,s22,s23,s33,
+                         t3,j01-j31,j02-j32,j03-j33);
       }
 
       // If computed time T0 is smaller than the min time, update the min time.
@@ -816,7 +824,7 @@ public class Painting3 {
         _mark[j3][j2][j1] = _trial;
         _hmin.insert(j1,j2,j3,tmin);
         if (tl!=null) 
-          tl.append(j1,j2,j3,_tk[j2][j1]);
+          tl.append(j1,j2,j3,_tk[j3][j2][j1]);
       }
 
       // Else, simply reduce the time already stored in the min-heap.
@@ -983,7 +991,7 @@ public class Painting3 {
     }
 
     // The sum alpha1 + alpha2 + alpha3 = 1.
-    float alpha3 = 1.0-alpha1-alpha2;
+    float alpha3 = 1.0f-alpha1-alpha2;
 
     // Initial time is huge.
     float t = TIME_INVALID;
@@ -1001,7 +1009,7 @@ public class Painting3 {
       // If minimum could be on the edge 23 (alpha1=0), ...
       if (alpha1<=0.0f) {
         alpha2 = computeAlpha(s11,s12,s13,s22,s23,s33,
-                              u2,u3,y21,y22,y23,y31,y32,y33);
+                              u2,y21,y22,y23,y31,y32,y33);
         float t23 = u3+alpha2*u2+sqrt(d33+alpha2*alpha2*d22-2.0f*alpha2*d23);
         if (t23<t) t = t23;
       }
@@ -1009,7 +1017,7 @@ public class Painting3 {
       // If minimum could be on the edge 13 (alpha2=0), ...
       if (alpha2<=0.0f) {
         alpha1 = computeAlpha(s11,s12,s13,s22,s23,s33,
-                              u1,u3,y11,y12,y13,y31,y32,y33);
+                              u1,y11,y12,y13,y31,y32,y33);
         float t13 = u3+alpha1*u1+sqrt(d33+alpha1*alpha1*d11-2.0f*alpha1*d13);
         if (t13<t) t = t13;
       }
@@ -1017,7 +1025,7 @@ public class Painting3 {
       // If minimum could be on the edge 12 (alpha3=0), ...
       if (alpha3<=0.0f) {
         alpha1 = computeAlpha(s11,s12,s13,s22,s23,s33,
-                              u1-u2,u3+u2,
+                              u1-u2,
                               y11-y21,y12-y22,y13-y23,
                               y31-y21,y32-y22,y33-y23);
         alpha2 = 1.0f-alpha1;
@@ -1070,7 +1078,9 @@ public class Painting3 {
   ///////////////////////////////////////////////////////////////////////////
   // testing
 
-  private static float[][] readImage(int n1, int n2, int n3, String fileName) {
+  private static float[][][] readImage(
+    int n1, int n2, int n3, String fileName) 
+  {
     try {
       //java.nio.ByteOrder bo = java.nio.ByteOrder.LITTLE_ENDIAN;
       java.nio.ByteOrder bo = java.nio.ByteOrder.BIG_ENDIAN;
@@ -1092,22 +1102,24 @@ public class Painting3 {
     implements Painting3.Tensors 
   {
     StructureTensors(double sigma, float[][][] x) {
-      super(x[0][0].length,x[0].length,x.length);
+      super(x[0][0].length,x[0].length,x.length,false);
       int n1 = x[0][0].length;
       int n2 = x[0].length;
       int n3 = x.length;
+      float[][][] u1 = new float[n3][n2][n1];
       float[][][] u2 = new float[n3][n2][n1];
       float[][][] u3 = new float[n3][n2][n1];
       float[][][] w1 = new float[n3][n2][n1];
       float[][][] w2 = new float[n3][n2][n1];
+      float[][][] w3 = new float[n3][n2][n1];
       float[][][] su = new float[n3][n2][n1];
       float[][][] sv = new float[n3][n2][n1];
       float[][][] sw = new float[n3][n2][n1];
       LocalOrientFilter lof = new LocalOrientFilter(sigma);
       lof.apply(x,null,null,
-                null,u2,u3,
+                u1,u2,u3,
                 null,null,null,
-                w1,w2,null,
+                w1,w2,w3,
                 su,sv,sw,
                 null,null);
       for (int i3=0; i3<n3; ++i3) {
@@ -1116,16 +1128,15 @@ public class Painting3 {
             float sui = su[i3][i2][i1];
             float svi = sv[i3][i2][i1];
             float swi = sw[i3][i2][i1];
+            float u1i = u1[i3][i2][i1];
             float u2i = u2[i3][i2][i1];
             float u3i = u3[i3][i2][i1];
-            float u1s = 1.0f-u2i*u2i-u3i*u3i;
             float w1i = w1[i3][i2][i1];
             float w2i = w2[i3][i2][i1];
-            float w3s = 1.0f-w1i*w1i-w2i*w2i;
-            float w3i = (w3s>0.0f)?sqrt(w3s):0.0f;
-            setEigenvalues(i1,i2,sui,svi,swi);
-            setEigenvectorU(i1,i2,u1i,u2i,u3i);
-            setEigenvectorW(i1,i2,w1i,w2i,w3i);
+            float w3i = w3[i3][i2][i1];
+            setEigenvalues(i1,i2,i3,sui,svi,swi);
+            setEigenvectorU(i1,i2,i3,u1i,u2i,u3i);
+            setEigenvectorW(i1,i2,i3,w1i,w2i,w3i);
           }
         }
       }
