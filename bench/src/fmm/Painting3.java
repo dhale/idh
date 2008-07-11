@@ -6,6 +6,7 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package fmm;
 
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 
 import edu.mines.jtk.util.*;
@@ -211,6 +212,7 @@ public class Painting3 {
    * After extrapolation, all samples are either fixed or extrapolated.
    */
   public void extrapolate() {
+    _naborEs = null;
 
     // Clear all samples that are not fixed, and insert all fixed 
     // samples into the max-heap with huge (invalid) times that can
@@ -279,6 +281,9 @@ public class Painting3 {
         updateNabors(i1,i2,i3,null);
       }
     }
+
+    if (_naborEs!=null)
+      _naborEs.shutdown();
   }
 
   /**
@@ -700,39 +705,60 @@ public class Painting3 {
    * If not null, the time list is used to store times before they are
    * updated, so that they can later be restored.
    */
-  private void updateNabors(
+  private void updateNaborsX(
     final int i1, final int i2, final int i3, final TimeList tl) 
   {
-    Thread[] threads = Threads.makeArray();
-    int nthread = threads.length;
-    trace("updateNabors: nthread="+nthread+" i1="+i1+" i2="+i2+" i3="+i3);
-    final AtomicInteger ak = new AtomicInteger();
-    for (int ithread=0; ithread<nthread; ++ithread) {
-      threads[ithread] = new Thread(new Runnable() {
-        public void run() {
-          for (int k=ak.getAndIncrement(); k<26; k=ak.getAndIncrement()) {
-            trace("  k="+k);
-            int k1 = K1[k];
-            int k2 = K2[k];
-            int k3 = K3[k];
-
-            // Neighbor sample indices (j1,j2,j3); skip if out of bounds.
-            int j1 = i1+k1;
-            int j2 = i2+k2;
-            int j3 = i3+k3;
-            if (j1<0 || j1>=_n1) continue;
-            if (j2<0 || j2>=_n2) continue;
-            if (j3<0 || j3>=_n3) continue;
-
-            // Update time for the neighbor sample.
-            updateTime(j1,j2,j3,KT[k],tl);
-          }
-        }
-      });
+    if (_naborEs==null) {
+      _naborR = new NaborRunnable[26];
+      for (int k=0; k<26; ++k)
+        _naborR[k] = new NaborRunnable();
+      int nthread = Runtime.getRuntime().availableProcessors();
+      nthread *= 4;
+      _naborEs = Executors.newFixedThreadPool(nthread);
+      _naborCs = new ExecutorCompletionService<Void>(_naborEs);
     }
-    Threads.startAndJoin(threads);
+    int n = 0;
+    for (int k=0; k<26; ++k) {
+      int k1 = K1[k];
+      int k2 = K2[k];
+      int k3 = K3[k];
+      int j1 = i1+k1;
+      int j2 = i2+k2;
+      int j3 = i3+k3;
+      if (j1<0 || j1>=_n1) continue;
+      if (j2<0 || j2>=_n2) continue;
+      if (j3<0 || j3>=_n3) continue;
+      _naborR[k].init(j1,j2,j3,KT[k],tl);
+      _naborCs.submit(_naborR[k],null);
+      ++n;
+    }
+    try {
+      for (int k=0; k<n; ++k)
+        _naborCs.take();
+    } catch (InterruptedException ie) {
+      throw new RuntimeException(ie);
+    }
   }
-  private void updateNaborsX(
+  private ExecutorService _naborEs;
+  private CompletionService<Void> _naborCs;
+  private NaborRunnable[] _naborR;
+  private class NaborRunnable implements Runnable {
+    public void init(int j1, int j2, int j3, int[] kt, TimeList tl) {
+      _j1 = j1;
+      _j2 = j2;
+      _j3 = j3;
+      _kt = kt;
+      _tl = tl;
+    }
+    public void run() {
+      updateTime(_j1,_j2,_j3,_kt,_tl);
+    }
+    private int _j1,_j2,_j3;
+    private int[] _kt;
+    private TimeList _tl;
+  }
+
+  private void updateNabors(
     final int i1, final int i2, final int i3, final TimeList tl) 
   {
     for (int k=0; k<26; ++k) {
@@ -1232,8 +1258,12 @@ public class Painting3 {
     //p.paintAt(   0,   0,   0,1.0f);
     //p.paintAt(n1-1,n2-1,n3-1,1.0f);
     trace("extrapolate ...");
+    Stopwatch s = new Stopwatch();
+    s.start();
     p.extrapolate();
-    trace("done");
+    s.stop();
+    float sum = Array.sum(p.getTimes());
+    trace("done: time="+s.time()+" sum="+sum);
     //Array.dump(p.getTimes());
     //plot(p.getValues());
   }
