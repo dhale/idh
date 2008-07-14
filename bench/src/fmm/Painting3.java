@@ -1245,12 +1245,12 @@ public class Painting3 {
   }
 
   private static void testConstant() {
-    int n1 = 25;
-    int n2 = 25;
-    int n3 = 25;
+    int n1 = 5;
+    int n2 = 5;
+    int n3 = 5;
     int nv = 1;
     float su = 1.0f;
-    float sv = 4.0f;
+    float sv = 1.0f;
     float sw = 1.0f;
     ConstantTensors ct = new ConstantTensors(n1,n2,n3,su,sv,sw);
     Painting3 p = new Painting3(n1,n2,n3,nv,ct);
@@ -1264,7 +1264,7 @@ public class Painting3 {
     s.stop();
     float sum = Array.sum(p.getTimes());
     trace("done: time="+s.time()+" sum="+sum);
-    //Array.dump(p.getTimes());
+    Array.dump(p.getTimes());
     //plot(p.getValues());
   }
 
