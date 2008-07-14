@@ -24,7 +24,7 @@ import edu.mines.jtk.mosaic.*;
 /**
  * 2D implementation of Jeong and Whitakers' fast iterative method.
  * @author Dave Hale, Colorado School of Mines
- * @version 2008.07.12
+ * @version 2008.07.14
  */
 public class FimSolver2 {
 
@@ -45,6 +45,7 @@ public class FimSolver2 {
 
   /**
    * Constructs a solver with constant identity diffusion tensors.
+   * All times are initially infinite (very large).
    * @param n1 number of samples in 1st dimension.
    * @param n2 number of samples in 2nd dimension.
    */
@@ -54,7 +55,7 @@ public class FimSolver2 {
   
   /**
    * Constructs a solver for the specified diffusion tensor field.
-   * @param t array of times to be computed by this solver; by reference.
+   * All times are initially infinite (very large).
    * @param n1 number of samples in 1st dimension.
    * @param n2 number of samples in 2nd dimension.
    * @param dt diffusion tensors.
@@ -65,14 +66,27 @@ public class FimSolver2 {
     _dt = dt;
     _t = Array.fillfloat(INFINITY,n1,n2);
   }
+  
+  /**
+   * Constructs a solver for a specified array of times.
+   * The array is referenced (not copied) by this solver.
+   * @param t array of times to be updated by this solver; 
+   * @param dt diffusion tensors.
+   */
+  public FimSolver2(float[][] t, Tensors dt) {
+    _n1 = t[0].length;
+    _n2 = t.length;
+    _dt = dt;
+    _t = t;
+  }
 
   /**
-   * Zeros the time at the specified sample and updates the solution.
+   * Zeros the time at the specified sample and updates times elsewhere.
    * @param i1 index in 1st dimension of time to zero.
    * @param i2 index in 2nd dimension of time to zero.
-   * @return updated array of times; by reference, not by copy.
+   * @return the updated array of times; by reference, not by copy.
    */
-  public float[][] solveFrom(int i1, int i2) {
+  public float[][] zeroAt(int i1, int i2) {
     _t[i2][i1] = 0.0f;
     for (int k=0; k<4; ++k)
       activate(i1+K1[k],i2+K2[k]);
@@ -85,17 +99,6 @@ public class FimSolver2 {
    * @return array of times; by reference, not by copy.
    */
   public float[][] getTimes() {
-    return _t;
-  }
-
-  /**
-   * Returns times computed for sources at specified locations.
-   * @param s array of flags: true, for source samples; false, otherwise.
-   * @return array of times.
-   */
-  public float[][] solve(boolean[][] s) {
-    initialize(s);
-    solve();
     return _t;
   }
 
@@ -339,9 +342,13 @@ public class FimSolver2 {
     return tmin;
   }
 
+  ///////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////
+  // unused
+
   // Tsai's tests for valid solutions. For high anisotropy, these
-  // seem to be less robust than Jeong's. The active set tends to
-  // become larger in some simple tests.
+  // seem to be less robust than Jeong's; the active set tends to
+  // become larger in some simple tests, so also more costly.
   private static final float TSAI_THRESHOLD = 0.0001f;
   private boolean isValid1(
     int i1, int i2, float d11, float d12, float d22, 
@@ -434,19 +441,10 @@ public class FimSolver2 {
     trace("d11="+d11+" d12="+d12+" d22="+d22+" d="+(d11*d22-d12*d12));
     ConstantTensors dt = new ConstantTensors(d11,d12,d22);
     FimSolver2 fs = new FimSolver2(n1,n2,dt);
-    fs.solveFrom(1*n1/4,1*n2/4);
-    //fs.solveFrom(2*n1/4,2*n2/4);
-    fs.solveFrom(3*n1/4,3*n2/4);
+    fs.zeroAt(1*n1/4,1*n2/4);
+    //fs.zeroAt(2*n1/4,2*n2/4);
+    fs.zeroAt(3*n1/4,3*n2/4);
     float[][] t = fs.getTimes();
-    /*
-    boolean[][] s = new boolean[n2][n1];
-    s[   0][   0] = true;
-    s[n2-1][n1-1] = true;
-    //s[1*n2/4][1*n1/4] = true;
-    //s[2*n2/4][2*n1/4] = true;
-    //s[3*n2/4][3*n1/4] = true;
-    float[][] t = fs.solve(s);
-    */
     //Array.dump(t);
     plot(t);
   }
