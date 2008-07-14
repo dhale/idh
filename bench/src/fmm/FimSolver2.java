@@ -63,7 +63,29 @@ public class FimSolver2 {
     _n1 = n1;
     _n2 = n2;
     _dt = dt;
-    _t = new float[n2][n1];
+    _t = Array.fillfloat(INFINITY,n1,n2);
+  }
+
+  /**
+   * Zeros the time at the specified sample and updates the solution.
+   * @param i1 index in 1st dimension of time to zero.
+   * @param i2 index in 2nd dimension of time to zero.
+   * @return updated array of times; by reference, not by copy.
+   */
+  public float[][] solveFrom(int i1, int i2) {
+    _t[i2][i1] = 0.0f;
+    for (int k=0; k<4; ++k)
+      activate(i1+K1[k],i2+K2[k]);
+    solve();
+    return _t;
+  }
+
+  /**
+   * Gets the array of times computed by this solver.
+   * @return array of times; by reference, not by copy.
+   */
+  public float[][] getTimes() {
+    return _t;
   }
 
   /**
@@ -145,7 +167,8 @@ public class FimSolver2 {
     Index[] ia = new Index[_n1*_n2];
     float epsilon = 0.01f;
     for (int niter=0; !_as.isEmpty() && niter<1000; ++niter) {
-      //plot(_t);
+      if (niter%10==1)
+        plot(_t);
       int n = _as.size();
       trace("niter="+niter+" n="+n);
       _as.keySet().toArray(ia);
@@ -155,7 +178,6 @@ public class FimSolver2 {
         int i2 = ii.i2;
         float ti = _t[i2][i1];
         float gi = g(i1,i2);
-        trace(i1,i2,"solve: i1="+i1+" i2="+i2+" ti="+ti+" gi="+gi);
         _t[i2][i1] = gi;
         if (ti-gi<ti*epsilon) {
           for (int k=0; k<4; ++k) {
@@ -236,58 +258,13 @@ public class FimSolver2 {
     return isValid(tm,tp,t0,k2,p2);
   }
 
-  private static final float TSAI_THRESHOLD = 0.01f;
-  private boolean isValid1(
-    int i1, int i2, float d11, float d12, float d22, 
-    float s1, float t1, float t0) 
-  {
-    float p1 = s1*(t1-t0);
-    float t2m = (i2>0    )?_t[i2-1][i1]:INFINITY;
-    float t2p = (i2<_n2-1)?_t[i2+1][i1]:INFINITY;
-    float p2s = -p1*d12/d22;
-    float p2m = t0-t2m;
-    float p2p = t2p-t0;
-    float p2 = p2m; // p2 = sgn max ( (p2m-p2s)+ , (p2p-p2s)- ) + p2s
-    if (p2m<p2s && p2s<p2p) {
-      p2 = p2s;
-    } else if (0.5f*(p2m+p2p)<p2s) {
-      p2 = p2p;
-    }
-    float h = d11*p1*p1+2.0f*d12*p1*p2+d22*p2*p2-1.0f;
-    trace(i1,i2,"  isValid1: h="+h);
-    return abs(h)<TSAI_THRESHOLD;
-  }
-  private boolean isValid2(
-    int i1, int i2, float d11, float d12, float d22, 
-    float s2, float t2, float t0) 
-  {
-    float p2 = s2*(t2-t0);
-    float t1m = (i1>0    )?_t[i2][i1-1]:INFINITY;
-    float t1p = (i1<_n1-1)?_t[i2][i1+1]:INFINITY;
-    float p1s = -p2*d12/d11;
-    float p1m = t0-t1m;
-    float p1p = t1p-t0;
-    float p1 = p1m; // p1 = sgn max ( (p1m-p1s)+ , (p1p-p1s)- ) + p1s
-    if (p1m<p1s && p1s<p1p) {
-      p1 = p1s;
-    } else if (0.5f*(p1m+p1p)<p1s) {
-      p1 = p1p;
-    }
-    trace(i1,i2,"  isValid2: p1="+p1+" p2="+p2);
-    trace(i1,i2,"  isValid2: p1s="+p1s+" p1m="+p1m+" p1p="+p1p);
-    float h = d11*p1*p1+2.0f*d12*p1*p2+d22*p2*p2-1.0f;
-    trace(i1,i2,"  isValid2: h="+h);
-    return abs(h)<TSAI_THRESHOLD;
-  }
-
   /**
    * Returns a valid time t computed via the Godunov-Hamiltonian.
    */
   private float g(int i1, int i2) {
-    //boolean jeongTest = true;
-    boolean jeongTest = false;
+    boolean jeongTest = true;
+    //boolean jeongTest = false;
     float tmin = _t[i2][i1];
-    trace(i1,i2,"g: tmin="+tmin);
 
     // Get tensor coefficients.
     float[] d = new float[3];
@@ -309,20 +286,12 @@ public class FimSolver2 {
           float s1 = k1;
           float s2 = k2;
           float t0 = solveQuadratic(d11,d12,d22,s1,s2,t1,t2);
-          trace(i1,i2,"  k1="+k1+" k2="+k2+" t1="+t1+" t2="+t2+" t0="+t0);
           if (t0<tmin && t0>=min(t1,t2)) {
-            if (jeongTest) {
-              float p1 = -s2*(t2-t0)*d12/d11;
-              float p2 = -s1*(t1-t0)*d12/d22;
-              if (isValid1(i1,i2,k1,p1,t0) &&
-                  isValid2(i1,i2,k2,p2,t0)) {
-                tmin = t0;
-              }
-            } else {
-              if (isValid1(i1,i2,d11,d12,d22,s1,t1,t0) &&
-                  isValid2(i1,i2,d11,d12,d22,s2,t2,t0)) {
-                tmin = t0;
-              }
+            float p1 = -s2*(t2-t0)*d12/d11;
+            float p2 = -s1*(t1-t0)*d12/d22;
+            if (isValid1(i1,i2,k1,p1,t0) &&
+                isValid2(i1,i2,k2,p2,t0)) {
+              tmin = t0;
             }
           }
         }
@@ -339,17 +308,10 @@ public class FimSolver2 {
         float s2 = k2;
         float s1 = -s2*d12/d11;
         float t0 = solveQuadratic(d11,d12,d22,s1,s2,t1,t2);
-        trace(i1,i2,"  k2="+k2+" t2="+t2+" t0="+t0);
         if (t0<tmin && t0>=t2) {
-          if (jeongTest) {
-            float p2 = -s1*(t1-t0)*d12/d22;
-            if (isValid2(i1,i2,k2,p2,t0)) {
-              tmin = t0;
-            }
-          } else {
-            if (isValid2(i1,i2,d11,d12,d22,s2,t2,t0)) {
-              tmin = t0;
-            }
+          float p2 = -s1*(t1-t0)*d12/d22;
+          if (isValid2(i1,i2,k2,p2,t0)) {
+            tmin = t0;
           }
         }
       }
@@ -365,24 +327,59 @@ public class FimSolver2 {
         float s1 = k1;
         float s2 = -s1*d12/d22;
         float t0 = solveQuadratic(d11,d12,d22,s1,s2,t1,t2);
-        trace(i1,i2,"  k1="+k1+" t1="+t1+" t0="+t0);
         if (t0<tmin && t0>=t1) {
-          if (jeongTest) {
-            float p1 = -s2*(t2-t0)*d12/d11;
-            if (isValid1(i1,i2,k1,p1,t0)) {
-              tmin = t0;
-            }
-          } else {
-            if (isValid1(i1,i2,d11,d12,d22,s1,t1,t0)) {
-              tmin = t0;
-            }
+          float p1 = -s2*(t2-t0)*d12/d11;
+          if (isValid1(i1,i2,k1,p1,t0)) {
+            tmin = t0;
           }
         }
       }
     }
 
-    trace(i1,i2,"g: returning tmin="+tmin);
     return tmin;
+  }
+
+  // Tsai's tests for valid solutions. For high anisotropy, these
+  // seem to be less robust than Jeong's. The active set tends to
+  // become larger in some simple tests.
+  private static final float TSAI_THRESHOLD = 0.0001f;
+  private boolean isValid1(
+    int i1, int i2, float d11, float d12, float d22, 
+    float s1, float t1, float t0) 
+  {
+    float p1 = s1*(t1-t0);
+    float t2m = (i2>0    )?_t[i2-1][i1]:INFINITY;
+    float t2p = (i2<_n2-1)?_t[i2+1][i1]:INFINITY;
+    float p2s = -p1*d12/d22;
+    float p2m = t0-t2m;
+    float p2p = t2p-t0;
+    float p2 = p2m; // p2 = sgn max ( (p2m-p2s)+ , (p2p-p2s)- ) + p2s
+    if (p2m<p2s && p2s<p2p) {
+      p2 = p2s;
+    } else if (0.5f*(p2m+p2p)<p2s) {
+      p2 = p2p;
+    }
+    float h = d11*p1*p1+2.0f*d12*p1*p2+d22*p2*p2-1.0f;
+    return abs(h)<TSAI_THRESHOLD;
+  }
+  private boolean isValid2(
+    int i1, int i2, float d11, float d12, float d22, 
+    float s2, float t2, float t0) 
+  {
+    float p2 = s2*(t2-t0);
+    float t1m = (i1>0    )?_t[i2][i1-1]:INFINITY;
+    float t1p = (i1<_n1-1)?_t[i2][i1+1]:INFINITY;
+    float p1s = -p2*d12/d11;
+    float p1m = t0-t1m;
+    float p1p = t1p-t0;
+    float p1 = p1m; // p1 = sgn max ( (p1m-p1s)+ , (p1p-p1s)- ) + p1s
+    if (p1m<p1s && p1s<p1p) {
+      p1 = p1s;
+    } else if (0.5f*(p1m+p1p)<p1s) {
+      p1 = p1p;
+    }
+    float h = d11*p1*p1+2.0f*d12*p1*p2+d22*p2*p2-1.0f;
+    return abs(h)<TSAI_THRESHOLD;
   }
 
   ///////////////////////////////////////////////////////////////////////////
@@ -411,7 +408,6 @@ public class FimSolver2 {
     for (int i2=0; i2<n2; ++i2) {
       for (int i1=0; i1<n1; ++i1) {
         if (y[i2][i1]==INFINITY) {
-          //trace("infinity at i1="+i1+" i2="+i2);
           y[i2][i1] = 0.0f;
         }
       }
@@ -420,13 +416,13 @@ public class FimSolver2 {
     sp.setSize(800,790);
     PixelsView pv = sp.addPixels(y);
     pv.setColorModel(ColorMap.JET);
-    pv.setInterpolation(PixelsView.Interpolation.NEAREST);
-    //pv.setInterpolation(PixelsView.Interpolation.LINEAR);
+    //pv.setInterpolation(PixelsView.Interpolation.NEAREST);
+    pv.setInterpolation(PixelsView.Interpolation.LINEAR);
   }
 
   private static void testConstant() {
-    int n1 = 21;
-    int n2 = 21;
+    int n1 = 101;
+    int n2 = 101;
     float angle = FLT_PI*110.0f/180.0f;
     float su = 1.000f;
     float sv = 0.001f;
@@ -438,13 +434,19 @@ public class FimSolver2 {
     trace("d11="+d11+" d12="+d12+" d22="+d22+" d="+(d11*d22-d12*d12));
     ConstantTensors dt = new ConstantTensors(d11,d12,d22);
     FimSolver2 fs = new FimSolver2(n1,n2,dt);
+    fs.solveFrom(1*n1/4,1*n2/4);
+    //fs.solveFrom(2*n1/4,2*n2/4);
+    fs.solveFrom(3*n1/4,3*n2/4);
+    float[][] t = fs.getTimes();
+    /*
     boolean[][] s = new boolean[n2][n1];
     s[   0][   0] = true;
-    //s[n2-1][n1-1] = true;
+    s[n2-1][n1-1] = true;
     //s[1*n2/4][1*n1/4] = true;
     //s[2*n2/4][2*n1/4] = true;
     //s[3*n2/4][3*n1/4] = true;
     float[][] t = fs.solve(s);
+    */
     //Array.dump(t);
     plot(t);
   }
