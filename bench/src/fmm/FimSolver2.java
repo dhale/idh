@@ -169,14 +169,14 @@ public class FimSolver2 {
     for (int niter=0; !_as.isEmpty(); ++niter) {
 
       // DEBUG
-      if (niter%10==1)
-        plot(_t);
+      //if (niter%10==1)
+      //  plot(_t);
 
       // Copy sample indices from the active set to a simple array.
       // The active set can now change as we loop over samples.
       int n = _as.size();
       _as.keySet().toArray(_ia);
-      trace("niter="+niter+" n="+n); // DEBUG
+      //trace("niter="+niter+" n="+n); // DEBUG
 
       // For all samples in the active set, ...
       for (int i=0; i<n; ++i) {
@@ -257,7 +257,7 @@ public class FimSolver2 {
   }
 
   /**
-   * Jeong's fast tests for a valid solution time t0.
+   * Jeong's fast tests for a valid solution time t0 to H(p1,p2) = 1.
    * Parameters tm and tp are times for samples backward and forward of 
    * the sample with time t0. The parameter k is the index k1 or k2 that 
    * was used to compute the time, and the parameter p is a critical
@@ -454,11 +454,11 @@ public class FimSolver2 {
   }
 
   private static void testConstant() {
-    int n1 = 101;
-    int n2 = 101;
+    int n1 = 301;
+    int n2 = 301;
     float angle = FLT_PI*110.0f/180.0f;
     float su = 1.000f;
-    float sv = 0.001f;
+    float sv = 0.010f;
     float cosa = cos(angle);
     float sina = sin(angle);
     float d11 = su*cosa*cosa+sv*sina*sina;
@@ -467,9 +467,13 @@ public class FimSolver2 {
     trace("d11="+d11+" d12="+d12+" d22="+d22+" d="+(d11*d22-d12*d12));
     ConstantTensors dt = new ConstantTensors(d11,d12,d22);
     FimSolver2 fs = new FimSolver2(n1,n2,dt);
-    fs.zeroAt(1*n1/4,1*n2/4);
-    //fs.zeroAt(2*n1/4,2*n2/4);
-    fs.zeroAt(3*n1/4,3*n2/4);
+    Stopwatch sw = new Stopwatch();
+    sw.start();
+    fs.zeroAt(2*n1/4,2*n2/4);
+    //fs.zeroAt(1*n1/4,1*n2/4);
+    //fs.zeroAt(3*n1/4,3*n2/4);
+    sw.stop();
+    trace("time="+sw.time());
     float[][] t = fs.getTimes();
     //Array.dump(t);
     plot(t);

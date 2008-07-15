@@ -705,7 +705,7 @@ public class Painting3 {
    * If not null, the time list is used to store times before they are
    * updated, so that they can later be restored.
    */
-  private void updateNaborsX(
+  private void updateNabors(
     final int i1, final int i2, final int i3, final TimeList tl) 
   {
     if (_naborEs==null) {
@@ -728,9 +728,11 @@ public class Painting3 {
       if (j1<0 || j1>=_n1) continue;
       if (j2<0 || j2>=_n2) continue;
       if (j3<0 || j3>=_n3) continue;
-      _naborR[k].init(j1,j2,j3,KT[k],tl);
-      _naborCs.submit(_naborR[k],null);
-      ++n;
+      if (_mark[j3][j2][j1]!=_known) {
+        _naborR[k].init(j1,j2,j3,KT[k],tl);
+        _naborCs.submit(_naborR[k],null);
+        ++n;
+      }
     }
     try {
       for (int k=0; k<n; ++k)
@@ -758,7 +760,7 @@ public class Painting3 {
     private TimeList _tl;
   }
 
-  private void updateNabors(
+  private void updateNaborsX(
     final int i1, final int i2, final int i3, final TimeList tl) 
   {
     for (int k=0; k<26; ++k) {
@@ -774,8 +776,9 @@ public class Painting3 {
       if (j2<0 || j2>=_n2) continue;
       if (j3<0 || j3>=_n3) continue;
 
-      // Update time for the neighbor sample.
-      updateTime(j1,j2,j3,KT[k],tl);
+      // If time for neighbor not already known, update it.
+      if (_mark[j3][j2][j1]!=_known)
+        updateTime(j1,j2,j3,KT[k],tl);
     }
   }
 
@@ -1245,9 +1248,9 @@ public class Painting3 {
   }
 
   private static void testConstant() {
-    int n1 = 5;
-    int n2 = 5;
-    int n3 = 5;
+    int n1 = 51;
+    int n2 = 51;
+    int n3 = 51;
     int nv = 1;
     float su = 1.0f;
     float sv = 1.0f;
@@ -1264,7 +1267,7 @@ public class Painting3 {
     s.stop();
     float sum = Array.sum(p.getTimes());
     trace("done: time="+s.time()+" sum="+sum);
-    Array.dump(p.getTimes());
+    //Array.dump(p.getTimes());
     //plot(p.getValues());
   }
 
