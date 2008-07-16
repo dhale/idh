@@ -81,10 +81,10 @@ public class FimSolver2 {
     _n2 = n2;
     _tensors = tensors;
     _t = (t!=null)?t:Array.fillfloat(INFINITY,n1,n2);
-    _s = new Sample[n2][n1];
+    _s = new RunnableSample[n2][n1];
     for (int i2=0; i2<n2; ++i2)
       for (int i1=0; i1<n1; ++i1)
-        _s[i2][i1] = new Sample(i1,i2);
+        _s[i2][i1] = new RunnableSample(i1,i2);
   }
 
   /**
@@ -94,7 +94,8 @@ public class FimSolver2 {
    * @return the updated array of times; by reference, not by copy.
    */
   public float[][] zeroAt(int i1, int i2) {
-    updateFrom(i1,i2);
+    //updateFrom(i1,i2);
+    updateParallel(i1,i2);
     return _t;
   }
 
@@ -109,11 +110,27 @@ public class FimSolver2 {
   ///////////////////////////////////////////////////////////////////////////
   // private
 
+  // Default time for samples not yet computed.
+  private static final float INFINITY = Float.MAX_VALUE;
+
+  // Times are converged when the fractional change is less than this value.
+  private static final float EPSILON = 0.01f;
+
+  // Nominal number of threads in the thread pool.
+  private static int NTHREAD = Runtime.getRuntime().availableProcessors();
+
   private int _n1,_n2;
   private Tensors _tensors;
   private float[][] _t;
-  private Sample[][] _s;
+  private RunnableSample[][] _s;
   private int _active;
+
+  private BlockingQueue<Runnable> _bq = 
+    new LinkedBlockingQueue<Runnable>();
+  private ThreadPoolExecutor _tpe =
+    new ThreadPoolExecutor(NTHREAD,NTHREAD,0,TimeUnit.SECONDS,_bq);
+  private SynchronousQueue<Boolean> _done = 
+    new SynchronousQueue<Boolean>();
 
   // Diffusion tensors.
   private static class IdentityTensors implements Tensors {
@@ -123,15 +140,6 @@ public class FimSolver2 {
       d[2] = 1.00f; // d22
     }
   }
-
-  // Default time for samples not yet computed.
-  private static final float INFINITY = Float.MAX_VALUE;
-
-  // Times are converged when the fractional change is less than this value.
-  private static final float EPSILON = 0.01f;
-
-  // Nominal number of threads to use in this solver.
-  private static int NTHREAD = Runtime.getRuntime().availableProcessors();
 
   private static final int[] K1 = { 1, 0,-1, 0};
   private static final int[] K2 = { 0, 1, 0,-1};
@@ -147,6 +155,61 @@ public class FimSolver2 {
     Sample(int i1, int i2) {
       this.i1 = i1;
       this.i2 = i2;
+    }
+  }
+
+  private class RunnableSample extends Sample implements Runnable {
+    RunnableSample(int i1, int i2) {
+      super(i1,i2);
+    }
+    void activate() {
+      ia = _active;
+      _tpe.execute(this);
+    }
+    void deactivate() {
+      ia -= 1;
+      if (_bq.isEmpty())
+        _done.offer(true);
+    }
+    boolean isActive() {
+      return ia==_active;
+    }
+    public void run() { // called in one of the threads in the pool
+      deactivate(); // this sample is no longer in the active queue
+      float ti = _t[i2][i1]; // current time for this sample
+      float gi = g(i1,i2,K1S[4],K2S[4]); // new time for this sample
+      _t[i2][i1] = gi; // save the new time
+      if (ti-gi<ti*EPSILON) { // if time has converged, ...
+        for (int k=0; k<4; ++k) { // for all neighbor samples, ...
+          int j1 = i1+K1[k]; if (j1<0 || j1>=_n1) continue;
+          int j2 = i2+K2[k]; if (j2<0 || j2>=_n2) continue;
+          if (!_s[j2][j1].isActive()) { // if neighbor is not active, ...
+            float gj = g(j1,j2,K1S[k],K2S[k]); // new time for neighbor
+            if (gj<_t[j2][j1]) { // if less than neighbor's current time
+              _t[j2][j1] = gj; // use the new time
+              _s[j2][j1].activate(); // activate the neighbor
+            }
+          }
+        }
+      } else { // else, reactivate this sample
+        activate();
+      }
+    }
+  }
+
+  private void updateParallel(int i1, int i2) {
+    clearActive();
+    _t[i2][i1] = 0.0f;
+    for (int k=0; k<4; ++k) {
+      int j1 = i1+K1[k];
+      int j2 = i2+K2[k];
+      if (0<=j1 && j1<_n1 && 0<=j2 && j2<_n2)
+        _s[j2][j1].activate();
+    }
+    try {
+      _done.take();
+    } catch (InterruptedException e) {
+      throw new RuntimeException(e);
     }
   }
 
