@@ -15,6 +15,7 @@ import java.awt.image.*;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.*;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 import edu.mines.jtk.awt.*;
@@ -193,19 +194,53 @@ public class FimSolver2 {
     int _n;
     private LinkedList<Sample> _q = new LinkedList<Sample>();
   }
-  /*
-    if (_naborEs==null) {
-      _naborR = new NaborRunnable[26];
-      for (int k=0; k<26; ++k)
-        _naborR[k] = new NaborRunnable();
-      int nthread = Runtime.getRuntime().availableProcessors();
-      nthread *= 4;
-      _naborEs = Executors.newFixedThreadPool(nthread);
-      _naborCs = new ExecutorCompletionService<Void>(_naborEs);
-    }
-  */
 
-  private void update(ActiveQueue q) {
+  private void updateFrom(int i1, int i2) {
+
+    // All samples initially inactive.
+    clearActive();
+
+    // Zero the time for the specified sample.
+    _t[i2][i1] = 0.0f;
+
+    // Put four neighbor samples into the active queue.
+    ActiveQueue q = new ActiveQueue();
+    for (int k=0; k<4; ++k) {
+      int j1 = i1+K1[k];
+      int j2 = i2+K2[k];
+      if (0<=j1 && j1<_n1 && 0<=j2 && j2<_n2)
+        q.put(j1,j2);
+    }
+
+    // Complete the update by processing the active queue.
+    updateSerial(q);
+    //updateParallel(q);
+  }
+
+  private void updateParallel(final ActiveQueue q) {
+    //int nthread = Runtime.getRuntime().availableProcessors();
+    int nthread = 1;
+    Thread[] threads = new Thread[nthread];
+    while (!q.isEmpty()) {
+      final AtomicInteger aq = new AtomicInteger();
+      final int nq = q.size();
+      for (int ithread=0; ithread<nthread; ++ithread) {
+        threads[ithread] = new Thread(new Runnable() {
+          public void run() {
+            for (int iq=aq.getAndIncrement(); iq<nq; iq=aq.getAndIncrement()) {
+              Sample i = q.get();
+              int i1 = i.i1;
+              int i2 = i.i2;
+              update(i1,i2,q);
+            }
+          }
+        });
+      }
+      Threads.startAndJoin(threads);
+    }
+  }
+
+  private void updateSerial(ActiveQueue q) {
 
     // While the active queue is not empty, ...
     while (!q.isEmpty()) {
@@ -267,27 +302,6 @@ public class FimSolver2 {
     else {
       q.put(i1,i2);
     }
-  }
-
-  private void updateFrom(int i1, int i2) {
-
-    // All samples initially inactive.
-    clearActive();
-
-    // Zero the time for the specified sample.
-    _t[i2][i1] = 0.0f;
-
-    // Put four neighbor samples into the active queue.
-    ActiveQueue q = new ActiveQueue();
-    for (int k=0; k<4; ++k) {
-      int j1 = i1+K1[k];
-      int j2 = i2+K2[k];
-      if (0<=j1 && j1<_n1 && 0<=j2 && j2<_n2)
-        q.put(j1,j2);
-    }
-
-    // Complete the update by processing the active queue.
-    update(q);
   }
 
   /**
