@@ -14,6 +14,7 @@ import java.awt.*;
 import java.awt.image.*;
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.*;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 import edu.mines.jtk.awt.*;
@@ -58,28 +59,32 @@ public class FimSolver2 {
    * All times are initially infinite (very large).
    * @param n1 number of samples in 1st dimension.
    * @param n2 number of samples in 2nd dimension.
-   * @param dt diffusion tensors.
+   * @param tensors diffusion tensors.
    */
-  public FimSolver2(int n1, int n2, Tensors dt) {
-    _n1 = n1;
-    _n2 = n2;
-    _dt = dt;
-    _t = Array.fillfloat(INFINITY,n1,n2);
-    _ia = new Index[_n1*_n2];
+  public FimSolver2(int n1, int n2, Tensors tensors) {
+    init(n1,n2,null,tensors);
   }
   
   /**
    * Constructs a solver for a specified array of times.
    * The array is referenced (not copied) by this solver.
    * @param t array of times to be updated by this solver; 
-   * @param dt diffusion tensors.
+   * @param tensors diffusion tensors.
    */
-  public FimSolver2(float[][] t, Tensors dt) {
-    _n1 = t[0].length;
-    _n2 = t.length;
-    _dt = dt;
-    _t = t;
-    _ia = new Index[_n1*_n2];
+  public FimSolver2(float[][] t, Tensors tensors) {
+    init(t[0].length,t.length,t,tensors);
+  }
+
+  private void init(int n1, int n2, float[][] t, Tensors tensors) {
+    _n1 = n1;
+    _n2 = n2;
+    _t = (t!=null)?t:Array.fillfloat(INFINITY,n1,n2);
+    _tensors = tensors;
+    _mark = new int[_n2][_n1];
+    _index = new Index[n2][n1];
+    for (int i2=0; i2<n2; ++i2)
+      for (int i1=0; i1<n1; ++i1)
+        _index[i2][i1] = new Index(i1,i2);
   }
 
   /**
@@ -89,10 +94,7 @@ public class FimSolver2 {
    * @return the updated array of times; by reference, not by copy.
    */
   public float[][] zeroAt(int i1, int i2) {
-    _t[i2][i1] = 0.0f;
-    for (int k=0; k<4; ++k)
-      activate(i1+K1[k],i2+K2[k]);
-    solve();
+    updateFrom(i1,i2);
     return _t;
   }
 
@@ -131,28 +133,20 @@ public class FimSolver2 {
       this.i1 = i1;
       this.i2 = i2;
     }
-    public boolean equals(Index o) {
-      Index i = (Index)o;
-      return i.i1==i1 && i.i2==i2;
-    }
-    public int hashCode() {
-      return i1^i2;
-    }
   }
 
   private int _n1,_n2;
-  private Tensors _dt;
+  private Tensors _tensors;
   private float[][] _t;
-  private Index[] _ia;
-  private HashMap<Index,Index> _as = new HashMap<Index,Index>(1024);
   private int[][] _mark;
+  private Index[][] _index;
 
   // Marks used during computation of times. For efficiency, we do not
   // loop over all the marks to clear them before beginning a fast 
   // marching loop. Instead, we simply modify the mark values.
-  private int _far = 0; // samples with no time
-  private int _trial = 1; // samples in active list
-  private int _known = 2; // samples with a known time
+  private int _far = 0; // samples with times not yet computed
+  private int _trial = 1; // samples in the trial queue
+  private int _known = 2; // samples with a converged time
   private void clearMarks() {
     if (_known+2>Integer.MAX_VALUE) { // if we must loop over all marks, ...
       _far = 0;
@@ -170,91 +164,91 @@ public class FimSolver2 {
     }
   }
 
-  private void activate(int i1, int i2) {
-    if (0<=i1 && i1<_n1 &&
-        0<=i2 && i2<_n2) {
-      Index i = new Index(i1,i2);
-      _as.put(i,i);
-    }
-  }
-
-  private void deactivate(Index i) {
-    _as.remove(i);
+  private void enqueue(int i1, int i2, Queue<Index> q) {
+    if (0<=i1 && i1<_n1 && 0<=i2 && i2<_n2)
+      q.offer(_index[i2][i1]);
   }
 
   /**
-   * Jeong's fast iterative marching algorithm. While the active
-   * set is not empty, this method computes times until converged.
+   * A variation of Jeong's fast iterative marching algorithm.
    */
-  private void solve() {
+  private void updateFrom(int i1, int i2) {
+    clearMarks();
 
-    // Index object used below to check for neighbors in active set.
-    Index jj = new Index(-1,-1);
+    // Zero the time for the specified sample.
+    _t[i2][i1] = 0.0f;
+    _mark[i2][i1] = _known;
+
+    // Put four neighbor samples into the trial queue.
+    LinkedList<Index> q = new LinkedList<Index>();
+    //ConcurrentLinkedQueue<Index> q = new ConcurrentLinkedQueue<Index>();
+    for (int k=0; k<4; ++k) {
+      int j1 = i1+K1[k];
+      int j2 = i2+K2[k];
+      if (0<=j1 && j1<_n1 && 0<=j2 && j2<_n2)
+        q.offer(_index[j2][j1]);
+    }
 
     // Tolerance for convergence.
     float epsilon = 0.01f; // tolerance for convergence
 
-    // While the active set is not empty, ...
-    for (int niter=0; !_as.isEmpty(); ++niter) {
+    // While the trial queue is not empty, ...
+    while (q.size()>0) {
+    //while (!q.isEmpty()) {
 
-      // DEBUG
-      //if (niter%10==1)
-      //  plot(_t);
+      // Get sample index from the trial queue.
+      Index i = null;
+      try {
+        i = q.poll();
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
+      i1 = i.i1;
+      i2 = i.i2;
 
-      // Copy sample indices from the active set to a simple array.
-      // The active set can now change as we loop over samples.
-      int n = _as.size();
-      _as.keySet().toArray(_ia);
-      //trace("niter="+niter+" n="+n); // DEBUG
+      // Current time and new time.
+      float ti = _t[i2][i1];
+      float gi = g(i1,i2,K1S[4],K2S[4]);
+      _t[i2][i1] = gi;
 
-      // For all samples in the active set, ...
-      for (int i=0; i<n; ++i) {
+      // If the new and old times are close (converged), then ...
+      if (ti-gi<ti*epsilon) {
 
-        // Sample indices.
-        Index ii = _ia[i];
-        int i1 = ii.i1;
-        int i2 = ii.i2;
+        // Mark this sample converged.
+        _mark[i2][i1] = _known;
 
-        // Current time and new time.
-        float ti = _t[i2][i1];
-        float gi = g(i1,i2,K1S[4],K2S[4]);
-        _t[i2][i1] = gi;
+        // For all four neighbor samples, ...
+        for (int k=0; k<4; ++k) {
 
-        // If the new and old times are close (converged), then ...
-        if (ti-gi<ti*epsilon) {
+          // Neighbor sample indices; skip if out of bounds.
+          int j1 = i1+K1[k];
+          int j2 = i2+K2[k];
+          if (j1<0 || j1>=_n1) continue;
+          if (j2<0 || j2>=_n2) continue;
 
-          // For all neighbor samples, ...
-          for (int k=0; k<4; ++k) {
+          // If the neighbor is not already in the trial queue, ...
+          if (_mark[j2][j1]!=_trial) {
 
-            // Neighbor sample indices; skip if out of bounds.
-            int j1 = i1+K1[k];
-            int j2 = i2+K2[k];
-            if (j1<0 || j1>=_n1) continue;
-            if (j2<0 || j2>=_n2) continue;
+            // Compute time for the neighbor.
+            float gj = g(j1,j2,K1S[k],K2S[k]);
 
-            // If the neighbor is not already in the active set, ...
-            jj.i1 = j1;
-            jj.i2 = j2;
-            if (!_as.containsKey(jj)) {
+            // If computed time less than the neighbor's current time, ...
+            if (gj<_t[j2][j1]) {
 
-              // Compute time for the neighbor.
-              float gj = g(j1,j2,K1S[k],K2S[k]);
-
-              // If computed time less than the neighbor's current time, ...
-              if (gj<_t[j2][j1]) {
-
-                // Replace the current time and activate the neighbor.
-                _t[j2][j1] = gj;
-                activate(j1,j2);
-              }
+              // Replace the current time and mark this trial sample.
+              _t[j2][j1] = gj;
+              _mark[j2][j1] = _trial;
+              
+              // Append this sample to the queue of trial samples.
+              q.offer(_index[j2][j1]);
             }
           }
-
-          // Deactivate this sample (because it's time has converged).
-          // It will be reactivated later if time for any of it's
-          // neighbors changes.
-          deactivate(ii);
         }
+      }
+
+      // else, if not converged, append this sample to the trial queue
+      else {
+        q.offer(_index[i2][i1]);
       }
     }
   }
@@ -316,19 +310,16 @@ public class FimSolver2 {
     return isValid(tm,tp,t0,k2,p2);
   }
 
-  private static int N_COMPUTE_TIME = 0;
-
   /**
    * Returns a valid time t computed via the Godunov-Hamiltonian.
    * Computations are limited to neighbor indices in arrays k1s and k2s.
    */
   private float g(int i1, int i2, int[] k1s, int[] k2s) {
-    ++N_COMPUTE_TIME;
     float tmin = _t[i2][i1];
 
     // Get tensor coefficients.
     float[] d = new float[3];
-    _dt.getTensor(i1,i2,d);
+    _tensors.getTensor(i1,i2,d);
     float d11 = d[0];
     float d12 = d[1];
     float d22 = d[2];
@@ -408,7 +399,7 @@ public class FimSolver2 {
   // unused
 
   // Tsai's tests for valid solutions. For high anisotropy, these
-  // seem to be less robust than Jeong's; the active set tends to
+  // seem to be less robust than Jeong's; the trial queue tends to
   // become larger in some simple tests, so also more costly.
   private static final float TSAI_THRESHOLD = 0.0001f;
   private boolean isValid1(
@@ -455,12 +446,11 @@ public class FimSolver2 {
    * This version does not limit computations to only relevant neighbors.
    */
   private float g(int i1, int i2) {
-    ++N_COMPUTE_TIME;
     float tmin = _t[i2][i1];
 
     // Get tensor coefficients.
     float[] d = new float[3];
-    _dt.getTensor(i1,i2,d);
+    _tensors.getTensor(i1,i2,d);
     float d11 = d[0];
     float d12 = d[1];
     float d22 = d[2];
@@ -565,13 +555,13 @@ public class FimSolver2 {
     sp.setSize(800,790);
     PixelsView pv = sp.addPixels(y);
     pv.setColorModel(ColorMap.JET);
-    //pv.setInterpolation(PixelsView.Interpolation.NEAREST);
-    pv.setInterpolation(PixelsView.Interpolation.LINEAR);
+    pv.setInterpolation(PixelsView.Interpolation.NEAREST);
+    //pv.setInterpolation(PixelsView.Interpolation.LINEAR);
   }
 
   private static void testConstant() {
-    int n1 = 501;
-    int n2 = 501;
+    int n1 = 1001;
+    int n2 = 1001;
     float angle = FLT_PI*110.0f/180.0f;
     float su = 1.000f;
     float sv = 0.010f;
@@ -589,8 +579,7 @@ public class FimSolver2 {
     //fs.zeroAt(1*n1/4,1*n2/4);
     //fs.zeroAt(3*n1/4,3*n2/4);
     sw.stop();
-    int nct = N_COMPUTE_TIME;
-    trace("time="+sw.time()+" nct="+nct);
+    trace("time="+sw.time());
     float[][] t = fs.getTimes();
     //Array.dump(t);
     plot(t);

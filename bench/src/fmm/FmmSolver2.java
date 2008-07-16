@@ -335,15 +335,11 @@ public class FmmSolver2 {
     }
   }
 
-  private static int N_COMPUTE_TIME1 = 0; // DEBUG
-  private static int N_COMPUTE_TIME2 = 0; // DEBUG
-
   // Returns the time t+sqrt(y'*S*y).
   private static float computeTime(
     float s11, float s12, float s22,
     float t, float y1, float y2)
   {
-    ++N_COMPUTE_TIME1;
     float z1 = s11*y1+s12*y2;
     float z2 = s12*y1+s22*y2;
     float dd = y1*z1+y2*z2;
@@ -357,7 +353,6 @@ public class FmmSolver2 {
     float s11, float s12, float s22, float u1, float u2,
     float y11, float y12, float y21, float y22)
   {
-    ++N_COMPUTE_TIME2;
     float z11 = s11*y11+s12*y12;
     float z12 = s12*y11+s22*y12;
     float z21 = s11*y21+s12*y22;
@@ -432,8 +427,8 @@ public class FmmSolver2 {
   }
 
   private static void testConstant() {
-    int n1 = 501;
-    int n2 = 501;
+    int n1 = 1001;
+    int n2 = 1001;
     float angle = FLT_PI*110.0f/180.0f;
     float su = 0.010f;
     float sv = 1.000f;
@@ -443,7 +438,7 @@ public class FmmSolver2 {
     float d12 = (su-sv)*sina*cosa;
     float d22 = sv*cosa*cosa+su*sina*sina;
     trace("d11="+d11+" d12="+d12+" d22="+d22+" d="+(d11*d22-d12*d12));
-    FmmSolver2.Stencil stencil = FmmSolver2.Stencil.FOUR;
+    FmmSolver2.Stencil stencil = FmmSolver2.Stencil.EIGHT;
     ConstantTensors tensors = new ConstantTensors(d11,d12,d22);
     FmmSolver2 fs = new FmmSolver2(n1,n2,stencil,tensors);
     Stopwatch sw = new Stopwatch();
@@ -452,10 +447,7 @@ public class FmmSolver2 {
     //fs.zeroAt(1*n1/4,1*n2/4);
     //fs.zeroAt(3*n1/4,3*n2/4);
     sw.stop();
-    int nct1 = N_COMPUTE_TIME1;
-    int nct2 = N_COMPUTE_TIME2;
-    int nct = nct1+nct2;
-    trace("time="+sw.time()+" nct="+nct+" nct1="+nct1+" nct2="+nct2);
+    trace("time="+sw.time());
     float[][] t = fs.getTimes();
     //Array.dump(t);
     plot(t);
