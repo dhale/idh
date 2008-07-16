@@ -118,7 +118,14 @@ public class FimSolver2 {
     }
   }
 
+  // Default time for samples not yet computed.
   private static final float INFINITY = Float.MAX_VALUE;
+
+  // Times are converged when the fractional change is less than this value.
+  private static final float EPSILON = 0.01f;
+
+  // Nominal number of threads to use in this solver.
+  private static int NTHREAD = Runtime.getRuntime().availableProcessors();
 
   private static final int[] K1 = { 1, 0,-1, 0};
   private static final int[] K2 = { 0, 1, 0,-1};
@@ -164,47 +171,44 @@ public class FimSolver2 {
     }
   }
 
-  private void enqueue(int i1, int i2, Queue<Index> q) {
-    if (0<=i1 && i1<_n1 && 0<=i2 && i2<_n2)
-      q.offer(_index[i2][i1]);
+  private static class IndexQueue {
+    void put(Index i) {
+      _q.offer(i);
+    }
+    Index get() {
+      return _q.poll();
+    }
+    boolean isEmpty() {
+      return _q.isEmpty();
+    }
+    private ConcurrentLinkedQueue<Index> _q = 
+      new ConcurrentLinkedQueue<Index>();
   }
 
-  /**
-   * A variation of Jeong's fast iterative marching algorithm.
-   */
-  private void updateFrom(int i1, int i2) {
-    clearMarks();
-
-    // Zero the time for the specified sample.
-    _t[i2][i1] = 0.0f;
-    _mark[i2][i1] = _known;
-
-    // Put four neighbor samples into the trial queue.
-    LinkedList<Index> q = new LinkedList<Index>();
-    //ConcurrentLinkedQueue<Index> q = new ConcurrentLinkedQueue<Index>();
-    for (int k=0; k<4; ++k) {
-      int j1 = i1+K1[k];
-      int j2 = i2+K2[k];
-      if (0<=j1 && j1<_n1 && 0<=j2 && j2<_n2)
-        q.offer(_index[j2][j1]);
+  // Each solver is a thread.
+  private class Solver implements Thread {
+    Solver(IndexQueue queue, AtomicInteger nthread) {
+      _queue = queue;
+      _nthread = nthread
     }
+    public void run() {
+      update(_queue,_nthread);
+    }
+    private IndexQueue _queue;
+    private AtomicInteger _nthread;
+  }
 
-    // Tolerance for convergence.
-    float epsilon = 0.01f; // tolerance for convergence
+  private void update(IndexQueue q, AtomicInteger nthread) {
 
     // While the trial queue is not empty, ...
-    while (q.size()>0) {
-    //while (!q.isEmpty()) {
+    while (!q.isEmpty()) {
 
-      // Get sample index from the trial queue.
-      Index i = null;
-      try {
-        i = q.poll();
-      } catch (Exception e) {
-        throw new RuntimeException(e);
-      }
-      i1 = i.i1;
-      i2 = i.i2;
+      // Get sample index from the trial queue; return if no index.
+      Index i = q.get();
+      if (i==null) 
+        return;
+      int i1 = i.i1;
+      int i2 = i.i2;
 
       // Current time and new time.
       float ti = _t[i2][i1];
@@ -212,7 +216,7 @@ public class FimSolver2 {
       _t[i2][i1] = gi;
 
       // If the new and old times are close (converged), then ...
-      if (ti-gi<ti*epsilon) {
+      if (ti-gi<ti*EPSILON) {
 
         // Mark this sample converged.
         _mark[i2][i1] = _known;
@@ -239,18 +243,49 @@ public class FimSolver2 {
               _t[j2][j1] = gj;
               _mark[j2][j1] = _trial;
               
-              // Append this sample to the queue of trial samples.
-              q.offer(_index[j2][j1]);
+              // Put this sample into the queue of trial samples.
+              q.put(_index[j2][j1]);
+
+              // If another solver could be useful, ...
+              if (_nthread.getAndIncrement()<NTHREAD) {
+                Solver solver = new Solver(_queue,_nthread);
+                solver.start();
+              } else {
+                _nthread.decrement();
+              }
             }
           }
         }
       }
 
-      // else, if not converged, append this sample to the trial queue
+      // Else, if not converged, put this sample into the trial queue.
       else {
-        q.offer(_index[i2][i1]);
+        q.put(_index[i2][i1]);
       }
     }
+  }
+
+  /**
+   * A variation of Jeong's fast iterative marching algorithm.
+   */
+  private void updateFrom(int i1, int i2) {
+    clearMarks();
+
+    // Zero the time for the specified sample.
+    _t[i2][i1] = 0.0f;
+    _mark[i2][i1] = _known;
+
+    // Put four neighbor samples into the trial queue.
+    IndexQueue q = new IndexQueue();
+    for (int k=0; k<4; ++k) {
+      int j1 = i1+K1[k];
+      int j2 = i2+K2[k];
+      if (0<=j1 && j1<_n1 && 0<=j2 && j2<_n2)
+        q.put(_index[j2][j1]);
+    }
+
+    // Complete the update from the trial queue.
+    update(q);
   }
 
   /**
