@@ -421,7 +421,7 @@ public class FmmSolver2 {
     SimplePlot sp = new SimplePlot();
     sp.setSize(800,790);
     PixelsView pv = sp.addPixels(y);
-    pv.setColorModel(ColorMap.JET);
+    pv.setColorModel(ColorMap.PRISM);
     //pv.setInterpolation(PixelsView.Interpolation.NEAREST);
     pv.setInterpolation(PixelsView.Interpolation.LINEAR);
   }

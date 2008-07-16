@@ -78,13 +78,12 @@ public class FimSolver2 {
   private void init(int n1, int n2, float[][] t, Tensors tensors) {
     _n1 = n1;
     _n2 = n2;
-    _t = (t!=null)?t:Array.fillfloat(INFINITY,n1,n2);
     _tensors = tensors;
-    _mark = new int[_n2][_n1];
-    _index = new Index[n2][n1];
+    _t = (t!=null)?t:Array.fillfloat(INFINITY,n1,n2);
+    _s = new Sample[n2][n1];
     for (int i2=0; i2<n2; ++i2)
       for (int i1=0; i1<n1; ++i1)
-        _index[i2][i1] = new Index(i1,i2);
+        _s[i2][i1] = new Sample(i1,i2);
   }
 
   /**
@@ -108,6 +107,12 @@ public class FimSolver2 {
 
   ///////////////////////////////////////////////////////////////////////////
   // private
+
+  private int _n1,_n2;
+  private Tensors _tensors;
+  private float[][] _t;
+  private Sample[][] _s;
+  private int _active;
 
   // Diffusion tensors.
   private static class IdentityTensors implements Tensors {
@@ -134,157 +139,154 @@ public class FimSolver2 {
   private static final int[][] K2S = {
     {-1, 0, 1},{-1,-1,-1},{-1, 0, 1},{ 1, 1, 1},{ 0, 1, 0,-1, 1, 1,-1,-1}};
 
-  private static class Index {
-    int i1,i2;
-    Index(int i1, int i2) {
+  // A sample has indices and is either active or inactive.
+  private static class Sample {
+    int i1,i2; // sample indices
+    int ia; // determines whether this sample is active
+    Sample(int i1, int i2) {
       this.i1 = i1;
       this.i2 = i2;
     }
   }
 
-  private int _n1,_n2;
-  private Tensors _tensors;
-  private float[][] _t;
-  private int[][] _mark;
-  private Index[][] _index;
+  // Returns true if specified sample is active; false, otherwise.
+  private boolean isActive(int i1, int i2) {
+    return _s[i2][i1].ia==_active;
+  }
 
-  // Marks used during computation of times. For efficiency, we do not
-  // loop over all the marks to clear them before beginning a fast 
-  // marching loop. Instead, we simply modify the mark values.
-  private int _far = 0; // samples with times not yet computed
-  private int _trial = 1; // samples in the trial queue
-  private int _known = 2; // samples with a converged time
-  private void clearMarks() {
-    if (_known+2>Integer.MAX_VALUE) { // if we must loop over all marks, ...
-      _far = 0;
-      _trial = 1;
-      _known = 2;
+  // Marks all samples inactive. For efficiency, we typically do not loop 
+  // over all the samples to clear their active flags. Usually we simply
+  // increment the active value with which the flags are compared.
+  private void clearActive() {
+    if (_active==Integer.MAX_VALUE) { // rarely!
+      _active = 1;
       for (int i2=0; i2<_n2; ++i2) {
         for (int i1=0; i1<_n1; ++i1) {
-          _mark[i2][i1] = _far;
+          _s[i2][i1].ia = 0;
         }
       }
-    } else {
-      _far += 2; // all known samples instantly become far samples
-      _trial +=2; // no samples are trial
-      _known +=2; // no samples are known
+    } else { // typically
+      ++_active;
     }
   }
 
-  private static class IndexQueue {
-    void put(Index i) {
-      _q.offer(i);
+  // Queue of active samples.
+  private class ActiveQueue {
+    synchronized Sample get() {
+      Sample s = _q.poll();
+      s.ia -= 1;
+      --_n;
+      return s;
     }
-    Index get() {
-      return _q.poll();
+    synchronized void put(int i1, int i2) {
+      Sample s = _s[i2][i1];
+      _q.offer(s);
+      s.ia = _active;
+      ++_n;
     }
     boolean isEmpty() {
-      return _q.isEmpty();
+      return _n==0;
     }
-    private ConcurrentLinkedQueue<Index> _q = 
-      new ConcurrentLinkedQueue<Index>();
+    int size() {
+      return _n;
+    }
+    int _n;
+    private LinkedList<Sample> _q = new LinkedList<Sample>();
   }
-
-  // Each solver is a thread.
-  private class Solver implements Thread {
-    Solver(IndexQueue queue, AtomicInteger nthread) {
-      _queue = queue;
-      _nthread = nthread
+  /*
+    if (_naborEs==null) {
+      _naborR = new NaborRunnable[26];
+      for (int k=0; k<26; ++k)
+        _naborR[k] = new NaborRunnable();
+      int nthread = Runtime.getRuntime().availableProcessors();
+      nthread *= 4;
+      _naborEs = Executors.newFixedThreadPool(nthread);
+      _naborCs = new ExecutorCompletionService<Void>(_naborEs);
     }
-    public void run() {
-      update(_queue,_nthread);
-    }
-    private IndexQueue _queue;
-    private AtomicInteger _nthread;
-  }
+  */
 
-  private void update(IndexQueue q, AtomicInteger nthread) {
+  private void update(ActiveQueue q) {
 
-    // While the trial queue is not empty, ...
+    // While the active queue is not empty, ...
     while (!q.isEmpty()) {
 
-      // Get sample index from the trial queue; return if no index.
-      Index i = q.get();
-      if (i==null) 
-        return;
-      int i1 = i.i1;
-      int i2 = i.i2;
+      // For all samples *currently* in the active queue, ...
+      int nq = q.size();
+      for (int iq=0; iq<nq; ++iq) {
 
-      // Current time and new time.
-      float ti = _t[i2][i1];
-      float gi = g(i1,i2,K1S[4],K2S[4]);
-      _t[i2][i1] = gi;
+        // Get sample from the active queue.
+        Sample i = q.get();
+        int i1 = i.i1;
+        int i2 = i.i2;
 
-      // If the new and old times are close (converged), then ...
-      if (ti-gi<ti*EPSILON) {
+        // Update for this sample.
+        update(i1,i2,q);
+      }
+    }
+  }
 
-        // Mark this sample converged.
-        _mark[i2][i1] = _known;
+  private void update(int i1, int i2, ActiveQueue q) {
 
-        // For all four neighbor samples, ...
-        for (int k=0; k<4; ++k) {
+    // Current time and new time.
+    float ti = _t[i2][i1];
+    float gi = g(i1,i2,K1S[4],K2S[4]);
+    _t[i2][i1] = gi;
 
-          // Neighbor sample indices; skip if out of bounds.
-          int j1 = i1+K1[k];
-          int j2 = i2+K2[k];
-          if (j1<0 || j1>=_n1) continue;
-          if (j2<0 || j2>=_n2) continue;
+    // If new and current times are close (converged), then ...
+    if (ti-gi<ti*EPSILON) {
 
-          // If the neighbor is not already in the trial queue, ...
-          if (_mark[j2][j1]!=_trial) {
+      // For all four neighbor samples, ...
+      for (int k=0; k<4; ++k) {
 
-            // Compute time for the neighbor.
-            float gj = g(j1,j2,K1S[k],K2S[k]);
+        // Neighbor sample indices; skip if out of bounds.
+        int j1 = i1+K1[k];
+        int j2 = i2+K2[k];
+        if (j1<0 || j1>=_n1) continue;
+        if (j2<0 || j2>=_n2) continue;
 
-            // If computed time less than the neighbor's current time, ...
-            if (gj<_t[j2][j1]) {
+        // If neighbor is not in the active queue, ...
+        if (!isActive(j1,j2)) {
 
-              // Replace the current time and mark this trial sample.
-              _t[j2][j1] = gj;
-              _mark[j2][j1] = _trial;
-              
-              // Put this sample into the queue of trial samples.
-              q.put(_index[j2][j1]);
+          // Compute time for the neighbor.
+          float gj = g(j1,j2,K1S[k],K2S[k]);
 
-              // If another solver could be useful, ...
-              if (_nthread.getAndIncrement()<NTHREAD) {
-                Solver solver = new Solver(_queue,_nthread);
-                solver.start();
-              } else {
-                _nthread.decrement();
-              }
-            }
+          // If computed time less than the neighbor's current time, ...
+          if (gj<_t[j2][j1]) {
+
+            // Replace the current time.
+            _t[j2][j1] = gj;
+            
+            // Put the neighbor sample into the active queue.
+            q.put(j1,j2);
           }
         }
       }
+    }
 
-      // Else, if not converged, put this sample into the trial queue.
-      else {
-        q.put(_index[i2][i1]);
-      }
+    // Else, if not converged, put this sample back into the active queue.
+    else {
+      q.put(i1,i2);
     }
   }
 
-  /**
-   * A variation of Jeong's fast iterative marching algorithm.
-   */
   private void updateFrom(int i1, int i2) {
-    clearMarks();
+
+    // All samples initially inactive.
+    clearActive();
 
     // Zero the time for the specified sample.
     _t[i2][i1] = 0.0f;
-    _mark[i2][i1] = _known;
 
-    // Put four neighbor samples into the trial queue.
-    IndexQueue q = new IndexQueue();
+    // Put four neighbor samples into the active queue.
+    ActiveQueue q = new ActiveQueue();
     for (int k=0; k<4; ++k) {
       int j1 = i1+K1[k];
       int j2 = i2+K2[k];
       if (0<=j1 && j1<_n1 && 0<=j2 && j2<_n2)
-        q.put(_index[j2][j1]);
+        q.put(j1,j2);
     }
 
-    // Complete the update from the trial queue.
+    // Complete the update by processing the active queue.
     update(q);
   }
 
@@ -589,7 +591,7 @@ public class FimSolver2 {
     SimplePlot sp = new SimplePlot();
     sp.setSize(800,790);
     PixelsView pv = sp.addPixels(y);
-    pv.setColorModel(ColorMap.JET);
+    pv.setColorModel(ColorMap.PRISM);
     pv.setInterpolation(PixelsView.Interpolation.NEAREST);
     //pv.setInterpolation(PixelsView.Interpolation.LINEAR);
   }
