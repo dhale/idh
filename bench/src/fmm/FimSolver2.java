@@ -6,16 +6,16 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package fmm;
 
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.*;
 import edu.mines.jtk.util.*;
 import static edu.mines.jtk.util.MathPlus.*;
 
-// for testing
+// for testing only
 import java.awt.*;
 import java.awt.image.*;
 import java.io.*;
 import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.*;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 import edu.mines.jtk.awt.*;
@@ -202,8 +202,10 @@ public class FimSolver2 {
     private ArrayQueue<Sample> _q = new ArrayQueue<Sample>(1024);
   }
 
-  // Zeros time for the specified sample and recursively updates times 
-  // for neighbor samples until all times have converged.
+  /**
+   * Zeros the time for the specified sample and recursively updates times 
+   * for neighbor samples until all times have converged.
+   */
   private void solveFrom(int i1, int i2) {
 
     // All samples initially inactive.
@@ -229,27 +231,31 @@ public class FimSolver2 {
     }
   }
 
-  // Solves by sequentially processing each sample in the queue.
+  /**
+   * Solves for times by sequentially processing each sample in the queue.
+   */
   private void solveSerial(ActiveQueue q) {
     while (!q.isEmpty()) {
       solveOne(q);
     }
   }
-
-  // Solves by processing samples in the queue in parallel.
-  private void solveParallel(final ActiveQueue q) {
+  
+  /**
+   * Solves for times by processing samples in the queue in parallel.
+   */
+  private void solveParallel(final ActiveQueue aq) {
     int ntask = Runtime.getRuntime().availableProcessors();
     ExecutorService es = Executors.newFixedThreadPool(ntask);
     CompletionService<Void> cs = new ExecutorCompletionService<Void>(es);
-    final AtomicInteger aq = new AtomicInteger();
-    while (!q.isEmpty()) {
-      final int nq = q.size();
-      aq.set(0);
+    final AtomicInteger ai = new AtomicInteger();
+    while (!aq.isEmpty()) {
+      final int nq = aq.size();
+      ai.set(0);
       for (int itask=0; itask<ntask; ++itask) {
         cs.submit(new Callable<Void>() {
           public Void call() {
-            for (int iq=aq.getAndIncrement(); iq<nq; iq=aq.getAndIncrement())
-              solveOne(q);
+            for (int iq=ai.getAndIncrement(); iq<nq; iq=ai.getAndIncrement())
+              solveOne(aq);
             return null;
           }
         });
@@ -264,10 +270,13 @@ public class FimSolver2 {
     es.shutdown();
   }
 
-  private void solveOne(ActiveQueue q) {
+  /**
+   * Processes one sample from the active queue.
+   */
+  private void solveOne(ActiveQueue aq) {
 
-    // Get one sample from queue.
-    Sample i = q.get();
+    // Get one sample from active queue.
+    Sample i = aq.get();
     int i1 = i.i1;
     int i2 = i.i2;
 
@@ -283,10 +292,8 @@ public class FimSolver2 {
       for (int k=0; k<4; ++k) {
 
         // Neighbor sample indices; skip if out of bounds.
-        int j1 = i1+K1[k];
-        int j2 = i2+K2[k];
-        if (j1<0 || j1>=_n1) continue;
-        if (j2<0 || j2>=_n2) continue;
+        int j1 = i1+K1[k];  if (j1<0 || j1>=_n1) continue;
+        int j2 = i2+K2[k];  if (j2<0 || j2>=_n2) continue;
 
         // If neighbor is not in the active queue, ...
         if (!isActive(j1,j2)) {
@@ -301,7 +308,7 @@ public class FimSolver2 {
             _t[j2][j1] = gj;
             
             // Put the neighbor sample into the active queue.
-            q.put(j1,j2);
+            aq.put(j1,j2);
           }
         }
       }
@@ -309,7 +316,7 @@ public class FimSolver2 {
 
     // Else, if not converged, put this sample back into the active queue.
     else {
-      q.put(i1,i2);
+      aq.put(i1,i2);
     }
   }
 
@@ -662,6 +669,52 @@ public class FimSolver2 {
     }
   }
 
+  // An apparently slower implementation for the active queue.
+  private class ConcurrentLinkedActiveQueue {
+    Sample get() {
+      Sample s = _q.poll();
+      _n.getAndDecrement();
+      s.ia -= 1;
+      return s;
+    }
+    void put(int i1, int i2) {
+      Sample s = _s[i2][i1];
+      s.ia = _active;
+      _q.offer(s);
+      _n.getAndIncrement();
+    }
+    boolean isEmpty() {
+      return _q.isEmpty();
+    }
+    int size() {
+      return _n.get();
+    }
+    AtomicInteger _n = new AtomicInteger();
+    private ConcurrentLinkedQueue<Sample> _q = 
+      new ConcurrentLinkedQueue<Sample>();
+  }
+
+  // An apparently slower implementation for the active queue.
+  private class LinkedBlockingActiveQueue {
+    Sample get() {
+      Sample s = _q.poll();
+      s.ia -= 1;
+      return s;
+    }
+    void put(int i1, int i2) {
+      Sample s = _s[i2][i1];
+      s.ia = _active;
+      _q.offer(s);
+    }
+    boolean isEmpty() {
+      return _q.isEmpty();
+    }
+    int size() {
+      return _q.size();
+    }
+    private LinkedBlockingQueue<Sample> _q = new LinkedBlockingQueue<Sample>();
+  }
+
   ///////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////////////
@@ -701,8 +754,8 @@ public class FimSolver2 {
   }
 
   private static void testConstant() {
-    int n1 = 4001;
-    int n2 = 4001;
+    int n1 = 2001;
+    int n2 = 2001;
     float angle = FLT_PI*110.0f/180.0f;
     float su = 1.000f;
     float sv = 0.010f;
