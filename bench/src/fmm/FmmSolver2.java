@@ -427,9 +427,10 @@ public class FmmSolver2 {
   }
 
   private static void testConstant() {
-    int n1 = 1001;
-    int n2 = 1001;
+    int n1 = 4001;
+    int n2 = 4001;
     float angle = FLT_PI*110.0f/180.0f;
+    //float su = 1.000f;
     float su = 0.010f;
     float sv = 1.000f;
     float cosa = cos(angle);

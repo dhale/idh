@@ -76,15 +76,13 @@ public class FimSolver2 {
     init(t[0].length,t.length,t,tensors);
   }
 
-  private void init(int n1, int n2, float[][] t, Tensors tensors) {
-    _n1 = n1;
-    _n2 = n2;
-    _tensors = tensors;
-    _t = (t!=null)?t:Array.fillfloat(INFINITY,n1,n2);
-    _s = new RunnableSample[n2][n1];
-    for (int i2=0; i2<n2; ++i2)
-      for (int i1=0; i1<n1; ++i1)
-        _s[i2][i1] = new RunnableSample(i1,i2);
+  /**
+   * Sets the type of concurrency used by this solver.
+   * The default concurrency is parallel.
+   * @param parallel true, for parallel; false, for serial.
+   */
+  public void setParallel(boolean parallel) {
+    _parallel = parallel;
   }
 
   /**
@@ -94,8 +92,7 @@ public class FimSolver2 {
    * @return the updated array of times; by reference, not by copy.
    */
   public float[][] zeroAt(int i1, int i2) {
-    //updateFrom(i1,i2);
-    updateParallel(i1,i2);
+    solveFrom(i1,i2);
     return _t;
   }
 
@@ -116,21 +113,23 @@ public class FimSolver2 {
   // Times are converged when the fractional change is less than this value.
   private static final float EPSILON = 0.01f;
 
-  // Nominal number of threads in the thread pool.
-  private static int NTHREAD = Runtime.getRuntime().availableProcessors();
-
   private int _n1,_n2;
   private Tensors _tensors;
   private float[][] _t;
-  private RunnableSample[][] _s;
-  private int _active;
+  private Sample[][] _s;
+  private int _active = 0;
+  private boolean _parallel = true;
 
-  private BlockingQueue<Runnable> _bq = 
-    new LinkedBlockingQueue<Runnable>();
-  private ThreadPoolExecutor _tpe =
-    new ThreadPoolExecutor(NTHREAD,NTHREAD,0,TimeUnit.SECONDS,_bq);
-  private SynchronousQueue<Boolean> _done = 
-    new SynchronousQueue<Boolean>();
+  private void init(int n1, int n2, float[][] t, Tensors tensors) {
+    _n1 = n1;
+    _n2 = n2;
+    _tensors = tensors;
+    _t = (t!=null)?t:Array.fillfloat(INFINITY,n1,n2);
+    _s = new Sample[n2][n1];
+    for (int i2=0; i2<n2; ++i2)
+      for (int i1=0; i1<n1; ++i1)
+        _s[i2][i1] = new Sample(i1,i2);
+  }
 
   // Diffusion tensors.
   private static class IdentityTensors implements Tensors {
@@ -158,61 +157,6 @@ public class FimSolver2 {
     }
   }
 
-  private class RunnableSample extends Sample implements Runnable {
-    RunnableSample(int i1, int i2) {
-      super(i1,i2);
-    }
-    void activate() {
-      ia = _active;
-      _tpe.execute(this);
-    }
-    void deactivate() {
-      ia -= 1;
-      if (_bq.isEmpty())
-        _done.offer(true);
-    }
-    boolean isActive() {
-      return ia==_active;
-    }
-    public void run() { // called in one of the threads in the pool
-      deactivate(); // this sample is no longer in the active queue
-      float ti = _t[i2][i1]; // current time for this sample
-      float gi = g(i1,i2,K1S[4],K2S[4]); // new time for this sample
-      _t[i2][i1] = gi; // save the new time
-      if (ti-gi<ti*EPSILON) { // if time has converged, ...
-        for (int k=0; k<4; ++k) { // for all neighbor samples, ...
-          int j1 = i1+K1[k]; if (j1<0 || j1>=_n1) continue;
-          int j2 = i2+K2[k]; if (j2<0 || j2>=_n2) continue;
-          if (!_s[j2][j1].isActive()) { // if neighbor is not active, ...
-            float gj = g(j1,j2,K1S[k],K2S[k]); // new time for neighbor
-            if (gj<_t[j2][j1]) { // if less than neighbor's current time
-              _t[j2][j1] = gj; // use the new time
-              _s[j2][j1].activate(); // activate the neighbor
-            }
-          }
-        }
-      } else { // else, reactivate this sample
-        activate();
-      }
-    }
-  }
-
-  private void updateParallel(int i1, int i2) {
-    clearActive();
-    _t[i2][i1] = 0.0f;
-    for (int k=0; k<4; ++k) {
-      int j1 = i1+K1[k];
-      int j2 = i2+K2[k];
-      if (0<=j1 && j1<_n1 && 0<=j2 && j2<_n2)
-        _s[j2][j1].activate();
-    }
-    try {
-      _done.take();
-    } catch (InterruptedException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
   // Returns true if specified sample is active; false, otherwise.
   private boolean isActive(int i1, int i2) {
     return _s[i2][i1].ia==_active;
@@ -237,14 +181,14 @@ public class FimSolver2 {
   // Queue of active samples.
   private class ActiveQueue {
     synchronized Sample get() {
-      Sample s = _q.poll();
+      Sample s = _q.remove();
       s.ia -= 1;
       --_n;
       return s;
     }
     synchronized void put(int i1, int i2) {
       Sample s = _s[i2][i1];
-      _q.offer(s);
+      _q.add(s);
       s.ia = _active;
       ++_n;
     }
@@ -255,10 +199,12 @@ public class FimSolver2 {
       return _n;
     }
     int _n;
-    private LinkedList<Sample> _q = new LinkedList<Sample>();
+    private ArrayQueue<Sample> _q = new ArrayQueue<Sample>(1024);
   }
 
-  private void updateFrom(int i1, int i2) {
+  // Zeros time for the specified sample and recursively updates times 
+  // for neighbor samples until all times have converged.
+  private void solveFrom(int i1, int i2) {
 
     // All samples initially inactive.
     clearActive();
@@ -275,55 +221,55 @@ public class FimSolver2 {
         q.put(j1,j2);
     }
 
-    // Complete the update by processing the active queue.
-    updateSerial(q);
-    //updateParallel(q);
+    // Complete the solve by processing the active queue until empty.
+    if (_parallel) {
+      solveParallel(q);
+    } else {
+      solveSerial(q);
+    }
   }
 
-  private void updateParallel(final ActiveQueue q) {
-    //int nthread = Runtime.getRuntime().availableProcessors();
-    int nthread = 1;
-    Thread[] threads = new Thread[nthread];
+  // Solves by sequentially processing each sample in the queue.
+  private void solveSerial(ActiveQueue q) {
     while (!q.isEmpty()) {
-      final AtomicInteger aq = new AtomicInteger();
+      solveOne(q);
+    }
+  }
+
+  // Solves by processing samples in the queue in parallel.
+  private void solveParallel(final ActiveQueue q) {
+    int ntask = Runtime.getRuntime().availableProcessors();
+    ExecutorService es = Executors.newFixedThreadPool(ntask);
+    CompletionService<Void> cs = new ExecutorCompletionService<Void>(es);
+    final AtomicInteger aq = new AtomicInteger();
+    while (!q.isEmpty()) {
       final int nq = q.size();
-      for (int ithread=0; ithread<nthread; ++ithread) {
-        threads[ithread] = new Thread(new Runnable() {
-          public void run() {
-            for (int iq=aq.getAndIncrement(); iq<nq; iq=aq.getAndIncrement()) {
-              Sample i = q.get();
-              int i1 = i.i1;
-              int i2 = i.i2;
-              update(i1,i2,q);
-            }
+      aq.set(0);
+      for (int itask=0; itask<ntask; ++itask) {
+        cs.submit(new Callable<Void>() {
+          public Void call() {
+            for (int iq=aq.getAndIncrement(); iq<nq; iq=aq.getAndIncrement())
+              solveOne(q);
+            return null;
           }
         });
       }
-      Threads.startAndJoin(threads);
-    }
-  }
-
-  private void updateSerial(ActiveQueue q) {
-
-    // While the active queue is not empty, ...
-    while (!q.isEmpty()) {
-
-      // For all samples *currently* in the active queue, ...
-      int nq = q.size();
-      for (int iq=0; iq<nq; ++iq) {
-
-        // Get sample from the active queue.
-        Sample i = q.get();
-        int i1 = i.i1;
-        int i2 = i.i2;
-
-        // Update for this sample.
-        update(i1,i2,q);
+      try {
+        for (int itask=0; itask<ntask; ++itask)
+          cs.take();
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
       }
     }
+    es.shutdown();
   }
 
-  private void update(int i1, int i2, ActiveQueue q) {
+  private void solveOne(ActiveQueue q) {
+
+    // Get one sample from queue.
+    Sample i = q.get();
+    int i1 = i.i1;
+    int i2 = i.i2;
 
     // Current time and new time.
     float ti = _t[i2][i1];
@@ -635,6 +581,87 @@ public class FimSolver2 {
     return tmin;
   }
 
+  // Experimental parallel solver. In this solver, each sample is runnable
+  // and, when activated, submits itself to a thread pool executor. The
+  // thread pool has an unbounded queue of tasks that it runs in order,
+  // exactly as we want. However, the overhead of task execution appear
+  // may be too great for this sort of fine-grain parallelism. Currently,
+  // it is slower than the serial solver, but I am not sure why. 
+  private class ParallelSolver {
+    ParallelSolver(int n1, int n2) {
+      _s = new Sample[n2][n1];
+      for (int i2=0; i2<n2; ++i2)
+        for (int i1=0; i1<n1; ++i1)
+          _s[i2][i1] = new Sample(i1,i2);
+    }
+    void zeroAt(int i1, int i2) {
+      clearActive();
+      _t[i2][i1] = 0.0f;
+      for (int k=0; k<4; ++k) {
+        int j1 = i1+K1[k];
+        int j2 = i2+K2[k];
+        if (0<=j1 && j1<_n1 && 0<=j2 && j2<_n2)
+          _s[j2][j1].activate();
+      }
+      try {
+        _done.take();
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
+      }
+    }
+    //private int _nthread = Runtime.getRuntime().availableProcessors();
+    private int _nthread = 1;
+    private Sample[][] _s;
+    private BlockingQueue<Runnable> _bq = 
+      new LinkedBlockingQueue<Runnable>();
+    private ThreadPoolExecutor _tpe =
+      new ThreadPoolExecutor(_nthread,_nthread,0,TimeUnit.SECONDS,_bq);
+    private SynchronousQueue<Boolean> _done = 
+      new SynchronousQueue<Boolean>();
+
+    private class Sample implements Runnable {
+      int i1,i2; // sample indices
+      int ia; // is-active flag
+      Sample(int i1, int i2) {
+        this.i1 = i1;
+        this.i2 = i2;
+      }
+      void activate() {
+        ia = _active;
+        _tpe.execute(this);
+      }
+      void deactivate() {
+        ia -= 1;
+        if (_bq.isEmpty())
+          _done.offer(true);
+      }
+      boolean isActive() {
+        return ia==_active;
+      }
+      public void run() { // called in one of the threads in the pool
+        deactivate(); // this sample is no longer in the active queue
+        float ti = _t[i2][i1]; // current time for this sample
+        float gi = g(i1,i2,K1S[4],K2S[4]); // new time for this sample
+        _t[i2][i1] = gi; // save the new time
+        if (ti-gi<ti*EPSILON) { // if time has converged, ...
+          for (int k=0; k<4; ++k) { // for all neighbor samples, ...
+            int j1 = i1+K1[k]; if (j1<0 || j1>=_n1) continue;
+            int j2 = i2+K2[k]; if (j2<0 || j2>=_n2) continue;
+            if (!_s[j2][j1].isActive()) { // if neighbor is not active, ...
+              float gj = g(j1,j2,K1S[k],K2S[k]); // new time for neighbor
+              if (gj<_t[j2][j1]) { // if less than neighbor's current time
+                _t[j2][j1] = gj; // use the new time
+                _s[j2][j1].activate(); // activate the neighbor
+              }
+            }
+          }
+        } else { // else, if time not yet converged, ...
+          activate(); // reactivate this sample
+        }
+      }
+    }
+  }
+
   ///////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////////////
@@ -674,11 +701,12 @@ public class FimSolver2 {
   }
 
   private static void testConstant() {
-    int n1 = 1001;
-    int n2 = 1001;
+    int n1 = 4001;
+    int n2 = 4001;
     float angle = FLT_PI*110.0f/180.0f;
     float su = 1.000f;
     float sv = 0.010f;
+    //float sv = 1.000f;
     float cosa = cos(angle);
     float sina = sin(angle);
     float d11 = su*cosa*cosa+sv*sina*sina;
@@ -687,6 +715,7 @@ public class FimSolver2 {
     trace("d11="+d11+" d12="+d12+" d22="+d22+" d="+(d11*d22-d12*d12));
     ConstantTensors dt = new ConstantTensors(d11,d12,d22);
     FimSolver2 fs = new FimSolver2(n1,n2,dt);
+    fs.setParallel(true);
     Stopwatch sw = new Stopwatch();
     sw.start();
     fs.zeroAt(2*n1/4,2*n2/4);
