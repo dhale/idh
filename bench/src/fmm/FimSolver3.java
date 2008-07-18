@@ -666,20 +666,6 @@ public class FimSolver3 {
   // testing
 
   /*
-  private static class ConstantTensors implements FimSolver3.Tensors {
-    ConstantTensors(float d11, float d12, float d22) {
-      _d11 = d11;
-      _d12 = d12;
-      _d22 = d22;
-    }
-    public void getTensor(int i1, int i2, float[] d) {
-      d[0] = _d11;
-      d[1] = _d12;
-      d[2] = _d22;
-    }
-    private float _d11,_d12,_d22;
-  }
-
   private static void plot(float[][] x) {
     float[][] y = Array.copy(x);
     int n1 = y[0].length;
@@ -698,33 +684,50 @@ public class FimSolver3 {
     pv.setInterpolation(PixelsView.Interpolation.NEAREST);
     //pv.setInterpolation(PixelsView.Interpolation.LINEAR);
   }
+  */
+
+  private static class ConstantTensors implements FimSolver3.Tensors {
+    ConstantTensors(
+      float d11, float d12, float d13, float d22, float d23, float d33) 
+    {
+      _d11 = d11;
+      _d12 = d12;
+      _d13 = d13;
+      _d22 = d22;
+      _d23 = d23;
+      _d33 = d33;
+    }
+    public void getTensor(int i1, int i2, float[] d) {
+      d[0] = _d11;
+      d[1] = _d12;
+      d[2] = _d13;
+      d[3] = _d22;
+      d[4] = _d23;
+      d[5] = _d33;
+    }
+    private float _d11,_d12,_d13,_d22,_d23,_d33;
+  }
 
   private static void testConstant() {
-    int n1 = 2001;
-    int n2 = 2001;
-    float angle = FLT_PI*110.0f/180.0f;
-    float su = 1.000f;
-    float sv = 0.010f;
-    //float sv = 1.000f;
-    float cosa = cos(angle);
-    float sina = sin(angle);
-    float d11 = su*cosa*cosa+sv*sina*sina;
-    float d12 = (su-sv)*sina*cosa;
-    float d22 = sv*cosa*cosa+su*sina*sina;
-    trace("d11="+d11+" d12="+d12+" d22="+d22+" d="+(d11*d22-d12*d12));
-    ConstantTensors dt = new ConstantTensors(d11,d12,d22);
+    int n1 = 5;
+    int n2 = 5;
+    int n3 = 5;
+    float d11 = 1.0f, d12 = 0.0f, d13 = 0.0f,
+                      d22 = 1.0f, d23 = 0.0f,
+                                  d33 = 1.0f;
+    ConstantTensors dt = new ConstantTensors(d11,d12,d13,d22,d23,d33);
     FimSolver3 fs = new FimSolver3(n1,n2,dt);
     fs.setParallel(true);
     Stopwatch sw = new Stopwatch();
     sw.start();
-    fs.zeroAt(2*n1/4,2*n2/4);
+    fs.zeroAt(2*n1/4,2*n2/4,2*n3/4);
     //fs.zeroAt(1*n1/4,1*n2/4);
     //fs.zeroAt(3*n1/4,3*n2/4);
     sw.stop();
     trace("time="+sw.time());
-    float[][] t = fs.getTimes();
-    //Array.dump(t);
-    plot(t);
+    float[][][] t = fs.getTimes();
+    Array.dump(t);
+    //plot(t);
   }
 
   private static void trace(String s) {
@@ -742,5 +745,4 @@ public class FimSolver3 {
       }
     });
   }
-  */
 }
