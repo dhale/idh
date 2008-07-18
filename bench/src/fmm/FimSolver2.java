@@ -321,11 +321,17 @@ public class FimSolver2 {
   }
 
   /**
-   * Solves the quadratic equation
+   * Solves a quadratic equation for a positive time t0.
+   * The equation is:
    *   d11*s1*s1*(t1-t0)*(t1-t0) + 
    * 2*d12*s1*s2*(t1-t0)*(t2-t0) + 
    *   d22*s2*s2*(t2-t0)*(t2-t0) = 1
-   * for a positive time t0. If no solution exists, because the 
+   * To reduce rounding errors, this method actually solves for u = t0-t1,
+   * via the following equation:
+   *   ds11*(u    )*(u    ) + 
+   *   ds22*(u+t12)*(u+t12) +
+   * 2*ds12*(u    )*(u+t12) = 1
+   * It then returns t0 = t1+u. If no solution exists, because the 
    * discriminant is negative, this method returns INFINITY.
    */
   private static float solveQuadratic(
@@ -398,8 +404,7 @@ public class FimSolver2 {
 
       // If (p1s,p2-) or (p1s,p2+), ...
       if (k1==0) {
-        int j2 = i2+k2;
-        if (j2<0 || j2>=_n2) continue;
+        int j2 = i2+k2;  if (j2<0 || j2>=_n2) continue;
         float t2 = _t[j2][i1];
         if (t2!=INFINITY) {
           float t1 = t2;
@@ -417,8 +422,7 @@ public class FimSolver2 {
       
       // else, if (p1-,p2s) or (p1+,p2s), ...
       else if (k2==0) {
-        int j1 = i1+k1;
-        if (j1<0 || j1>=_n1) continue;
+        int j1 = i1+k1;  if (j1<0 || j1>=_n1) continue;
         float t1 = _t[i2][j1];
         if (t1!=INFINITY) {
           float t2 = t1;
@@ -436,10 +440,8 @@ public class FimSolver2 {
       
       // else, if (p1-,p2-), (p1+,p2-), (p1-,p2+) or (p1+,p2+), ...
       else {
-        int j2 = i2+k2;
-        int j1 = i1+k1;
-        if (j1<0 || j1>=_n1) continue;
-        if (j2<0 || j2>=_n2) continue;
+        int j1 = i1+k1;  if (j1<0 || j1>=_n1) continue;
+        int j2 = i2+k2;  if (j2<0 || j2>=_n2) continue;
         float t1 = _t[i2][j1];
         float t2 = _t[j2][i1];
         if (t1!=INFINITY && t2!=INFINITY) {
@@ -463,7 +465,7 @@ public class FimSolver2 {
 
   ///////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////////////
-  // unused
+  // experimental (currently unused)
 
   // Tsai's tests for valid solutions. For high anisotropy, these
   // seem to be less robust than Jeong's; the trial queue tends to
