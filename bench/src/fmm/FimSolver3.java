@@ -473,22 +473,20 @@ public class FimSolver3 {
       // (p1-,p2s,p3s), (p1+,p2s,p3s)
       if (k1!=0 && k2==0 && k3==0) {
         int j1 = i1+k1;  if (j1<0 || j1>=_n1) continue;
-        float t1 = _t[i3][i2][j1];
-        if (t1!=INFINITY) {
-          float t2 = t1;
-          float t3 = t1;
-          float s1 = k1;
-          float ddet = d22*d33-d23*d23;
-          float s2 = (d23*d13-d12*d33)*s1/ddet; // divide by zero?
-          float s3 = (d23*d12-d13*d22)*s1/ddet; // divide by zero?
-          float t0 = solveQuadratic(d11,d12,d13,d22,d23,d33,s1,s2,s3,t1,t2,t3);
-          if (t0<tmin && t0>=t1) {
-            float t02 = t0-t2;
-            float t03 = t0-t3;
-            float p1 = (d12*s2*t02+d13*s3*t03)/d11;
-            if (isValid1(i1,i2,i3,k1,p1,t0)) {
-              tmin = t0;
-            }
+        float t1 = _t[i3][i2][j1];  if (t1==INFINITY) continue;
+        float t2 = t1;
+        float t3 = t1;
+        float s1 = k1;
+        float ddet = d22*d33-d23*d23;  if (ddet==0.0f) continue;
+        float s2 = (d23*d13-d12*d33)*s1/ddet;
+        float s3 = (d23*d12-d13*d22)*s1/ddet;
+        float t0 = solveQuadratic(d11,d12,d13,d22,d23,d33,s1,s2,s3,t1,t2,t3);
+        if (t0<tmin && t0>=t1) {
+          float t02 = t0-t2;
+          float t03 = t0-t3;
+          float p1 = (d12*s2*t02+d13*s3*t03)/d11;
+          if (isValid1(i1,i2,i3,k1,p1,t0)) {
+            tmin = t0;
           }
         }
       }
@@ -496,22 +494,20 @@ public class FimSolver3 {
       // (p1s,p2-,p3s), (p1s,p2-,p3s)
       else if (k1==0 && k2!=0 && k3==0) {
         int j2 = i2+k2;  if (j2<0 || j2>=_n2) continue;
-        float t2 = _t[i3][j2][i1];
-        if (t2!=INFINITY) {
-          float t1 = t2;
-          float t3 = t2;
-          float s2 = k2;
-          float ddet = d11*d33-d13*d13;
-          float s1 = (d13*d23-d12*d33)*s2/ddet; // divide by zero?
-          float s3 = (d13*d12-d23*d11)*s2/ddet; // divide by zero?
-          float t0 = solveQuadratic(d11,d12,d13,d22,d23,d33,s1,s2,s3,t1,t2,t3);
-          if (t0<tmin && t0>=t2) {
-            float t01 = t0-t1;
-            float t03 = t0-t3;
-            float p2 = (d12*s1*t01+d23*s3*t03)/d22;
-            if (isValid2(i1,i2,i3,k2,p2,t0)) {
-              tmin = t0;
-            }
+        float t2 = _t[i3][j2][i1];  if (t2==INFINITY) continue;
+        float t1 = t2;
+        float t3 = t2;
+        float s2 = k2;
+        float ddet = d11*d33-d13*d13;  if (ddet==0.0f) continue;
+        float s1 = (d13*d23-d12*d33)*s2/ddet;
+        float s3 = (d13*d12-d23*d11)*s2/ddet;
+        float t0 = solveQuadratic(d11,d12,d13,d22,d23,d33,s1,s2,s3,t1,t2,t3);
+        if (t0<tmin && t0>=t2) {
+          float t01 = t0-t1;
+          float t03 = t0-t3;
+          float p2 = (d12*s1*t01+d23*s3*t03)/d22;
+          if (isValid2(i1,i2,i3,k2,p2,t0)) {
+            tmin = t0;
           }
         }
       }
@@ -519,22 +515,20 @@ public class FimSolver3 {
       // (p1s,p2s,p3-), (p1s,p2s,p3-)
       else if (k1==0 && k2==0 && k3!=0) {
         int j3 = i3+k3;  if (j3<0 || j3>=_n3) continue;
-        float t3 = _t[j3][i2][i1];
-        if (t3!=INFINITY) {
-          float t1 = t3;
-          float t2 = t3;
-          float s3 = k3;
-          float ddet = d11*d22-d12*d12;
-          float s1 = (d12*d23-d13*d22)*s3/ddet; // divide by zero?
-          float s2 = (d12*d13-d23*d11)*s3/ddet; // divide by zero?
-          float t0 = solveQuadratic(d11,d12,d13,d22,d23,d33,s1,s2,s3,t1,t2,t3);
-          if (t0<tmin && t0>=t3) {
-            float t01 = t0-t1;
-            float t02 = t0-t2;
-            float p3 = (d13*s1*t01+d23*s2*t02)/d33;
-            if (isValid3(i1,i2,i3,k3,p3,t0)) {
-              tmin = t0;
-            }
+        float t3 = _t[j3][i2][i1];  if (t3==INFINITY) continue;
+        float t1 = t3;
+        float t2 = t3;
+        float s3 = k3;
+        float ddet = d11*d22-d12*d12;  if (ddet==0.0f) continue;
+        float s1 = (d12*d23-d13*d22)*s3/ddet;
+        float s2 = (d12*d13-d23*d11)*s3/ddet;
+        float t0 = solveQuadratic(d11,d12,d13,d22,d23,d33,s1,s2,s3,t1,t2,t3);
+        if (t0<tmin && t0>=t3) {
+          float t01 = t0-t1;
+          float t02 = t0-t2;
+          float p3 = (d13*s1*t01+d23*s2*t02)/d33;
+          if (isValid3(i1,i2,i3,k3,p3,t0)) {
+            tmin = t0;
           }
         }
       }
@@ -543,36 +537,34 @@ public class FimSolver3 {
       else if (k1==0 && k2!=0 && k3!=0) {
         int j2 = i2+k2;  if (j2<0 || j2>=_n2) continue;
         int j3 = i3+k3;  if (j3<0 || j3>=_n3) continue;
-        float t2 = _t[i3][j2][i1];
-        float t3 = _t[j3][i2][i1];
-        if (t2!=INFINITY && t3!=INFINITY) {
-          float s2 = k2;
-          float s3 = k3;
-          float ds12 = d12*s2;
-          float ds13 = d13*s3;
-          float dnum = ds12*t2+ds13*t3;
-          float dden = ds12+ds13;
-          float t1;
-          if (dden==0.0f) {
-            if (dnum==0.0f)
-              t1 = 0.5f*(t2+t3);
-            else
-              continue;
-          } else {
-            t1 = dnum/dden;
-          }
-          float s1 = -dden/d11;
-          float t0 = solveQuadratic(d11,d12,d13,d22,d23,d33,s1,s2,s3,t1,t2,t3);
-          if (t0<tmin && t0>=min(t2,t3)) {
-            float t01 = t0-t1;
-            float t02 = t0-t2;
-            float t03 = t0-t3;
-            float p2 = (d12*s1*t01+d23*s3*t03)/d22;
-            float p3 = (d13*s1*t01+d23*s2*t02)/d33;
-            if (isValid2(i1,i2,i3,k2,p2,t0) &&
-                isValid3(i1,i2,i3,k3,p3,t0)) {
-              tmin = t0;
-            }
+        float t2 = _t[i3][j2][i1];  if (t2==INFINITY) continue;
+        float t3 = _t[j3][i2][i1];  if (t3==INFINITY) continue;
+        float s2 = k2;
+        float s3 = k3;
+        float ds12 = d12*s2;
+        float ds13 = d13*s3;
+        float dnum = ds12*t2+ds13*t3;
+        float dden = ds12+ds13;
+        float t1;
+        if (dden==0.0f) {
+          if (dnum==0.0f)
+            t1 = 0.5f*(t2+t3);
+          else
+            continue;
+        } else {
+          t1 = dnum/dden;
+        }
+        float s1 = -dden/d11;
+        float t0 = solveQuadratic(d11,d12,d13,d22,d23,d33,s1,s2,s3,t1,t2,t3);
+        if (t0<tmin && t0>=min(t2,t3)) {
+          float t01 = t0-t1;
+          float t02 = t0-t2;
+          float t03 = t0-t3;
+          float p2 = (d12*s1*t01+d23*s3*t03)/d22;
+          float p3 = (d13*s1*t01+d23*s2*t02)/d33;
+          if (isValid2(i1,i2,i3,k2,p2,t0) &&
+              isValid3(i1,i2,i3,k3,p3,t0)) {
+            tmin = t0;
           }
         }
       }
@@ -581,36 +573,34 @@ public class FimSolver3 {
       else if (k1!=0 && k2==0 && k3!=0) {
         int j1 = i1+k1;  if (j1<0 || j1>=_n1) continue;
         int j3 = i3+k3;  if (j3<0 || j3>=_n3) continue;
-        float t1 = _t[i3][i2][j1];
-        float t3 = _t[j3][i2][i1];
-        if (t1!=INFINITY && t3!=INFINITY) {
-          float s1 = k1;
-          float s3 = k3;
-          float ds12 = d12*s1;
-          float ds23 = d23*s3;
-          float dnum = ds12*t1+ds23*t3;
-          float dden = ds12+ds23;
-          float t2;
-          if (dden==0.0f) {
-            if (dnum==0.0f)
-              t2 = 0.5f*(t1+t3);
-            else
-              continue;
-          } else {
-            t2 = dnum/dden;
-          }
-          float s2 = -dden/d22;
-          float t0 = solveQuadratic(d11,d12,d13,d22,d23,d33,s1,s2,s3,t1,t2,t3);
-          if (t0<tmin && t0>=min(t1,t3)) {
-            float t01 = t0-t1;
-            float t02 = t0-t2;
-            float t03 = t0-t3;
-            float p1 = (d12*s2*t02+d13*s3*t03)/d11;
-            float p3 = (d13*s1*t01+d23*s2*t02)/d33;
-            if (isValid1(i1,i2,i3,k1,p1,t0) &&
-                isValid3(i1,i2,i3,k3,p3,t0)) {
-              tmin = t0;
-            }
+        float t1 = _t[i3][i2][j1];  if (t1==INFINITY) continue;
+        float t3 = _t[j3][i2][i1];  if (t3==INFINITY) continue;
+        float s1 = k1;
+        float s3 = k3;
+        float ds12 = d12*s1;
+        float ds23 = d23*s3;
+        float dnum = ds12*t1+ds23*t3;
+        float dden = ds12+ds23;
+        float t2;
+        if (dden==0.0f) {
+          if (dnum==0.0f)
+            t2 = 0.5f*(t1+t3);
+          else
+            continue;
+        } else {
+          t2 = dnum/dden;
+        }
+        float s2 = -dden/d22;
+        float t0 = solveQuadratic(d11,d12,d13,d22,d23,d33,s1,s2,s3,t1,t2,t3);
+        if (t0<tmin && t0>=min(t1,t3)) {
+          float t01 = t0-t1;
+          float t02 = t0-t2;
+          float t03 = t0-t3;
+          float p1 = (d12*s2*t02+d13*s3*t03)/d11;
+          float p3 = (d13*s1*t01+d23*s2*t02)/d33;
+          if (isValid1(i1,i2,i3,k1,p1,t0) &&
+              isValid3(i1,i2,i3,k3,p3,t0)) {
+            tmin = t0;
           }
         }
       }
@@ -619,36 +609,34 @@ public class FimSolver3 {
       else if (k1!=0 && k2!=0 && k3==0) {
         int j1 = i1+k1;  if (j1<0 || j1>=_n1) continue;
         int j2 = i2+k2;  if (j2<0 || j2>=_n2) continue;
-        float t1 = _t[i3][i2][j1];
-        float t2 = _t[i3][j2][i1];
-        if (t1!=INFINITY && t2!=INFINITY) {
-          float s1 = k1;
-          float s2 = k2;
-          float ds13 = d13*s1;
-          float ds23 = d23*s2;
-          float dnum = ds13*t1+ds23*t2;
-          float dden = ds13+ds23;
-          float t3;
-          if (dden==0.0f) {
-            if (dnum==0.0f)
-              t3 = 0.5f*(t1+t2);
-            else
-              continue;
-          } else {
-            t3 = dnum/dden;
-          }
-          float s3 = -dden/d33;
-          float t0 = solveQuadratic(d11,d12,d13,d22,d23,d33,s1,s2,s3,t1,t2,t3);
-          if (t0<tmin && t0>=min(t1,t2)) {
-            float t01 = t0-t1;
-            float t02 = t0-t2;
-            float t03 = t0-t3;
-            float p1 = (d12*s2*t02+d13*s3*t03)/d11;
-            float p2 = (d12*s1*t01+d23*s3*t03)/d22;
-            if (isValid1(i1,i2,i3,k1,p1,t0) &&
-                isValid2(i1,i2,i3,k2,p2,t0)) {
-              tmin = t0;
-            }
+        float t1 = _t[i3][i2][j1];  if (t1==INFINITY) continue;
+        float t2 = _t[i3][j2][i1];  if (t2==INFINITY) continue;
+        float s1 = k1;
+        float s2 = k2;
+        float ds13 = d13*s1;
+        float ds23 = d23*s2;
+        float dnum = ds13*t1+ds23*t2;
+        float dden = ds13+ds23;
+        float t3;
+        if (dden==0.0f) {
+          if (dnum==0.0f)
+            t3 = 0.5f*(t1+t2);
+          else
+            continue;
+        } else {
+          t3 = dnum/dden;
+        }
+        float s3 = -dden/d33;
+        float t0 = solveQuadratic(d11,d12,d13,d22,d23,d33,s1,s2,s3,t1,t2,t3);
+        if (t0<tmin && t0>=min(t1,t2)) {
+          float t01 = t0-t1;
+          float t02 = t0-t2;
+          float t03 = t0-t3;
+          float p1 = (d12*s2*t02+d13*s3*t03)/d11;
+          float p2 = (d12*s1*t01+d23*s3*t03)/d22;
+          if (isValid1(i1,i2,i3,k1,p1,t0) &&
+              isValid2(i1,i2,i3,k2,p2,t0)) {
+            tmin = t0;
           }
         }
       }
@@ -659,26 +647,24 @@ public class FimSolver3 {
         int j1 = i1+k1;  if (j1<0 || j1>=_n1) continue;
         int j2 = i2+k2;  if (j2<0 || j2>=_n2) continue;
         int j3 = i3+k3;  if (j3<0 || j3>=_n3) continue;
-        float t1 = _t[i3][i2][j1];
-        float t2 = _t[i3][j2][i1];
-        float t3 = _t[j3][i2][i1];
-        if (t1!=INFINITY && t2!=INFINITY && t3!=INFINITY) {
-          float s1 = k1;
-          float s2 = k2;
-          float s3 = k3;
-          float t0 = solveQuadratic(d11,d12,d13,d22,d23,d33,s1,s2,s3,t1,t2,t3);
-          if (t0<tmin && t0>=min(t1,t2,t3)) {
-            float t01 = t0-t1;
-            float t02 = t0-t2;
-            float t03 = t0-t3;
-            float p1 = (d12*s2*t02+d13*s3*t03)/d11;
-            float p2 = (d12*s1*t01+d23*s3*t03)/d22;
-            float p3 = (d13*s1*t01+d23*s2*t02)/d33;
-            if (isValid1(i1,i2,i3,k1,p1,t0) &&
-                isValid2(i1,i2,i3,k2,p2,t0) &&
-                isValid3(i1,i2,i3,k3,p3,t0)) {
-              tmin = t0;
-            }
+        float t1 = _t[i3][i2][j1];  if (t1==INFINITY) continue;
+        float t2 = _t[i3][j2][i1];  if (t2==INFINITY) continue;
+        float t3 = _t[j3][i2][i1];  if (t3==INFINITY) continue;
+        float s1 = k1;
+        float s2 = k2;
+        float s3 = k3;
+        float t0 = solveQuadratic(d11,d12,d13,d22,d23,d33,s1,s2,s3,t1,t2,t3);
+        if (t0<tmin && t0>=min(t1,t2,t3)) {
+          float t01 = t0-t1;
+          float t02 = t0-t2;
+          float t03 = t0-t3;
+          float p1 = (d12*s2*t02+d13*s3*t03)/d11;
+          float p2 = (d12*s1*t01+d23*s3*t03)/d22;
+          float p3 = (d13*s1*t01+d23*s2*t02)/d33;
+          if (isValid1(i1,i2,i3,k1,p1,t0) &&
+              isValid2(i1,i2,i3,k2,p2,t0) &&
+              isValid3(i1,i2,i3,k3,p3,t0)) {
+            tmin = t0;
           }
         }
       }
@@ -740,8 +726,8 @@ public class FimSolver3 {
     int n2 = 5;
     int n3 = 5;
     float d11 = 1.000f, d12 = 0.000f, d13 = 0.000f,
-                        d22 = 1.000f, d23 = 0.000f,
-                                      d33 = 1.000f;
+                        d22 = 0.001f, d23 = 0.000f,
+                                      d33 = 0.001f;
     ConstantTensors dt = new ConstantTensors(d11,d12,d13,d22,d23,d33);
     FimSolver3 fs = new FimSolver3(n1,n2,n3,dt);
     fs.setParallel(true);
