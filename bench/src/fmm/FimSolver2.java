@@ -140,12 +140,36 @@ public class FimSolver2 {
     }
   }
 
+  private static final int[] K1 = {-1, 1, 0, 0};
+  private static final int[] K2 = { 0, 0,-1, 1};
+  private static final int[][] K1S = {
+    { 1, 1, 1},
+    {-1,-1,-1},
+    { 1, 0,-1},
+    { 1, 0,-1},
+    {-1, 0, 1, -1,    1, -1, 0, 1}};
+  private static final int[][] K2S = {
+    { 1, 0,-1},
+    { 1, 0,-1},
+    { 1, 1, 1},
+    {-1,-1,-1},
+    {-1,-1,-1,  0,    0,  1, 1, 1}};
+  /*
   private static final int[] K1 = { 1, 0,-1, 0};
   private static final int[] K2 = { 0, 1, 0,-1};
   private static final int[][] K1S = {
-    {-1,-1,-1},{-1, 0, 1},{ 1, 1, 1},{-1, 0, 1},{ 1, 0,-1, 0, 1,-1,-1, 1}};
+    {-1,-1,-1},
+    {-1, 0, 1},
+    { 1, 1, 1},
+    {-1, 0, 1},
+    { 1, 0,-1, 0, 1,-1,-1, 1}};
   private static final int[][] K2S = {
-    {-1, 0, 1},{-1,-1,-1},{-1, 0, 1},{ 1, 1, 1},{ 0, 1, 0,-1, 1, 1,-1,-1}};
+    {-1, 0, 1},
+    {-1,-1,-1},
+    {-1, 0, 1},
+    { 1, 1, 1},
+    { 0, 1, 0,-1, 1, 1,-1,-1}};
+  */
 
   // A sample has indices and is either active or inactive.
   private static class Sample {
@@ -341,7 +365,7 @@ public class FimSolver2 {
     double ds11 = d11*s1*s1;
     double ds12 = d12*s1*s2;
     double ds22 = d22*s2*s2;
-    double t12 = t1-t2; // reduce rounding errors by solving for u = t0-t1
+    double t12 = t1-t2;
     double a = ds11+2.0*ds12+ds22;
     double b = 2.0*(ds12+ds22)*t12;
     double c = ds22*t12*t12-1.0;

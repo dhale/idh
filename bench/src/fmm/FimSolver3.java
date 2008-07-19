@@ -159,34 +159,34 @@ public class FimSolver3 {
   // be consistent with the offsets above. For example, when updating the 
   // neighbor with offsets {K1[0],K2[0],K3[0]} = {-1,0,0}, only the
   // sets K1S[0], K2S[0], and K3S[0] are used. The sets K1S[6], K2S[6],
-  // and K3S[6] are the offsets for all possible neighbors.
+  // and K3S[6] are special offsets for all six neighbors.
   private static final int[][] K1S = {
-    { 1, 1, 1, 1, 1, 1, 1, 1, 1},
-    {-1,-1,-1,-1,-1,-1,-1,-1,-1},
-    { 0,-1, 1,-1, 1, 0, 0,-1, 1},
-    { 0,-1, 1,-1, 1, 0, 0,-1, 1},
-    { 0,-1,-1, 1, 1,-1, 1, 0, 0},
-    { 0,-1,-1, 1, 1,-1, 1, 0, 0},
+    { 1, 1, 1, 1, 1, 1, 1, 1, 1}, // A
+    {-1,-1,-1,-1,-1,-1,-1,-1,-1}, // A
+    { 0,-1, 1,-1, 1, 0, 0,-1, 1}, // B
+    { 0,-1, 1,-1, 1, 0, 0,-1, 1}, // B
+    { 0,-1,-1, 1, 1,-1, 1, 0, 0}, // C
+    { 0,-1,-1, 1, 1,-1, 1, 0, 0}, // C
     {-1, 0, 1,-1, 0, 1,-1, 0, 1,
      -1, 0, 1,-1,    1,-1, 0, 1,
      -1, 0, 1,-1, 0, 1,-1, 0, 1}};
   private static final int[][] K2S = {
-    { 0,-1,-1, 1, 1,-1, 1, 0, 0},
-    { 0,-1,-1, 1, 1,-1, 1, 0, 0},
-    { 1, 1, 1, 1, 1, 1, 1, 1, 1},
-    {-1,-1,-1,-1,-1,-1,-1,-1,-1},
-    { 0,-1, 1,-1, 1, 0, 0,-1, 1},
-    { 0,-1, 1,-1, 1, 0, 0,-1, 1},
+    { 0,-1,-1, 1, 1,-1, 1, 0, 0}, // C
+    { 0,-1,-1, 1, 1,-1, 1, 0, 0}, // C
+    { 1, 1, 1, 1, 1, 1, 1, 1, 1}, // A
+    {-1,-1,-1,-1,-1,-1,-1,-1,-1}, // A
+    { 0,-1, 1,-1, 1, 0, 0,-1, 1}, // B
+    { 0,-1, 1,-1, 1, 0, 0,-1, 1}, // B
     {-1,-1,-1, 0, 0, 0, 1, 1, 1,
      -1,-1,-1, 0,    0, 1, 1, 1,
      -1,-1,-1, 0, 0, 0, 1, 1, 1}};
   private static final int[][] K3S = {
-    { 0,-1, 1,-1, 1, 0, 0,-1, 1},
-    { 0,-1, 1,-1, 1, 0, 0,-1, 1},
-    { 0,-1,-1, 1, 1,-1, 1, 0, 0},
-    { 0,-1,-1, 1, 1,-1, 1, 0, 0},
-    { 1, 1, 1, 1, 1, 1, 1, 1, 1},
-    {-1,-1,-1,-1,-1,-1,-1,-1,-1},
+    { 0,-1, 1,-1, 1, 0, 0,-1, 1}, // B
+    { 0,-1, 1,-1, 1, 0, 0,-1, 1}, // B
+    { 0,-1,-1, 1, 1,-1, 1, 0, 0}, // C
+    { 0,-1,-1, 1, 1,-1, 1, 0, 0}, // C
+    { 1, 1, 1, 1, 1, 1, 1, 1, 1}, // A
+    {-1,-1,-1,-1,-1,-1,-1,-1,-1}, // A
     {-1,-1,-1,-1,-1,-1,-1,-1,-1,
       0, 0, 0, 0,    0, 0, 0, 0,
       1, 1, 1, 1, 1, 1, 1, 1, 1}};
@@ -261,9 +261,9 @@ public class FimSolver3 {
     // Zero the time for the specified sample.
     _t[i3][i2][i1] = 0.0f;
 
-    // Put four neighbor samples into the active queue.
+    // Put six neighbor samples into the active queue.
     ActiveQueue q = new ActiveQueue();
-    for (int k=0; k<8; ++k) {
+    for (int k=0; k<6; ++k) {
       int j1 = i1+K1[k];  if (j1<0 || j1>=_n1) continue;
       int j2 = i2+K2[k];  if (j2<0 || j2>=_n2) continue;
       int j3 = i3+K3[k];  if (j3<0 || j3>=_n3) continue;
@@ -330,14 +330,14 @@ public class FimSolver3 {
 
     // Current time and new time.
     float ti = _t[i3][i2][i1];
-    float gi = g(i1,i2,i3,K1S[8],K2S[8],K3S[8]);
+    float gi = g(i1,i2,i3,K1S[6],K2S[6],K3S[6]);
     _t[i3][i2][i1] = gi;
 
     // If new and current times are close (converged), then ...
     if (ti-gi<ti*EPSILON) {
 
-      // For all four neighbor samples, ...
-      for (int k=0; k<8; ++k) {
+      // For all six neighbor samples, ...
+      for (int k=0; k<6; ++k) {
 
         // Neighbor sample indices; skip if out of bounds.
         int j1 = i1+K1[k];  if (j1<0 || j1>=_n1) continue;
@@ -399,10 +399,10 @@ public class FimSolver3 {
     double ds12 = d12*s1*s2;
     double ds13 = d13*s1*s3;
     double ds23 = d23*s2*s3;
-    double t12 = t1-t2; // reduce rounding errors by solving for u = t0-t1
+    double t12 = t1-t2;
     double t13 = t1-t3;
     double a = ds11+ds22+ds33+2.0*(ds12+ds13+ds23);
-    double b = 2.0*((ds12+ds22+ds23)*t12+(ds13+ds23+ds33)*t13);
+    double b = 2.0*((ds22+ds12+ds23)*t12+(ds33+ds13+ds23)*t13);
     double c = ds22*t12*t12+ds33*t13*t13+2.0*ds23*t12*t13-1.0;
     double d = b*b-4.0*a*c;
     if (d<0.0) 
@@ -468,7 +468,7 @@ public class FimSolver3 {
     for (int k=0; k<k1s.length; ++k) {
       int k1 = k1s[k];
       int k2 = k2s[k];
-      int k3 = k2s[k];
+      int k3 = k3s[k];
 
       // (p1-,p2s,p3s), (p1+,p2s,p3s)
       if (k1!=0 && k2==0 && k3==0) {
@@ -550,9 +550,18 @@ public class FimSolver3 {
           float s3 = k3;
           float ds12 = d12*s2;
           float ds13 = d13*s3;
-          float dsum = ds12+ds13;
-          float t1 = (ds12*t2+ds13*t3)/dsum; // divide by zero?
-          float s1 = -dsum/d11;
+          float dnum = ds12*t2+ds13*t3;
+          float dden = ds12+ds13;
+          float t1;
+          if (dden==0.0f) {
+            if (dnum==0.0f)
+              t1 = 0.5f*(t2+t3);
+            else
+              continue;
+          } else {
+            t1 = dnum/dden;
+          }
+          float s1 = -dden/d11;
           float t0 = solveQuadratic(d11,d12,d13,d22,d23,d33,s1,s2,s3,t1,t2,t3);
           if (t0<tmin && t0>=min(t2,t3)) {
             float t01 = t0-t1;
@@ -579,9 +588,18 @@ public class FimSolver3 {
           float s3 = k3;
           float ds12 = d12*s1;
           float ds23 = d23*s3;
-          float dsum = ds12+ds23;
-          float t2 = (ds12*t1+ds23*t3)/dsum; // divide by zero?
-          float s2 = -dsum/d22;
+          float dnum = ds12*t1+ds23*t3;
+          float dden = ds12+ds23;
+          float t2;
+          if (dden==0.0f) {
+            if (dnum==0.0f)
+              t2 = 0.5f*(t1+t3);
+            else
+              continue;
+          } else {
+            t2 = dnum/dden;
+          }
+          float s2 = -dden/d22;
           float t0 = solveQuadratic(d11,d12,d13,d22,d23,d33,s1,s2,s3,t1,t2,t3);
           if (t0<tmin && t0>=min(t1,t3)) {
             float t01 = t0-t1;
@@ -608,9 +626,18 @@ public class FimSolver3 {
           float s2 = k2;
           float ds13 = d13*s1;
           float ds23 = d23*s2;
-          float dsum = ds13+ds23;
-          float t3 = (ds13*t1+ds23*t2)/dsum; // divide by zero?
-          float s3 = -dsum/d33;
+          float dnum = ds13*t1+ds23*t2;
+          float dden = ds13+ds23;
+          float t3;
+          if (dden==0.0f) {
+            if (dnum==0.0f)
+              t3 = 0.5f*(t1+t2);
+            else
+              continue;
+          } else {
+            t3 = dnum/dden;
+          }
+          float s3 = -dden/d33;
           float t0 = solveQuadratic(d11,d12,d13,d22,d23,d33,s1,s2,s3,t1,t2,t3);
           if (t0<tmin && t0>=min(t1,t2)) {
             float t01 = t0-t1;
@@ -697,7 +724,7 @@ public class FimSolver3 {
       _d23 = d23;
       _d33 = d33;
     }
-    public void getTensor(int i1, int i2, float[] d) {
+    public void getTensor(int i1, int i2, int i3, float[] d) {
       d[0] = _d11;
       d[1] = _d12;
       d[2] = _d13;
@@ -712,11 +739,11 @@ public class FimSolver3 {
     int n1 = 5;
     int n2 = 5;
     int n3 = 5;
-    float d11 = 1.0f, d12 = 0.0f, d13 = 0.0f,
-                      d22 = 1.0f, d23 = 0.0f,
-                                  d33 = 1.0f;
+    float d11 = 1.000f, d12 = 0.000f, d13 = 0.000f,
+                        d22 = 1.000f, d23 = 0.000f,
+                                      d33 = 1.000f;
     ConstantTensors dt = new ConstantTensors(d11,d12,d13,d22,d23,d33);
-    FimSolver3 fs = new FimSolver3(n1,n2,dt);
+    FimSolver3 fs = new FimSolver3(n1,n2,n3,dt);
     fs.setParallel(true);
     Stopwatch sw = new Stopwatch();
     sw.start();
