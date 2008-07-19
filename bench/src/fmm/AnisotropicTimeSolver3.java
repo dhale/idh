@@ -193,7 +193,7 @@ public class AnisotropicTimeSolver3 {
   // Sample index offsets for vertices X3 of 8 neighbor tetrahedra.
   private static final int[] K31 = { 0, 0, 0, 0, 0, 0, 0, 0};
   private static final int[] K32 = { 0, 0, 0, 0, 0, 0, 0, 0};
-  private static final int[] K33 = {-1,-1,-1,-1, 1, 1, 1, 1};
+  private static final int[] K33 = { 1, 1, 1, 1,-1,-1,-1,-1};
 
   // A sample has indices and is either active or inactive.
   // For efficiency the active flag is an integer and not a boolean, 
@@ -719,14 +719,14 @@ public class AnisotropicTimeSolver3 {
   }
 
   private static void testConstant() {
-    int n1 = 5;
-    int n2 = 5;
-    int n3 = 5;
-    float d11 = 1.000f, d12 = 0.000f, d13 = 0.000f,
-                        d22 = 1.000f, d23 = 0.000f,
-                                      d33 = 1.000f;
-    ConstantTensors dt = new ConstantTensors(d11,d12,d13,d22,d23,d33);
-    AnisotropicTimeSolver3 ats = new AnisotropicTimeSolver3(n1,n2,n3,dt);
+    int n1 = 51;
+    int n2 = 51;
+    int n3 = 51;
+    float s11 = 1.000f, s12 = 0.000f, s13 = 0.000f,
+                        s22 = 1.000f, s23 = 0.000f,
+                                      s33 = 1.000f;
+    ConstantTensors st = new ConstantTensors(s11,s12,s13,s22,s23,s33);
+    AnisotropicTimeSolver3 ats = new AnisotropicTimeSolver3(n1,n2,n3,st);
     ats.setConcurrency(AnisotropicTimeSolver3.Concurrency.PARALLEL);
     Stopwatch sw = new Stopwatch();
     sw.start();
@@ -736,7 +736,7 @@ public class AnisotropicTimeSolver3 {
     sw.stop();
     trace("time="+sw.time());
     float[][][] t = ats.getTimes();
-    Array.dump(t);
+    //Array.dump(t);
     //plot(t);
   }
 
