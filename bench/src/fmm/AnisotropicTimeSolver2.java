@@ -175,18 +175,18 @@ public class AnisotropicTimeSolver2 {
   // triangles that must be considered when updating a neighbor sample. 
   // For example, when updating the neighbor with offsets {K1[3],K2[3]} 
   // = {0,1}, we use only triangles with indices KT[3] = {2,3}. The last 
-  // array contains the indices of all four triangles, and is used to 
-  // compute the time at X0 from all four neighbor triangles.
+  // array contains the indices of all four triangles, and is used when 
+  // computing the time at X0 from all four neighbor samples.
   private static final int[][] KT  = {
     {3,0},{1,2},{0,1},{2,3},
     {0,1,2,3}
   };
 
-  // Sample index offsets for vertices X1 of 4 neighbor tris.
+  // Sample index offsets for vertices X1 of 4 neighbor triangles.
   private static final int[] K11 = { 1, 0,-1, 0};
   private static final int[] K12 = { 0, 1, 0,-1};
 
-  // Sample index offsets for vertices X2 of 4 neighbor tris.
+  // Sample index offsets for vertices X2 of 4 neighbor triangles.
   private static final int[] K21 = { 0,-1, 0, 1};
   private static final int[] K22 = { 1, 0,-1, 0};
 
@@ -263,13 +263,12 @@ public class AnisotropicTimeSolver2 {
     // Put four neighbor samples into the active queue.
     ActiveQueue q = new ActiveQueue();
     for (int k=0; k<4; ++k) {
-      int j1 = i1+K1[k];
-      int j2 = i2+K2[k];
-      if (0<=j1 && j1<_n1 && 0<=j2 && j2<_n2)
-        q.put(j1,j2);
+      int j1 = i1+K1[k];  if (j1<0 || j1>=_n1) continue;
+      int j2 = i2+K2[k];  if (j2<0 || j2>=_n2) continue;
+      q.put(j1,j2);
     }
 
-    // Complete the solve by processing the active queue until empty.
+    // Solve by processing the active queue until empty.
     if (_concurrency==Concurrency.PARALLEL) {
       solveParallel(q);
     } else {
@@ -327,7 +326,7 @@ public class AnisotropicTimeSolver2 {
     int i1 = i.i1;
     int i2 = i.i2;
 
-    // Current time and new time computed from all neighbors.
+    // Current time and new time computed from all four neighbors.
     float ti = _t[i2][i1];
     float gi = g(i1,i2,KT[4]);
     _t[i2][i1] = gi;
@@ -451,15 +450,17 @@ public class AnisotropicTimeSolver2 {
       float t1 = _t[j12][j11];
       float t2 = _t[j22][j21];
 
-      // Use times<INFINITY in {T1,T2} to compute candidate time T0.
-      if (t1==INFINITY) {
-        t0 = computeTime(s11,s12,s22,t2,j01-j21,j02-j22);
-      } else if (t2==INFINITY) {
-        t0 = computeTime(s11,s12,s22,t1,j01-j11,j02-j12);
+      // Use times < INFINITY in {T1,T2} to compute candidate time T0.
+      if (t1<INFINITY) {
+        if (t2<INFINITY) {
+          t0 = computeTime(s11,s12,s22,t1-t2,t2,
+                           j11-j21,j12-j22,
+                           j01-j21,j02-j22);
+        } else {
+          t0 = computeTime(s11,s12,s22,t1,j01-j11,j02-j12);
+        }
       } else {
-        t0 = computeTime(s11,s12,s22,t1-t2,t2,
-                         j11-j21,j12-j22,
-                         j01-j21,j02-j22);
+        t0 = computeTime(s11,s12,s22,t2,j01-j21,j02-j22);
       }
 
       // If candidate T0 smaller than the min time, update the min time.
