@@ -130,7 +130,7 @@ public class AnisotropicTimeSolver3 {
   private static final float INFINITY = Float.MAX_VALUE;
 
   // Times are converged when the fractional change is less than this value.
-  private static final float EPSILON = 0.01f;
+  private static final float EPSILON = 0.0001f;
 
   private int _n1,_n2,_n3;
   private Tensors _tensors;
@@ -486,48 +486,52 @@ public class AnisotropicTimeSolver3 {
     // The minimum lies on the line a1*alpha1 + a2*alpha2 + bb = 0.
     float a1 = u1*d12-u2*d11;
     float a2 = u1*d22-u2*d12;
-    float bb = u2*d13-u1*d23;
-    float aa1 = (a1>=0.0f)?a1:-a1;
-    float aa2 = (a2>=0.0f)?a2:-a2;
     float alpha1,alpha2;
 
-    // If abs(a1) < abs(a2), solve for alpha1 first, then alpha2.
-    if (aa1<aa2) {
-      float aoa = a1/a2;
-      float boa = bb/a2;
-      float v1 = u1-aoa*u2;
-      float w21 = y31+boa*y21;
-      float w22 = y32+boa*y22;
-      float w23 = y33+boa*y23;
-      float w11 = y11-aoa*y21;
-      float w12 = y12-aoa*y22;
-      float w13 = y13-aoa*y23;
-      alpha1 = computeAlpha(s11,s12,s13,s22,s23,s33,
-                            v1,w11,w12,w13,w21,w22,w23);
-      alpha2 = -boa-aoa*alpha1;
-    }
-
-    // Else if abs(a2) < abs(a1), solve for alpha2 first, then alpha1.
-    else if (aa2<aa1) {
-      float aoa = a2/a1;
-      float boa = bb/a1;
-      float v1 = u2-aoa*u1;
-      float w21 = y31+boa*y11;
-      float w22 = y32+boa*y12;
-      float w23 = y33+boa*y13;
-      float w11 = y21-aoa*y11;
-      float w12 = y22-aoa*y12;
-      float w13 = y23-aoa*y13;
-      alpha2 = computeAlpha(s11,s12,s13,s22,s23,s33,
-                            v1,w11,w12,w13,w21,w22,w23);
-      alpha1 = -boa-aoa*alpha2;
-    } 
-    
-    // Else if a1 = a2 = bb = 0, solve easily for both alpha1 and alpha2.
-    else {
+    // If a1 == a2 (== b == 0), solve easily for both alpha1 and alpha2.
+    if (a1==0.0f && a2==0.0f) {
       float dd = d11*d22-d12*d12;
-      alpha1 = (d12*d23-d13*d22)/dd;
-      alpha2 = (d13*d12-d23*d11)/dd;
+      alpha1 = (d13*d22-d12*d23)/dd;
+      alpha2 = (d23*d11-d13*d12)/dd;
+    }
+    
+    // Else, if a1 != a2, 
+    else {
+      float bb = u2*d13-u1*d23;
+      float aa1 = (a1>=0.0f)?a1:-a1;
+      float aa2 = (a2>=0.0f)?a2:-a2;
+
+      // if abs(a1) <= abs(a2), solve for alpha1 first, then alpha2.
+      if (aa1<=aa2) {
+        float aoa = a1/a2;
+        float boa = bb/a2;
+        float v1 = u1-aoa*u2;
+        float w21 = y31+boa*y21;
+        float w22 = y32+boa*y22;
+        float w23 = y33+boa*y23;
+        float w11 = y11-aoa*y21;
+        float w12 = y12-aoa*y22;
+        float w13 = y13-aoa*y23;
+        alpha1 = computeAlpha(s11,s12,s13,s22,s23,s33,
+                              v1,w11,w12,w13,w21,w22,w23);
+        alpha2 = -boa-aoa*alpha1;
+      }
+
+      // Else if abs(a1) > abs(a2), solve for alpha2 first, then alpha1.
+      else {
+        float aoa = a2/a1;
+        float boa = bb/a1;
+        float v1 = u2-aoa*u1;
+        float w21 = y31+boa*y11;
+        float w22 = y32+boa*y12;
+        float w23 = y33+boa*y13;
+        float w11 = y21-aoa*y11;
+        float w12 = y22-aoa*y12;
+        float w13 = y23-aoa*y13;
+        alpha2 = computeAlpha(s11,s12,s13,s22,s23,s33,
+                              v1,w11,w12,w13,w21,w22,w23);
+        alpha1 = -boa-aoa*alpha2;
+      } 
     }
 
     // The sum alpha1 + alpha2 + alpha3 = 1.
@@ -727,7 +731,7 @@ public class AnisotropicTimeSolver3 {
                                       s33 = 1.000f;
     ConstantTensors st = new ConstantTensors(s11,s12,s13,s22,s23,s33);
     AnisotropicTimeSolver3 ats = new AnisotropicTimeSolver3(n1,n2,n3,st);
-    ats.setConcurrency(AnisotropicTimeSolver3.Concurrency.PARALLEL);
+    ats.setConcurrency(AnisotropicTimeSolver3.Concurrency.SERIAL);
     Stopwatch sw = new Stopwatch();
     sw.start();
     ats.zeroAt(2*n1/4,2*n2/4,2*n3/4);
@@ -743,9 +747,9 @@ public class AnisotropicTimeSolver3 {
   private static void trace(String s) {
     System.out.println(s);
   }
-  private static void trace(int i1, int i2, String s) {
-    //if (i1==2 && i2==2)
-    //  trace(s);
+  private static void trace(int i1, int i2, int i3, String s) {
+    if (i1==0 && i2==0 && i3==0)
+      trace(s);
   }
 
   public static void main(String[] args) {

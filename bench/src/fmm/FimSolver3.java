@@ -734,8 +734,8 @@ public class FimSolver3 {
     Stopwatch sw = new Stopwatch();
     sw.start();
     fs.zeroAt(2*n1/4,2*n2/4,2*n3/4);
-    //fs.zeroAt(1*n1/4,1*n2/4);
-    //fs.zeroAt(3*n1/4,3*n2/4);
+    //fs.zeroAt(1*n1/4,1*n2/4,1*n3/4);
+    //fs.zeroAt(3*n1/4,3*n2/4,3*n3/4);
     sw.stop();
     trace("time="+sw.time());
     float[][][] t = fs.getTimes();
@@ -746,9 +746,9 @@ public class FimSolver3 {
   private static void trace(String s) {
     System.out.println(s);
   }
-  private static void trace(int i1, int i2, String s) {
-    //if (i1==2 && i2==2)
-    //  trace(s);
+  private static void trace(int i1, int i2, int i3, String s) {
+    if (i1==2 && i2==2 && i3==2)
+      trace(s);
   }
 
   public static void main(String[] args) {
