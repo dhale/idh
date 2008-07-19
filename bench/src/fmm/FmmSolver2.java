@@ -128,8 +128,8 @@ public class FmmSolver2 {
   private static final float INFINITY = Float.MAX_VALUE;
 
   // Times for each sample are computed using either four or eight
-  // neighbor samples and triangles triangles. The triangles are 
-  // indexed as follows:
+  // neighbor samples and triangles. The triangles are indexed as 
+  // follows:
   //     4 neighbors           8 neighbors
   //       2 ^                    2 ^
   //         *                * - - * - - *
@@ -394,17 +394,17 @@ public class FmmSolver2 {
   // testing
 
   private static class ConstantTensors implements FmmSolver2.Tensors {
-    ConstantTensors(float d11, float d12, float d22) {
-      _d11 = d11;
-      _d12 = d12;
-      _d22 = d22;
+    ConstantTensors(float s11, float s12, float s22) {
+      _s11 = s11;
+      _s12 = s12;
+      _s22 = s22;
     }
-    public void getTensor(int i1, int i2, float[] d) {
-      d[0] = _d11;
-      d[1] = _d12;
-      d[2] = _d22;
+    public void getTensor(int i1, int i2, float[] s) {
+      s[0] = _s11;
+      s[1] = _s12;
+      s[2] = _s22;
     }
-    private float _d11,_d12,_d22;
+    private float _s11,_s12,_s22;
   }
 
   private static void plot(float[][] x) {
@@ -435,12 +435,12 @@ public class FmmSolver2 {
     float sv = 1.000f;
     float cosa = cos(angle);
     float sina = sin(angle);
-    float d11 = su*cosa*cosa+sv*sina*sina;
-    float d12 = (su-sv)*sina*cosa;
-    float d22 = sv*cosa*cosa+su*sina*sina;
-    trace("d11="+d11+" d12="+d12+" d22="+d22+" d="+(d11*d22-d12*d12));
+    float s11 = su*cosa*cosa+sv*sina*sina;
+    float s12 = (su-sv)*sina*cosa;
+    float s22 = sv*cosa*cosa+su*sina*sina;
+    trace("s11="+s11+" s12="+s12+" s22="+s22+" s="+(s11*s22-s12*s12));
     FmmSolver2.Stencil stencil = FmmSolver2.Stencil.EIGHT;
-    ConstantTensors tensors = new ConstantTensors(d11,d12,d22);
+    ConstantTensors tensors = new ConstantTensors(s11,s12,s22);
     FmmSolver2 fs = new FmmSolver2(n1,n2,stencil,tensors);
     Stopwatch sw = new Stopwatch();
     sw.start();

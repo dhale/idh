@@ -722,12 +722,12 @@ public class FimSolver3 {
   }
 
   private static void testConstant() {
-    int n1 = 5;
-    int n2 = 5;
-    int n3 = 5;
+    int n1 = 51;
+    int n2 = 51;
+    int n3 = 51;
     float d11 = 1.000f, d12 = 0.000f, d13 = 0.000f,
-                        d22 = 0.001f, d23 = 0.000f,
-                                      d33 = 0.001f;
+                        d22 = 1.000f, d23 = 0.000f,
+                                      d33 = 1.000f;
     ConstantTensors dt = new ConstantTensors(d11,d12,d13,d22,d23,d33);
     FimSolver3 fs = new FimSolver3(n1,n2,n3,dt);
     fs.setParallel(true);
@@ -739,7 +739,7 @@ public class FimSolver3 {
     sw.stop();
     trace("time="+sw.time());
     float[][][] t = fs.getTimes();
-    Array.dump(t);
+    //Array.dump(t);
     //plot(t);
   }
 
