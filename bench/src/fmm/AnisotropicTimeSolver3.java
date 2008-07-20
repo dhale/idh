@@ -24,7 +24,7 @@ import edu.mines.jtk.io.*;
 import edu.mines.jtk.mosaic.*;
 
 /**
- * A solver for 3D anisotropic eikonal equations: grad(t) dot S*grad(t) = 1.
+ * A solver for 3D anisotropic eikonal equations.
  * This solver uses an iterative method to compute the solution times t. The 
  * iterations are similar to those described by Jeong and Whitaker (2007),
  * but the local method used here for computing each sampled time from the 
@@ -723,23 +723,23 @@ public class AnisotropicTimeSolver3 {
   }
 
   private static void testConstant() {
-    int n1 = 51;
-    int n2 = 51;
-    int n3 = 51;
+    int n1 = 101;
+    int n2 = 101;
+    int n3 = 101;
     float s11 = 1.000f, s12 = 0.000f, s13 = 0.000f,
                         s22 = 1.000f, s23 = 0.000f,
                                       s33 = 1.000f;
     ConstantTensors st = new ConstantTensors(s11,s12,s13,s22,s23,s33);
     AnisotropicTimeSolver3 ats = new AnisotropicTimeSolver3(n1,n2,n3,st);
-    ats.setConcurrency(AnisotropicTimeSolver3.Concurrency.SERIAL);
+    ats.setConcurrency(AnisotropicTimeSolver3.Concurrency.PARALLEL);
     Stopwatch sw = new Stopwatch();
     sw.start();
     ats.zeroAt(2*n1/4,2*n2/4,2*n3/4);
     //fs.zeroAt(1*n1/4,1*n2/4,1*n3/4);
     //fs.zeroAt(3*n1/4,3*n2/4,3*n3/4);
     sw.stop();
-    trace("time="+sw.time());
     float[][][] t = ats.getTimes();
+    trace("time="+sw.time()+" sum="+Array.sum(t));
     //Array.dump(t);
     //plot(t);
   }

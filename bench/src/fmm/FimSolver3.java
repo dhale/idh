@@ -31,6 +31,14 @@ import edu.mines.jtk.mosaic.*;
 public class FimSolver3 {
 
   /**
+   * Type of concurrency used when solving for times.
+   */
+  public enum Concurrency {
+    PARALLEL,
+    SERIAL
+  };
+
+  /**
    * An interface for classes of diffusion tensors. Each tensor is a
    * symmetric positive-definite 3-by-3 matrix 
    * {{d11,d12,d13},{d12,d22,d23},{d13,d23,d33}}.
@@ -80,12 +88,12 @@ public class FimSolver3 {
   }
 
   /**
-   * Sets the type of concurrency used by this solver.
+   * Sets the type of concurrency used to solve for times.
    * The default concurrency is parallel.
-   * @param parallel true, for parallel; false, for serial.
+   * @param concurrency the type of concurrency.
    */
-  public void setParallel(boolean parallel) {
-    _parallel = parallel;
+  public void setConcurrency(Concurrency concurrency) {
+    _concurrency = concurrency;
   }
 
   /**
@@ -122,7 +130,7 @@ public class FimSolver3 {
   private float[][][] _t;
   private Sample[][][] _s;
   private int _active = 0;
-  private boolean _parallel = true;
+  private Concurrency _concurrency = Concurrency.PARALLEL;
 
   private void init(int n1, int n2, int n3, float[][][] t, Tensors tensors) {
     _n1 = n1;
@@ -157,39 +165,39 @@ public class FimSolver3 {
 
   // Sets of neighbor sample offsets used to compute times. These must
   // be consistent with the offsets above. For example, when updating the 
-  // neighbor with offsets {K1[0],K2[0],K3[0]} = {-1,0,0}, only the
-  // sets K1S[0], K2S[0], and K3S[0] are used. The sets K1S[6], K2S[6],
-  // and K3S[6] are special offsets for all six neighbors.
+  // neighbor with offsets {K1[1],K2[1],K3[1]} = {1,0,0}, only the sets 
+  // K1S[1], K2S[1], and K3S[1] are used. The sets K1S[6], K2S[6], and 
+  // K3S[6] are special offsets for all six neighbors.
   private static final int[][] K1S = {
     { 1, 1, 1, 1, 1, 1, 1, 1, 1}, // A
     {-1,-1,-1,-1,-1,-1,-1,-1,-1}, // A
-    { 0,-1, 1,-1, 1, 0, 0,-1, 1}, // B
-    { 0,-1, 1,-1, 1, 0, 0,-1, 1}, // B
-    { 0,-1,-1, 1, 1,-1, 1, 0, 0}, // C
-    { 0,-1,-1, 1, 1,-1, 1, 0, 0}, // C
-    {-1, 0, 1,-1, 0, 1,-1, 0, 1,
-     -1, 0, 1,-1,    1,-1, 0, 1,
-     -1, 0, 1,-1, 0, 1,-1, 0, 1}};
+    {-1, 1,-1, 1,-1, 1, 0, 0, 0}, // B
+    {-1, 1,-1, 1,-1, 1, 0, 0, 0}, // B
+    {-1,-1, 1, 1, 0, 0,-1, 1, 0}, // C
+    {-1,-1, 1, 1, 0, 0,-1, 1, 0}, // C
+    {-1, 1,-1, 1,-1, 1,-1, 1,             //    8 tets 
+     -1, 1,-1, 1,-1, 1,-1, 1, 0, 0, 0, 0, // + 12 tris
+     -1, 1, 0, 0, 0, 0}};                 // +  6 edges = 26 cases
   private static final int[][] K2S = {
-    { 0,-1,-1, 1, 1,-1, 1, 0, 0}, // C
-    { 0,-1,-1, 1, 1,-1, 1, 0, 0}, // C
+    {-1,-1, 1, 1, 0, 0,-1, 1, 0}, // C
+    {-1,-1, 1, 1, 0, 0,-1, 1, 0}, // C
     { 1, 1, 1, 1, 1, 1, 1, 1, 1}, // A
     {-1,-1,-1,-1,-1,-1,-1,-1,-1}, // A
-    { 0,-1, 1,-1, 1, 0, 0,-1, 1}, // B
-    { 0,-1, 1,-1, 1, 0, 0,-1, 1}, // B
-    {-1,-1,-1, 0, 0, 0, 1, 1, 1,
-     -1,-1,-1, 0,    0, 1, 1, 1,
-     -1,-1,-1, 0, 0, 0, 1, 1, 1}};
+    {-1, 1,-1, 1,-1, 1, 0, 0, 0}, // B
+    {-1, 1,-1, 1,-1, 1, 0, 0, 0}, // B
+    {-1,-1, 1, 1,-1,-1, 1, 1,
+     -1,-1, 1, 1, 0, 0, 0, 0,-1,-1, 1, 1,
+      0, 0,-1, 1, 0, 0}};
   private static final int[][] K3S = {
-    { 0,-1, 1,-1, 1, 0, 0,-1, 1}, // B
-    { 0,-1, 1,-1, 1, 0, 0,-1, 1}, // B
-    { 0,-1,-1, 1, 1,-1, 1, 0, 0}, // C
-    { 0,-1,-1, 1, 1,-1, 1, 0, 0}, // C
+    {-1, 1,-1, 1,-1, 1, 0, 0, 0}, // B
+    {-1, 1,-1, 1,-1, 1, 0, 0, 0}, // B
+    {-1,-1, 1, 1, 0, 0,-1, 1, 0}, // C
+    {-1,-1, 1, 1, 0, 0,-1, 1, 0}, // C
     { 1, 1, 1, 1, 1, 1, 1, 1, 1}, // A
     {-1,-1,-1,-1,-1,-1,-1,-1,-1}, // A
-    {-1,-1,-1,-1,-1,-1,-1,-1,-1,
-      0, 0, 0, 0,    0, 0, 0, 0,
-      1, 1, 1, 1, 1, 1, 1, 1, 1}};
+    {-1,-1,-1,-1, 1, 1, 1, 1,
+      0, 0, 0, 0,-1,-1,-1,-1, 1, 1, 1, 1,
+      0, 0, 0, 0,-1, 1}};
 
   // A sample has indices and is either active or inactive.
   private static class Sample {
@@ -270,8 +278,8 @@ public class FimSolver3 {
       q.put(j1,j2,j3);
     }
 
-    // Complete the solve by processing the active queue until empty.
-    if (_parallel) {
+    // Solve by processing the active queue until empty.
+    if (_concurrency==Concurrency.PARALLEL) {
       solveParallel(q);
     } else {
       solveSerial(q);
@@ -448,11 +456,11 @@ public class FimSolver3 {
   }
 
   /**
-   * Returns a valid time t computed via the Godunov-Hamiltonian.
-   * Computations are limited to neighbor indices in arrays k1s, k2s, and k3s.
+   * Returns a time t not greater than the current time for one sample.
+   * Computations are limited to neighbor samples with specified indices.
    */
   private float g(int i1, int i2, int i3, int[] k1s, int[] k2s, int[] k3s) {
-    float tmin = _t[i3][i2][i1];
+    float tc = _t[i3][i2][i1];
 
     // Get tensor coefficients.
     float[] d = new float[6];
@@ -481,12 +489,12 @@ public class FimSolver3 {
         float s2 = (d23*d13-d12*d33)*s1/ddet;
         float s3 = (d23*d12-d13*d22)*s1/ddet;
         float t0 = solveQuadratic(d11,d12,d13,d22,d23,d33,s1,s2,s3,t1,t2,t3);
-        if (t0<tmin && t0>=t1) {
+        if (t0<tc && t0>=t1) {
           float t02 = t0-t2;
           float t03 = t0-t3;
           float p1 = (d12*s2*t02+d13*s3*t03)/d11;
           if (isValid1(i1,i2,i3,k1,p1,t0)) {
-            tmin = t0;
+            return t0;
           }
         }
       }
@@ -502,12 +510,12 @@ public class FimSolver3 {
         float s1 = (d13*d23-d12*d33)*s2/ddet;
         float s3 = (d13*d12-d23*d11)*s2/ddet;
         float t0 = solveQuadratic(d11,d12,d13,d22,d23,d33,s1,s2,s3,t1,t2,t3);
-        if (t0<tmin && t0>=t2) {
+        if (t0<tc && t0>=t2) {
           float t01 = t0-t1;
           float t03 = t0-t3;
           float p2 = (d12*s1*t01+d23*s3*t03)/d22;
           if (isValid2(i1,i2,i3,k2,p2,t0)) {
-            tmin = t0;
+            return t0;
           }
         }
       }
@@ -523,12 +531,12 @@ public class FimSolver3 {
         float s1 = (d12*d23-d13*d22)*s3/ddet;
         float s2 = (d12*d13-d23*d11)*s3/ddet;
         float t0 = solveQuadratic(d11,d12,d13,d22,d23,d33,s1,s2,s3,t1,t2,t3);
-        if (t0<tmin && t0>=t3) {
+        if (t0<tc && t0>=t3) {
           float t01 = t0-t1;
           float t02 = t0-t2;
           float p3 = (d13*s1*t01+d23*s2*t02)/d33;
           if (isValid3(i1,i2,i3,k3,p3,t0)) {
-            tmin = t0;
+            return t0;
           }
         }
       }
@@ -556,7 +564,7 @@ public class FimSolver3 {
         }
         float s1 = -dden/d11;
         float t0 = solveQuadratic(d11,d12,d13,d22,d23,d33,s1,s2,s3,t1,t2,t3);
-        if (t0<tmin && t0>=min(t2,t3)) {
+        if (t0<tc && t0>=min(t2,t3)) {
           float t01 = t0-t1;
           float t02 = t0-t2;
           float t03 = t0-t3;
@@ -564,7 +572,7 @@ public class FimSolver3 {
           float p3 = (d13*s1*t01+d23*s2*t02)/d33;
           if (isValid2(i1,i2,i3,k2,p2,t0) &&
               isValid3(i1,i2,i3,k3,p3,t0)) {
-            tmin = t0;
+            return t0;
           }
         }
       }
@@ -592,7 +600,7 @@ public class FimSolver3 {
         }
         float s2 = -dden/d22;
         float t0 = solveQuadratic(d11,d12,d13,d22,d23,d33,s1,s2,s3,t1,t2,t3);
-        if (t0<tmin && t0>=min(t1,t3)) {
+        if (t0<tc && t0>=min(t1,t3)) {
           float t01 = t0-t1;
           float t02 = t0-t2;
           float t03 = t0-t3;
@@ -600,7 +608,7 @@ public class FimSolver3 {
           float p3 = (d13*s1*t01+d23*s2*t02)/d33;
           if (isValid1(i1,i2,i3,k1,p1,t0) &&
               isValid3(i1,i2,i3,k3,p3,t0)) {
-            tmin = t0;
+            return t0;
           }
         }
       }
@@ -628,7 +636,7 @@ public class FimSolver3 {
         }
         float s3 = -dden/d33;
         float t0 = solveQuadratic(d11,d12,d13,d22,d23,d33,s1,s2,s3,t1,t2,t3);
-        if (t0<tmin && t0>=min(t1,t2)) {
+        if (t0<tc && t0>=min(t1,t2)) {
           float t01 = t0-t1;
           float t02 = t0-t2;
           float t03 = t0-t3;
@@ -636,7 +644,7 @@ public class FimSolver3 {
           float p2 = (d12*s1*t01+d23*s3*t03)/d22;
           if (isValid1(i1,i2,i3,k1,p1,t0) &&
               isValid2(i1,i2,i3,k2,p2,t0)) {
-            tmin = t0;
+            return t0;
           }
         }
       }
@@ -654,7 +662,7 @@ public class FimSolver3 {
         float s2 = k2;
         float s3 = k3;
         float t0 = solveQuadratic(d11,d12,d13,d22,d23,d33,s1,s2,s3,t1,t2,t3);
-        if (t0<tmin && t0>=min(t1,t2,t3)) {
+        if (t0<tc && t0>=min(t1,t2,t3)) {
           float t01 = t0-t1;
           float t02 = t0-t2;
           float t03 = t0-t3;
@@ -664,13 +672,13 @@ public class FimSolver3 {
           if (isValid1(i1,i2,i3,k1,p1,t0) &&
               isValid2(i1,i2,i3,k2,p2,t0) &&
               isValid3(i1,i2,i3,k3,p3,t0)) {
-            tmin = t0;
+            return t0;
           }
         }
       }
     }
 
-    return tmin;
+    return tc;
   }
 
   ///////////////////////////////////////////////////////////////////////////
@@ -722,23 +730,23 @@ public class FimSolver3 {
   }
 
   private static void testConstant() {
-    int n1 = 51;
-    int n2 = 51;
-    int n3 = 51;
+    int n1 = 101;
+    int n2 = 101;
+    int n3 = 101;
     float d11 = 1.000f, d12 = 0.000f, d13 = 0.000f,
                         d22 = 1.000f, d23 = 0.000f,
                                       d33 = 1.000f;
     ConstantTensors dt = new ConstantTensors(d11,d12,d13,d22,d23,d33);
     FimSolver3 fs = new FimSolver3(n1,n2,n3,dt);
-    fs.setParallel(true);
+    fs.setConcurrency(FimSolver3.Concurrency.PARALLEL);
     Stopwatch sw = new Stopwatch();
     sw.start();
     fs.zeroAt(2*n1/4,2*n2/4,2*n3/4);
     //fs.zeroAt(1*n1/4,1*n2/4,1*n3/4);
     //fs.zeroAt(3*n1/4,3*n2/4,3*n3/4);
     sw.stop();
-    trace("time="+sw.time());
     float[][][] t = fs.getTimes();
+    trace("time="+sw.time()+" sum="+Array.sum(t));
     //Array.dump(t);
     //plot(t);
   }

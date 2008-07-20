@@ -24,7 +24,7 @@ import edu.mines.jtk.io.*;
 import edu.mines.jtk.mosaic.*;
 
 /**
- * A solver for 2D anisotropic eikonal equations: grad(t) dot S*grad(t) = 1.
+ * A solver for 2D anisotropic eikonal equations.
  * This solver uses an iterative method to compute the solution times t. The 
  * iterations are similar to those described by Jeong and Whitaker (2007),
  * but the local method used here for computing each sampled time from the 

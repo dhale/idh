@@ -145,6 +145,21 @@ public class FimSolver2 {
   private static final int[][] K1S = {
     { 1, 1, 1},
     {-1,-1,-1},
+    {-1, 1, 0},
+    {-1, 1, 0},
+    {-1, 1,-1, 1,-1, 1, 0, 0}};
+  private static final int[][] K2S = {
+    {-1, 1, 0},
+    {-1, 1, 0},
+    { 1, 1, 1},
+    {-1,-1,-1},
+    {-1,-1, 1, 1, 0, 0,-1, 1}};
+  /*
+  private static final int[] K1 = {-1, 1, 0, 0};
+  private static final int[] K2 = { 0, 0,-1, 1};
+  private static final int[][] K1S = {
+    { 1, 1, 1},
+    {-1,-1,-1},
     { 1, 0,-1},
     { 1, 0,-1},
     {-1, 0, 1, -1,    1, -1, 0, 1}};
@@ -154,7 +169,6 @@ public class FimSolver2 {
     { 1, 1, 1},
     {-1,-1,-1},
     {-1,-1,-1,  0,    0,  1, 1, 1}};
-  /*
   private static final int[] K1 = { 1, 0,-1, 0};
   private static final int[] K2 = { 0, 1, 0,-1};
   private static final int[][] K1S = {
@@ -408,11 +422,11 @@ public class FimSolver2 {
   }
 
   /**
-   * Returns a valid time t computed via the Godunov-Hamiltonian.
-   * Computations are limited to neighbor indices in arrays k1s and k2s.
+   * Returns a time t not greater than the current time for one sample.
+   * Computations are limited to neighbor samples with specified indices.
    */
   private float g(int i1, int i2, int[] k1s, int[] k2s) {
-    float tmin = _t[i2][i1];
+    float tc = _t[i2][i1];
 
     // Get tensor coefficients.
     float[] d = new float[3];
@@ -435,10 +449,10 @@ public class FimSolver2 {
           float s2 = k2;
           float s1 = -s2*d12/d11;
           float t0 = solveQuadratic(d11,d12,d22,s1,s2,t1,t2);
-          if (t0<tmin && t0>=t2) {
+          if (t0<tc && t0>=t2) {
             float p2 = -s1*(t1-t0)*d12/d22;
             if (isValid2(i1,i2,k2,p2,t0)) {
-              tmin = t0;
+              return t0;
             }
           }
         }
@@ -453,10 +467,10 @@ public class FimSolver2 {
           float s1 = k1;
           float s2 = -s1*d12/d22;
           float t0 = solveQuadratic(d11,d12,d22,s1,s2,t1,t2);
-          if (t0<tmin && t0>=t1) {
+          if (t0<tc && t0>=t1) {
             float p1 = -s2*(t2-t0)*d12/d11;
             if (isValid1(i1,i2,k1,p1,t0)) {
-              tmin = t0;
+              return t0;
             }
           }
         }
@@ -472,19 +486,19 @@ public class FimSolver2 {
           float s1 = k1;
           float s2 = k2;
           float t0 = solveQuadratic(d11,d12,d22,s1,s2,t1,t2);
-          if (t0<tmin && t0>=min(t1,t2)) {
+          if (t0<tc && t0>=min(t1,t2)) {
             float p1 = -s2*(t2-t0)*d12/d11;
             float p2 = -s1*(t1-t0)*d12/d22;
             if (isValid1(i1,i2,k1,p1,t0) &&
                 isValid2(i1,i2,k2,p2,t0)) {
-              tmin = t0;
+              return t0;
             }
           }
         }
       }
     }
 
-    return tmin;
+    return tc;
   }
 
   ///////////////////////////////////////////////////////////////////////////
