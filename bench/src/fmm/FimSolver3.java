@@ -167,7 +167,8 @@ public class FimSolver3 {
   // be consistent with the offsets above. For example, when updating the 
   // neighbor with offsets {K1[1],K2[1],K3[1]} = {1,0,0}, only the sets 
   // K1S[1], K2S[1], and K3S[1] are used. The sets K1S[6], K2S[6], and 
-  // K3S[6] are special offsets for all six neighbors.
+  // K3S[6] are special offsets for all six neighbors. Indices in each
+  // set are ordered so that tets are first, tris next, and edges last.
   private static final int[][] K1S = {
     { 1, 1, 1, 1, 1, 1, 1, 1, 1}, // A
     {-1,-1,-1,-1,-1,-1,-1,-1,-1}, // A

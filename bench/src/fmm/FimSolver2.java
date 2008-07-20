@@ -140,8 +140,17 @@ public class FimSolver2 {
     }
   }
 
+  // Sample index offsets for four neighbor samples.
+  // Must be consistent with the neighbor sets below.
   private static final int[] K1 = {-1, 1, 0, 0};
   private static final int[] K2 = { 0, 0,-1, 1};
+
+  // Sets of neighbor sample offsets used to compute times. These must
+  // be consistent with the offsets above. For example, when updating the 
+  // neighbor with offsets {K1[1],K2[1]} = {1,0}, only the sets K1S[1] 
+  // and K2S[1] are used. The sets K1S[4] and K2S[4] are special offsets 
+  // for all four neighbors. Indices in each set are ordered so that tris
+  // are first and edges last.
   private static final int[][] K1S = {
     { 1, 1, 1},
     {-1,-1,-1},
@@ -154,36 +163,6 @@ public class FimSolver2 {
     { 1, 1, 1},
     {-1,-1,-1},
     {-1,-1, 1, 1, 0, 0,-1, 1}};
-  /*
-  private static final int[] K1 = {-1, 1, 0, 0};
-  private static final int[] K2 = { 0, 0,-1, 1};
-  private static final int[][] K1S = {
-    { 1, 1, 1},
-    {-1,-1,-1},
-    { 1, 0,-1},
-    { 1, 0,-1},
-    {-1, 0, 1, -1,    1, -1, 0, 1}};
-  private static final int[][] K2S = {
-    { 1, 0,-1},
-    { 1, 0,-1},
-    { 1, 1, 1},
-    {-1,-1,-1},
-    {-1,-1,-1,  0,    0,  1, 1, 1}};
-  private static final int[] K1 = { 1, 0,-1, 0};
-  private static final int[] K2 = { 0, 1, 0,-1};
-  private static final int[][] K1S = {
-    {-1,-1,-1},
-    {-1, 0, 1},
-    { 1, 1, 1},
-    {-1, 0, 1},
-    { 1, 0,-1, 0, 1,-1,-1, 1}};
-  private static final int[][] K2S = {
-    {-1, 0, 1},
-    {-1,-1,-1},
-    {-1, 0, 1},
-    { 1, 1, 1},
-    { 0, 1, 0,-1, 1, 1,-1,-1}};
-  */
 
   // A sample has indices and is either active or inactive.
   private static class Sample {
