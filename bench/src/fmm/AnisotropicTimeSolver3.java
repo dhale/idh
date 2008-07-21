@@ -723,9 +723,9 @@ public class AnisotropicTimeSolver3 {
   }
 
   private static void testConstant() {
-    int n1 = 101;
-    int n2 = 101;
-    int n3 = 101;
+    int n1 = 5;
+    int n2 = 5;
+    int n3 = 5;
     float s11 = 1.000f, s12 = 0.000f, s13 = 0.000f,
                         s22 = 1.000f, s23 = 0.000f,
                                       s33 = 1.000f;
@@ -734,13 +734,14 @@ public class AnisotropicTimeSolver3 {
     ats.setConcurrency(AnisotropicTimeSolver3.Concurrency.PARALLEL);
     Stopwatch sw = new Stopwatch();
     sw.start();
-    ats.zeroAt(2*n1/4,2*n2/4,2*n3/4);
+    ats.zeroAt(0*n1/4,0*n2/4,0*n3/4);
+    //ats.zeroAt(2*n1/4,2*n2/4,2*n3/4);
     //fs.zeroAt(1*n1/4,1*n2/4,1*n3/4);
     //fs.zeroAt(3*n1/4,3*n2/4,3*n3/4);
     sw.stop();
     float[][][] t = ats.getTimes();
     trace("time="+sw.time()+" sum="+Array.sum(t));
-    //Array.dump(t);
+    Array.dump(t);
     //plot(t);
   }
 
