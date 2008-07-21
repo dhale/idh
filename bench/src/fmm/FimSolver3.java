@@ -731,9 +731,9 @@ public class FimSolver3 {
   }
 
   private static void testConstant() {
-    int n1 = 5;
-    int n2 = 5;
-    int n3 = 5;
+    int n1 = 101;
+    int n2 = 101;
+    int n3 = 101;
     float d11 = 1.000f, d12 = 0.000f, d13 = 0.000f,
                         d22 = 1.000f, d23 = 0.000f,
                                       d33 = 1.000f;
@@ -742,14 +742,14 @@ public class FimSolver3 {
     fs.setConcurrency(FimSolver3.Concurrency.PARALLEL);
     Stopwatch sw = new Stopwatch();
     sw.start();
-    fs.zeroAt(0*n1/4,0*n2/4,0*n3/4);
-    //fs.zeroAt(2*n1/4,2*n2/4,2*n3/4);
+    //fs.zeroAt(0*n1/4,0*n2/4,0*n3/4);
+    fs.zeroAt(2*n1/4,2*n2/4,2*n3/4);
     //fs.zeroAt(1*n1/4,1*n2/4,1*n3/4);
     //fs.zeroAt(3*n1/4,3*n2/4,3*n3/4);
     sw.stop();
     float[][][] t = fs.getTimes();
     trace("time="+sw.time()+" sum="+Array.sum(t));
-    Array.dump(t);
+    //Array.dump(t);
     //plot(t);
   }
 
