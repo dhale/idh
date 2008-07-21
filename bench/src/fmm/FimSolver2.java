@@ -302,7 +302,7 @@ public class FimSolver2 {
     //ntask = 5; // 2.3 s
     //ntask = 6; // 2.1 s
     //ntask = 7; // 2.0 s
-    ntask = 8; // 1.9 s
+    //ntask = 8; // 1.9 s
     ExecutorService es = Executors.newFixedThreadPool(ntask);
     CompletionService<Void> cs = new ExecutorCompletionService<Void>(es);
     final ActiveList[] bl = new ActiveList[ntask];
@@ -315,12 +315,12 @@ public class FimSolver2 {
       //int mtask = min(ntask,1+n/64); // granularity fudge?
       int mtask = ntask;
       for (int itask=0; itask<mtask; ++itask) {
-        final int jtask = itask;
+        final ActiveList bli = bl[itask];
         cs.submit(new Callable<Void>() {
           public Void call() {
             for (int i=ai.getAndIncrement(); i<n; i=ai.getAndIncrement())
-              solveOne(i,al,bl[jtask]);
-            bl[jtask].markAllAbsent();
+              solveOne(i,al,bli);
+            bli.markAllAbsent();
             return null;
           }
         });
