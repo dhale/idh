@@ -197,6 +197,10 @@ public class FimSolver2 {
     }
   }
 
+
+  ///////////////////////////////////////////////////////////////////////////
+  // list-based solver
+
   // List of active samples.
   private class ActiveList {
     void append(Sample s) {
@@ -239,6 +243,7 @@ public class FimSolver2 {
     private int _n;
     private Sample[] _a = new Sample[1024];
     private void growTo(int capacity) {
+      //trace("SampleList: growing to capacity="+capacity);
       Sample[] a = new Sample[capacity];
       System.arraycopy(_a,0,a,0,_n);
       _a = a;
@@ -295,7 +300,7 @@ public class FimSolver2 {
    */
   private void solveParallel(final ActiveList al) {
     int ntask = Runtime.getRuntime().availableProcessors();
-    //ntask = 1; // 4.0 s
+    ntask = 1; // 4.0 s
     //ntask = 2; // 3.7 s
     //ntask = 3; // 3.0 s
     //ntask = 4; // 2.6 s
@@ -315,12 +320,12 @@ public class FimSolver2 {
       //int mtask = min(ntask,1+n/64); // granularity fudge?
       int mtask = ntask;
       for (int itask=0; itask<mtask; ++itask) {
-        final ActiveList bli = bl[itask];
+        final ActiveList bltask = bl[itask];
         cs.submit(new Callable<Void>() {
           public Void call() {
             for (int i=ai.getAndIncrement(); i<n; i=ai.getAndIncrement())
-              solveOne(i,al,bli);
-            bli.markAllAbsent();
+              solveOne(i,al,bltask);
+            bltask.markAllAbsent();
             return null;
           }
         });
@@ -332,8 +337,6 @@ public class FimSolver2 {
         throw new RuntimeException(e);
       }
       al.clear();
-      //for (int itask=0; itask<mtask; ++itask)
-      //  bl[itask].markAllAbsent();
       for (int itask=0; itask<mtask; ++itask) {
         al.appendIfAbsent(bl[itask]);
         bl[itask].clear();
@@ -396,6 +399,9 @@ public class FimSolver2 {
       bl.append(si);
     }
   }
+
+  ///////////////////////////////////////////////////////////////////////////
+  // queue-based solver
 
   // Queue of active samples.
   private class ActiveQueue {
