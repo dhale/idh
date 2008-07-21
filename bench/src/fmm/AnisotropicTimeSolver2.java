@@ -196,7 +196,7 @@ public class AnisotropicTimeSolver2 {
   // to be inactive. See the comments for the method clearActive below.
   private static class Sample {
     int i1,i2; // sample indices
-    volatile int ia; // determines whether this sample is active
+    int ia; // determines whether this sample is active
     Sample(int i1, int i2) {
       this.i1 = i1;
       this.i2 = i2;
@@ -291,11 +291,17 @@ public class AnisotropicTimeSolver2 {
    */
   private void solveParallel(final ActiveQueue aq) {
     int ntask = Runtime.getRuntime().availableProcessors();
+    ntask = 1; //  3.7 s
+    //ntask = 2; //  5.1 s
+    //ntask = 3; // 10.6 s
+    //ntask = 4; // 11.6 s
     ExecutorService es = Executors.newFixedThreadPool(ntask);
     CompletionService<Void> cs = new ExecutorCompletionService<Void>(es);
     final AtomicInteger ai = new AtomicInteger();
+    int nqtotal = 0;
     while (!aq.isEmpty()) {
       final int nq = aq.size();
+      nqtotal += nq;
       ai.set(0);
       for (int itask=0; itask<ntask; ++itask) {
         cs.submit(new Callable<Void>() {
@@ -314,6 +320,7 @@ public class AnisotropicTimeSolver2 {
       }
     }
     es.shutdown();
+    trace("solveParallel: nqtotal="+nqtotal);
   }
 
   /**
@@ -525,7 +532,8 @@ public class AnisotropicTimeSolver2 {
     float s22 = sv*cosa*cosa+su*sina*sina;
     ConstantTensors st = new ConstantTensors(s11,s12,s22);
     AnisotropicTimeSolver2 ats = new AnisotropicTimeSolver2(n1,n2,st);
-    ats.setConcurrency(AnisotropicTimeSolver2.Concurrency.PARALLEL);
+    //ats.setConcurrency(AnisotropicTimeSolver2.Concurrency.PARALLEL);
+    ats.setConcurrency(AnisotropicTimeSolver2.Concurrency.SERIAL);
     Stopwatch sw = new Stopwatch();
     sw.start();
     ats.zeroAt(2*n1/4,2*n2/4);

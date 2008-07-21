@@ -92,7 +92,8 @@ public class FimSolver2 {
    * @return the updated array of times; by reference, not by copy.
    */
   public float[][] zeroAt(int i1, int i2) {
-    solveFrom(i1,i2);
+    //solveWithQueueFrom(i1,i2);
+    solveWithListFrom(i1,i2);
     return _t;
   }
 
@@ -167,7 +168,8 @@ public class FimSolver2 {
   // A sample has indices and is either active or inactive.
   private static class Sample {
     int i1,i2; // sample indices
-    int ia; // determines whether this sample is active
+    int active; // determines whether this sample is active
+    boolean absent; // determines whether this sample is in a list
     Sample(int i1, int i2) {
       this.i1 = i1;
       this.i2 = i2;
@@ -176,7 +178,7 @@ public class FimSolver2 {
 
   // Returns true if specified sample is active; false, otherwise.
   private boolean isActive(int i1, int i2) {
-    return _s[i2][i1].ia==_active;
+    return _s[i2][i1].active==_active;
   }
 
   // Marks all samples inactive. For efficiency, we typically do not loop 
@@ -187,7 +189,7 @@ public class FimSolver2 {
       _active = 1;
       for (int i2=0; i2<_n2; ++i2) {
         for (int i1=0; i1<_n1; ++i1) {
-          _s[i2][i1].ia = 0;
+          _s[i2][i1].active = 0;
         }
       }
     } else { // typically
@@ -195,18 +197,218 @@ public class FimSolver2 {
     }
   }
 
+  // List of active samples.
+  private class ActiveList {
+    void append(Sample s) {
+      if (_n==_a.length)
+        growTo(2*_n);
+      _a[_n++] = s;
+      s.active = _active;
+    }
+    boolean isEmpty() {
+      return _n==0;
+    }
+    int size() {
+      return _n;
+    }
+    Sample get(int i) {
+      Sample s = _a[i];
+      assert s.active==_active:"sample in list is active";
+      return s;
+    }
+    void clear() {
+      _n = 0;
+    }
+    void markAllAbsent() {
+      for (int i=0; i<_n; ++i)
+        _a[i].absent = true;
+    }
+    void appendIfAbsent(ActiveList al) {
+      if (_n+al._n>_a.length)
+        growTo(2*(_n+al._n));
+      int n = al._n;
+      for (int i=0; i<n; ++i) {
+        Sample s = al.get(i);
+        if (s.absent) {
+          _a[_n++] = s;
+          s.absent = false;
+          s.active = _active;
+        }
+      }
+    }
+    private int _n;
+    private Sample[] _a = new Sample[1024];
+    private void growTo(int capacity) {
+      Sample[] a = new Sample[capacity];
+      System.arraycopy(_a,0,a,0,_n);
+      _a = a;
+    }
+  }
+
+  /**
+   * Zeros the time for the specified sample and recursively updates times 
+   * for neighbor samples until all times have converged.
+   */
+  private void solveWithListFrom(int i1, int i2) {
+
+    // All samples initially inactive.
+    clearActive();
+
+    // Zero the time for the specified sample.
+    _t[i2][i1] = 0.0f;
+
+    // Put four neighbor samples into active list.
+    ActiveList al = new ActiveList();
+    for (int k=0; k<4; ++k) {
+      int j1 = i1+K1[k];  if (j1<0 || j1>=_n1) continue;
+      int j2 = i2+K2[k];  if (j2<0 || j2>=_n2) continue;
+      Sample sj = _s[j2][j1];
+      al.append(sj);
+    }
+
+    // Complete the solve by processing the active queue until empty.
+    if (_parallel) {
+      solveParallel(al);
+    } else {
+      solveSerial(al);
+    }
+  }
+
+  /**
+   * Solves for times by sequentially processing each sample in active list.
+   */
+  private void solveSerial(ActiveList al) {
+    ActiveList bl = new ActiveList();
+    while (!al.isEmpty()) {
+      int n = al.size();
+      for (int i=0; i<n; ++i)
+        solveOne(i,al,bl);
+      ActiveList tl = al; 
+      al = bl; 
+      bl = tl; 
+      bl.clear();
+    }
+  }
+  
+  /**
+   * Solves for times by processing samples in the active list in parallel.
+   */
+  private void solveParallel(final ActiveList al) {
+    int ntask = Runtime.getRuntime().availableProcessors();
+    //ntask = 1; // 4.0 s
+    //ntask = 2; // 3.7 s
+    //ntask = 3; // 3.0 s
+    //ntask = 4; // 2.6 s
+    //ntask = 5; // 2.3 s
+    //ntask = 6; // 2.1 s
+    //ntask = 7; // 2.0 s
+    ntask = 8; // 1.9 s
+    ExecutorService es = Executors.newFixedThreadPool(ntask);
+    CompletionService<Void> cs = new ExecutorCompletionService<Void>(es);
+    final ActiveList[] bl = new ActiveList[ntask];
+    for (int itask=0; itask<ntask; ++itask)
+      bl[itask] = new ActiveList();
+    final AtomicInteger ai = new AtomicInteger();
+    while (!al.isEmpty()) {
+      ai.set(0);
+      final int n = al.size();
+      //int mtask = min(ntask,1+n/64); // granularity fudge?
+      int mtask = ntask;
+      for (int itask=0; itask<mtask; ++itask) {
+        final int jtask = itask;
+        cs.submit(new Callable<Void>() {
+          public Void call() {
+            for (int i=ai.getAndIncrement(); i<n; i=ai.getAndIncrement())
+              solveOne(i,al,bl[jtask]);
+            bl[jtask].markAllAbsent();
+            return null;
+          }
+        });
+      }
+      try {
+        for (int itask=0; itask<mtask; ++itask)
+          cs.take();
+      } catch (InterruptedException e) {
+        throw new RuntimeException(e);
+      }
+      al.clear();
+      //for (int itask=0; itask<mtask; ++itask)
+      //  bl[itask].markAllAbsent();
+      for (int itask=0; itask<mtask; ++itask) {
+        al.appendIfAbsent(bl[itask]);
+        bl[itask].clear();
+      }
+    }
+    es.shutdown();
+  }
+
+  /**
+   * Processes one sample in the active list al.
+   * May append samples to the active list bl.
+   */
+  private void solveOne(int i, ActiveList al, ActiveList bl) {
+
+    // Get one sample from active list A.
+    Sample si = al.get(i);
+    int i1 = si.i1;
+    int i2 = si.i2;
+
+    // Current time and new time computed from all neighbors.
+    float ti = _t[i2][i1];
+    float gi = g(i1,i2,K1S[4],K2S[4]);
+    _t[i2][i1] = gi;
+
+    // If new and current times are close enough (converged), then ...
+    if (ti-gi<ti*EPSILON) {
+
+      // This sample is now inactive (but may be reactivated).
+      si.active -= 1;
+
+      // For all four neighbor samples, ...
+      for (int k=0; k<4; ++k) {
+
+        // Neighbor sample indices; skip if out of bounds.
+        int j1 = i1+K1[k];  if (j1<0 || j1>=_n1) continue;
+        int j2 = i2+K2[k];  if (j2<0 || j2>=_n2) continue;
+
+        // If neighbor is not active (not in lists A or B), ...
+        if (!isActive(j1,j2)) {
+
+          // Compute time for the neighbor.
+          float gj = g(j1,j2,K1S[k],K2S[k]);
+
+          // If computed time less than the neighbor's current time, ...
+          if (gj<_t[j2][j1]) {
+
+            // Replace the current time.
+            _t[j2][j1] = gj;
+            
+            // Append neighbor sample to the active list B.
+            Sample sj = _s[j2][j1];
+            bl.append(sj);
+          }
+        }
+      }
+    }
+
+    // Else, if not converged, append this sample to the active list B.
+    else {
+      bl.append(si);
+    }
+  }
+
   // Queue of active samples.
   private class ActiveQueue {
     synchronized Sample get() {
       Sample s = _q.remove();
-      s.ia -= 1;
+      s.active -= 1;
       --_n;
       return s;
     }
     synchronized void put(int i1, int i2) {
       Sample s = _s[i2][i1];
       _q.add(s);
-      s.ia = _active;
+      s.active = _active;
       ++_n;
     }
     boolean isEmpty() {
@@ -223,7 +425,7 @@ public class FimSolver2 {
    * Zeros the time for the specified sample and recursively updates times 
    * for neighbor samples until all times have converged.
    */
-  private void solveFrom(int i1, int i2) {
+  private void solveWithQueueFrom(int i1, int i2) {
 
     // All samples initially inactive.
     clearActive();
@@ -693,12 +895,12 @@ public class FimSolver2 {
     Sample get() {
       Sample s = _q.poll();
       _n.getAndDecrement();
-      s.ia -= 1;
+      s.active -= 1;
       return s;
     }
     void put(int i1, int i2) {
       Sample s = _s[i2][i1];
-      s.ia = _active;
+      s.active = _active;
       _q.offer(s);
       _n.getAndIncrement();
     }
@@ -717,12 +919,12 @@ public class FimSolver2 {
   private class LinkedBlockingActiveQueue {
     Sample get() {
       Sample s = _q.poll();
-      s.ia -= 1;
+      s.active -= 1;
       return s;
     }
     void put(int i1, int i2) {
       Sample s = _s[i2][i1];
-      s.ia = _active;
+      s.active = _active;
       _q.offer(s);
     }
     boolean isEmpty() {
@@ -733,6 +935,7 @@ public class FimSolver2 {
     }
     private LinkedBlockingQueue<Sample> _q = new LinkedBlockingQueue<Sample>();
   }
+
 
   ///////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////////////
@@ -784,10 +987,11 @@ public class FimSolver2 {
     float d11 = su*cosa*cosa+sv*sina*sina;
     float d12 = (su-sv)*sina*cosa;
     float d22 = sv*cosa*cosa+su*sina*sina;
-    trace("d11="+d11+" d12="+d12+" d22="+d22+" d="+(d11*d22-d12*d12));
+    //trace("d11="+d11+" d12="+d12+" d22="+d22+" d="+(d11*d22-d12*d12));
     ConstantTensors dt = new ConstantTensors(d11,d12,d22);
     FimSolver2 fs = new FimSolver2(n1,n2,dt);
     fs.setParallel(true);
+    //fs.setParallel(false);
     Stopwatch sw = new Stopwatch();
     sw.start();
     fs.zeroAt(2*n1/4,2*n2/4);
@@ -797,7 +1001,7 @@ public class FimSolver2 {
     trace("time="+sw.time());
     float[][] t = fs.getTimes();
     //Array.dump(t);
-    plot(t);
+    //plot(t);
   }
 
   private static void trace(String s) {
@@ -809,10 +1013,11 @@ public class FimSolver2 {
   }
 
   public static void main(String[] args) {
-    SwingUtilities.invokeLater(new Runnable() {
-      public void run() {
+    //SwingUtilities.invokeLater(new Runnable() {
+    //  public void run() {
+      for (;;)
         testConstant();
-      }
-    });
+    //  }
+    //});
   }
 }
