@@ -25,10 +25,14 @@ import edu.mines.jtk.mosaic.*;
 
 /**
  * A solver for 2D anisotropic eikonal equations.
+ * These non-linear equations are sqrt(grad(t) dot D*grad(t)) = 1, where t
+ * denotes the solution time, and D denotes a diffusion (velocity-squared)
+ * tensor field.
+ * <p>
  * This solver uses an iterative method to compute the solution times t.
  * Iterations are similar to those described by Jeong and Whitaker (2007).
  * @author Dave Hale, Colorado School of Mines
- * @version 2008.07.19
+ * @version 2008.07.22
  */
 public class TimeSolver2 {
 
@@ -121,7 +125,7 @@ public class TimeSolver2 {
   private static final float INFINITY = Float.MAX_VALUE;
 
   // Times are converged when the fractional change is less than this value.
-  private static final float EPSILON = 0.001f;
+  private static final float EPSILON = 0.0001f;
 
   private int _n1,_n2;
   private Tensors _tensors;
@@ -175,6 +179,9 @@ public class TimeSolver2 {
     {-1,-1, 1, 1, 0, 0,-1, 1}};
 
   // A sample has indices and is either active or inactive.
+  // For efficiency the active flag is an integer and not a boolean, 
+  // so that we need not loop over all samples when initializing them 
+  // to be inactive. See the comments for the method clearActive below.
   private static class Sample {
     int i1,i2; // sample indices
     int active; // determines whether this sample is active
@@ -620,7 +627,6 @@ public class TimeSolver2 {
     float d11 = su*cosa*cosa+sv*sina*sina;
     float d12 = (su-sv)*sina*cosa;
     float d22 = sv*cosa*cosa+su*sina*sina;
-    //trace("d11="+d11+" d12="+d12+" d22="+d22+" d="+(d11*d22-d12*d12));
     ConstantTensors dt = new ConstantTensors(d11,d12,d22);
     TimeSolver2 ts = new TimeSolver2(n1,n2,dt);
     ts.setConcurrency(TimeSolver2.Concurrency.PARALLEL);
@@ -634,7 +640,7 @@ public class TimeSolver2 {
     float[][] t = ts.getTimes();
     trace("time="+sw.time()+" sum="+Array.sum(t));
     //Array.dump(t);
-    plot(t);
+    //plot(t);
   }
 
   private static void trace(String s) {
