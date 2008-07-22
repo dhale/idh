@@ -345,11 +345,11 @@ public class TimeSolver3 {
     // serial         5.7 s
     //nthread = 1; // 5.8 s
     //nthread = 2; // 3.2 s
-    // Intel 3.0 GHz 2 * Quad Core Xeon XXX for size XXX
-    //serial          X.X s
-    //nthread = 1; // X.X s
-    //nthread = 4; // X.X s
-    //nthread = 8; // X.X s
+    // Intel 3.0 GHz 2 * Quad Core Xeon XXX for size 101 * 101 * 101
+    //serial          4.1 s
+    //nthread = 1; // 4.3 s
+    //nthread = 4; // 1.3 s
+    //nthread = 8; // 0.7 s
     /////////////////////////////////////////////////////////////////////////
     ExecutorService es = Executors.newFixedThreadPool(nthread);
     CompletionService<Void> cs = new ExecutorCompletionService<Void>(es);
