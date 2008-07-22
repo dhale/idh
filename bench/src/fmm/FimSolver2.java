@@ -296,18 +296,21 @@ public class FimSolver2 {
    */
   private void solveParallel(final ActiveList al) {
     int nthread = Runtime.getRuntime().availableProcessors();
-    // Intel 2.4 GHz Core 2 Duo
+    /////////////////////////////////////////////////////////////////////////
+    // Benchmarks: 07/22/2008
+    // Intel 2.4 GHz Core 2 Duo for size 2001*2001
     //nthread = 1; // 5.0 s
     //nthread = 2; // 2.8 s
-    // Intel 3.0 GHz 2 * Quad Core Xeon ???
-    //nthread = 1; // 4.0 s
-    //nthread = 2; // 3.7 s
-    //nthread = 3; // 3.0 s
-    //nthread = 4; // 2.6 s
-    //nthread = 5; // 2.3 s
-    //nthread = 6; // 2.1 s
-    //nthread = 7; // 2.0 s
-    //nthread = 8; // 1.9 s
+    // Intel 3.0 GHz 2 * Quad Core Xeon ??? for size 2001*2001
+    //nthread = 1; // 3.5 s
+    //nthread = 4; // 1.7 s
+    //nthread = 8; // 1.2 s
+    // Intel 3.0 GHz 2 * Quad Core Xeon ??? for size 4001*4001
+    //serial          12.4 s (peak %CPU = 100)
+    //nthread = 1; // 17.5 s (peak %CPU = 100)
+    //nthread = 4; //  6.9 s (peak %CPU = 350)
+    //nthread = 8; //  4.5 s (peak %CPU = 610)
+    /////////////////////////////////////////////////////////////////////////
     ExecutorService es = Executors.newFixedThreadPool(nthread);
     CompletionService<Void> cs = new ExecutorCompletionService<Void>(es);
     ActiveList[] bl = new ActiveList[nthread];
@@ -1071,8 +1074,8 @@ public class FimSolver2 {
   }
 
   private static void testConstant() {
-    int n1 = 2001;
-    int n2 = 2001;
+    int n1 = 4001;
+    int n2 = 4001;
     float angle = FLT_PI*110.0f/180.0f;
     float su = 1.000f;
     float sv = 0.010f;
