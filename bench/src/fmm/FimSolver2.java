@@ -307,6 +307,7 @@ public class FimSolver2 {
     //nthread = 1; // 25.5 s (peak %CPU = 100)
     //nthread = 2; // 14.8 s (peak %CPU = 180)
     // Intel 3.0 GHz 2 * Quad Core Xeon ??? for size 2001*2001
+    //serial          2.9 s
     //nthread = 1; // 3.5 s
     //nthread = 4; // 1.7 s
     //nthread = 8; // 1.2 s
