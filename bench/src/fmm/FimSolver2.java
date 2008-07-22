@@ -329,7 +329,7 @@ public class FimSolver2 {
     while (!al.isEmpty()) {
       ai.set(0); // initialize the shared block index to zero
       final int n = al.size(); // number of samples in active (A) list
-      final int mb = 16; // size of blocks of samples
+      final int mb = 32; // size of blocks of samples
       final int nb = 1+(n-1)/mb; // number of blocks of samples
       int ntask = min(nb,nthread); // number of tasks (threads to be used)
       for (int itask=0; itask<ntask; ++itask) { // for each task, ...
@@ -1094,8 +1094,8 @@ public class FimSolver2 {
     //trace("d11="+d11+" d12="+d12+" d22="+d22+" d="+(d11*d22-d12*d12));
     ConstantTensors dt = new ConstantTensors(d11,d12,d22);
     FimSolver2 fs = new FimSolver2(n1,n2,dt);
-    //fs.setParallel(true);
-    fs.setParallel(false);
+    fs.setParallel(true);
+    //fs.setParallel(false);
     Stopwatch sw = new Stopwatch();
     sw.start();
     fs.zeroAt(2*n1/4,2*n2/4);
