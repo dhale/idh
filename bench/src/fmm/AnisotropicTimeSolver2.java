@@ -291,7 +291,7 @@ public class AnisotropicTimeSolver2 {
    */
   private void solveParallel(final ActiveQueue aq) {
     int ntask = Runtime.getRuntime().availableProcessors();
-    ntask = 1; //  3.7 s
+    //ntask = 1; //  3.7 s
     //ntask = 2; //  5.1 s
     //ntask = 3; // 10.6 s
     //ntask = 4; // 11.6 s
@@ -532,8 +532,8 @@ public class AnisotropicTimeSolver2 {
     float s22 = sv*cosa*cosa+su*sina*sina;
     ConstantTensors st = new ConstantTensors(s11,s12,s22);
     AnisotropicTimeSolver2 ats = new AnisotropicTimeSolver2(n1,n2,st);
-    //ats.setConcurrency(AnisotropicTimeSolver2.Concurrency.PARALLEL);
-    ats.setConcurrency(AnisotropicTimeSolver2.Concurrency.SERIAL);
+    ats.setConcurrency(AnisotropicTimeSolver2.Concurrency.PARALLEL);
+    //ats.setConcurrency(AnisotropicTimeSolver2.Concurrency.SERIAL);
     Stopwatch sw = new Stopwatch();
     sw.start();
     ats.zeroAt(2*n1/4,2*n2/4);
@@ -543,7 +543,7 @@ public class AnisotropicTimeSolver2 {
     trace("time="+sw.time());
     float[][] t = ats.getTimes();
     //Array.dump(t);
-    plot(t);
+    //plot(t);
   }
 
   private static void trace(String s) {

@@ -283,11 +283,12 @@ public class FimSolver2 {
    * Solves for times by sequentially processing each sample in active list.
    */
   private void solveSerial(ActiveList al) {
+    float[] d = new float[3];
     ActiveList bl = new ActiveList();
     while (!al.isEmpty()) {
       int n = al.size();
       for (int i=0; i<n; ++i)
-        solveOne(i,al,bl);
+        solveOne(i,al,bl,d);
       ActiveList tl = al; 
       al = bl; 
       bl = tl; 
@@ -300,7 +301,7 @@ public class FimSolver2 {
    */
   private void solveParallel(final ActiveList al) {
     int ntask = Runtime.getRuntime().availableProcessors();
-    ntask = 1; // 4.0 s
+    //ntask = 1; // 4.0 s
     //ntask = 2; // 3.7 s
     //ntask = 3; // 3.0 s
     //ntask = 4; // 2.6 s
@@ -310,21 +311,26 @@ public class FimSolver2 {
     //ntask = 8; // 1.9 s
     ExecutorService es = Executors.newFixedThreadPool(ntask);
     CompletionService<Void> cs = new ExecutorCompletionService<Void>(es);
-    final ActiveList[] bl = new ActiveList[ntask];
-    for (int itask=0; itask<ntask; ++itask)
+    ActiveList[] bl = new ActiveList[ntask];
+    float[][] d = new float[ntask][];
+    for (int itask=0; itask<ntask; ++itask) {
       bl[itask] = new ActiveList();
+      d[itask] = new float[3];
+    }
     final AtomicInteger ai = new AtomicInteger();
     while (!al.isEmpty()) {
       ai.set(0);
       final int n = al.size();
-      //int mtask = min(ntask,1+n/64); // granularity fudge?
+      //int mtask = min(ntask,1+n/64); // adjust granularity?
       int mtask = ntask;
       for (int itask=0; itask<mtask; ++itask) {
         final ActiveList bltask = bl[itask];
+        final float[] dtask = d[itask];
         cs.submit(new Callable<Void>() {
           public Void call() {
             for (int i=ai.getAndIncrement(); i<n; i=ai.getAndIncrement())
-              solveOne(i,al,bltask);
+            //for (int i=0; i<n; ++i)
+              solveOne(i,al,bltask,dtask);
             bltask.markAllAbsent();
             return null;
           }
@@ -349,7 +355,7 @@ public class FimSolver2 {
    * Processes one sample in the active list al.
    * May append samples to the active list bl.
    */
-  private void solveOne(int i, ActiveList al, ActiveList bl) {
+  private void solveOne(int i, ActiveList al, ActiveList bl, float[] d) {
 
     // Get one sample from active list A.
     Sample si = al.get(i);
@@ -358,7 +364,7 @@ public class FimSolver2 {
 
     // Current time and new time computed from all neighbors.
     float ti = _t[i2][i1];
-    float gi = g(i1,i2,K1S[4],K2S[4]);
+    float gi = g(i1,i2,K1S[4],K2S[4],d);
     _t[i2][i1] = gi;
 
     // If new and current times are close enough (converged), then ...
@@ -378,7 +384,7 @@ public class FimSolver2 {
         if (!isActive(j1,j2)) {
 
           // Compute time for the neighbor.
-          float gj = g(j1,j2,K1S[k],K2S[k]);
+          float gj = g(j1,j2,K1S[k],K2S[k],d);
 
           // If computed time less than the neighbor's current time, ...
           if (gj<_t[j2][j1]) {
@@ -606,6 +612,86 @@ public class FimSolver2 {
     float tm = (i2>0    )?_t[i2-1][i1]:INFINITY;
     float tp = (i2<_n2-1)?_t[i2+1][i1]:INFINITY;
     return isValid(tm,tp,t0,k2,p2);
+  }
+
+  /**
+   * Returns a time t not greater than the current time for one sample.
+   * Computations are limited to neighbor samples with specified indices.
+   */
+  private float g(int i1, int i2, int[] k1s, int[] k2s, float[] d) {
+    float tc = _t[i2][i1];
+
+    // Get tensor coefficients.
+    //float[] d = new float[3];
+    _tensors.getTensor(i1,i2,d);
+    float d11 = d[0];
+    float d12 = d[1];
+    float d22 = d[2];
+
+    // For all relevant neighbor samples, ...
+    for (int k=0; k<k1s.length; ++k) {
+      int k1 = k1s[k];
+      int k2 = k2s[k];
+
+      // If (p1s,p2-) or (p1s,p2+), ...
+      if (k1==0) {
+        int j2 = i2+k2;  if (j2<0 || j2>=_n2) continue;
+        float t2 = _t[j2][i1];
+        if (t2!=INFINITY) {
+          float t1 = t2;
+          float s2 = k2;
+          float s1 = -s2*d12/d11;
+          float t0 = solveQuadratic(d11,d12,d22,s1,s2,t1,t2);
+          if (t0<tc && t0>=t2) {
+            float p2 = -s1*(t1-t0)*d12/d22;
+            if (isValid2(i1,i2,k2,p2,t0)) {
+              return t0;
+            }
+          }
+        }
+      } 
+      
+      // else, if (p1-,p2s) or (p1+,p2s), ...
+      else if (k2==0) {
+        int j1 = i1+k1;  if (j1<0 || j1>=_n1) continue;
+        float t1 = _t[i2][j1];
+        if (t1!=INFINITY) {
+          float t2 = t1;
+          float s1 = k1;
+          float s2 = -s1*d12/d22;
+          float t0 = solveQuadratic(d11,d12,d22,s1,s2,t1,t2);
+          if (t0<tc && t0>=t1) {
+            float p1 = -s2*(t2-t0)*d12/d11;
+            if (isValid1(i1,i2,k1,p1,t0)) {
+              return t0;
+            }
+          }
+        }
+      } 
+      
+      // else, if (p1-,p2-), (p1+,p2-), (p1-,p2+) or (p1+,p2+), ...
+      else {
+        int j1 = i1+k1;  if (j1<0 || j1>=_n1) continue;
+        int j2 = i2+k2;  if (j2<0 || j2>=_n2) continue;
+        float t1 = _t[i2][j1];
+        float t2 = _t[j2][i1];
+        if (t1!=INFINITY && t2!=INFINITY) {
+          float s1 = k1;
+          float s2 = k2;
+          float t0 = solveQuadratic(d11,d12,d22,s1,s2,t1,t2);
+          if (t0<tc && t0>=min(t1,t2)) {
+            float p1 = -s2*(t2-t0)*d12/d11;
+            float p2 = -s1*(t1-t0)*d12/d22;
+            if (isValid1(i1,i2,k1,p1,t0) &&
+                isValid2(i1,i2,k2,p2,t0)) {
+              return t0;
+            }
+          }
+        }
+      }
+    }
+
+    return tc;
   }
 
   /**
@@ -996,8 +1082,8 @@ public class FimSolver2 {
     //trace("d11="+d11+" d12="+d12+" d22="+d22+" d="+(d11*d22-d12*d12));
     ConstantTensors dt = new ConstantTensors(d11,d12,d22);
     FimSolver2 fs = new FimSolver2(n1,n2,dt);
-    fs.setParallel(true);
-    //fs.setParallel(false);
+    //fs.setParallel(true);
+    fs.setParallel(false);
     Stopwatch sw = new Stopwatch();
     sw.start();
     fs.zeroAt(2*n1/4,2*n2/4);
