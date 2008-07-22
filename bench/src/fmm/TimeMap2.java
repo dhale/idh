@@ -751,7 +751,7 @@ public class TimeMap2 {
       for (int i2=0; i2<n2; ++i2) {
         for (int i1=0; i1<n1; ++i1) {
           _et.setEigenvectorU(i1,i2,u1,u2);
-          _et.setCoefficients(i1,i2,a1,a2);
+          _et.setEigenvalues(i1,i2,a1,a2);
         }
       }
     }
@@ -907,7 +907,7 @@ public class TimeMap2 {
           float d2 = (float)(i2-n2/2);
           float as = 1.0f-exp(-0.0001f*(d1*d1+d2*d2));
           _et.setEigenvectorU(i1,i2,u1,u2);
-          _et.setCoefficients(i1,i2,a1*as,a2*as);
+          _et.setEigenvalues(i1,i2,a1*as,a2*as);
         }
       }
     }
