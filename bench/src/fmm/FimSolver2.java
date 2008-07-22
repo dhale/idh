@@ -308,7 +308,7 @@ public class FimSolver2 {
     //ntask = 5; // 2.3 s
     //ntask = 6; // 2.1 s
     //ntask = 7; // 2.0 s
-    //ntask = 8; // 1.9 s
+    ntask = 8; // 1.9 s
     ExecutorService es = Executors.newFixedThreadPool(ntask);
     CompletionService<Void> cs = new ExecutorCompletionService<Void>(es);
     ActiveList[] bl = new ActiveList[ntask];
@@ -1068,8 +1068,8 @@ public class FimSolver2 {
   }
 
   private static void testConstant() {
-    int n1 = 2001;
-    int n2 = 2001;
+    int n1 = 4001;
+    int n2 = 4001;
     float angle = FLT_PI*110.0f/180.0f;
     float su = 1.000f;
     float sv = 0.010f;
@@ -1082,8 +1082,8 @@ public class FimSolver2 {
     //trace("d11="+d11+" d12="+d12+" d22="+d22+" d="+(d11*d22-d12*d12));
     ConstantTensors dt = new ConstantTensors(d11,d12,d22);
     FimSolver2 fs = new FimSolver2(n1,n2,dt);
-    //fs.setParallel(true);
-    fs.setParallel(false);
+    fs.setParallel(true);
+    //fs.setParallel(false);
     Stopwatch sw = new Stopwatch();
     sw.start();
     fs.zeroAt(2*n1/4,2*n2/4);
