@@ -299,8 +299,13 @@ public class FimSolver2 {
     /////////////////////////////////////////////////////////////////////////
     // Benchmarks: 07/22/2008
     // Intel 2.4 GHz Core 2 Duo for size 2001*2001
+    // serial         5.1 s
     //nthread = 1; // 5.0 s
     //nthread = 2; // 2.8 s
+    // Intel 2.4 GHz Core 2 Duo for size 4001*4001
+    // serial         23.5 s (peak %CPU = 100)
+    //nthread = 1; // 25.5 s (peak %CPU = 100)
+    //nthread = 2; // 14.8 s (peak %CPU = 180)
     // Intel 3.0 GHz 2 * Quad Core Xeon ??? for size 2001*2001
     //nthread = 1; // 3.5 s
     //nthread = 4; // 1.7 s
@@ -1074,8 +1079,8 @@ public class FimSolver2 {
   }
 
   private static void testConstant() {
-    int n1 = 4001;
-    int n2 = 4001;
+    int n1 = 2001;
+    int n2 = 2001;
     float angle = FLT_PI*110.0f/180.0f;
     float su = 1.000f;
     float sv = 0.010f;
@@ -1088,8 +1093,8 @@ public class FimSolver2 {
     //trace("d11="+d11+" d12="+d12+" d22="+d22+" d="+(d11*d22-d12*d12));
     ConstantTensors dt = new ConstantTensors(d11,d12,d22);
     FimSolver2 fs = new FimSolver2(n1,n2,dt);
-    fs.setParallel(true);
-    //fs.setParallel(false);
+    //fs.setParallel(true);
+    fs.setParallel(false);
     Stopwatch sw = new Stopwatch();
     sw.start();
     fs.zeroAt(2*n1/4,2*n2/4);
