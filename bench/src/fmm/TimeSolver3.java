@@ -285,7 +285,6 @@ public class TimeSolver3 {
     private int _n;
     private Sample[] _a = new Sample[1024];
     private void growTo(int capacity) {
-      //trace("SampleList: growing to capacity="+capacity);
       Sample[] a = new Sample[capacity];
       System.arraycopy(_a,0,a,0,_n);
       _a = a;
@@ -323,15 +322,25 @@ public class TimeSolver3 {
   private void solveSerial(ActiveList al) {
     float[] d = new float[6];
     ActiveList bl = new ActiveList();
+    int ntotal = 0;
+    int m = 0;
     while (!al.isEmpty()) {
       int n = al.size();
+      //trace("n="+n);
+      ntotal += n;
       for (int i=0; i<n; ++i)
         solveOne(i,al,bl,d);
       ActiveList tl = al; 
       al = bl; 
       bl = tl; 
       bl.clear();
+      if (++m==5)
+        break;
+      trace("m="+m);
+      Array.dump(_t);
     }
+    trace("solveSerial: ntotal="+ntotal);
+    trace("             nratio="+(float)ntotal/(float)(_n1*_n2*_n3));
   }
   
   /**
@@ -360,9 +369,11 @@ public class TimeSolver3 {
       d[ithread] = new float[6];
     }
     final AtomicInteger ai = new AtomicInteger();
+    int ntotal = 0;
     while (!al.isEmpty()) {
       ai.set(0); // initialize the shared block index to zero
       final int n = al.size(); // number of samples in active (A) list
+      ntotal += n;
       final int mb = 16; // size of blocks of samples
       final int nb = 1+(n-1)/mb; // number of blocks of samples
       int ntask = min(nb,nthread); // number of tasks (threads to be used)
@@ -398,6 +409,8 @@ public class TimeSolver3 {
       }
     }
     es.shutdown();
+    trace("solveParallel: ntotal="+ntotal);
+    trace("               nratio="+(float)ntotal/(float)(_n1*_n2*_n3));
   }
 
   /**
@@ -645,6 +658,7 @@ public class TimeSolver3 {
         }
         float s1 = -dden/d11;
         float t0 = solveQuadratic(d11,d12,d13,d22,d23,d33,s1,s2,s3,t1,t2,t3);
+        trace(i1,i2,i3,"23: t0="+t0);
         if (t0<tc && t0>=min(t2,t3)) {
           float t01 = t0-t1;
           float t02 = t0-t2;
@@ -681,6 +695,7 @@ public class TimeSolver3 {
         }
         float s2 = -dden/d22;
         float t0 = solveQuadratic(d11,d12,d13,d22,d23,d33,s1,s2,s3,t1,t2,t3);
+        trace(i1,i2,i3,"13: t0="+t0);
         if (t0<tc && t0>=min(t1,t3)) {
           float t01 = t0-t1;
           float t02 = t0-t2;
@@ -790,20 +805,29 @@ public class TimeSolver3 {
   }
 
   private static void testConstant() {
+    /*
     int n1 = 101;
     int n2 = 101;
     int n3 = 101;
     float s11 = 1.000f, s12 = 0.000f, s13 = 0.000f,
                         s22 = 1.000f, s23 = 0.000f,
                                       s33 = 1.000f;
+    */
+    int n1 = 3;
+    int n2 = 3;
+    int n3 = 3;
+    float s11 = 1.000f, s12 = 0.900f, s13 = 0.900f,
+                        s22 = 1.000f, s23 = 0.900f,
+                                      s33 = 1.000f;
     ConstantTensors st = new ConstantTensors(s11,s12,s13,s22,s23,s33);
     TimeSolver3 ts = new TimeSolver3(n1,n2,n3,st);
-    ts.setConcurrency(TimeSolver3.Concurrency.PARALLEL);
-    //ts.setConcurrency(TimeSolver3.Concurrency.SERIAL);
+    //ts.setConcurrency(TimeSolver3.Concurrency.PARALLEL);
+    ts.setConcurrency(TimeSolver3.Concurrency.SERIAL);
     Stopwatch sw = new Stopwatch();
     sw.start();
-    //ts.zeroAt(0*n1/4,0*n2/4,0*n3/4);
-    ts.zeroAt(2*n1/4,2*n2/4,2*n3/4);
+    //ts.zeroAt(0*(n1-1)/4,0*(n2-1)/4,0*(n3-1)/4);
+    ts.zeroAt(4*(n1-1)/4,4*(n2-1)/4,0*(n3-1)/4);
+    //ts.zeroAt(2*n1/4,2*n2/4,2*n3/4);
     //ts.zeroAt(1*n1/4,1*n2/4,1*n3/4);
     //ts.zeroAt(3*n1/4,3*n2/4,3*n3/4);
     sw.stop();
@@ -817,14 +841,20 @@ public class TimeSolver3 {
     System.out.println(s);
   }
   private static void trace(int i1, int i2, int i3, String s) {
-    if (i1==0 && i2==0 && i3==0)
-      trace(s);
+    if (i1==0 && i2==2 && i3==1 ||
+        i1==2 && i2==0 && i3==1)
+      trace("i1="+i1+" i2="+i2+" i3="+i3+": "+s);
   }
+  /*
+  4  3  2 | X  4  3 | X  X  4
+  3  2  1 | 4  3  2 | X  4  3
+  2  1  0 | 3  2  1 | 4  3  2
+  */
 
   public static void main(String[] args) {
     //SwingUtilities.invokeLater(new Runnable() {
     //  public void run() {
-        for (;;)
+    //    for (;;)
           testConstant();
     //  }
     //});

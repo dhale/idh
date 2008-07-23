@@ -339,9 +339,11 @@ public class TimeSolver2 {
       d[ithread] = new float[3];
     }
     final AtomicInteger ai = new AtomicInteger();
+    int ntotal = 0;
     while (!al.isEmpty()) {
       ai.set(0); // initialize the shared block index to zero
       final int n = al.size(); // number of samples in active (A) list
+      ntotal += n;
       final int mb = 32; // size of blocks of samples
       final int nb = 1+(n-1)/mb; // number of blocks of samples
       int ntask = min(nb,nthread); // number of tasks (threads to be used)
@@ -377,6 +379,8 @@ public class TimeSolver2 {
       }
     }
     es.shutdown();
+    trace("solveParallel: ntotal="+ntotal);
+    trace("               nratio="+(float)ntotal/(float)(_n1*_n2));
   }
 
   /**
