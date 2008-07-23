@@ -130,7 +130,7 @@ public class TimeSolver3 {
   // Default time for samples not yet computed.
   private static final float INFINITY = Float.MAX_VALUE;
 
-  // Times are converged when the fractional change is less than this value.
+  // Times converged when fractional change is less than this value.
   private static final float EPSILON = 0.001f;
 
   private int _n1,_n2,_n3;
@@ -257,7 +257,7 @@ public class TimeSolver3 {
         }
       }
     }
-    void shuffle() {
+    void shuffle() { // experiment: randomizes order of samples in this list
       Random r = new Random();
       for (int i=0; i<_n; ++i) {
         int j = r.nextInt(_n);
@@ -267,7 +267,7 @@ public class TimeSolver3 {
         _a[k] = aj;
       }
     }
-    void dump() {
+    void dump() { // debugging: prints this list
       trace("ActiveList.dump: n="+_n);
       for (int i=0; i<_n; ++i) {
         Sample s = _a[i];
@@ -335,14 +335,15 @@ public class TimeSolver3 {
   private void solveParallel(final ActiveList al) {
     int nthread = Runtime.getRuntime().availableProcessors();
     /////////////////////////////////////////////////////////////////////////
-    // Benchmarks: 07/22/2008
+    // Benchmarks: 07/23/2008
+    // Isotropic with zero time at center of 3D array.
     // Intel 2.4 GHz Core 2 Duo for size 101 * 101 * 101
     // serial         5.7 s
     //nthread = 1; // 5.8 s
     //nthread = 2; // 3.2 s
     // Intel 2 * 3.0 GHz Quad Core Xeon for size 101 * 101 * 101
-    //serial          4.1 s
-    //nthread = 1; // 4.3 s
+    //serial          4.4 s
+    //nthread = 1; // 4.5 s
     //nthread = 4; // 1.3 s
     //nthread = 8; // 0.7 s
     /////////////////////////////////////////////////////////////////////////
@@ -390,7 +391,7 @@ public class TimeSolver3 {
 
       // Merge samples from all B lists to a new A list. As samples
       // are appended, their absent flags are set to false, so that 
-      // a sample is appended no more than once to the new A list.
+      // each sample is appended no more than once to the new A list.
       al.clear();
       for (int itask=0; itask<ntask; ++itask) {
         al.appendIfAbsent(bl[itask]);
@@ -814,8 +815,8 @@ public class TimeSolver3 {
 
   private static void testConstant() {
     int n1 = 101, n2 = 101, n3 = 101;
-    float s11 = 1.000f, s12 = 0.900f, s13 = 0.900f,
-                        s22 = 1.000f, s23 = 0.900f,
+    float s11 = 1.000f, s12 = 0.000f, s13 = 0.000f,
+                        s22 = 1.000f, s23 = 0.000f,
                                       s33 = 1.000f;
     ConstantTensors tensors = new ConstantTensors(s11,s12,s13,s22,s23,s33);
     int i1 = 2*(n1-1)/4, i2 = 2*(n2-1)/4, i3 = 2*(n3-1)/4;
@@ -845,7 +846,7 @@ public class TimeSolver3 {
   public static void main(String[] args) {
     //SwingUtilities.invokeLater(new Runnable() {
     //  public void run() {
-    //    for (;;)
+        for (;;)
           testConstant();
     //  }
     //});
