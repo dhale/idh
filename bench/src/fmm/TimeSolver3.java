@@ -336,12 +336,15 @@ public class TimeSolver3 {
     int nthread = Runtime.getRuntime().availableProcessors();
     /////////////////////////////////////////////////////////////////////////
     // Benchmarks: 07/23/2008
-    // Isotropic with zero time at center of 3D array.
-    // Intel 2.4 GHz Core 2 Duo for size 101 * 101 * 101
-    // serial         5.7 s
-    //nthread = 1; // 5.8 s
+    // Isotropic constant tensor with zero time at center sample of 3D array.
+    // Intel 2.4 GHz Core 2 Duo for size 64^3
+    // serial         1.5 s
+    //nthread = 2; // 0.8 s
+    // Intel 2.4 GHz Core 2 Duo for size 101^3
+    // serial         6.2 s
+    //nthread = 1; // 6.3 s
     //nthread = 2; // 3.2 s
-    // Intel 2 * 3.0 GHz Quad Core Xeon for size 101 * 101 * 101
+    // Intel 2 * 3.0 GHz Quad Core Xeon for size 101^3
     //serial          4.4 s
     //nthread = 1; // 4.5 s
     //nthread = 4; // 1.3 s
@@ -814,7 +817,8 @@ public class TimeSolver3 {
   }
 
   private static void testConstant() {
-    int n1 = 101, n2 = 101, n3 = 101;
+    //int n1 = 101, n2 = 101, n3 = 101;
+    int n1 = 64, n2 = 64, n3 = 64;
     float s11 = 1.000f, s12 = 0.000f, s13 = 0.000f,
                         s22 = 1.000f, s23 = 0.000f,
                                       s33 = 1.000f;
