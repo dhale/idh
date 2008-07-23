@@ -132,6 +132,7 @@ public class TimeSolver3 {
   private static final float EPSILON = 0.001f;
 
   private int _n1,_n2,_n3;
+  private int _n1m,_n2m,_n3m;
   private Tensors _tensors;
   private float[][][] _t;
   private Sample[][][] _s;
@@ -141,6 +142,9 @@ public class TimeSolver3 {
     _n1 = n1;
     _n2 = n2;
     _n3 = n3;
+    _n1m = n1-1;
+    _n2m = n2-1;
+    _n3m = n3-1;
     _tensors = tensors;
     _t = (t!=null)?t:Array.fillfloat(INFINITY,n1,n2,n3);
     _s = new Sample[n3][n2][n1];
@@ -230,8 +234,7 @@ public class TimeSolver3 {
       return _n;
     }
     Sample get(int i) {
-      Sample s = _a[i];
-      return s;
+      return _a[i];
     }
     void clear() {
       _n = 0;
@@ -250,6 +253,13 @@ public class TimeSolver3 {
           _a[_n++] = s;
           s.absent = false;
         }
+      }
+    }
+    void dump() {
+      trace("ActiveList.dump: n="+_n);
+      for (int i=0; i<_n; ++i) {
+        Sample s = _a[i];
+        trace(" s["+i+"] = ("+s.i1+","+s.i2+","+s.i3+")");
       }
     }
     private int _n;
@@ -293,11 +303,13 @@ public class TimeSolver3 {
     while (!al.isEmpty()) {
       int n = al.size();
       ntotal += n;
-      for (int i=0; i<n; ++i)
-        solveOne(i,al,bl,d);
-      ActiveList tl = al; 
-      al = bl; 
-      bl = tl; 
+      for (int i=0; i<n; ++i) {
+        Sample s = al.get(i);
+        solveOne(s,bl,d);
+      }
+      bl.markAllAbsent();
+      al.clear();
+      al.appendIfAbsent(bl);
       bl.clear();
     }
     trace("solveSerial: ntotal="+ntotal);
@@ -315,7 +327,7 @@ public class TimeSolver3 {
     // serial         5.7 s
     //nthread = 1; // 5.8 s
     //nthread = 2; // 3.2 s
-    // Intel 3.0 GHz 2 * Quad Core Xeon XXX for size 101 * 101 * 101
+    // Intel 2 * 3.0 GHz Quad Core Xeon for size 101 * 101 * 101
     //serial          4.1 s
     //nthread = 1; // 4.3 s
     //nthread = 4; // 1.3 s
@@ -346,8 +358,10 @@ public class TimeSolver3 {
             for (int ib=ai.getAndIncrement(); ib<nb; ib=ai.getAndIncrement()) {
               int i = ib*mb; // beginning of block
               int j = min(i+mb,n); // beginning of next block (or end)
-              for (int k=i; k<j; ++k) // for each sample in block
-                solveOne(k,al,bltask,dtask); // process sample in active list 
+              for (int k=i; k<j; ++k) { // for each sample in block, ...
+                Sample s = al.get(k); // get k'th sample from A list
+                solveOne(s,bltask,dtask); // process the sample
+              }
             }
             bltask.markAllAbsent(); // needed when merging B lists below
             return null;
@@ -361,7 +375,8 @@ public class TimeSolver3 {
         throw new RuntimeException(e);
       }
 
-      // Merge samples from all B lists to a new A list. Ensure that 
+      // Merge samples from all B lists to a new A list. As samples
+      // are appended, their absent flags are set to false, so that 
       // a sample is appended no more than once to the new A list.
       al.clear();
       for (int itask=0; itask<ntask; ++itask) {
@@ -375,16 +390,15 @@ public class TimeSolver3 {
   }
 
   /**
-   * Processes one sample in the A list.
+   * Processes one sample from the A list.
    * Appends samples not yet converged to the B list.
    */
-  private void solveOne(int i, ActiveList al, ActiveList bl, float[] d) {
+  private synchronized void solveOne(Sample s, ActiveList bl, float[] d) {
 
-    // Get one sample from the A list.
-    Sample si = al.get(i);
-    int i1 = si.i1;
-    int i2 = si.i2;
-    int i3 = si.i3;
+    // Sample indices.
+    int i1 = s.i1;
+    int i2 = s.i2;
+    int i3 = s.i3;
 
     // Current time and new time computed from all neighbors.
     float ti = _t[i3][i2][i1];
@@ -394,7 +408,7 @@ public class TimeSolver3 {
     // If new and current times are close enough (converged), then ...
     if (ti-gi<=ti*EPSILON) {
 
-      // For all six neighbor samples, ...
+      // For all six neighbors, ...
       for (int k=0; k<6; ++k) {
 
         // Neighbor sample indices; skip if out of bounds.
@@ -402,26 +416,25 @@ public class TimeSolver3 {
         int j2 = i2+K2[k];  if (j2<0 || j2>=_n2) continue;
         int j3 = i3+K3[k];  if (j3<0 || j3>=_n3) continue;
 
-        // Compute time for the neighbor.
+        // Compute time for neighbor.
         float tj = _t[j3][j2][j1];
         float gj = g(j1,j2,j3,K1S[k],K2S[k],K3S[k],d);
 
-        // If computed time less than the neighbor's current time, ...
+        // If computed time significantly less than neighbor's current time, ...
         if (tj-gj>tj*EPSILON) {
 
           // Replace the current time.
           _t[j3][j2][j1] = gj;
           
-          // Append neighbor sample to the B list.
-          Sample sj = _s[j3][j2][j1];
-          bl.append(sj);
+          // Append neighbor to the B list.
+          bl.append(_s[j3][j2][j1]);
         }
       }
     }
 
     // Else, if not converged, append this sample to the B list.
     else {
-      bl.append(si);
+      bl.append(s);
     }
   }
 
@@ -464,18 +477,18 @@ public class TimeSolver3 {
     if (d<0.0) 
       return INFINITY;
     double u = (-b+sqrt(d))/(2.0*a);
-    return t1+(float)u; // t0 = t1+u
+    return t1+(float)u;
   }
 
   /**
-   * Jeong's fast tests for a valid solution time t0 to H(p1,p2,p3) = 1.
+   * Jeong's fast test for a valid solution time t0 to H(p1,p2,p3) = 1.
    * Parameters tm and tp are times for samples backward and forward of 
    * the sample with time t0. The parameter k is the index k1, k2, or k3
    * that was used to compute the time, and the parameter p is a critical
    * point of H(p1,p2,p3) for fixed p1, p2, or p3.
    */
   private static boolean isValid(
-    float tm, float tp, float t0, int k, float p) 
+    int k, float p, float tm, float tp, float t0) 
   {
     float pm = t0-tm;
     float pp = tp-t0;
@@ -487,32 +500,25 @@ public class TimeSolver3 {
     }
     return j==k;
   }
-  private boolean isValid1(int i1, int i2, int i3, int k1, float p1, float t0) {
-    float tm = (i1>0    )?_t[i3][i2][i1-1]:INFINITY;
-    float tp = (i1<_n1-1)?_t[i3][i2][i1+1]:INFINITY;
-    return isValid(tm,tp,t0,k1,p1);
-  }
-  private boolean isValid2(int i1, int i2, int i3, int k2, float p2, float t0) {
-    float tm = (i2>0    )?_t[i3][i2-1][i1]:INFINITY;
-    float tp = (i2<_n2-1)?_t[i3][i2+1][i1]:INFINITY;
-    return isValid(tm,tp,t0,k2,p2);
-  }
-  private boolean isValid3(int i1, int i2, int i3, int k3, float p3, float t0) {
-    float tm = (i3>0    )?_t[i3-1][i2][i1]:INFINITY;
-    float tp = (i3<_n3-1)?_t[i3+1][i2][i1]:INFINITY;
-    return isValid(tm,tp,t0,k3,p3);
-  }
 
   /**
    * Returns a time t not greater than the current time for one sample.
-   * Computations are limited to neighbor samples with specified indices.
+   * Computations are limited to neighbor samples with specified offsets.
    */
   private float g(
     int i1, int i2, int i3, int[] k1s, int[] k2s, int[] k3s, float[] d) 
   {
+    // Current time i'th sample and its six neighbors. We must cache all of
+    // these now because times may be changed concurrently in other threads.
     float tc = _t[i3][i2][i1];
+    float t1m = (i1>0   )?_t[i3][i2][i1-1]:INFINITY;
+    float t1p = (i1<_n1m)?_t[i3][i2][i1+1]:INFINITY;
+    float t2m = (i2>0   )?_t[i3][i2-1][i1]:INFINITY;
+    float t2p = (i2<_n2m)?_t[i3][i2+1][i1]:INFINITY;
+    float t3m = (i3>0   )?_t[i3-1][i2][i1]:INFINITY;
+    float t3p = (i3<_n3m)?_t[i3+1][i2][i1]:INFINITY;
 
-    // Get tensor coefficients.
+    // Tensor coefficients.
     _tensors.getTensor(i1,i2,i3,d);
     float d11 = d[0];
     float d12 = d[1];
@@ -529,8 +535,7 @@ public class TimeSolver3 {
 
       // (p1-,p2s,p3s), (p1+,p2s,p3s)
       if (k1!=0 && k2==0 && k3==0) {
-        int j1 = i1+k1;  if (j1<0 || j1>=_n1) continue;
-        float t1 = _t[i3][i2][j1];  if (t1==INFINITY) continue;
+        float t1 = (k1<0)?t1m:t1p;  if (t1==INFINITY) continue;
         float t2 = t1;
         float t3 = t1;
         float s1 = k1;
@@ -542,16 +547,14 @@ public class TimeSolver3 {
           float t02 = t0-t2;
           float t03 = t0-t3;
           float p1 = (d12*s2*t02+d13*s3*t03)/d11;
-          if (isValid1(i1,i2,i3,k1,p1,t0)) {
+          if (isValid(k1,p1,t1m,t1p,t0))
             return t0;
-          }
         }
       }
 
       // (p1s,p2-,p3s), (p1s,p2-,p3s)
       else if (k1==0 && k2!=0 && k3==0) {
-        int j2 = i2+k2;  if (j2<0 || j2>=_n2) continue;
-        float t2 = _t[i3][j2][i1];  if (t2==INFINITY) continue;
+        float t2 = (k2<0)?t2m:t2p;  if (t2==INFINITY) continue;
         float t1 = t2;
         float t3 = t2;
         float s2 = k2;
@@ -563,16 +566,14 @@ public class TimeSolver3 {
           float t01 = t0-t1;
           float t03 = t0-t3;
           float p2 = (d12*s1*t01+d23*s3*t03)/d22;
-          if (isValid2(i1,i2,i3,k2,p2,t0)) {
+          if (isValid(k2,p2,t2m,t2p,t0))
             return t0;
-          }
         }
       }
 
       // (p1s,p2s,p3-), (p1s,p2s,p3-)
       else if (k1==0 && k2==0 && k3!=0) {
-        int j3 = i3+k3;  if (j3<0 || j3>=_n3) continue;
-        float t3 = _t[j3][i2][i1];  if (t3==INFINITY) continue;
+        float t3 = (k3<0)?t3m:t3p;  if (t3==INFINITY) continue;
         float t1 = t3;
         float t2 = t3;
         float s3 = k3;
@@ -584,18 +585,15 @@ public class TimeSolver3 {
           float t01 = t0-t1;
           float t02 = t0-t2;
           float p3 = (d13*s1*t01+d23*s2*t02)/d33;
-          if (isValid3(i1,i2,i3,k3,p3,t0)) {
+          if (isValid(k3,p3,t3m,t3p,t0))
             return t0;
-          }
         }
       }
 
       // (p1s,p2-,p3-), (p1s,p2+,p3-), (p1s,p2+,p3-), (p1s,p2+,p3+)
       else if (k1==0 && k2!=0 && k3!=0) {
-        int j2 = i2+k2;  if (j2<0 || j2>=_n2) continue;
-        int j3 = i3+k3;  if (j3<0 || j3>=_n3) continue;
-        float t2 = _t[i3][j2][i1];  if (t2==INFINITY) continue;
-        float t3 = _t[j3][i2][i1];  if (t3==INFINITY) continue;
+        float t2 = (k2<0)?t2m:t2p;  if (t2==INFINITY) continue;
+        float t3 = (k3<0)?t3m:t3p;  if (t3==INFINITY) continue;
         float s2 = k2;
         float s3 = k3;
         float ds12 = d12*s2;
@@ -619,19 +617,16 @@ public class TimeSolver3 {
           float t03 = t0-t3;
           float p2 = (d12*s1*t01+d23*s3*t03)/d22;
           float p3 = (d13*s1*t01+d23*s2*t02)/d33;
-          if (isValid2(i1,i2,i3,k2,p2,t0) &&
-              isValid3(i1,i2,i3,k3,p3,t0)) {
+          if (isValid(k2,p2,t2m,t2p,t0) &&
+              isValid(k3,p3,t3m,t3p,t0))
             return t0;
-          }
         }
       }
 
       // (p1-,p2s,p3-), (p1+,p2s,p3-), (p1-,p2s,p3-), (p1+,p2s,p3+)
       else if (k1!=0 && k2==0 && k3!=0) {
-        int j1 = i1+k1;  if (j1<0 || j1>=_n1) continue;
-        int j3 = i3+k3;  if (j3<0 || j3>=_n3) continue;
-        float t1 = _t[i3][i2][j1];  if (t1==INFINITY) continue;
-        float t3 = _t[j3][i2][i1];  if (t3==INFINITY) continue;
+        float t1 = (k1<0)?t1m:t1p;  if (t1==INFINITY) continue;
+        float t3 = (k3<0)?t3m:t3p;  if (t3==INFINITY) continue;
         float s1 = k1;
         float s3 = k3;
         float ds12 = d12*s1;
@@ -655,19 +650,16 @@ public class TimeSolver3 {
           float t03 = t0-t3;
           float p1 = (d12*s2*t02+d13*s3*t03)/d11;
           float p3 = (d13*s1*t01+d23*s2*t02)/d33;
-          if (isValid1(i1,i2,i3,k1,p1,t0) &&
-              isValid3(i1,i2,i3,k3,p3,t0)) {
+          if (isValid(k1,p1,t1m,t1p,t0) &&
+              isValid(k3,p3,t3m,t3p,t0))
             return t0;
-          }
         }
       }
 
       // (p1-,p2-,p3s), (p1+,p2-,p3s), (p1-,p2+,p3s), (p1+,p2+,p3s)
       else if (k1!=0 && k2!=0 && k3==0) {
-        int j1 = i1+k1;  if (j1<0 || j1>=_n1) continue;
-        int j2 = i2+k2;  if (j2<0 || j2>=_n2) continue;
-        float t1 = _t[i3][i2][j1];  if (t1==INFINITY) continue;
-        float t2 = _t[i3][j2][i1];  if (t2==INFINITY) continue;
+        float t1 = (k1<0)?t1m:t1p;  if (t1==INFINITY) continue;
+        float t2 = (k2<0)?t2m:t2p;  if (t2==INFINITY) continue;
         float s1 = k1;
         float s2 = k2;
         float ds13 = d13*s1;
@@ -691,22 +683,18 @@ public class TimeSolver3 {
           float t03 = t0-t3;
           float p1 = (d12*s2*t02+d13*s3*t03)/d11;
           float p2 = (d12*s1*t01+d23*s3*t03)/d22;
-          if (isValid1(i1,i2,i3,k1,p1,t0) &&
-              isValid2(i1,i2,i3,k2,p2,t0)) {
+          if (isValid(k1,p1,t1m,t1p,t0) &&
+              isValid(k2,p2,t2m,t2p,t0))
             return t0;
-          }
         }
       }
       
       // (p1-,p2-,p3-), (p1+,p2-,p3-), (p1-,p2+,p3-), (p1+,p2+,p3-), 
       // (p1-,p2-,p3+), (p1+,p2-,p3+), (p1-,p2+,p3+), (p1+,p2+,p3+)
       else {
-        int j1 = i1+k1;  if (j1<0 || j1>=_n1) continue;
-        int j2 = i2+k2;  if (j2<0 || j2>=_n2) continue;
-        int j3 = i3+k3;  if (j3<0 || j3>=_n3) continue;
-        float t1 = _t[i3][i2][j1];  if (t1==INFINITY) continue;
-        float t2 = _t[i3][j2][i1];  if (t2==INFINITY) continue;
-        float t3 = _t[j3][i2][i1];  if (t3==INFINITY) continue;
+        float t1 = (k1<0)?t1m:t1p;  if (t1==INFINITY) continue;
+        float t2 = (k2<0)?t2m:t2p;  if (t2==INFINITY) continue;
+        float t3 = (k3<0)?t3m:t3p;  if (t3==INFINITY) continue;
         float s1 = k1;
         float s2 = k2;
         float s3 = k3;
@@ -718,11 +706,10 @@ public class TimeSolver3 {
           float p1 = (d12*s2*t02+d13*s3*t03)/d11;
           float p2 = (d12*s1*t01+d23*s3*t03)/d22;
           float p3 = (d13*s1*t01+d23*s2*t02)/d33;
-          if (isValid1(i1,i2,i3,k1,p1,t0) &&
-              isValid2(i1,i2,i3,k2,p2,t0) &&
-              isValid3(i1,i2,i3,k3,p3,t0)) {
+          if (isValid(k1,p1,t1m,t1p,t0) &&
+              isValid(k2,p2,t2m,t2p,t0) &&
+              isValid(k3,p3,t3m,t3p,t0))
             return t0;
-          }
         }
       }
     }
@@ -796,9 +783,9 @@ public class TimeSolver3 {
 
   private static void testConstant() {
     trace("********************************************************");
-    int n1 = 101;
-    int n2 = 101;
-    int n3 = 101;
+    int n1 = 5;
+    int n2 = 5;
+    int n3 = 5;
     //float s11 = 1.000f, s12 = 0.000f, s13 = 0.000f,
     //                    s22 = 1.000f, s23 = 0.000f,
     //                                  s33 = 1.000f;
@@ -806,9 +793,9 @@ public class TimeSolver3 {
                         s22 = 1.000f, s23 = 0.900f,
                                       s33 = 1.000f;
     ConstantTensors tensors = new ConstantTensors(s11,s12,s13,s22,s23,s33);
-    int i1 = 2*(n1-1)/4;
-    int i2 = 2*(n2-1)/4;
-    int i3 = 2*(n3-1)/4;
+    int i1 = 4*(n1-1)/4;
+    int i2 = 4*(n2-1)/4;
+    int i3 = 0*(n3-1)/4;
     float[][][] ts = computeSerial(n1,n2,n3,i1,i2,i3,tensors);
     float[][][] tp = computeParallel(n1,n2,n3,i1,i2,i3,tensors);
     float[][][] te = Array.div(Array.abs(Array.sub(tp,ts)),ts);
@@ -832,7 +819,7 @@ public class TimeSolver3 {
   public static void main(String[] args) {
     //SwingUtilities.invokeLater(new Runnable() {
     //  public void run() {
-        for (;;)
+    //    for (;;)
           testConstant();
     //  }
     //});
