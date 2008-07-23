@@ -393,7 +393,7 @@ public class TimeSolver3 {
    * Processes one sample from the A list.
    * Appends samples not yet converged to the B list.
    */
-  private void solveOne(Sample s, ActiveList bl, float[] d) {
+  private synchronized void solveOne(Sample s, ActiveList bl, float[] d) {
 
     // Sample indices.
     int i1 = s.i1;
@@ -510,6 +510,9 @@ public class TimeSolver3 {
   {
     // Current time i'th sample and its six neighbors. We must cache all of
     // these now because times may be changed concurrently in other threads.
+    // That is, when this method returns, some of these times may be less 
+    // than the values cached here, but the logic within this method call 
+    // in the current thread will be consistent with these cached values.
     float tc = _t[i3][i2][i1];
     float t1m = (i1>0   )?_t[i3][i2][i1-1]:INFINITY;
     float t1p = (i1<_n1m)?_t[i3][i2][i1+1]:INFINITY;
