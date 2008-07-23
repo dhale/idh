@@ -22,6 +22,8 @@ import edu.mines.jtk.awt.*;
 import edu.mines.jtk.dsp.*;
 import edu.mines.jtk.io.*;
 import edu.mines.jtk.mosaic.*;
+import edu.mines.jtk.sgl.*;
+import edu.mines.jtk.sgl.test.*;
 
 /**
  * A solver for 3D anisotropic eikonal equations.
@@ -255,6 +257,16 @@ public class TimeSolver3 {
         }
       }
     }
+    void shuffle() {
+      Random r = new Random();
+      for (int i=0; i<_n; ++i) {
+        int j = r.nextInt(_n);
+        int k = r.nextInt(_n);
+        Sample aj = _a[j];
+        _a[j] = _a[k];
+        _a[k] = aj;
+      }
+    }
     void dump() {
       trace("ActiveList.dump: n="+_n);
       for (int i=0; i<_n; ++i) {
@@ -301,6 +313,7 @@ public class TimeSolver3 {
     ActiveList bl = new ActiveList();
     int ntotal = 0;
     while (!al.isEmpty()) {
+      //al.shuffle(); // demonstrate that solution depends on order
       int n = al.size();
       ntotal += n;
       for (int i=0; i<n; ++i) {
@@ -393,7 +406,7 @@ public class TimeSolver3 {
    * Processes one sample from the A list.
    * Appends samples not yet converged to the B list.
    */
-  private synchronized void solveOne(Sample s, ActiveList bl, float[] d) {
+  private void solveOne(Sample s, ActiveList bl, float[] d) {
 
     // Sample indices.
     int i1 = s.i1;
@@ -725,6 +738,21 @@ public class TimeSolver3 {
   ///////////////////////////////////////////////////////////////////////////
   // testing
 
+  private static void plot(float[][][] t, IndexColorModel cm) {
+    int n1 = t[0][0].length;
+    int n2 = t[0].length;
+    int n3 = t.length;
+    Sampling s1 = new Sampling(n1);
+    Sampling s2 = new Sampling(n2);
+    Sampling s3 = new Sampling(n3);
+    ImagePanelGroup ipg = new ImagePanelGroup(s1,s2,s3,new SimpleFloat3(t));
+    ipg.setColorModel(cm);
+    World world = new World();
+    world.addChild(ipg);
+    TestFrame frame = new TestFrame(world);
+    frame.setVisible(true);
+  }
+
   private static class ConstantTensors implements TimeSolver3.Tensors {
     ConstantTensors(
       float d11, float d12, float d13, float d22, float d23, float d33) 
@@ -785,26 +813,24 @@ public class TimeSolver3 {
   }
 
   private static void testConstant() {
-    trace("********************************************************");
-    int n1 = 64;
-    int n2 = 64;
-    int n3 = 64;
+    int n1 = 101, n2 = 101, n3 = 101;
     float s11 = 1.000f, s12 = 0.900f, s13 = 0.900f,
                         s22 = 1.000f, s23 = 0.900f,
                                       s33 = 1.000f;
     ConstantTensors tensors = new ConstantTensors(s11,s12,s13,s22,s23,s33);
-    int i1 = 2*(n1-1)/4;
-    int i2 = 2*(n2-1)/4;
-    int i3 = 2*(n3-1)/4;
+    int i1 = 2*(n1-1)/4, i2 = 2*(n2-1)/4, i3 = 2*(n3-1)/4;
     float[][][] ts = computeSerial(n1,n2,n3,i1,i2,i3,tensors);
     float[][][] tp = computeParallel(n1,n2,n3,i1,i2,i3,tensors);
     float[][][] te = Array.div(Array.abs(Array.sub(tp,ts)),ts);
     te[i3][i2][i1] = 0.0f;
     float temax = Array.max(te);
     trace("temax="+temax);
+    trace("********************************************************");
+    //plot(ts,ColorMap.PRISM);
+    //plot(tp,ColorMap.PRISM);
+    //plot(te,ColorMap.JET);
     if (temax>0.1f)
       System.exit(-1);
-    trace("********************************************************");
   }
 
   private static void trace(String s) {
@@ -819,7 +845,7 @@ public class TimeSolver3 {
   public static void main(String[] args) {
     //SwingUtilities.invokeLater(new Runnable() {
     //  public void run() {
-        for (;;)
+    //    for (;;)
           testConstant();
     //  }
     //});
