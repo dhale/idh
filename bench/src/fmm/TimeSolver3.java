@@ -783,9 +783,9 @@ public class TimeSolver3 {
 
   private static void testConstant() {
     trace("********************************************************");
-    int n1 = 5;
-    int n2 = 5;
-    int n3 = 5;
+    int n1 = 51;
+    int n2 = 51;
+    int n3 = 51;
     //float s11 = 1.000f, s12 = 0.000f, s13 = 0.000f,
     //                    s22 = 1.000f, s23 = 0.000f,
     //                                  s33 = 1.000f;
