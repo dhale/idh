@@ -129,13 +129,12 @@ public class TimeSolver3 {
   private static final float INFINITY = Float.MAX_VALUE;
 
   // Times are converged when the fractional change is less than this value.
-  private static final float EPSILON = 0.0001f;
+  private static final float EPSILON = 0.001f;
 
   private int _n1,_n2,_n3;
   private Tensors _tensors;
   private float[][][] _t;
   private Sample[][][] _s;
-  private int _active = 0;
   private Concurrency _concurrency = Concurrency.PARALLEL;
 
   private void init(int n1, int n2, int n3, float[][][] t, Tensors tensors) {
@@ -193,7 +192,7 @@ public class TimeSolver3 {
     {-1, 1,-1, 1,-1, 1, 0, 0, 0}, // B
     {-1, 1,-1, 1,-1, 1, 0, 0, 0}, // B
     {-1,-1, 1, 1,-1,-1, 1, 1,
-     -1,-1, 1, 1, 0, 0, 0, 0,-1,-1, 1, 1,
+     -1,-1, 1, 1, 0, 0, 0, 0,-1, 1,-1, 1,
       0, 0,-1, 1, 0, 0}};
   private static final int[][] K3S = {
     {-1, 1,-1, 1,-1, 1, 0, 0, 0}, // B
@@ -203,43 +202,17 @@ public class TimeSolver3 {
     { 1, 1, 1, 1, 1, 1, 1, 1, 1}, // A
     {-1,-1,-1,-1,-1,-1,-1,-1,-1}, // A
     {-1,-1,-1,-1, 1, 1, 1, 1,
-      0, 0, 0, 0,-1,-1,-1,-1, 1, 1, 1, 1,
+      0, 0, 0, 0,-1,-1, 1, 1,-1,-1, 1, 1,
       0, 0, 0, 0,-1, 1}};
 
-  // A sample has indices and is either active or inactive.
-  // For efficiency the active flag is an integer and not a boolean, 
-  // so that we need not loop over all samples when initializing them 
-  // to be inactive. See the comments for the method clearActive below.
+  // A sample has indices and a flag used to build the active list.
   private static class Sample {
     int i1,i2,i3; // sample indices
-    int active; // determines whether this sample is active
-    boolean absent; // determines whether this sample is in a list
+    boolean absent; // used to build active lists
     Sample(int i1, int i2, int i3) {
       this.i1 = i1;
       this.i2 = i2;
       this.i3 = i3;
-    }
-  }
-  // Returns true if specified sample is active; false, otherwise.
-  private boolean isActive(int i1, int i2, int i3) {
-    return _s[i3][i2][i1].active==_active;
-  }
-
-  // Marks all samples inactive. For efficiency, we typically do not loop 
-  // over all the samples to clear their active flags. Usually we simply
-  // increment the active value with which the flags are compared.
-  private void clearActive() {
-    if (_active==Integer.MAX_VALUE) { // rarely!
-      _active = 1;
-      for (int i3=0; i3<_n3; ++i3) {
-        for (int i2=0; i2<_n2; ++i2) {
-          for (int i1=0; i1<_n1; ++i1) {
-            _s[i3][i2][i1].active = 0;
-          }
-        }
-      }
-    } else { // typically
-      ++_active;
     }
   }
 
@@ -249,7 +222,6 @@ public class TimeSolver3 {
       if (_n==_a.length)
         growTo(2*_n);
       _a[_n++] = s;
-      s.active = _active;
     }
     boolean isEmpty() {
       return _n==0;
@@ -259,7 +231,6 @@ public class TimeSolver3 {
     }
     Sample get(int i) {
       Sample s = _a[i];
-      assert s.active==_active:"sample in list is active";
       return s;
     }
     void clear() {
@@ -278,7 +249,6 @@ public class TimeSolver3 {
         if (s.absent) {
           _a[_n++] = s;
           s.absent = false;
-          s.active = _active;
         }
       }
     }
@@ -296,9 +266,6 @@ public class TimeSolver3 {
    * for neighbor samples until all times have converged.
    */
   private void solveFrom(int i1, int i2, int i3) {
-
-    // All samples initially inactive.
-    clearActive();
 
     // Zero the time for the specified sample.
     _t[i3][i2][i1] = 0.0f;
@@ -323,10 +290,8 @@ public class TimeSolver3 {
     float[] d = new float[6];
     ActiveList bl = new ActiveList();
     int ntotal = 0;
-    int m = 0;
     while (!al.isEmpty()) {
       int n = al.size();
-      //trace("n="+n);
       ntotal += n;
       for (int i=0; i<n; ++i)
         solveOne(i,al,bl,d);
@@ -334,10 +299,6 @@ public class TimeSolver3 {
       al = bl; 
       bl = tl; 
       bl.clear();
-      if (++m==5)
-        break;
-      trace("m="+m);
-      Array.dump(_t);
     }
     trace("solveSerial: ntotal="+ntotal);
     trace("             nratio="+(float)ntotal/(float)(_n1*_n2*_n3));
@@ -414,12 +375,12 @@ public class TimeSolver3 {
   }
 
   /**
-   * Processes one sample in the active list al.
-   * May append samples to the active list bl.
+   * Processes one sample in the A list.
+   * Appends samples not yet converged to the B list.
    */
   private void solveOne(int i, ActiveList al, ActiveList bl, float[] d) {
 
-    // Get one sample from active list A.
+    // Get one sample from the A list.
     Sample si = al.get(i);
     int i1 = si.i1;
     int i2 = si.i2;
@@ -433,9 +394,6 @@ public class TimeSolver3 {
     // If new and current times are close enough (converged), then ...
     if (ti-gi<=ti*EPSILON) {
 
-      // This sample is now inactive (but may be reactivated).
-      si.active -= 1;
-
       // For all six neighbor samples, ...
       for (int k=0; k<6; ++k) {
 
@@ -444,27 +402,24 @@ public class TimeSolver3 {
         int j2 = i2+K2[k];  if (j2<0 || j2>=_n2) continue;
         int j3 = i3+K3[k];  if (j3<0 || j3>=_n3) continue;
 
-        // If neighbor is not active (not in lists A or B), ...
-        if (!isActive(j1,j2,j3)) {
+        // Compute time for the neighbor.
+        float tj = _t[j3][j2][j1];
+        float gj = g(j1,j2,j3,K1S[k],K2S[k],K3S[k],d);
 
-          // Compute time for the neighbor.
-          float gj = g(j1,j2,j3,K1S[k],K2S[k],K3S[k],d);
+        // If computed time less than the neighbor's current time, ...
+        if (tj-gj>tj*EPSILON) {
 
-          // If computed time less than the neighbor's current time, ...
-          if (gj<_t[j3][j2][j1]) {
-
-            // Replace the current time.
-            _t[j3][j2][j1] = gj;
-            
-            // Append neighbor sample to the active list B.
-            Sample sj = _s[j3][j2][j1];
-            bl.append(sj);
-          }
+          // Replace the current time.
+          _t[j3][j2][j1] = gj;
+          
+          // Append neighbor sample to the B list.
+          Sample sj = _s[j3][j2][j1];
+          bl.append(sj);
         }
       }
     }
 
-    // Else, if not converged, append this sample to the active list B.
+    // Else, if not converged, append this sample to the B list.
     else {
       bl.append(si);
     }
@@ -658,7 +613,6 @@ public class TimeSolver3 {
         }
         float s1 = -dden/d11;
         float t0 = solveQuadratic(d11,d12,d13,d22,d23,d33,s1,s2,s3,t1,t2,t3);
-        trace(i1,i2,i3,"23: t0="+t0);
         if (t0<tc && t0>=min(t2,t3)) {
           float t01 = t0-t1;
           float t02 = t0-t2;
@@ -695,7 +649,6 @@ public class TimeSolver3 {
         }
         float s2 = -dden/d22;
         float t0 = solveQuadratic(d11,d12,d13,d22,d23,d33,s1,s2,s3,t1,t2,t3);
-        trace(i1,i2,i3,"13: t0="+t0);
         if (t0<tc && t0>=min(t1,t3)) {
           float t01 = t0-t1;
           float t02 = t0-t2;
@@ -804,37 +757,67 @@ public class TimeSolver3 {
     private float _d11,_d12,_d13,_d22,_d23,_d33;
   }
 
+  private static float[][][] computeSerial(
+    int n1, int n2, int n3,
+    int i1, int i2, int i3, 
+    TimeSolver3.Tensors tensors)
+  {
+    trace("computeSerial:");
+    return computeTimes(
+      n1,n2,n3,i1,i2,i3,tensors,TimeSolver3.Concurrency.SERIAL);
+  }
+
+  private static float[][][] computeParallel(
+    int n1, int n2, int n3,
+    int i1, int i2, int i3, 
+    TimeSolver3.Tensors tensors)
+  {
+    trace("computeParallel:");
+    return computeTimes(
+      n1,n2,n3,i1,i2,i3,tensors,TimeSolver3.Concurrency.PARALLEL);
+  }
+
+  private static float[][][] computeTimes(
+    int n1, int n2, int n3,
+    int i1, int i2, int i3, 
+    TimeSolver3.Tensors tensors, 
+    TimeSolver3.Concurrency concurrency) 
+  {
+    TimeSolver3 ts = new TimeSolver3(n1,n2,n3,tensors);
+    ts.setConcurrency(concurrency);
+    Stopwatch sw = new Stopwatch();
+    sw.start();
+    ts.zeroAt(i1,i2,i3);
+    sw.stop();
+    float[][][] t = ts.getTimes();
+    trace("  time="+sw.time()+" sum="+Array.sum(t));
+    return t;
+  }
+
   private static void testConstant() {
-    /*
+    trace("********************************************************");
     int n1 = 101;
     int n2 = 101;
     int n3 = 101;
-    float s11 = 1.000f, s12 = 0.000f, s13 = 0.000f,
-                        s22 = 1.000f, s23 = 0.000f,
-                                      s33 = 1.000f;
-    */
-    int n1 = 3;
-    int n2 = 3;
-    int n3 = 3;
+    //float s11 = 1.000f, s12 = 0.000f, s13 = 0.000f,
+    //                    s22 = 1.000f, s23 = 0.000f,
+    //                                  s33 = 1.000f;
     float s11 = 1.000f, s12 = 0.900f, s13 = 0.900f,
                         s22 = 1.000f, s23 = 0.900f,
                                       s33 = 1.000f;
-    ConstantTensors st = new ConstantTensors(s11,s12,s13,s22,s23,s33);
-    TimeSolver3 ts = new TimeSolver3(n1,n2,n3,st);
-    //ts.setConcurrency(TimeSolver3.Concurrency.PARALLEL);
-    ts.setConcurrency(TimeSolver3.Concurrency.SERIAL);
-    Stopwatch sw = new Stopwatch();
-    sw.start();
-    //ts.zeroAt(0*(n1-1)/4,0*(n2-1)/4,0*(n3-1)/4);
-    ts.zeroAt(4*(n1-1)/4,4*(n2-1)/4,0*(n3-1)/4);
-    //ts.zeroAt(2*n1/4,2*n2/4,2*n3/4);
-    //ts.zeroAt(1*n1/4,1*n2/4,1*n3/4);
-    //ts.zeroAt(3*n1/4,3*n2/4,3*n3/4);
-    sw.stop();
-    float[][][] t = ts.getTimes();
-    trace("time="+sw.time()+" sum="+Array.sum(t));
-    //Array.dump(t);
-    //plot(t);
+    ConstantTensors tensors = new ConstantTensors(s11,s12,s13,s22,s23,s33);
+    int i1 = 2*(n1-1)/4;
+    int i2 = 2*(n2-1)/4;
+    int i3 = 2*(n3-1)/4;
+    float[][][] ts = computeSerial(n1,n2,n3,i1,i2,i3,tensors);
+    float[][][] tp = computeParallel(n1,n2,n3,i1,i2,i3,tensors);
+    float[][][] te = Array.div(Array.abs(Array.sub(tp,ts)),ts);
+    te[i3][i2][i1] = 0.0f;
+    float temax = Array.max(te);
+    trace("temax="+temax);
+    if (temax>0.1f)
+      System.exit(-1);
+    trace("********************************************************");
   }
 
   private static void trace(String s) {
@@ -845,16 +828,11 @@ public class TimeSolver3 {
         i1==2 && i2==0 && i3==1)
       trace("i1="+i1+" i2="+i2+" i3="+i3+": "+s);
   }
-  /*
-  4  3  2 | X  4  3 | X  X  4
-  3  2  1 | 4  3  2 | X  4  3
-  2  1  0 | 3  2  1 | 4  3  2
-  */
 
   public static void main(String[] args) {
     //SwingUtilities.invokeLater(new Runnable() {
     //  public void run() {
-    //    for (;;)
+        for (;;)
           testConstant();
     //  }
     //});

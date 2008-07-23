@@ -125,7 +125,7 @@ public class TimeSolver2 {
   private static final float INFINITY = Float.MAX_VALUE;
 
   // Times are converged when the fractional change is less than this value.
-  private static final float EPSILON = 0.0001f;
+  private static final float EPSILON = 0.001f;
 
   private int _n1,_n2;
   private Tensors _tensors;
