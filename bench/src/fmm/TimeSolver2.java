@@ -24,10 +24,9 @@ import edu.mines.jtk.io.*;
 import edu.mines.jtk.mosaic.*;
 
 /**
- * A solver for 2D anisotropic eikonal equations.
- * These non-linear equations are sqrt(grad(t) dot D*grad(t)) = 1, where t
- * denotes the solution time, and D denotes a diffusion (velocity-squared)
- * tensor field.
+ * A solver for 2D anisotropic eikonal equations. The non-linear equations 
+ * are sqrt(grad(t) dot D*grad(t)) = 1, where t is the solution time field, 
+ * and D denotes a positive-definite (velocity-squared) tensor field.
  * <p>
  * This solver uses an iterative method to compute the solution times t.
  * Iterations are similar to those described by Jeong and Whitaker (2007).
@@ -45,13 +44,13 @@ public class TimeSolver2 {
   };
 
   /**
-   * An interface for classes of diffusion tensors. Each tensor is a
+   * An interface for classes of velocity-squared tensors. Each tensor is a
    * symmetric positive-definite 2-by-2 matrix {{d11,d12},{d12,d22}}.
    */
   public interface Tensors {
 
     /**
-     * Gets diffusion tensor elements for specified indices.
+     * Gets tensor elements for specified indices.
      * @param i1 index for 1st dimension.
      * @param i2 index for 2nd dimension.
      * @param d array {d11,d12,d22} of tensor elements.
@@ -60,7 +59,7 @@ public class TimeSolver2 {
   }
 
   /**
-   * Constructs a solver with constant identity diffusion tensors.
+   * Constructs a solver with constant identity tensors.
    * All times are initially infinite (very large).
    * @param n1 number of samples in 1st dimension.
    * @param n2 number of samples in 2nd dimension.
@@ -70,11 +69,11 @@ public class TimeSolver2 {
   }
   
   /**
-   * Constructs a solver for the specified diffusion tensor field.
+   * Constructs a solver for the specified tensor field.
    * All times are initially infinite (very large).
    * @param n1 number of samples in 1st dimension.
    * @param n2 number of samples in 2nd dimension.
-   * @param tensors diffusion tensors.
+   * @param tensors velocity-squared tensors.
    */
   public TimeSolver2(int n1, int n2, Tensors tensors) {
     init(n1,n2,null,tensors);
@@ -84,7 +83,7 @@ public class TimeSolver2 {
    * Constructs a solver for a specified array of times.
    * The array is referenced (not copied) by this solver.
    * @param t array of times to be updated by this solver; 
-   * @param tensors diffusion tensors.
+   * @param tensors velocity-squared tensors.
    */
   public TimeSolver2(float[][] t, Tensors tensors) {
     init(t[0].length,t.length,t,tensors);
@@ -128,15 +127,17 @@ public class TimeSolver2 {
   private static final float EPSILON = 0.001f;
 
   private int _n1,_n2;
+  private int _n1m,_n2m;
   private Tensors _tensors;
   private float[][] _t;
   private Sample[][] _s;
-  private int _active = 0;
   private Concurrency _concurrency = Concurrency.PARALLEL;
 
   private void init(int n1, int n2, float[][] t, Tensors tensors) {
     _n1 = n1;
     _n2 = n2;
+    _n1m = n1-1;
+    _n2m = n2-1;
     _tensors = tensors;
     _t = (t!=null)?t:Array.fillfloat(INFINITY,n1,n2);
     _s = new Sample[n2][n1];
@@ -178,38 +179,13 @@ public class TimeSolver2 {
     {-1,-1,-1},
     {-1,-1, 1, 1, 0, 0,-1, 1}};
 
-  // A sample has indices and is either active or inactive.
-  // For efficiency the active flag is an integer and not a boolean, 
-  // so that we need not loop over all samples when initializing them 
-  // to be inactive. See the comments for the method clearActive below.
+  // A sample has indices and a flag used to build the active list.
   private static class Sample {
     int i1,i2; // sample indices
-    int active; // determines whether this sample is active
-    boolean absent; // determines whether this sample is in a list
+    boolean absent; // used to build active lists
     Sample(int i1, int i2) {
       this.i1 = i1;
       this.i2 = i2;
-    }
-  }
-
-  // Returns true if specified sample is active; false, otherwise.
-  private boolean isActive(int i1, int i2) {
-    return _s[i2][i1].active==_active;
-  }
-
-  // Marks all samples inactive. For efficiency, we typically do not loop 
-  // over all the samples to clear their active flags. Usually we simply
-  // increment the active value with which the flags are compared.
-  private void clearActive() {
-    if (_active==Integer.MAX_VALUE) { // rarely!
-      _active = 1;
-      for (int i2=0; i2<_n2; ++i2) {
-        for (int i1=0; i1<_n1; ++i1) {
-          _s[i2][i1].active = 0;
-        }
-      }
-    } else { // typically
-      ++_active;
     }
   }
 
@@ -219,7 +195,6 @@ public class TimeSolver2 {
       if (_n==_a.length)
         growTo(2*_n);
       _a[_n++] = s;
-      s.active = _active;
     }
     boolean isEmpty() {
       return _n==0;
@@ -228,9 +203,7 @@ public class TimeSolver2 {
       return _n;
     }
     Sample get(int i) {
-      Sample s = _a[i];
-      assert s.active==_active:"sample in list is active";
-      return s;
+      return _a[i];
     }
     void clear() {
       _n = 0;
@@ -248,14 +221,29 @@ public class TimeSolver2 {
         if (s.absent) {
           _a[_n++] = s;
           s.absent = false;
-          s.active = _active;
         }
+      }
+    }
+    void shuffle() { // experiment: randomizes order of samples in this list
+      Random r = new Random();
+      for (int i=0; i<_n; ++i) {
+        int j = r.nextInt(_n);
+        int k = r.nextInt(_n);
+        Sample aj = _a[j];
+        _a[j] = _a[k];
+        _a[k] = aj;
+      }
+    }
+    void dump() { // debugging: prints this list
+      trace("ActiveList.dump: n="+_n);
+      for (int i=0; i<_n; ++i) {
+        Sample s = _a[i];
+        trace(" s["+i+"] = ("+s.i1+","+s.i2+")");
       }
     }
     private int _n;
     private Sample[] _a = new Sample[1024];
     private void growTo(int capacity) {
-      //trace("SampleList: growing to capacity="+capacity);
       Sample[] a = new Sample[capacity];
       System.arraycopy(_a,0,a,0,_n);
       _a = a;
@@ -267,9 +255,6 @@ public class TimeSolver2 {
    * for neighbor samples until all times have converged.
    */
   private void solveFrom(int i1, int i2) {
-
-    // All samples initially inactive.
-    clearActive();
 
     // Zero the time for the specified sample.
     _t[i2][i1] = 0.0f;
@@ -293,15 +278,22 @@ public class TimeSolver2 {
   private void solveSerial(ActiveList al) {
     float[] d = new float[3];
     ActiveList bl = new ActiveList();
+    int ntotal = 0;
     while (!al.isEmpty()) {
+      //al.shuffle(); // demonstrate that solution depends on order
       int n = al.size();
-      for (int i=0; i<n; ++i)
-        solveOne(i,al,bl,d);
-      ActiveList tl = al; 
-      al = bl; 
-      bl = tl; 
+      ntotal += n;
+      for (int i=0; i<n; ++i) {
+        Sample s = al.get(i);
+        solveOne(s,bl,d);
+      }
+      bl.markAllAbsent();
+      al.clear();
+      al.appendIfAbsent(bl);
       bl.clear();
     }
+    trace("solveSerial: ntotal="+ntotal);
+    trace("             nratio="+(float)ntotal/(float)(_n1*_n2));
   }
   
   /**
@@ -310,25 +302,13 @@ public class TimeSolver2 {
   private void solveParallel(final ActiveList al) {
     int nthread = Runtime.getRuntime().availableProcessors();
     /////////////////////////////////////////////////////////////////////////
-    // Benchmarks: 07/22/2008
-    // Intel 2.4 GHz Core 2 Duo for size 2001*2001
-    // serial         5.1 s
-    //nthread = 1; // 5.0 s
-    //nthread = 2; // 2.8 s
-    // Intel 2.4 GHz Core 2 Duo for size 4001*4001
-    // serial         23.5 s (peak %CPU = 100)
-    //nthread = 1; // 25.5 s (peak %CPU = 100)
-    //nthread = 2; // 14.8 s (peak %CPU = 180)
-    // Intel 3.0 GHz 2 * Quad Core Xeon ??? for size 2001*2001
-    //serial          2.9 s
-    //nthread = 1; // 3.5 s
-    //nthread = 4; // 1.7 s
-    //nthread = 8; // 1.2 s
-    // Intel 3.0 GHz 2 * Quad Core Xeon ??? for size 4001*4001
-    //serial          12.4 s (peak %CPU = 100)
-    //nthread = 1; // 17.5 s (peak %CPU = 100)
-    //nthread = 4; //  6.9 s (peak %CPU = 350)
-    //nthread = 8; //  4.5 s (peak %CPU = 610)
+    // Benchmarks: 07/24/2008
+    // Anisotropic (angle=110.0,su=1.00,sv=0.01) constant tensor with 
+    // zero time at center sample of 2D array.
+    // Intel 2.4 GHz Core 2 Duo for size 2001^2
+    // serial         5.4 s
+    //nthread = 1; // 5.6 s
+    //nthread = 2; // 3.0 s
     /////////////////////////////////////////////////////////////////////////
     ExecutorService es = Executors.newFixedThreadPool(nthread);
     CompletionService<Void> cs = new ExecutorCompletionService<Void>(es);
@@ -355,8 +335,10 @@ public class TimeSolver2 {
             for (int ib=ai.getAndIncrement(); ib<nb; ib=ai.getAndIncrement()) {
               int i = ib*mb; // beginning of block
               int j = min(i+mb,n); // beginning of next block (or end)
-              for (int k=i; k<j; ++k) // for each sample in block
-                solveOne(k,al,bltask,dtask); // process sample in active list 
+              for (int k=i; k<j; ++k) { // for each sample in block, ...
+                Sample s = al.get(k); // get k'th sample from A list
+                solveOne(s,bltask,dtask); // process the sample
+              }
             }
             bltask.markAllAbsent(); // needed when merging B lists below
             return null;
@@ -370,8 +352,9 @@ public class TimeSolver2 {
         throw new RuntimeException(e);
       }
 
-      // Merge samples from all B lists to a new A list. Ensure that 
-      // a sample is appended no more than once to the new A list.
+      // Merge samples from all B lists to a new A list. As samples
+      // are appended, their absent flags are set to false, so that 
+      // each sample is appended no more than once to the new A list.
       al.clear();
       for (int itask=0; itask<ntask; ++itask) {
         al.appendIfAbsent(bl[itask]);
@@ -384,15 +367,14 @@ public class TimeSolver2 {
   }
 
   /**
-   * Processes one sample in the active list al.
-   * May append samples to the active list bl.
+   * Processes one sample from the A list.
+   * Appends samples not yet converged to the B list.
    */
-  private void solveOne(int i, ActiveList al, ActiveList bl, float[] d) {
+  private void solveOne(Sample s, ActiveList bl, float[] d) {
 
-    // Get one sample from active list A.
-    Sample si = al.get(i);
-    int i1 = si.i1;
-    int i2 = si.i2;
+    // Sample indices.
+    int i1 = s.i1;
+    int i2 = s.i2;
 
     // Current time and new time computed from all neighbors.
     float ti = _t[i2][i1];
@@ -402,39 +384,32 @@ public class TimeSolver2 {
     // If new and current times are close enough (converged), then ...
     if (ti-gi<=ti*EPSILON) {
 
-      // This sample is now inactive (but may be reactivated).
-      si.active -= 1;
-
-      // For all four neighbor samples, ...
+      // For all four neighbors, ...
       for (int k=0; k<4; ++k) {
 
         // Neighbor sample indices; skip if out of bounds.
         int j1 = i1+K1[k];  if (j1<0 || j1>=_n1) continue;
         int j2 = i2+K2[k];  if (j2<0 || j2>=_n2) continue;
 
-        // If neighbor is not active (not in lists A or B), ...
-        if (!isActive(j1,j2)) {
+        // Compute time for neighbor.
+        float tj = _t[j2][j1];
+        float gj = g(j1,j2,K1S[k],K2S[k],d);
 
-          // Compute time for the neighbor.
-          float gj = g(j1,j2,K1S[k],K2S[k],d);
+        // If computed time significantly less than neighbor's current time, ...
+        if (tj-gj>tj*EPSILON) {
 
-          // If computed time less than the neighbor's current time, ...
-          if (gj<_t[j2][j1]) {
-
-            // Replace the current time.
-            _t[j2][j1] = gj;
-            
-            // Append neighbor sample to the active list B.
-            Sample sj = _s[j2][j1];
-            bl.append(sj);
-          }
+          // Replace the current time.
+          _t[j2][j1] = gj;
+          
+          // Append neighbor to the B list.
+          bl.append(_s[j2][j1]);
         }
       }
     }
 
-    // Else, if not converged, append this sample to the active list B.
+    // Else, if not converged, append this sample to the B list.
     else {
-      bl.append(si);
+      bl.append(s);
     }
   }
 
@@ -471,14 +446,14 @@ public class TimeSolver2 {
   }
 
   /**
-   * Jeong's fast tests for a valid solution time t0 to H(p1,p2) = 1.
+   * Jeong's fast test for a valid solution time t0 to H(p1,p2,p3) = 1.
    * Parameters tm and tp are times for samples backward and forward of 
-   * the sample with time t0. The parameter k is the index k1 or k2 that 
-   * was used to compute the time, and the parameter p is a critical
-   * point of H(p1,p2) for fixed p1 or p2.
+   * the sample with time t0. The parameter k is the index k1, k2, or k3
+   * that was used to compute the time, and the parameter p is a critical
+   * point of H(p1,p2,p3) for fixed p1, p2, or p3.
    */
   private static boolean isValid(
-    float tm, float tp, float t0, int k, float p) 
+    int k, float p, float tm, float tp, float t0) 
   {
     float pm = t0-tm;
     float pp = tp-t0;
@@ -490,26 +465,25 @@ public class TimeSolver2 {
     }
     return j==k;
   }
-  private boolean isValid1(int i1, int i2, int k1, float p1, float t0) {
-    float tm = (i1>0    )?_t[i2][i1-1]:INFINITY;
-    float tp = (i1<_n1-1)?_t[i2][i1+1]:INFINITY;
-    return isValid(tm,tp,t0,k1,p1);
-  }
-  private boolean isValid2(int i1, int i2, int k2, float p2, float t0) {
-    float tm = (i2>0    )?_t[i2-1][i1]:INFINITY;
-    float tp = (i2<_n2-1)?_t[i2+1][i1]:INFINITY;
-    return isValid(tm,tp,t0,k2,p2);
-  }
 
   /**
    * Returns a time t not greater than the current time for one sample.
    * Computations are limited to neighbor samples with specified indices.
    */
   private float g(int i1, int i2, int[] k1s, int[] k2s, float[] d) {
-    float tc = _t[i2][i1];
 
-    // Get tensor coefficients.
-    //float[] d = new float[3];
+    // Current time i'th sample and its four neighbors. We must cache all of
+    // these now because times may be changed concurrently in other threads.
+    // That is, when this method returns, some of these times may be less 
+    // than the values cached here, but the logic within this method call 
+    // in the current thread will be consistent with these cached values.
+    float tc = _t[i2][i1];
+    float t1m = (i1>0   )?_t[i2][i1-1]:INFINITY;
+    float t1p = (i1<_n1m)?_t[i2][i1+1]:INFINITY;
+    float t2m = (i2>0   )?_t[i2-1][i1]:INFINITY;
+    float t2p = (i2<_n2m)?_t[i2+1][i1]:INFINITY;
+
+    // Tensor coefficients.
     _tensors.getTensor(i1,i2,d);
     float d11 = d[0];
     float d12 = d[1];
@@ -522,58 +496,45 @@ public class TimeSolver2 {
 
       // If (p1s,p2-) or (p1s,p2+), ...
       if (k1==0) {
-        int j2 = i2+k2;  if (j2<0 || j2>=_n2) continue;
-        float t2 = _t[j2][i1];
-        if (t2!=INFINITY) {
-          float t1 = t2;
-          float s2 = k2;
-          float s1 = -s2*d12/d11;
-          float t0 = solveQuadratic(d11,d12,d22,s1,s2,t1,t2);
-          if (t0<tc && t0>=t2) {
-            float p2 = -s1*(t1-t0)*d12/d22;
-            if (isValid2(i1,i2,k2,p2,t0)) {
-              return t0;
-            }
-          }
+        float t2 = (k2<0)?t2m:t2p;  if (t2==INFINITY) continue;
+        float t1 = t2;
+        float s2 = k2;
+        float s1 = -s2*d12/d11;
+        float t0 = solveQuadratic(d11,d12,d22,s1,s2,t1,t2);
+        if (t0<tc && t0>=t2) {
+          float p2 = -s1*(t1-t0)*d12/d22;
+          if (isValid(k2,p2,t2m,t2p,t0))
+            return t0;
         }
       } 
       
       // else, if (p1-,p2s) or (p1+,p2s), ...
       else if (k2==0) {
-        int j1 = i1+k1;  if (j1<0 || j1>=_n1) continue;
-        float t1 = _t[i2][j1];
-        if (t1!=INFINITY) {
-          float t2 = t1;
-          float s1 = k1;
-          float s2 = -s1*d12/d22;
-          float t0 = solveQuadratic(d11,d12,d22,s1,s2,t1,t2);
-          if (t0<tc && t0>=t1) {
-            float p1 = -s2*(t2-t0)*d12/d11;
-            if (isValid1(i1,i2,k1,p1,t0)) {
-              return t0;
-            }
-          }
+        float t1 = (k1<0)?t1m:t1p;  if (t1==INFINITY) continue;
+        float t2 = t1;
+        float s1 = k1;
+        float s2 = -s1*d12/d22;
+        float t0 = solveQuadratic(d11,d12,d22,s1,s2,t1,t2);
+        if (t0<tc && t0>=t1) {
+          float p1 = -s2*(t2-t0)*d12/d11;
+          if (isValid(k1,p1,t1m,t1p,t0))
+            return t0;
         }
-      } 
+      }
       
       // else, if (p1-,p2-), (p1+,p2-), (p1-,p2+) or (p1+,p2+), ...
       else {
-        int j1 = i1+k1;  if (j1<0 || j1>=_n1) continue;
-        int j2 = i2+k2;  if (j2<0 || j2>=_n2) continue;
-        float t1 = _t[i2][j1];
-        float t2 = _t[j2][i1];
-        if (t1!=INFINITY && t2!=INFINITY) {
-          float s1 = k1;
-          float s2 = k2;
-          float t0 = solveQuadratic(d11,d12,d22,s1,s2,t1,t2);
-          if (t0<tc && t0>=min(t1,t2)) {
-            float p1 = -s2*(t2-t0)*d12/d11;
-            float p2 = -s1*(t1-t0)*d12/d22;
-            if (isValid1(i1,i2,k1,p1,t0) &&
-                isValid2(i1,i2,k2,p2,t0)) {
-              return t0;
-            }
-          }
+        float t1 = (k1<0)?t1m:t1p;  if (t1==INFINITY) continue;
+        float t2 = (k2<0)?t2m:t2p;  if (t2==INFINITY) continue;
+        float s1 = k1;
+        float s2 = k2;
+        float t0 = solveQuadratic(d11,d12,d22,s1,s2,t1,t2);
+        if (t0<tc && t0>=min(t1,t2)) {
+          float p1 = -s2*(t2-t0)*d12/d11;
+          float p2 = -s1*(t1-t0)*d12/d22;
+          if (isValid(k1,p1,t1m,t1p,t0) &&
+              isValid(k2,p2,t2m,t2p,t0))
+            return t0;
         }
       }
     }
@@ -585,20 +546,6 @@ public class TimeSolver2 {
   ///////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////////////
   // testing
-
-  private static class ConstantTensors implements TimeSolver2.Tensors {
-    ConstantTensors(float d11, float d12, float d22) {
-      _d11 = d11;
-      _d12 = d12;
-      _d22 = d22;
-    }
-    public void getTensor(int i1, int i2, float[] d) {
-      d[0] = _d11;
-      d[1] = _d12;
-      d[2] = _d22;
-    }
-    private float _d11,_d12,_d22;
-  }
 
   private static void plot(float[][] x) {
     float[][] y = Array.copy(x);
@@ -619,32 +566,80 @@ public class TimeSolver2 {
     //pv.setInterpolation(PixelsView.Interpolation.LINEAR);
   }
 
-  private static void testConstant() {
-    int n1 = 2001;
-    int n2 = 2001;
-    float angle = FLT_PI*110.0f/180.0f;
-    float su = 1.000f;
-    float sv = 0.010f;
-    //float sv = 1.000f;
-    float cosa = cos(angle);
-    float sina = sin(angle);
+  private static class ConstantTensors implements TimeSolver2.Tensors {
+    ConstantTensors(float d11, float d12, float d22) {
+      _d11 = d11;
+      _d12 = d12;
+      _d22 = d22;
+    }
+    public void getTensor(int i1, int i2, float[] d) {
+      d[0] = _d11;
+      d[1] = _d12;
+      d[2] = _d22;
+    }
+    private float _d11,_d12,_d22;
+  }
+
+  private static ConstantTensors makeTensors(float a, float su, float sv) {
+    a *= FLT_PI/180.0f;
+    float cosa = cos(a);
+    float sina = sin(a);
     float d11 = su*cosa*cosa+sv*sina*sina;
     float d12 = (su-sv)*sina*cosa;
     float d22 = sv*cosa*cosa+su*sina*sina;
-    ConstantTensors dt = new ConstantTensors(d11,d12,d22);
-    TimeSolver2 ts = new TimeSolver2(n1,n2,dt);
-    ts.setConcurrency(TimeSolver2.Concurrency.PARALLEL);
-    //ts.setConcurrency(TimeSolver2.Concurrency.SERIAL);
+    return new ConstantTensors(d11,d12,d22);
+  }
+
+  private static float[][] computeSerial(
+    int n1, int n2, int i1, int i2,
+    TimeSolver2.Tensors tensors)
+  {
+    trace("computeSerial:");
+    return computeTimes(
+      n1,n2,i1,i2,tensors,TimeSolver2.Concurrency.SERIAL);
+  }
+
+  private static float[][] computeParallel(
+    int n1, int n2, int i1, int i2,
+    TimeSolver2.Tensors tensors)
+  {
+    trace("computeParallel:");
+    return computeTimes(
+      n1,n2,i1,i2,tensors,TimeSolver2.Concurrency.PARALLEL);
+  }
+
+  private static float[][] computeTimes(
+    int n1, int n2, int i1, int i2,
+    TimeSolver2.Tensors tensors, 
+    TimeSolver2.Concurrency concurrency) 
+  {
+    TimeSolver2 ts = new TimeSolver2(n1,n2,tensors);
+    ts.setConcurrency(concurrency);
     Stopwatch sw = new Stopwatch();
     sw.start();
-    ts.zeroAt(2*n1/4,2*n2/4);
-    //ts.zeroAt(1*n1/4,1*n2/4);
-    //ts.zeroAt(3*n1/4,3*n2/4);
+    ts.zeroAt(i1,i2);
     sw.stop();
     float[][] t = ts.getTimes();
-    trace("time="+sw.time()+" sum="+Array.sum(t));
-    //Array.dump(t);
-    //plot(t);
+    trace("  time="+sw.time()+" sum="+Array.sum(t));
+    return t;
+  }
+
+  private static void testConstant() {
+    int n1 = 2001, n2 = 2001;
+    ConstantTensors tensors = makeTensors(110.0f,1.000f,0.010f);
+    int i1 = 2*(n1-1)/4, i2 = 2*(n2-1)/4;
+    float[][] ts = computeSerial(n1,n2,i1,i2,tensors);
+    float[][] tp = computeParallel(n1,n2,i1,i2,tensors);
+    float[][] te = Array.div(Array.abs(Array.sub(tp,ts)),ts);
+    te[i2][i1] = 0.0f;
+    float temax = Array.max(te);
+    trace("temax="+temax);
+    trace("********************************************************");
+    //plot(ts);
+    //plot(tp);
+    //plot(te);
+    if (temax>0.1f)
+      System.exit(-1);
   }
 
   private static void trace(String s) {

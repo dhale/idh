@@ -26,10 +26,9 @@ import edu.mines.jtk.sgl.*;
 import edu.mines.jtk.sgl.test.*;
 
 /**
- * A solver for 3D anisotropic eikonal equations.
- * These non-linear equations are sqrt(grad(t) dot D*grad(t)) = 1, where t
- * denotes the solution time, and D denotes a diffusion (velocity-squared)
- * tensor field.
+ * A solver for 3D anisotropic eikonal equations. The non-linear equations 
+ * are sqrt(grad(t) dot D*grad(t)) = 1, where t is the solution time field, 
+ * and D denotes a positive-definite (velocity-squared) tensor field.
  * <p>
  * This solver uses an iterative method to compute the solution times t.
  * Iterations are similar to those described by Jeong and Whitaker (2007).
@@ -47,14 +46,14 @@ public class TimeSolver3 {
   };
 
   /**
-   * An interface for classes of diffusion tensors. Each tensor is a
+   * An interface for classes of velocity-squared tensors. Each tensor is a
    * symmetric positive-definite 3-by-3 matrix 
    * {{d11,d12,d13},{d12,d22,d23},{d13,d23,d33}}.
    */
   public interface Tensors {
 
     /**
-     * Gets diffusion tensor elements for specified indices.
+     * Gets tensor elements for specified indices.
      * @param i1 index for 1st dimension.
      * @param i2 index for 2nd dimension.
      * @param i3 index for 3rd dimension.
@@ -64,7 +63,7 @@ public class TimeSolver3 {
   }
 
   /**
-   * Constructs a solver with constant identity diffusion tensors.
+   * Constructs a solver with constant identity tensors.
    * All times are initially infinite (very large).
    * @param n1 number of samples in 1st dimension.
    * @param n2 number of samples in 2nd dimension.
@@ -74,12 +73,12 @@ public class TimeSolver3 {
   }
   
   /**
-   * Constructs a solver for the specified diffusion tensor field.
+   * Constructs a solver for the specified tensor field.
    * All times are initially infinite (very large).
    * @param n1 number of samples in 1st dimension.
    * @param n2 number of samples in 2nd dimension.
    * @param n3 number of samples in 3rd dimension.
-   * @param tensors diffusion tensors.
+   * @param tensors velocity-squared tensors.
    */
   public TimeSolver3(int n1, int n2, int n3, Tensors tensors) {
     init(n1,n2,n3,null,tensors);
@@ -89,7 +88,7 @@ public class TimeSolver3 {
    * Constructs a solver for a specified array of times.
    * The array is referenced (not copied) by this solver.
    * @param t array of times to be updated by this solver; 
-   * @param tensors diffusion tensors.
+   * @param tensors velocity-squared tensors.
    */
   public TimeSolver3(float[][][] t, Tensors tensors) {
     init(t[0][0].length,t[0].length,t.length,t,tensors);
@@ -819,10 +818,10 @@ public class TimeSolver3 {
   private static void testConstant() {
     //int n1 = 101, n2 = 101, n3 = 101;
     int n1 = 64, n2 = 64, n3 = 64;
-    float s11 = 1.000f, s12 = 0.000f, s13 = 0.000f,
-                        s22 = 1.000f, s23 = 0.000f,
-                                      s33 = 1.000f;
-    ConstantTensors tensors = new ConstantTensors(s11,s12,s13,s22,s23,s33);
+    float d11 = 1.000f, d12 = 0.000f, d13 = 0.000f,
+                        d22 = 1.000f, d23 = 0.000f,
+                                      d33 = 1.000f;
+    ConstantTensors tensors = new ConstantTensors(d11,d12,d13,d22,d23,d33);
     int i1 = 2*(n1-1)/4, i2 = 2*(n2-1)/4, i3 = 2*(n3-1)/4;
     float[][][] ts = computeSerial(n1,n2,n3,i1,i2,i3,tensors);
     float[][][] tp = computeParallel(n1,n2,n3,i1,i2,i3,tensors);
