@@ -378,7 +378,7 @@ public class TimeSolver2 {
 
     // Current time and new time computed from all neighbors.
     float ti = _t[i2][i1];
-    float gi = g(i1,i2,K1S[4],K2S[4],d);
+    float gi = computeTime(i1,i2,K1S[4],K2S[4],d);
     _t[i2][i1] = gi;
 
     // If new and current times are close enough (converged), then ...
@@ -393,7 +393,7 @@ public class TimeSolver2 {
 
         // Compute time for neighbor.
         float tj = _t[j2][j1];
-        float gj = g(j1,j2,K1S[k],K2S[k],d);
+        float gj = computeTime(j1,j2,K1S[k],K2S[k],d);
 
         // If computed time significantly less than neighbor's current time, ...
         if (tj-gj>tj*EPSILON) {
@@ -542,6 +542,88 @@ public class TimeSolver2 {
     return tc;
   }
 
+  private float computeTime(int i1, int i2, int[] k1s, int[] k2s, float[] d) {
+
+    // Current time i'th sample and its four neighbors. We must cache all of
+    // these now because times may be changed concurrently in other threads.
+    // That is, when this method returns, some of these times may be less 
+    // than the values cached here, but the logic within this method call 
+    // in the current thread will be consistent with these cached values.
+    float tc = _t[i2][i1];
+    float t1m = (i1>0   )?_t[i2][i1-1]:INFINITY;
+    float t1p = (i1<_n1m)?_t[i2][i1+1]:INFINITY;
+    float t2m = (i2>0   )?_t[i2-1][i1]:INFINITY;
+    float t2p = (i2<_n2m)?_t[i2+1][i1]:INFINITY;
+
+    // Tensor coefficients.
+    _tensors.getTensor(i1,i2,d);
+    float d11 = d[0];
+    float d12 = d[1];
+    float d22 = d[2];
+
+    // For all relevant neighbor samples, ...
+    for (int k=0; k<k1s.length; ++k) {
+      int k1 = k1s[k];
+      int k2 = k2s[k];
+      float s1,s2,t1,t2;
+
+      // ( 0,-1), ( 0,+1)
+      if (k1==0) {
+        t2 = (k2<0)?t2m:t2p;  if (t2==INFINITY) continue;
+        t1 = t2;
+        s2 = k2;
+        s1 = -s2*d12/d11;
+      } 
+
+      // (-1, 0), (+1, 0)
+      else if (k2==0) {
+        t1 = (k1<0)?t1m:t1p;  if (t1==INFINITY) continue;
+        t2 = t1;
+        s1 = k1;
+        s2 = -s1*d12/d22;
+      }
+
+      // (-1,-1), (-1,+1), (+1,-1), (+1,+1)
+      else {
+        t1 = (k1<0)?t1m:t1p;  if (t1==INFINITY) continue;
+        t2 = (k2<0)?t2m:t2p;  if (t2==INFINITY) continue;
+        s1 = k1;
+        s2 = k2;
+      }
+
+      // Compute time t0 from times t1 and t2.
+      float t0 = computeTime(d11,d12,d22,s1,s2,t1,t2);
+      if (t0<tc)
+        return t0;
+    }
+
+    return tc;
+  }
+  private static float computeTime(
+    float d11, float d12, float d22,
+    float s1, float s2, float t1, float t2) 
+  {
+    double ds11 = d11*s1*s1;
+    double ds12 = d12*s1*s2;
+    double ds22 = d22*s2*s2;
+    double t12 = t1-t2;
+    double a = ds11+2.0*ds12+ds22;
+    double b = 2.0*(ds12+ds22)*t12;
+    double c = ds22*t12*t12-1.0;
+    double d = b*b-4.0*a*c;
+    if (d<0.0)
+      return INFINITY;
+    double u1 = (-b+sqrt(d))/(2.0*a);
+    double u2 = u1+t12;
+    if (ds11*u1+ds12*u2 < 0.0 ||
+        ds12*u1+ds22*u2 < 0.0)
+      return INFINITY;
+    float t0 = t1+(float)u1;
+    //if (t0<min(t1,t2))
+    //  return INFINITY;
+    return t0;
+  }
+
   ///////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////////////
@@ -635,8 +717,8 @@ public class TimeSolver2 {
     float temax = Array.max(te);
     trace("temax="+temax);
     trace("********************************************************");
-    //plot(ts);
-    //plot(tp);
+    plot(ts);
+    plot(tp);
     //plot(te);
     if (temax>0.1f)
       System.exit(-1);
@@ -653,7 +735,7 @@ public class TimeSolver2 {
   public static void main(String[] args) {
     //SwingUtilities.invokeLater(new Runnable() {
     //  public void run() {
-      for (;;)
+    //  for (;;)
         testConstant();
     //  }
     //});
