@@ -261,8 +261,18 @@ public class TimeSolver2 {
 
     // Put the sample with zero time into the active list.
     ActiveList al = new ActiveList();
-    Sample si = _s[i2][i1];
-    al.append(si);
+    al.append(_s[i2][i1]);
+
+    // Testing.
+    /*
+    i1 = 1*(_n1-1)/4;
+    i2 = 2*(_n2-1)/4;
+    _t[i2][i1] = 0.0f;
+    al.append(_s[i2][i1]);
+    i1 = 2*(_n1-1)/4;
+    i2 = 3*(_n2-1)/4;
+    _t[i2][i1] = 0.0f;
+    */
 
     // Complete the solve by processing the active list until it is empty.
     if (_concurrency==Concurrency.PARALLEL) {
@@ -615,12 +625,10 @@ public class TimeSolver2 {
       return INFINITY;
     double u1 = (-b+sqrt(d))/(2.0*a);
     double u2 = u1+t12;
-    if (ds11*u1+ds12*u2 < 0.0 ||
-        ds12*u1+ds22*u2 < 0.0)
+    if ((s1==-1.0 || s1==1.0) && ds11*u1+ds12*u2 < 0.0 ||
+        (s2==-1.0 || s2==1.0) && ds12*u1+ds22*u2 < 0.0)
       return INFINITY;
     float t0 = t1+(float)u1;
-    //if (t0<min(t1,t2))
-    //  return INFINITY;
     return t0;
   }
 
@@ -629,7 +637,7 @@ public class TimeSolver2 {
   ///////////////////////////////////////////////////////////////////////////
   // testing
 
-  private static void plot(float[][] x) {
+  private static void plot(float[][] x, IndexColorModel icm) {
     float[][] y = Array.copy(x);
     int n1 = y[0].length;
     int n2 = y.length;
@@ -643,9 +651,9 @@ public class TimeSolver2 {
     SimplePlot sp = new SimplePlot();
     sp.setSize(800,790);
     PixelsView pv = sp.addPixels(y);
-    pv.setColorModel(ColorMap.PRISM);
-    pv.setInterpolation(PixelsView.Interpolation.NEAREST);
-    //pv.setInterpolation(PixelsView.Interpolation.LINEAR);
+    pv.setColorModel(icm);
+    //pv.setInterpolation(PixelsView.Interpolation.NEAREST);
+    pv.setInterpolation(PixelsView.Interpolation.LINEAR);
   }
 
   private static class ConstantTensors implements TimeSolver2.Tensors {
@@ -662,7 +670,9 @@ public class TimeSolver2 {
     private float _d11,_d12,_d22;
   }
 
-  private static ConstantTensors makeTensors(float a, float su, float sv) {
+  private static ConstantTensors makeConstantTensors(
+    float a, float su, float sv) 
+  {
     a *= FLT_PI/180.0f;
     float cosa = cos(a);
     float sina = sin(a);
@@ -670,6 +680,70 @@ public class TimeSolver2 {
     float d12 = (su-sv)*sina*cosa;
     float d22 = sv*cosa*cosa+su*sina*sina;
     return new ConstantTensors(d11,d12,d22);
+  }
+
+  private static class RandomTensors 
+    extends EigenTensors2
+    implements TimeSolver2.Tensors 
+  {
+    RandomTensors(int n1, int n2) {
+      super(n1,n2);
+      float[][] a = Array.mul(1.5f*FLT_PI,Array.randfloat(n1,n2));
+      float[][] au = Array.mul(1.00f,Array.randfloat(n1,n2));
+      float[][] av = Array.mul(0.01f,Array.randfloat(n1,n2));
+      RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(10.0f);
+      rgf.apply00(a,a);
+      rgf.apply00(au,au);
+      rgf.apply00(av,av);
+      au = Array.pow(Array.add(1.0f,au),10.0f);
+      plot(a,ColorMap.JET);
+      plot(au,ColorMap.JET);
+      plot(av,ColorMap.JET);
+      float[][] u1 = Array.cos(a);
+      float[][] u2 = Array.sin(a);
+      Random r = new Random();
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          setEigenvalues(i1,i2,au[i2][i1],au[i2][i1]);
+          setEigenvectorU(i1,i2,u1[i2][i1],u2[i2][i1]);
+        }
+      }
+    }
+    public void getTensor(int i1, int i2, float[] d) {
+      super.getTensor(i1,i2,d);
+    }
+  }
+
+  private static class TsaiTensors 
+    extends EigenTensors2
+    implements TimeSolver2.Tensors 
+  {
+    TsaiTensors(int n1, int n2) {
+      super(n1,n2);
+      float a1 = 2.0f*FLT_PI;
+      float a2 = 2.0f*FLT_PI;
+      float d1 = 2.0f/(float)(n1-1);
+      float d2 = 2.0f/(float)(n2-1);
+      float f1 = -1.0f;
+      float f2 = -1.0f;
+      for (int i2=0; i2<n2; ++i2) {
+        float x2 = f2+i2*d2;
+        for (int i1=0; i1<n1; ++i1) {
+          float x1 = f1+i1*d1;
+          float e1 = -a1*sin(a1*x1)*sin(a2*x2);
+          float e2 =  a2*cos(a1*x1)*cos(a2*x2);
+          float den =  1.0f+e1*e1+e2*e2;
+          float d11 =  1.0f-e1*e1/den;
+          float d22 =  1.0f-e2*e2/den;
+          float d12 = -2.0f*e1*e2/den;
+          float[] d = {d11,d12,d22};
+          setTensor(i1,i2,d);
+        }
+      }
+    }
+    public void getTensor(int i1, int i2, float[] d) {
+      super.getTensor(i1,i2,d);
+    }
   }
 
   private static float[][] computeSerial(
@@ -706,9 +780,15 @@ public class TimeSolver2 {
     return t;
   }
 
+  private static void testConstant(int niter) {
+    while (--niter>=0) {
+      testConstant();
+    }
+  }
+
   private static void testConstant() {
-    int n1 = 2001, n2 = 2001;
-    ConstantTensors tensors = makeTensors(110.0f,1.000f,0.010f);
+    int n1 = 1001, n2 = 1001;
+    ConstantTensors tensors = makeConstantTensors(110.0f,1.000f,0.010f);
     int i1 = 2*(n1-1)/4, i2 = 2*(n2-1)/4;
     float[][] ts = computeSerial(n1,n2,i1,i2,tensors);
     float[][] tp = computeParallel(n1,n2,i1,i2,tensors);
@@ -717,11 +797,30 @@ public class TimeSolver2 {
     float temax = Array.max(te);
     trace("temax="+temax);
     trace("********************************************************");
-    plot(ts);
-    plot(tp);
-    //plot(te);
+    plot(ts,ColorMap.PRISM);
+    plot(tp,ColorMap.PRISM);
+    //plot(te,ColorMap.JET);
     if (temax>0.1f)
       System.exit(-1);
+  }
+
+  private static void testRandom() {
+    int n1 = 1001, n2 = 1001;
+    RandomTensors tensors = new RandomTensors(n1,n2);
+    int i1 = 2*(n1-1)/4, i2 = 2*(n2-1)/4;
+    float[][] tp = computeParallel(n1,n2,i1,i2,tensors);
+    plot(tp,ColorMap.PRISM);
+  }
+
+  private static void testTsai() {
+    int n1 = 101, n2 = 101;
+    TsaiTensors tensors = new TsaiTensors(n1,n2);
+    int i1 = 2*(n1-1)/4, i2 = 2*(n2-1)/4;
+    TimeSolver2 ts = new TimeSolver2(n1,n2,tensors);
+    ts.zeroAt(50,50);
+    ts.zeroAt(10,25);
+    float[][] t = ts.getTimes();
+    plot(t,ColorMap.PRISM);
   }
 
   private static void trace(String s) {
@@ -735,8 +834,10 @@ public class TimeSolver2 {
   public static void main(String[] args) {
     //SwingUtilities.invokeLater(new Runnable() {
     //  public void run() {
-    //  for (;;)
-        testConstant();
+        //testConstant(10);
+        //testConstant();
+        //testRandom();
+        testTsai();
     //  }
     //});
   }
