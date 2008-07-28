@@ -334,20 +334,14 @@ public class TimeSolver3 {
   private void solveParallel(final ActiveList al) {
     int nthread = Runtime.getRuntime().availableProcessors();
     /////////////////////////////////////////////////////////////////////////
-    // Benchmarks: 07/23/2008
-    // Isotropic constant tensor with zero time at center sample of 3D array.
+    // Benchmarks: 07/26/2008
+    // Anisotropic constant tensor with zero time at center sample. Tensor
+    // coefficients are d11 = d22 = d33 = 1.0, d12 = d13 = d23 = 0.9, as
+    // in Jeong and Whitaker's benchmark.
     // Intel 2.4 GHz Core 2 Duo for size 64^3
-    // serial         1.5 s
-    //nthread = 2; // 0.8 s
-    // Intel 2.4 GHz Core 2 Duo for size 101^3
-    // serial         6.2 s
-    //nthread = 1; // 6.3 s
-    //nthread = 2; // 3.2 s
-    // Intel 2 * 3.0 GHz Quad Core Xeon for size 101^3
-    //serial          4.4 s
-    //nthread = 1; // 4.5 s
-    //nthread = 4; // 1.3 s
-    //nthread = 8; // 0.7 s
+    // serial         1.2 s
+    //nthread = 1; // 1.2 s
+    //nthread = 2; // 0.6 s
     /////////////////////////////////////////////////////////////////////////
     ExecutorService es = Executors.newFixedThreadPool(nthread);
     CompletionService<Void> cs = new ExecutorCompletionService<Void>(es);
@@ -418,11 +412,11 @@ public class TimeSolver3 {
 
     // Current time and new time computed from all neighbors.
     float ti = _t[i3][i2][i1];
-    float gi = g(i1,i2,i3,K1S[6],K2S[6],K3S[6],d);
-    _t[i3][i2][i1] = gi;
+    float ci = computeTime(i1,i2,i3,K1S[6],K2S[6],K3S[6],d);
+    _t[i3][i2][i1] = ci;
 
     // If new and current times are close enough (converged), then ...
-    if (ti-gi<=ti*EPSILON) {
+    if (ti-ci<=ti*EPSILON) {
 
       // For all six neighbors, ...
       for (int k=0; k<6; ++k) {
@@ -434,13 +428,13 @@ public class TimeSolver3 {
 
         // Compute time for neighbor.
         float tj = _t[j3][j2][j1];
-        float gj = g(j1,j2,j3,K1S[k],K2S[k],K3S[k],d);
+        float cj = computeTime(j1,j2,j3,K1S[k],K2S[k],K3S[k],d);
 
         // If computed time significantly less than neighbor's current time, ...
-        if (tj-gj>tj*EPSILON) {
+        if (tj-cj>tj*EPSILON) {
 
           // Replace the current time.
-          _t[j3][j2][j1] = gj;
+          _t[j3][j2][j1] = cj;
           
           // Append neighbor to the B list.
           bl.append(_s[j3][j2][j1]);
@@ -455,7 +449,86 @@ public class TimeSolver3 {
   }
 
   /**
-   * Solves a quadratic equation for a positive time t0.
+   * Returns a time t not greater than the current time for one sample.
+   * Computations are limited to neighbor samples with specified offsets.
+   */
+  private float computeTime(
+    int i1, int i2, int i3, int[] k1s, int[] k2s, int[] k3s, float[] d) 
+  {
+    _tensors.getTensor(i1,i2,i3,d);
+    float d11 = d[0];
+    float d12 = d[1];
+    float d13 = d[2];
+    float d22 = d[3];
+    float d23 = d[4];
+    float d33 = d[5];
+    float o11 = 1.0f/d11;
+    float o22 = 1.0f/d22;
+    float o33 = 1.0f/d33;
+    float d1212 = d12*d12;
+    float d1213 = d12*d13;
+    float d1223 = d12*d23;
+    float d1313 = d13*d13;
+    float d1323 = d13*d23;
+    float d2323 = d23*d23;
+    float a11 = d11-d1313*o33;
+    float a12 = d12-d1323*o33;
+    float a22 = d22-d2323*o33;
+    float b11 = d11-d1212*o22;
+    float b13 = d13-d1223*o22;
+    float b33 = d33-d2323*o22;
+    float c22 = d22-d1212*o11;
+    float c23 = d23-d1213*o11;
+    float c33 = d33-d1313*o11;
+    float e12 = 1.0f/(a11*a22-a12*a12);
+    float e13 = 1.0f/(b11*b33-b13*b13);
+    float tc = _t[i3][i2][i1];
+    float t1m = (i1>0   )?_t[i3][i2][i1-1]:INFINITY;
+    float t1p = (i1<_n1m)?_t[i3][i2][i1+1]:INFINITY;
+    float t2m = (i2>0   )?_t[i3][i2-1][i1]:INFINITY;
+    float t2p = (i2<_n2m)?_t[i3][i2+1][i1]:INFINITY;
+    float t3m = (i3>0   )?_t[i3-1][i2][i1]:INFINITY;
+    float t3p = (i3<_n3m)?_t[i3+1][i2][i1]:INFINITY;
+    for (int k=0; k<k1s.length; ++k) {
+      int k1 = k1s[k];
+      int k2 = k2s[k];
+      int k3 = k3s[k];
+      float t0,t1,t2,t3;
+      if (k1!=0 && k2!=0 && k3!=0) {
+        t1 = (k1<0)?t1m:t1p;  if (t1==INFINITY) continue;
+        t2 = (k2<0)?t2m:t2p;  if (t2==INFINITY) continue;
+        t3 = (k3<0)?t3m:t3p;  if (t3==INFINITY) continue;
+        t0 = computeTime(d11,d12,d13,d22,d23,d33,k1,k2,k3,t1,t2,t3);
+      } else if (k1!=0 && k2!=0) {
+        t1 = (k1<0)?t1m:t1p;  if (t1==INFINITY) continue;
+        t2 = (k2<0)?t2m:t2p;  if (t2==INFINITY) continue;
+        t0 = computeTime(a11,a12,a22,k1,k2,t1,t2);
+      } else if (k1!=0 && k3!=0) {
+        t1 = (k1<0)?t1m:t1p;  if (t1==INFINITY) continue;
+        t3 = (k3<0)?t3m:t3p;  if (t3==INFINITY) continue;
+        t0 = computeTime(b11,b13,b33,k1,k3,t1,t3);
+      } else if (k2!=0 && k3!=0) {
+        t2 = (k2<0)?t2m:t2p;  if (t2==INFINITY) continue;
+        t3 = (k3<0)?t3m:t3p;  if (t3==INFINITY) continue;
+        t0 = computeTime(c22,c23,c33,k2,k3,t2,t3);
+      } else if (k1!=0) {
+        t1 = (k1<0)?t1m:t1p;  if (t1==INFINITY) continue;
+        t0 = t1+sqrt(a22*e12);
+      } else if (k2!=0) {
+        t2 = (k2<0)?t2m:t2p;  if (t2==INFINITY) continue;
+        t0 = t2+sqrt(a11*e12);
+      } else { // k3!=0
+        t3 = (k3<0)?t3m:t3p;  if (t3==INFINITY) continue;
+        t0 = t3+sqrt(b11*e13);
+      }
+      if (t0<tc)
+        return t0;
+    }
+    return tc;
+  }
+
+  /**
+   * Solves a 3D anisotropic eikonal equation for a positive time t0.
    * The equation is:
    *   d11*s1*s1*(t0-t1)*(t0-t1) + 
    *   d22*s2*s2*(t0-t2)*(t0-t2) +
@@ -471,10 +544,10 @@ public class TimeSolver3 {
    * 2*ds12*(u    )*(u+t12) + 
    * 2*ds13*(u    )*(u+t13) + 
    * 2*ds23*(u+t12)*(u+t13) = 1
-   * It then returns t0 = t1+u. If no solution exists, because the 
-   * discriminant is negative, this method returns INFINITY.
+   * If a valid u can be computed, then the time returned is t0 = t1+u.
+   * Otherwise, this method returns INFINITY.
    */
-  private static float solveQuadratic(
+  private static float computeTime(
     float d11, float d12, float d13, float d22, float d23, float d33,
     float s1, float s2, float s3, float t1, float t2, float t3) 
   {
@@ -492,248 +565,50 @@ public class TimeSolver3 {
     double d = b*b-4.0*a*c;
     if (d<0.0) 
       return INFINITY;
-    double u = (-b+sqrt(d))/(2.0*a);
-    return t1+(float)u;
+    double u1 = (-b+sqrt(d))/(2.0*a);
+    double u2 = u1+t12;
+    double u3 = u1+t13;
+    if (ds11*u1+ds12*u2+ds13*u3 < 0.0 ||
+        ds12*u1+ds22*u2+ds23*u3 < 0.0 ||
+        ds13*u1+ds23*u2+ds33*u3 < 0.0)
+      return INFINITY;
+    return t1+(float)u1;
   }
 
   /**
-   * Jeong's fast test for a valid solution time t0 to H(p1,p2,p3) = 1.
-   * Parameters tm and tp are times for samples backward and forward of 
-   * the sample with time t0. The parameter k is the index k1, k2, or k3
-   * that was used to compute the time, and the parameter p is a critical
-   * point of H(p1,p2,p3) for fixed p1, p2, or p3.
+   * Solves a 2D anisotropic eikonal equation for a positive time t0.
+   * The equation is:
+   *   d11*s1*s1*(t1-t0)*(t1-t0) + 
+   * 2*d12*s1*s2*(t1-t0)*(t2-t0) + 
+   *   d22*s2*s2*(t2-t0)*(t2-t0) = 1
+   * To reduce rounding errors, this method actually solves for u = t0-t1,
+   * via the following equation:
+   *   ds11*(u    )*(u    ) + 
+   *   ds22*(u+t12)*(u+t12) +
+   * 2*ds12*(u    )*(u+t12) = 1
+   * If a valid u can be computed, then the time returned is t0 = t1+u.
+   * Otherwise, this method returns INFINITY.
    */
-  private static boolean isValid(
-    int k, float p, float tm, float tp, float t0) 
+  private static float computeTime(
+    float d11, float d12, float d22,
+    float s1, float s2, float t1, float t2) 
   {
-    float pm = t0-tm;
-    float pp = tp-t0;
-    int j = -1;
-    if (pm<p && p<pp) { // (pm-p) < 0 and (pp-p) > 0
-      j = 0;
-    } else if (0.5f*(pm+pp)<p) { // (pm-p) < -(pp-p)
-      j = 1;
-    }
-    return j==k;
-  }
-
-  /**
-   * Returns a time t not greater than the current time for one sample.
-   * Computations are limited to neighbor samples with specified offsets.
-   */
-  private float g(
-    int i1, int i2, int i3, int[] k1s, int[] k2s, int[] k3s, float[] d) 
-  {
-    // Current time i'th sample and its six neighbors. We must cache all of
-    // these now because times may be changed concurrently in other threads.
-    // That is, when this method returns, some of these times may be less 
-    // than the values cached here, but the logic within this method call 
-    // in the current thread will be consistent with these cached values.
-    float tc = _t[i3][i2][i1];
-    float t1m = (i1>0   )?_t[i3][i2][i1-1]:INFINITY;
-    float t1p = (i1<_n1m)?_t[i3][i2][i1+1]:INFINITY;
-    float t2m = (i2>0   )?_t[i3][i2-1][i1]:INFINITY;
-    float t2p = (i2<_n2m)?_t[i3][i2+1][i1]:INFINITY;
-    float t3m = (i3>0   )?_t[i3-1][i2][i1]:INFINITY;
-    float t3p = (i3<_n3m)?_t[i3+1][i2][i1]:INFINITY;
-
-    // Tensor coefficients.
-    _tensors.getTensor(i1,i2,i3,d);
-    float d11 = d[0];
-    float d12 = d[1];
-    float d13 = d[2];
-    float d22 = d[3];
-    float d23 = d[4];
-    float d33 = d[5];
-
-    // For all relevant neighbor samples, ...
-    for (int k=0; k<k1s.length; ++k) {
-      int k1 = k1s[k];
-      int k2 = k2s[k];
-      int k3 = k3s[k];
-
-      // (p1-,p2s,p3s), (p1+,p2s,p3s)
-      if (k1!=0 && k2==0 && k3==0) {
-        float t1 = (k1<0)?t1m:t1p;  if (t1==INFINITY) continue;
-        float t2 = t1;
-        float t3 = t1;
-        float s1 = k1;
-        float ddet = d22*d33-d23*d23;
-        float s2 = (d23*d13-d12*d33)*s1/ddet;
-        float s3 = (d23*d12-d13*d22)*s1/ddet;
-        float t0 = solveQuadratic(d11,d12,d13,d22,d23,d33,s1,s2,s3,t1,t2,t3);
-        if (t0<tc && t0>=t1) {
-          float t02 = t0-t2;
-          float t03 = t0-t3;
-          float p1 = (d12*s2*t02+d13*s3*t03)/d11;
-          if (isValid(k1,p1,t1m,t1p,t0))
-            return t0;
-        }
-      }
-
-      // (p1s,p2-,p3s), (p1s,p2-,p3s)
-      else if (k1==0 && k2!=0 && k3==0) {
-        float t2 = (k2<0)?t2m:t2p;  if (t2==INFINITY) continue;
-        float t1 = t2;
-        float t3 = t2;
-        float s2 = k2;
-        float ddet = d11*d33-d13*d13;
-        float s1 = (d13*d23-d12*d33)*s2/ddet;
-        float s3 = (d13*d12-d23*d11)*s2/ddet;
-        float t0 = solveQuadratic(d11,d12,d13,d22,d23,d33,s1,s2,s3,t1,t2,t3);
-        if (t0<tc && t0>=t2) {
-          float t01 = t0-t1;
-          float t03 = t0-t3;
-          float p2 = (d12*s1*t01+d23*s3*t03)/d22;
-          if (isValid(k2,p2,t2m,t2p,t0))
-            return t0;
-        }
-      }
-
-      // (p1s,p2s,p3-), (p1s,p2s,p3-)
-      else if (k1==0 && k2==0 && k3!=0) {
-        float t3 = (k3<0)?t3m:t3p;  if (t3==INFINITY) continue;
-        float t1 = t3;
-        float t2 = t3;
-        float s3 = k3;
-        float ddet = d11*d22-d12*d12;
-        float s1 = (d12*d23-d13*d22)*s3/ddet;
-        float s2 = (d12*d13-d23*d11)*s3/ddet;
-        float t0 = solveQuadratic(d11,d12,d13,d22,d23,d33,s1,s2,s3,t1,t2,t3);
-        if (t0<tc && t0>=t3) {
-          float t01 = t0-t1;
-          float t02 = t0-t2;
-          float p3 = (d13*s1*t01+d23*s2*t02)/d33;
-          if (isValid(k3,p3,t3m,t3p,t0))
-            return t0;
-        }
-      }
-
-      // (p1s,p2-,p3-), (p1s,p2+,p3-), (p1s,p2+,p3-), (p1s,p2+,p3+)
-      else if (k1==0 && k2!=0 && k3!=0) {
-        float t2 = (k2<0)?t2m:t2p;  if (t2==INFINITY) continue;
-        float t3 = (k3<0)?t3m:t3p;  if (t3==INFINITY) continue;
-        float s2 = k2;
-        float s3 = k3;
-        float ds12 = d12*s2;
-        float ds13 = d13*s3;
-        float dnum = ds12*t2+ds13*t3;
-        float dden = ds12+ds13;
-        float t1;
-        if (dden==0.0f) {
-          if (dnum==0.0f)
-            t1 = 0.5f*(t2+t3);
-          else
-            continue;
-        } else {
-          t1 = dnum/dden;
-        }
-        float s1 = -dden/d11;
-        float t0 = solveQuadratic(d11,d12,d13,d22,d23,d33,s1,s2,s3,t1,t2,t3);
-        if (t0<tc && t0>=min(t2,t3)) {
-          float t01 = t0-t1;
-          float t02 = t0-t2;
-          float t03 = t0-t3;
-          float p2 = (d12*s1*t01+d23*s3*t03)/d22;
-          float p3 = (d13*s1*t01+d23*s2*t02)/d33;
-          if (isValid(k2,p2,t2m,t2p,t0) &&
-              isValid(k3,p3,t3m,t3p,t0))
-            return t0;
-        }
-      }
-
-      // (p1-,p2s,p3-), (p1+,p2s,p3-), (p1-,p2s,p3-), (p1+,p2s,p3+)
-      else if (k1!=0 && k2==0 && k3!=0) {
-        float t1 = (k1<0)?t1m:t1p;  if (t1==INFINITY) continue;
-        float t3 = (k3<0)?t3m:t3p;  if (t3==INFINITY) continue;
-        float s1 = k1;
-        float s3 = k3;
-        float ds12 = d12*s1;
-        float ds23 = d23*s3;
-        float dnum = ds12*t1+ds23*t3;
-        float dden = ds12+ds23;
-        float t2;
-        if (dden==0.0f) {
-          if (dnum==0.0f)
-            t2 = 0.5f*(t1+t3);
-          else
-            continue;
-        } else {
-          t2 = dnum/dden;
-        }
-        float s2 = -dden/d22;
-        float t0 = solveQuadratic(d11,d12,d13,d22,d23,d33,s1,s2,s3,t1,t2,t3);
-        if (t0<tc && t0>=min(t1,t3)) {
-          float t01 = t0-t1;
-          float t02 = t0-t2;
-          float t03 = t0-t3;
-          float p1 = (d12*s2*t02+d13*s3*t03)/d11;
-          float p3 = (d13*s1*t01+d23*s2*t02)/d33;
-          if (isValid(k1,p1,t1m,t1p,t0) &&
-              isValid(k3,p3,t3m,t3p,t0))
-            return t0;
-        }
-      }
-
-      // (p1-,p2-,p3s), (p1+,p2-,p3s), (p1-,p2+,p3s), (p1+,p2+,p3s)
-      else if (k1!=0 && k2!=0 && k3==0) {
-        float t1 = (k1<0)?t1m:t1p;  if (t1==INFINITY) continue;
-        float t2 = (k2<0)?t2m:t2p;  if (t2==INFINITY) continue;
-        float s1 = k1;
-        float s2 = k2;
-        float ds13 = d13*s1;
-        float ds23 = d23*s2;
-        float dnum = ds13*t1+ds23*t2;
-        float dden = ds13+ds23;
-        float t3;
-        if (dden==0.0f) {
-          if (dnum==0.0f)
-            t3 = 0.5f*(t1+t2);
-          else
-            continue;
-        } else {
-          t3 = dnum/dden;
-        }
-        float s3 = -dden/d33;
-        float t0 = solveQuadratic(d11,d12,d13,d22,d23,d33,s1,s2,s3,t1,t2,t3);
-        if (t0<tc && t0>=min(t1,t2)) {
-          float t01 = t0-t1;
-          float t02 = t0-t2;
-          float t03 = t0-t3;
-          float p1 = (d12*s2*t02+d13*s3*t03)/d11;
-          float p2 = (d12*s1*t01+d23*s3*t03)/d22;
-          if (isValid(k1,p1,t1m,t1p,t0) &&
-              isValid(k2,p2,t2m,t2p,t0))
-            return t0;
-        }
-      }
-      
-      // (p1-,p2-,p3-), (p1+,p2-,p3-), (p1-,p2+,p3-), (p1+,p2+,p3-), 
-      // (p1-,p2-,p3+), (p1+,p2-,p3+), (p1-,p2+,p3+), (p1+,p2+,p3+)
-      else {
-        float t1 = (k1<0)?t1m:t1p;  if (t1==INFINITY) continue;
-        float t2 = (k2<0)?t2m:t2p;  if (t2==INFINITY) continue;
-        float t3 = (k3<0)?t3m:t3p;  if (t3==INFINITY) continue;
-        float s1 = k1;
-        float s2 = k2;
-        float s3 = k3;
-        float t0 = solveQuadratic(d11,d12,d13,d22,d23,d33,s1,s2,s3,t1,t2,t3);
-        if (t0<tc && t0>=min(t1,t2,t3)) {
-          float t01 = t0-t1;
-          float t02 = t0-t2;
-          float t03 = t0-t3;
-          float p1 = (d12*s2*t02+d13*s3*t03)/d11;
-          float p2 = (d12*s1*t01+d23*s3*t03)/d22;
-          float p3 = (d13*s1*t01+d23*s2*t02)/d33;
-          if (isValid(k1,p1,t1m,t1p,t0) &&
-              isValid(k2,p2,t2m,t2p,t0) &&
-              isValid(k3,p3,t3m,t3p,t0))
-            return t0;
-        }
-      }
-    }
-
-    return tc;
+    double ds11 = d11*s1*s1;
+    double ds12 = d12*s1*s2;
+    double ds22 = d22*s2*s2;
+    double t12 = t1-t2;
+    double a = ds11+2.0*ds12+ds22;
+    double b = 2.0*(ds12+ds22)*t12;
+    double c = ds22*t12*t12-1.0;
+    double d = b*b-4.0*a*c;
+    if (d<0.0)
+      return INFINITY;
+    double u1 = (-b+sqrt(d))/(2.0*a);
+    double u2 = u1+t12;
+    if (ds11*u1+ds12*u2 < 0.0 ||
+        ds12*u1+ds22*u2 < 0.0)
+      return INFINITY;
+    return t1+(float)u1;
   }
 
   ///////////////////////////////////////////////////////////////////////////
@@ -818,8 +693,8 @@ public class TimeSolver3 {
   private static void testConstant() {
     //int n1 = 101, n2 = 101, n3 = 101;
     int n1 = 64, n2 = 64, n3 = 64;
-    float d11 = 1.000f, d12 = 0.000f, d13 = 0.000f,
-                        d22 = 1.000f, d23 = 0.000f,
+    float d11 = 1.000f, d12 = 0.900f, d13 = 0.900f,
+                        d22 = 1.000f, d23 = 0.900f,
                                       d33 = 1.000f;
     ConstantTensors tensors = new ConstantTensors(d11,d12,d13,d22,d23,d33);
     int i1 = 2*(n1-1)/4, i2 = 2*(n2-1)/4, i3 = 2*(n3-1)/4;
