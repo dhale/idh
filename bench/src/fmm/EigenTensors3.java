@@ -46,7 +46,7 @@ import edu.mines.jtk.dsp.Eigen;
  * @author Dave Hale, Colorado School of Mines
  * @version 2008.06.07
  */
-public class EigenTensors3 {
+public class EigenTensors3 implements Tensors3 {
 
   /**
    * Constructs tensors for specified array dimensions. All eigenvalues 

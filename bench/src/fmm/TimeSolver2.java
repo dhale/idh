@@ -44,21 +44,6 @@ public class TimeSolver2 {
   };
 
   /**
-   * An interface for classes of velocity-squared tensors. Each tensor is a
-   * symmetric positive-definite 2-by-2 matrix {{d11,d12},{d12,d22}}.
-   */
-  public interface Tensors {
-
-    /**
-     * Gets tensor elements for specified indices.
-     * @param i1 index for 1st dimension.
-     * @param i2 index for 2nd dimension.
-     * @param d array {d11,d12,d22} of tensor elements.
-     */
-    public void getTensor(int i1, int i2, float[] d);
-  }
-
-  /**
    * A listener for time changes.
    */
   public interface Listener {
@@ -71,16 +56,6 @@ public class TimeSolver2 {
      */
     public void timeDecreased(int i1, int i2, float t);
   }
-
-  /**
-   * Constructs a solver with constant identity tensors.
-   * All times are initially infinite (very large).
-   * @param n1 number of samples in 1st dimension.
-   * @param n2 number of samples in 2nd dimension.
-   */
-  public TimeSolver2(int n1, int n2) {
-    this(n1,n2,new IdentityTensors());
-  }
   
   /**
    * Constructs a solver for the specified tensor field.
@@ -89,7 +64,7 @@ public class TimeSolver2 {
    * @param n2 number of samples in 2nd dimension.
    * @param tensors velocity-squared tensors.
    */
-  public TimeSolver2(int n1, int n2, Tensors tensors) {
+  public TimeSolver2(int n1, int n2, Tensors2 tensors) {
     init(n1,n2,null,tensors);
   }
   
@@ -99,7 +74,7 @@ public class TimeSolver2 {
    * @param t array of times to be updated by this solver; 
    * @param tensors velocity-squared tensors.
    */
-  public TimeSolver2(float[][] t, Tensors tensors) {
+  public TimeSolver2(float[][] t, Tensors2 tensors) {
     init(t[0].length,t.length,t,tensors);
   }
 
@@ -110,6 +85,14 @@ public class TimeSolver2 {
    */
   public void setConcurrency(Concurrency concurrency) {
     _concurrency = concurrency;
+  }
+
+  /**
+   * Sets the tensors used by this solver.
+   * @param tensors the tensors.
+   */
+  public void setTensors(Tensors2 tensors) {
+    _tensors = tensors;
   }
 
   /**
@@ -162,14 +145,14 @@ public class TimeSolver2 {
 
   private int _n1,_n2;
   private int _n1m,_n2m;
-  private Tensors _tensors;
+  private Tensors2 _tensors;
   private float[][] _t;
   private Sample[][] _s;
   private Concurrency _concurrency = Concurrency.PARALLEL;
   private ArrayList<Listener> _listeners = new ArrayList<Listener>();
   private ArrayList<Sample> _stack = new ArrayList<Sample>(1024);
 
-  private void init(int n1, int n2, float[][] t, Tensors tensors) {
+  private void init(int n1, int n2, float[][] t, Tensors2 tensors) {
     _n1 = n1;
     _n2 = n2;
     _n1m = n1-1;
@@ -182,15 +165,6 @@ public class TimeSolver2 {
         _s[i2][i1] = new Sample(i1,i2);
   }
 
-  // Diffusion tensors.
-  private static class IdentityTensors implements Tensors {
-    public void getTensor(int i1, int i2, float[] d) {
-      d[0] = 1.00f; // d11
-      d[1] = 0.00f; // d12
-      d[2] = 1.00f; // d22
-    }
-  }
-
   // Sample index offsets for four neighbor samples.
   // Must be consistent with the neighbor sets below.
   private static final int[] K1 = {-1, 1, 0, 0};
@@ -201,7 +175,8 @@ public class TimeSolver2 {
   // neighbor with offsets {K1[1],K2[1]} = {1,0}, only the sets K1S[1] 
   // and K2S[1] are used. The sets K1S[4] and K2S[4] are special offsets 
   // for all four neighbors. Indices in each set are ordered so that tris
-  // are first and edges last.
+  // are first and edges last. Tris are defined by two non-zero offsets,
+  // and edges are defined by one.
   private static final int[][] K1S = {
     { 1, 1, 1},
     {-1,-1,-1},
@@ -218,7 +193,7 @@ public class TimeSolver2 {
   // A sample has indices and a flag used to build the active list.
   private static class Sample {
     int i1,i2; // sample indices
-    int marked; // used to mark samples when computing times
+    int marked; // used to mark samples with decreased times
     boolean absent; // used to build active lists
     Sample(int i1, int i2) {
       this.i1 = i1;
@@ -246,7 +221,7 @@ public class TimeSolver2 {
     void clear() {
       _n = 0;
     }
-    void markAllAbsent() {
+    void setAllAbsent() {
       for (int i=0; i<_n; ++i)
         _a[i].absent = true;
     }
@@ -386,7 +361,7 @@ public class TimeSolver2 {
         Sample s = al.get(i);
         solveOne(s,bl,d);
       }
-      bl.markAllAbsent();
+      bl.setAllAbsent();
       al.clear();
       al.appendIfAbsent(bl);
       bl.clear();
@@ -439,7 +414,7 @@ public class TimeSolver2 {
                 solveOne(s,bltask,dtask); // process the sample
               }
             }
-            bltask.markAllAbsent(); // needed when merging B lists below
+            bltask.setAllAbsent(); // needed when merging B lists below
             return null;
           }
         });
@@ -608,7 +583,7 @@ public class TimeSolver2 {
     pv.setInterpolation(PixelsView.Interpolation.LINEAR);
   }
 
-  private static class ConstantTensors implements TimeSolver2.Tensors {
+  private static class ConstantTensors implements Tensors2 {
     ConstantTensors(float d11, float d12, float d22) {
       _d11 = d11;
       _d12 = d12;
@@ -634,10 +609,7 @@ public class TimeSolver2 {
     return new ConstantTensors(d11,d12,d22);
   }
 
-  private static class TsaiTensors 
-    extends EigenTensors2
-    implements TimeSolver2.Tensors 
-  {
+  private static class TsaiTensors extends EigenTensors2 {
     TsaiTensors(int n1, int n2) {
       super(n1,n2);
       float a1 = 2.0f*FLT_PI;
@@ -664,14 +636,10 @@ public class TimeSolver2 {
       }
       plot(f,ColorMap.JET);
     }
-    public void getTensor(int i1, int i2, float[] d) {
-      super.getTensor(i1,i2,d);
-    }
   }
 
   private static float[][] computeSerial(
-    int n1, int n2, int i1, int i2,
-    TimeSolver2.Tensors tensors)
+    int n1, int n2, int i1, int i2, Tensors2 tensors)
   {
     trace("computeSerial:");
     return computeTimes(
@@ -679,8 +647,7 @@ public class TimeSolver2 {
   }
 
   private static float[][] computeParallel(
-    int n1, int n2, int i1, int i2,
-    TimeSolver2.Tensors tensors)
+    int n1, int n2, int i1, int i2, Tensors2 tensors)
   {
     trace("computeParallel:");
     return computeTimes(
@@ -689,8 +656,7 @@ public class TimeSolver2 {
 
   private static float[][] computeTimes(
     int n1, int n2, int i1, int i2,
-    TimeSolver2.Tensors tensors, 
-    TimeSolver2.Concurrency concurrency) 
+    Tensors2 tensors, TimeSolver2.Concurrency concurrency) 
   {
     TimeSolver2 ts = new TimeSolver2(n1,n2,tensors);
     ts.setConcurrency(concurrency);

@@ -46,23 +46,6 @@ public class TimeSolver3 {
   };
 
   /**
-   * An interface for classes of velocity-squared tensors. Each tensor is a
-   * symmetric positive-definite 3-by-3 matrix 
-   * {{d11,d12,d13},{d12,d22,d23},{d13,d23,d33}}.
-   */
-  public interface Tensors {
-
-    /**
-     * Gets tensor elements for specified indices.
-     * @param i1 index for 1st dimension.
-     * @param i2 index for 2nd dimension.
-     * @param i3 index for 3rd dimension.
-     * @param d array {d11,d12,d13,d22,d23,d33} of tensor elements.
-     */
-    public void getTensor(int i1, int i2, int i3, float[] d);
-  }
-
-  /**
    * A listener for time changes.
    */
   public interface Listener {
@@ -76,16 +59,6 @@ public class TimeSolver3 {
      */
     public void timeDecreased(int i1, int i2, int i3, float t);
   }
-
-  /**
-   * Constructs a solver with constant identity tensors.
-   * All times are initially infinite (very large).
-   * @param n1 number of samples in 1st dimension.
-   * @param n2 number of samples in 2nd dimension.
-   */
-  public TimeSolver3(int n1, int n2, int n3) {
-    this(n1,n2,n3,new IdentityTensors());
-  }
   
   /**
    * Constructs a solver for the specified tensor field.
@@ -95,7 +68,7 @@ public class TimeSolver3 {
    * @param n3 number of samples in 3rd dimension.
    * @param tensors velocity-squared tensors.
    */
-  public TimeSolver3(int n1, int n2, int n3, Tensors tensors) {
+  public TimeSolver3(int n1, int n2, int n3, Tensors3 tensors) {
     init(n1,n2,n3,null,tensors);
   }
   
@@ -105,7 +78,7 @@ public class TimeSolver3 {
    * @param t array of times to be updated by this solver; 
    * @param tensors velocity-squared tensors.
    */
-  public TimeSolver3(float[][][] t, Tensors tensors) {
+  public TimeSolver3(float[][][] t, Tensors3 tensors) {
     init(t[0][0].length,t[0].length,t.length,t,tensors);
   }
 
@@ -116,6 +89,14 @@ public class TimeSolver3 {
    */
   public void setConcurrency(Concurrency concurrency) {
     _concurrency = concurrency;
+  }
+
+  /**
+   * Sets the tensors used by this solver.
+   * @param tensors the tensors.
+   */
+  public void setTensors(Tensors3 tensors) {
+    _tensors = tensors;
   }
 
   /**
@@ -169,14 +150,14 @@ public class TimeSolver3 {
 
   private int _n1,_n2,_n3;
   private int _n1m,_n2m,_n3m;
-  private Tensors _tensors;
+  private Tensors3 _tensors;
   private float[][][] _t;
   private Sample[][][] _s;
   private Concurrency _concurrency = Concurrency.PARALLEL;
   private ArrayList<Listener> _listeners = new ArrayList<Listener>();
   private ArrayList<Sample> _stack = new ArrayList<Sample>(1024);
 
-  private void init(int n1, int n2, int n3, float[][][] t, Tensors tensors) {
+  private void init(int n1, int n2, int n3, float[][][] t, Tensors3 tensors) {
     _n1 = n1;
     _n2 = n2;
     _n3 = n3;
@@ -192,18 +173,6 @@ public class TimeSolver3 {
           _s[i3][i2][i1] = new Sample(i1,i2,i3);
   }
 
-  // Diffusion tensors.
-  private static class IdentityTensors implements Tensors {
-    public void getTensor(int i1, int i2, int i3, float[] d) {
-      d[0] = 1.00f; // d11
-      d[1] = 0.00f; // d12
-      d[2] = 0.00f; // d13
-      d[3] = 1.00f; // d22
-      d[4] = 0.00f; // d23
-      d[5] = 1.00f; // d33
-    }
-  }
-
   // Sample index offsets for six neighbor samples.
   // Must be consistent with the neighbor sets below.
   private static final int[] K1 = {-1, 1, 0, 0, 0, 0};
@@ -216,6 +185,8 @@ public class TimeSolver3 {
   // K1S[1], K2S[1], and K3S[1] are used. The sets K1S[6], K2S[6], and 
   // K3S[6] are special offsets for all six neighbors. Indices in each
   // set are ordered so that tets are first, tris next, and edges last.
+  // Tets are defined by three non-zero offsets, tris by two, and edges
+  // by one.
   private static final int[][] K1S = {
     { 1, 1, 1, 1, 1, 1, 1, 1, 1}, // A
     {-1,-1,-1,-1,-1,-1,-1,-1,-1}, // A
@@ -278,7 +249,7 @@ public class TimeSolver3 {
     void clear() {
       _n = 0;
     }
-    void markAllAbsent() {
+    void setAllAbsent() {
       for (int i=0; i<_n; ++i)
         _a[i].absent = true;
     }
@@ -420,7 +391,7 @@ public class TimeSolver3 {
         Sample s = al.get(i);
         solveOne(s,bl,d);
       }
-      bl.markAllAbsent();
+      bl.setAllAbsent();
       al.clear();
       al.appendIfAbsent(bl);
       bl.clear();
@@ -474,7 +445,7 @@ public class TimeSolver3 {
                 solveOne(s,bltask,dtask); // process the sample
               }
             }
-            bltask.markAllAbsent(); // needed when merging B lists below
+            bltask.setAllAbsent(); // needed when merging B lists below
             return null;
           }
         });
@@ -732,7 +703,7 @@ public class TimeSolver3 {
     frame.setVisible(true);
   }
 
-  private static class ConstantTensors implements TimeSolver3.Tensors {
+  private static class ConstantTensors implements Tensors3 {
     ConstantTensors(
       float d11, float d12, float d13, float d22, float d23, float d33) 
     {
@@ -757,7 +728,7 @@ public class TimeSolver3 {
   private static float[][][] computeSerial(
     int n1, int n2, int n3,
     int i1, int i2, int i3, 
-    TimeSolver3.Tensors tensors)
+    Tensors3 tensors)
   {
     trace("computeSerial:");
     return computeTimes(
@@ -767,7 +738,7 @@ public class TimeSolver3 {
   private static float[][][] computeParallel(
     int n1, int n2, int n3,
     int i1, int i2, int i3, 
-    TimeSolver3.Tensors tensors)
+    Tensors3 tensors)
   {
     trace("computeParallel:");
     return computeTimes(
@@ -777,8 +748,7 @@ public class TimeSolver3 {
   private static float[][][] computeTimes(
     int n1, int n2, int n3,
     int i1, int i2, int i3, 
-    TimeSolver3.Tensors tensors, 
-    TimeSolver3.Concurrency concurrency) 
+    Tensors3 tensors, TimeSolver3.Concurrency concurrency) 
   {
     TimeSolver3 ts = new TimeSolver3(n1,n2,n3,tensors);
     ts.setConcurrency(concurrency);

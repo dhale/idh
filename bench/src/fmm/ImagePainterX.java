@@ -26,15 +26,15 @@ import static edu.mines.jtk.util.MathPlus.*;
  * @author Dave Hale, Colorado School of Mines
  * @version 2008.06.23
  */
-public class ImagePainter2 {
+public class ImagePainterX {
 
-  public ImagePainter2(float[][] image) {
+  public ImagePainterX(float[][] image) {
     _n1 = image[0].length;
     _n2 = image.length;
     _nv = 1;
     _image = image;
     _st = new StructureTensors(SIGMA,1.0f,1.0f,1.0f,_image);
-    _painting = new Painting2(_n1,_n2,_nv,_st);
+    _painting = new PaintingX(_n1,_n2,_nv,_st);
     _painting.setDefaultValue(0.0f);
 
     int fontSize = 24;
@@ -101,7 +101,7 @@ public class ImagePainter2 {
   private int _n1,_n2,_nv;
   private float[][] _image;
   private float _valueMin,_valueMax;
-  private Painting2 _painting;
+  private PaintingX _painting;
   private StructureTensors _st;
 
   private PlotPanel _panel;
@@ -539,7 +539,7 @@ public class ImagePainter2 {
 
   private static class StructureTensors 
     extends EigenTensors2
-    implements Painting2.Tensors 
+    implements PaintingX.Tensors 
   {
     StructureTensors(float sigma, float[][] x) {
       this(sigma,-1.0f,1.0f,1.0f,x);
@@ -556,11 +556,15 @@ public class ImagePainter2 {
       float[][] sv = new float[n2][n1];
       LocalOrientFilter lof = new LocalOrientFilter(sigma);
       lof.apply(x,null,u1,u2,null,null,su,sv,null);
+      trace("su min="+Array.min(su)+" max="+Array.max(su));
+      trace("sv min="+Array.min(sv)+" max="+Array.max(sv));
       float[][] sa = Array.pow(su,alpha);
       float[][] sb = Array.pow(Array.div(sv,su),beta);
       float[][] sc = Array.pow(Array.sub(1.0f,coherence(sigma,x)),gamma);
       su = Array.mul(sa,sc);
       sv = Array.mul(sb,su);
+      trace("su min="+Array.min(su)+" max="+Array.max(su));
+      trace("sv min="+Array.min(sv)+" max="+Array.max(sv));
       //SimplePlot.asPixels(su);
       //SimplePlot.asPixels(sv);
       for (int i2=0; i2<n2; ++i2) {
@@ -621,7 +625,7 @@ public class ImagePainter2 {
     int n2 = 357;
     float[][] image = readImage(n1,n2,"/data/seis/tp/tp73.dat");
     image = gain(image);
-    ImagePainter2 ip = new ImagePainter2(image);
+    ImagePainterX ip = new ImagePainterX(image);
     ip.setValueRange(0.0,1.0);
   }
 

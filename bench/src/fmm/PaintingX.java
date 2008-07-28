@@ -33,7 +33,7 @@ import edu.mines.jtk.mosaic.*;
  * @author Dave Hale, Colorado School of Mines
  * @version 2008.06.12
  */
-public class Painting2 {
+public class PaintingX {
 
   /**
    * An interface for classes of structure tensors. Each tensor is a
@@ -58,7 +58,7 @@ public class Painting2 {
    * @param n2 number of samples in 2nd dimension.
    * @param nv number of values painted for each sample
    */
-  public Painting2(int n1, int n2, int nv) {
+  public PaintingX(int n1, int n2, int nv) {
     this(n1,n2,nv,new IdentityTensors());
   }
   
@@ -70,7 +70,7 @@ public class Painting2 {
    * @param nv number of values painted for each sample
    * @param st structure tensors.
    */
-  public Painting2(int n1, int n2, int nv, Tensors st) {
+  public PaintingX(int n1, int n2, int nv, Tensors st) {
     _n1 = n1;
     _n2 = n2;
     _nv = nv;
@@ -924,7 +924,7 @@ public class Painting2 {
 
   private static class StructureTensors 
     extends EigenTensors2
-    implements Painting2.Tensors 
+    implements PaintingX.Tensors 
   {
     StructureTensors(double sigma, float[][] x) {
       super(x[0].length,x.length);
@@ -1142,7 +1142,7 @@ public class Painting2 {
     */
     StructureTensors st = new StructureTensors(3,x);
     plotImageTensors(x,st);
-    Painting2 p = new Painting2(n1,n2,nv,st);
+    PaintingX p = new PaintingX(n1,n2,nv,st);
     int[] k1 = getK1SeisAboveBelow();
     int[] k2 = getK2SeisAboveBelow();
     float[] vk = getVkSeisLayer();
@@ -1194,7 +1194,7 @@ public class Painting2 {
     float[] vk = {  1.0f,  2.0f};
     int nk = vk.length;
     */
-    Painting2 p = new Painting2(n1,n2,nv,st);
+    PaintingX p = new PaintingX(n1,n2,nv,st);
     for (int ik=0; ik<nk; ++ik) {
       p.paintAt(k1[ik],k2[ik],vk[ik]);
     }
@@ -1209,7 +1209,7 @@ public class Painting2 {
 
   private static class SimpleTensors 
     extends EigenTensors2 
-    implements Painting2.Tensors 
+    implements PaintingX.Tensors 
   {
     SimpleTensors(int n1, int n2, double su, double sv, double v1) {
       super(n1,n2);
@@ -1241,7 +1241,7 @@ public class Painting2 {
     float sv = 1.0f;
     float v1 = sin(0.0f*FLT_PI/8.0f);
     SimpleTensors st = new SimpleTensors(n1,n2,su,sv,v1);
-    Painting2 p = new Painting2(n1,n2,nv,st);
+    PaintingX p = new PaintingX(n1,n2,nv,st);
     p.paintAt(1*n1/4,2*n2/4,1.0f);
     p.paintAt(3*n1/4,2*n2/4,2.0f);
     /*
@@ -1277,7 +1277,7 @@ public class Painting2 {
     int nv = 1;
     float[][] x = makeTargetImage(n1,n2);
     StructureTensors st = new StructureTensors(8,x);
-    Painting2 p = new Painting2(n1,n2,nv,st);
+    PaintingX p = new PaintingX(n1,n2,nv,st);
     int m1 = 1;
     int m2 = 1;
     int nk = 1+(n2-1)/m2+1+(n1-1)/m1;
