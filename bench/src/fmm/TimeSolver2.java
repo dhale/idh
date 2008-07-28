@@ -116,7 +116,8 @@ public class TimeSolver2 {
    * Zeros the time at the specified sample and computes times for neighbors.
    * Times of neighbor samples are computed recursively while computed times 
    * are less than current times. In other words, this method only decreases 
-   * times. Finally, this method notifies any listeners of all times reduced.
+   * times in the array of times referenced by this class. Finally, this 
+   * method notifies any listeners of all samples with times decreased.
    * @param i1 index in 1st dimension of time to zero.
    * @param i2 index in 2nd dimension of time to zero.
    * @return the modified array of times; by reference, not by copy.
@@ -217,7 +218,7 @@ public class TimeSolver2 {
   // A sample has indices and a flag used to build the active list.
   private static class Sample {
     int i1,i2; // sample indices
-    int marked; // used to mark samples
+    int marked; // used to mark samples when computing times
     boolean absent; // used to build active lists
     Sample(int i1, int i2) {
       this.i1 = i1;
@@ -317,7 +318,8 @@ public class TimeSolver2 {
     Sample si = _s[i2][i1];
     if (!isMarked(si))
       return;
-    if (_listeners.size()==0)
+    int nlistener = _listeners.size();
+    if (nlistener==0)
       return;
     _stack.clear();
     _stack.add(si);
@@ -328,8 +330,8 @@ public class TimeSolver2 {
         i1 = si.i1;
         i2 = si.i2;
         float ti = _t[i2][i1];
-        for (Listener listener:_listeners)
-          listener.timeDecreased(i1,i2,ti);
+        for (int i=0; i<nlistener; ++i)
+          _listeners.get(i).timeDecreased(i1,i2,ti);
         for (int k=0; k<4; ++k) {
           int j1 = i1+K1[k];  if (j1<0 || j1>=_n1) continue;
           int j2 = i2+K2[k];  if (j2<0 || j2>=_n2) continue;

@@ -63,6 +63,21 @@ public class TimeSolver3 {
   }
 
   /**
+   * A listener for time changes.
+   */
+  public interface Listener {
+
+    /**
+     * Called when time for the specified sample has decreased.
+     * @param i1 index for 1st dimension.
+     * @param i2 index for 2nd dimension.
+     * @param i3 index for 3rd dimension.
+     * @param t the decreased time.
+     */
+    public void timeDecreased(int i1, int i2, int i3, float t);
+  }
+
+  /**
    * Constructs a solver with constant identity tensors.
    * All times are initially infinite (very large).
    * @param n1 number of samples in 1st dimension.
@@ -104,11 +119,15 @@ public class TimeSolver3 {
   }
 
   /**
-   * Zeros the time at the specified sample and updates times elsewhere.
+   * Zeros the time at the specified sample and computes times for neighbors.
+   * Times of neighbor samples are computed recursively while computed times 
+   * are less than current times. In other words, this method only decreases 
+   * times in the array of times referenced by this class. Finally, this 
+   * method notifies any listeners of all samples with times decreased.
    * @param i1 index in 1st dimension of time to zero.
    * @param i2 index in 2nd dimension of time to zero.
    * @param i3 index in 3rd dimension of time to zero.
-   * @return the updated array of times; by reference, not by copy.
+   * @return the modified array of times; by reference, not by copy.
    */
   public float[][][] zeroAt(int i1, int i2, int i3) {
     solveFrom(i1,i2,i3);
@@ -121,6 +140,22 @@ public class TimeSolver3 {
    */
   public float[][][] getTimes() {
     return _t;
+  }
+
+  /**
+   * Adds the specified listener.
+   * @param listener the listener.
+   */
+  public void addListener(Listener listener) {
+    _listeners.add(listener);
+  }
+
+  /**
+   * Removes the specified listener.
+   * @param listener the listener.
+   */
+  public void removeListener(Listener listener) {
+    _listeners.remove(listener);
   }
 
   ///////////////////////////////////////////////////////////////////////////
@@ -138,6 +173,8 @@ public class TimeSolver3 {
   private float[][][] _t;
   private Sample[][][] _s;
   private Concurrency _concurrency = Concurrency.PARALLEL;
+  private ArrayList<Listener> _listeners = new ArrayList<Listener>();
+  private ArrayList<Sample> _stack = new ArrayList<Sample>(1024);
 
   private void init(int n1, int n2, int n3, float[][][] t, Tensors tensors) {
     _n1 = n1;
@@ -213,6 +250,7 @@ public class TimeSolver3 {
   // A sample has indices and a flag used to build the active list.
   private static class Sample {
     int i1,i2,i3; // sample indices
+    int marked; // used to mark samples when computing times
     boolean absent; // used to build active lists
     Sample(int i1, int i2, int i3) {
       this.i1 = i1;
@@ -282,9 +320,69 @@ public class TimeSolver3 {
     }
   }
 
+  // Marks set during computation of times. For efficiency, do not
+  // loop over all the marks to clear them before computing times.
+  // Instead, modify the value that represents marked samples.
+  private int _marked = 1;
+  private void clearMarked() {
+    if (_marked==Integer.MAX_VALUE) { // rarely!
+      _marked = 1;
+      for (int i3=0; i3<_n3; ++i3) {
+        for (int i2=0; i2<_n2; ++i2) {
+          for (int i1=0; i1<_n1; ++i1) {
+            _s[i3][i2][i1].marked = 0;
+          }
+        }
+      }
+    } else { // typically
+      ++_marked;
+    }
+  }
+  private void mark(Sample s) {
+    s.marked = _marked;
+  }
+  private void unmark(Sample s) {
+    s.marked -= 1;
+  }
+  private boolean isMarked(Sample s) {
+    return s.marked==_marked;
+  }
+
+  private void fireTimesDecreasedFrom(int i1, int i2, int i3) {
+    Sample si = _s[i3][i2][i1];
+    if (!isMarked(si))
+      return;
+    int nlistener = _listeners.size();
+    if (nlistener==0)
+      return;
+    _stack.clear();
+    _stack.add(si);
+    while (!_stack.isEmpty()) {
+      si = _stack.remove(_stack.size()-1);
+      if (isMarked(si)) {
+        unmark(si);
+        i1 = si.i1;
+        i2 = si.i2;
+        i3 = si.i3;
+        float ti = _t[i3][i2][i1];
+        for (int i=0; i<nlistener; ++i)
+          _listeners.get(i).timeDecreased(i1,i2,i3,ti);
+        for (int k=0; k<6; ++k) {
+          int j1 = i1+K1[k];  if (j1<0 || j1>=_n1) continue;
+          int j2 = i2+K2[k];  if (j2<0 || j2>=_n2) continue;
+          int j3 = i3+K3[k];  if (j3<0 || j3>=_n3) continue;
+          Sample sj = _s[j3][j2][j1];
+          if (isMarked(sj))
+            _stack.add(sj);
+        }
+      }
+    }
+  }
+
   /**
-   * Zeros the time for the specified sample and recursively updates times 
-   * for neighbor samples until all times have converged.
+   * Zeros the time for the specified sample. Recursively updates times 
+   * for neighbor samples until all times have converged, and then notifies
+   * any listeners of all times decreased.
    */
   private void solveFrom(int i1, int i2, int i3) {
 
@@ -302,6 +400,9 @@ public class TimeSolver3 {
     } else {
       solveSerial(al);
     }
+
+    // Notify any listeners of all times decreased.
+    fireTimesDecreasedFrom(i1,i2,i3);
   }
 
   /**
