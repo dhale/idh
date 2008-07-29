@@ -55,7 +55,7 @@ public class Painting2 {
     _type = new byte[n2][n1];
     _heap = new TimeHeap2(TimeHeap2.Type.MAX,n1,n2);
     _tsol = new TimeSolver2(_tk,pt);
-    _tsol.setConcurrency(TimeSolver2.Concurrency.SERIAL);
+    _tsol.setConcurrency(TimeSolver2.Concurrency.PARALLEL);
     clearAll();
   }
 
@@ -201,7 +201,6 @@ public class Painting2 {
       TimeHeap2.Entry ef = _heap.remove();
       int k1 = ef.i1;
       int k2 = ef.i2;
-      trace("k1="+k1+" k2="+k2);
 
       // The values to be extrapolated.
       float[] vk = _vk[k2][k1];
@@ -480,7 +479,7 @@ public class Painting2 {
     }
     public void timeDecreased(int i1, int i2, float t) {
       if (_type[i2][i1]==FIXED) {
-        if (i1!=k1 && i2!=k2)
+        if (i1!=k1 || i2!=k2)
           _heap.reduce(i1,i2,t);
       } else {
         _type[i2][i1] = EXTRA;
@@ -530,8 +529,8 @@ public class Painting2 {
     Plot(float[][] f, IndexColorModel icm) {
       _sp = new SimplePlot(SimplePlot.Origin.UPPER_LEFT);
       //_sp.setSize(650,600);
-      //_sp.setSize(950,900);
-      _sp.setSize(1130,820);
+      _sp.setSize(950,900);
+      //_sp.setSize(1130,820);
       _pv = _sp.addPixels(f);
       if (icm==null) icm = ColorMap.JET;
       _pv.setColorModel(icm);
@@ -679,226 +678,36 @@ public class Painting2 {
     return new float[][][]{x1,x2};
   }
 
-  private static int[] K1_SEIS = {
-      43,  87, 110, 147, 167, 188,
-      39,  82, 105, 142, 160, 180,
-      40,  86, 107, 144, 165, 185,
-  };
-  private static int[] K2_SEIS = {
-     100, 100, 100, 100, 100, 100,
-     170, 170, 170, 170, 170, 170,
-     280, 280, 280, 280, 280, 280,
-  };
-  private static double[] VK_SEIS = {
-       1,   2,   3,   4,   5,   6,
-       1,   2,   3,   4,   5,   6,
-       1,   2,   3,   4,   5,   6,
-  };
-  private static int[] K1_SEISB = {
-      20,  75, 100, 130, 155, 180, 210,
-      20,  70,  95, 142, 160, 180,
-      40,  86, 107, 144, 165, 185,
-  };
-  private static int[] K2_SEISB = {
-     100, 100, 100, 100, 100, 100,
-     170, 170, 170, 170, 170, 170,
-     280, 280, 280, 280, 280, 280,
-  };
-  private static double[] VK_SEISB = {
-       1,   2,   3,   4,   5,   6,
-       1,   2,   3,   4,   5,   6,
-       1,   2,   3,   4,   5,   6,
-  };
-  private static int[] getK1SeisAboveBelow() {
-    int nk = K1_SEIS.length;
-    int[] k1 = new int[2*nk];
-    for (int ik=0,jk=0; ik<nk; ++ik,jk+=2) {
-      k1[jk  ] = K1_SEIS[ik]-4;
-      k1[jk+1] = K1_SEIS[ik]+4;
-    }
-    return k1;
-  }
-  private static int[] getK2SeisAboveBelow() {
-    int nk = K2_SEIS.length;
-    int[] k2 = new int[2*nk];
-    for (int ik=0,jk=0; ik<nk; ++ik,jk+=2) {
-      k2[jk  ] = K2_SEIS[ik];
-      k2[jk+1] = K2_SEIS[ik];
-    }
-    return k2;
-  }
-  private static float[] getVkSeisLayer() {
-    int nk = VK_SEIS.length;
-    float[] vk = new float[2*nk];
-    for (int ik=0,jk=0; ik<nk; ++ik,jk+=2) {
-      int vka = (int)(VK_SEIS[ik]-0.01);
-      int vkb = (int)(VK_SEIS[ik]+0.01);
-      vk[jk  ] = (float)vka;
-      vk[jk+1] = (float)vkb;
-    }
-    return vk;
-  }
-
-  private static void insertFaults(StructureTensors st) {
-    int[] k1 = {  25, 193,  27, 106, 107, 200};
-    int[] k2 = { 135, 145, 232, 213, 213, 206};
-    int nk = k1.length;
-    float ehuge = 10000.0f;
-    for (int ik=0; ik<nk; ik+=2) {
-      int k1a = k1[ik  ];
-      int k1b = k1[ik+1];
-      int k2a = k2[ik  ];
-      int k2b = k2[ik+1];
-      double kscale = (double)(k2b-k2a)/(double)(k1b-k1a);
-      for (int j1=k1a; j1<=k1b; ++j1) {
-        double x2 = k2a+(j1-k1a)*kscale; 
-        int j2l = (int)x2;
-        int j2r = j2l+1;
-        float[] el = st.getEigenvalues(j1,j2l);
-        float[] er = st.getEigenvalues(j1,j2r);
-        float e2r = (float)(x2-j2l);
-        float e2l = (1.0f-e2r);
-        el[0] *= e2l*ehuge;
-        el[1] *= e2l*ehuge;
-        er[0] *= e2r*ehuge;
-        er[1] *= e2r*ehuge;
-        st.setEigenvalues(j1,j2l,el);
-        st.setEigenvalues(j1,j2r,er);
-      }
-    }
-  }
-
-  private static void testSeismic() {
-    int n1 = 251;
-    int n2 = 357;
-    int nv = 1;
-    float[][] x = readImage(n1,n2,"/data/seis/tp/tp73.dat");
-    /*
-    int m1 = 20;
-    int nk = 1+(n1-1)/m1;
-    int[] k1 = new int[nk];
-    int[] k2 = new int[nk];
-    float[] vk = new float[nk];
-    for (int i1=0,ik=0; i1<n1; i1+=m1,++ik) {
-      k1[ik] = i1;
-      k2[ik] = n2/2;
-      //vk[ik] = x[k2[ik]][k1[ik]];
-      vk[ik] = (float)i1;
-      //vk[ik] = (ik%2==0)?1.0f:2.0f;
-    }
-    */
-    StructureTensors st = new StructureTensors(3,x);
-    plotImageTensors(x,st);
-    Painting2 p = new Painting2(n1,n2,nv,st);
-    int[] k1 = getK1SeisAboveBelow();
-    int[] k2 = getK2SeisAboveBelow();
-    float[] vk = getVkSeisLayer();
-    int nk = k1.length;
-    for (int ik=0; ik<nk; ++ik) {
-      p.paintAt(k1[ik],k2[ik],vk[ik]);
-    }
-    plot(x,ColorMap.GRAY);
-    p.extrapolate();
-    plot(p.getTimes(),ColorMap.JET);
-    plot(p.getValues(),ColorMap.JET);
-    p.interpolate();
-    plot(p.getValues(),ColorMap.JET);
-  }
-
-  private static void testChannels() {
-    int n1 = 200;
-    int n2 = 200;
-    int nv = 1;
-    float[][] x = readImage(n1,n2,"/data/seis/joe/x174.dat");
-    plot(x,ColorMap.GRAY);
-    StructureTensors st = new StructureTensors(8,x);
-
-    /*
-    int[] k1 =   {  92,  92,  92, 100, 100, 100,  60,  25,  20,  19};
-    int[] k2 =   { 109, 102, 116, 132, 125, 139, 116, 124, 110, 117};
-    float[] vk = {1.0f,2.0f,2.0f,1.0f,2.0f,2.0f,1.0f,1.0f,1.0f,2.0f};
-    int nk = vk.length;
-    */
-    /*
-    int[] k1 =    { 34,  92, 172,  27,  25,  12,  81, 117,  94,  14,  44};
-    int[] k2 =    { 81, 109, 109, 111, 124, 138, 146,  82, 122,  99, 162};
-    float[] vk = {1.0f,2.0f,2.0f,2.0f,2.0f,3.0f,3.0f,0.0f,0.0f,0.0f,0.0f};
-    int nk = vk.length;
-    */
-    int m2 = 5;
-    int nk = 1+(n2-1)/m2;
-    int[] k1 = new int[nk];
-    int[] k2 = new int[nk];
-    float[] vk = new float[nk];
-    for (int i2=0,ik=0; i2<n2; i2+=m2,++ik) {
-      k1[ik] = 130;
-      k2[ik] = i2;
-      vk[ik] = (float)i2;
-    }
-    /*
-    int[] k1 =   {  n1-1,  n1-1};
-    int[] k2 =   {1*n2/4,3*n2/4};
-    float[] vk = {  1.0f,  2.0f};
-    int nk = vk.length;
-    */
-    Painting2 p = new Painting2(n1,n2,nv,st);
-    for (int ik=0; ik<nk; ++ik) {
-      p.paintAt(k1[ik],k2[ik],vk[ik]);
-    }
-    float[][] v;
-    p.extrapolate();
-    v = p.getValues();
-    plot(v,ColorMap.JET);
-    p.interpolate();
-    v = p.getValues();
-    plot(v,ColorMap.JET);
-  }
-
   private static class SimpleTensors extends EigenTensors2 {
-    SimpleTensors(int n1, int n2, double su, double sv, double v1) {
+    SimpleTensors(int n1, int n2, double du, double dv, double v1) {
       super(n1,n2);
       float u2 = -(float)v1;
       float u1 = sqrt(1.0f-u2*u2);
-      float au = (float)su;
-      float av = (float)sv;
+      float au = (float)du;
+      float av = (float)dv;
       for (int i2=0; i2<n2; ++i2) {
         for (int i1=0; i1<n1; ++i1) {
-          float d1 = (float)(i1-n1/2);
-          float d2 = (float)(i2-n2/2);
-          float as = exp(-0.0001f*(d1*d1+d2*d2));
-          if (i1==n1/3 && 1*n2/4<i2 && i2<3*n2/4)
-            as = 1000.0f;
-          else
-            as = 1.0f;
-          setEigenvalues(i1,i2,au*as,av*as);
+          setEigenvalues(i1,i2,au,av);
           setEigenvectorU(i1,i2,u1,u2);
         }
       }
     }
   }
 
-  private static void testIsotropic() {
+  private static void testConstant() {
     int n1 = 301;
     int n2 = 301;
     int nv = 1;
-    float su = 4.0f;
-    float sv = 1.0f;
-    float v1 = sin(0.0f*FLT_PI/8.0f);
-    SimpleTensors st = new SimpleTensors(n1,n2,su,sv,v1);
+    float du = 0.010f;
+    float dv = 1.000f;
+    float v1 = sin(-45.0f*FLT_PI/180.0f);
+    SimpleTensors st = new SimpleTensors(n1,n2,du,dv,v1);
     Painting2 p = new Painting2(n1,n2,nv,st);
-    p.paintAt(1*n1/4,2*n2/4,1.0f);
-    p.paintAt(3*n1/4,2*n2/4,2.0f);
-    /*
-    p.paintAt(   1,   1,1.0f);
-    p.paintAt(n1-1,   1,1.0f);
-    p.paintAt(   1,n2-1,1.0f);
-    p.paintAt(n1-1,n2-1,1.0f);
-    p.paintAt(n1/2,n2/2,2.0f);
-    */
+    p.paintAt(1*(n1-1)/4,1*(n2-1)/4,1.0f);
+    p.paintAt(3*(n1-1)/4,3*(n2-1)/4,2.0f);
     p.extrapolate();
-    plotImageTensors(p.getTimes(),st);
-    plot(p.getValues());
-    p.interpolate();
+    //plotImageTensors(p.getTimes(),st);
+    plot(p.getTimes(),ColorMap.PRISM);
     plot(p.getValues());
   }
 
@@ -955,9 +764,9 @@ public class Painting2 {
   public static void main(String[] args) {
     SwingUtilities.invokeLater(new Runnable() {
       public void run() {
-        testSeismic();
+        testConstant();
+        //testSeismic();
         //testChannels();
-        //testIsotropic();
         //testTarget();
       }
     });

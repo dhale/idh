@@ -33,7 +33,7 @@ public class ImagePainter2 {
     _n2 = image.length;
     _nv = 1;
     _image = image;
-    _pt = new PaintTensors(SIGMA,1.0f,1.0f,1.0f,_image);
+    _pt = new PaintTensors(SIGMA,2.0f,1.0f,1.0f,_image);
     _painting = new Painting2(_n1,_n2,_nv,_pt);
     _painting.setDefaultValue(0.0f);
 
@@ -465,6 +465,7 @@ public class ImagePainter2 {
     int j1 = (n1-1-(m1-1)*ns)/2;
     int j2 = (n2-1-(m2-1)*ns)/2;
     int nm = m1*m2;
+    //double r = 0.45*ns;
     float[][] sm = new float[n2][n1];
     for (int i2=0; i2<n2; ++i2) {
       for (int i1=0; i1<n1; ++i1) {
@@ -473,9 +474,8 @@ public class ImagePainter2 {
       }
     }
     sm = Array.copy(m1,m2,j1,j2,ns,ns,sm);
-    float smq = Quantiler.estimate(0.95f,sm);
+    float smq = Quantiler.estimate(0.98f,sm);
     double r = 0.45*ns/sqrt(smq);
-    //double r = 0.45*ns;
     float[][] x1 = new float[nm][nt];
     float[][] x2 = new float[nm][nt];
     double dt = 2.0*PI/(nt-1);
@@ -553,27 +553,16 @@ public class ImagePainter2 {
       float[][] sv = new float[n2][n1];
       LocalOrientFilter lof = new LocalOrientFilter(sigma);
       lof.apply(x,null,u1,u2,null,null,su,sv,null);
-      trace("su min="+Array.min(su)+" max="+Array.max(su));
-      trace("sv min="+Array.min(sv)+" max="+Array.max(sv));
-      float[][] sa = Array.pow(su,alpha);
-      float[][] sb = Array.pow(Array.div(sv,su),beta);
-      float[][] sc = Array.pow(Array.sub(1.0f,coherence(sigma,x)),gamma);
-      su = Array.mul(sa,sc);
-      sv = Array.mul(sb,su);
-      trace("su min="+Array.min(su)+" max="+Array.max(su));
-      trace("sv min="+Array.min(sv)+" max="+Array.max(sv));
-      /*
+      //trace("su min="+Array.min(su)+" max="+Array.max(su));
+      //trace("sv min="+Array.min(sv)+" max="+Array.max(sv));
       float[][] dc = Array.pow(Array.sub(1.0f,coherence(sigma,x)),-gamma);
-      float[][] du = Array.pow(su,-alpha);
-      float[][] dv = Array.pow(sv,-beta);
-      */
-      float[][] du = Array.div(1.0f,su);
-      float[][] dv = Array.div(1.0f,sv);
+      float[][] du = Array.mul(dc,Array.pow(su,-alpha));
+      float[][] dv = Array.mul(du,Array.pow(Array.div(sv,su),-beta));
       float ds = 1.0f/Array.max(dv);
       du = Array.mul(ds,du);
       dv = Array.mul(ds,dv);
-      trace("du min="+Array.min(du)+" max="+Array.max(du));
-      trace("dv min="+Array.min(dv)+" max="+Array.max(dv));
+      //trace("du min="+Array.min(du)+" max="+Array.max(du));
+      //trace("dv min="+Array.min(dv)+" max="+Array.max(dv));
       //SimplePlot.asPixels(du);
       //SimplePlot.asPixels(dv);
       for (int i2=0; i2<n2; ++i2) {

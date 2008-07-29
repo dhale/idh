@@ -33,7 +33,7 @@ public class ImagePainterX {
     _n2 = image.length;
     _nv = 1;
     _image = image;
-    _st = new StructureTensors(SIGMA,1.0f,1.0f,1.0f,_image);
+    _st = new StructureTensors(SIGMA,2.0f,1.0f,1.0f,_image);
     _painting = new PaintingX(_n1,_n2,_nv,_st);
     _painting.setDefaultValue(0.0f);
 

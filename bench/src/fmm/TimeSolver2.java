@@ -142,6 +142,7 @@ public class TimeSolver2 {
 
   // Times are converged when the fractional change is less than this value.
   private static final float EPSILON = 0.001f;
+  private static final float ONE_MINUS_EPSILON = 1.0f-EPSILON;
 
   private int _n1,_n2;
   private int _n1m,_n2m;
@@ -283,7 +284,7 @@ public class TimeSolver2 {
     s.marked = _marked;
   }
   private void unmark(Sample s) {
-    s.marked -= 1;
+    s.marked = 0;
   }
   private boolean isMarked(Sample s) {
     return s.marked==_marked;
@@ -298,21 +299,21 @@ public class TimeSolver2 {
       return;
     _stack.clear();
     _stack.add(si);
+    unmark(si);
     while (!_stack.isEmpty()) {
       si = _stack.remove(_stack.size()-1);
-      if (isMarked(si)) {
-        unmark(si);
-        i1 = si.i1;
-        i2 = si.i2;
-        float ti = _t[i2][i1];
-        for (int i=0; i<nlistener; ++i)
-          _listeners.get(i).timeDecreased(i1,i2,ti);
-        for (int k=0; k<4; ++k) {
-          int j1 = i1+K1[k];  if (j1<0 || j1>=_n1) continue;
-          int j2 = i2+K2[k];  if (j2<0 || j2>=_n2) continue;
-          Sample sj = _s[j2][j1];
-          if (isMarked(sj))
-            _stack.add(sj);
+      i1 = si.i1;
+      i2 = si.i2;
+      float ti = _t[i2][i1];
+      for (int i=0; i<nlistener; ++i)
+        _listeners.get(i).timeDecreased(i1,i2,ti);
+      for (int k=0; k<4; ++k) {
+        int j1 = i1+K1[k];  if (j1<0 || j1>=_n1) continue;
+        int j2 = i2+K2[k];  if (j2<0 || j2>=_n2) continue;
+        Sample sj = _s[j2][j1];
+        if (isMarked(sj)) {
+          _stack.add(sj);
+          unmark(sj);
         }
       }
     }
@@ -456,7 +457,7 @@ public class TimeSolver2 {
     _t[i2][i1] = ci;
 
     // If new and current times are close enough (converged), then ...
-    if (ti-ci<=ti*EPSILON) {
+    if (ci>=ti*ONE_MINUS_EPSILON) {
 
       // For all four neighbors, ...
       for (int k=0; k<4; ++k) {
@@ -469,8 +470,8 @@ public class TimeSolver2 {
         float tj = _t[j2][j1];
         float cj = computeTime(j1,j2,K1S[k],K2S[k],d);
 
-        // If computed time significantly less than neighbor's current time, ...
-        if (tj-cj>tj*EPSILON) {
+        // If computed significantly time less than neighbor's current time, ...
+        if (cj<tj*ONE_MINUS_EPSILON) {
 
           // Replace the current time.
           _t[j2][j1] = cj;
@@ -487,6 +488,34 @@ public class TimeSolver2 {
     }
   }
 
+  // Methods to get times for neighbors.
+  private float t1m(int i1, int i2) {
+    return (--i1>=0 && isMarked(_s[i2][i1]))?_t[i2][i1]:INFINITY;
+  }
+  private float t1p(int i1, int i2) {
+    return (++i1<_n1 && isMarked(_s[i2][i1]))?_t[i2][i1]:INFINITY;
+  }
+  private float t2m(int i1, int i2) {
+    return (--i2>=0 && isMarked(_s[i2][i1]))?_t[i2][i1]:INFINITY;
+  }
+  private float t2p(int i1, int i2) {
+    return (++i2<_n2 && isMarked(_s[i2][i1]))?_t[i2][i1]:INFINITY;
+  }
+  /*
+  private float t1m(int i1, int i2) {
+    return (--i1>=0)?_t[i2][i1]:INFINITY;
+  }
+  private float t1p(int i1, int i2) {
+    return (++i1<_n1)?_t[i2][i1]:INFINITY;
+  }
+  private float t2m(int i1, int i2) {
+    return (--i2>=0)?_t[i2][i1]:INFINITY;
+  }
+  private float t2p(int i1, int i2) {
+    return (++i2<_n2)?_t[i2][i1]:INFINITY;
+  }
+  */
+
   /**
    * Returns a time t not greater than the current time for one sample.
    * Computations are limited to neighbor samples with specified indices.
@@ -498,10 +527,10 @@ public class TimeSolver2 {
     float d22 = d[2];
     float e12 = 1.0f/(d11*d22-d12*d12);
     float tc = _t[i2][i1];
-    float t1m = (i1>0   )?_t[i2][i1-1]:INFINITY;
-    float t1p = (i1<_n1m)?_t[i2][i1+1]:INFINITY;
-    float t2m = (i2>0   )?_t[i2-1][i1]:INFINITY;
-    float t2p = (i2<_n2m)?_t[i2+1][i1]:INFINITY;
+    float t1m = t1m(i1,i2);
+    float t1p = t1p(i1,i2);
+    float t2m = t2m(i1,i2);
+    float t2p = t2p(i1,i2);
     for (int k=0; k<k1s.length; ++k) {
       int k1 = k1s[k];
       int k2 = k2s[k];
@@ -579,6 +608,7 @@ public class TimeSolver2 {
     sp.setSize(800,790);
     PixelsView pv = sp.addPixels(y);
     pv.setColorModel(icm);
+    //pv.setClips(0.0f,24.0f);
     //pv.setInterpolation(PixelsView.Interpolation.NEAREST);
     pv.setInterpolation(PixelsView.Interpolation.LINEAR);
   }
@@ -680,33 +710,38 @@ public class TimeSolver2 {
     }
   }
 
-  private static void testConstant() {
-    int n1 = 1001, n2 = 1001;
-    ConstantTensors tensors = makeConstantTensors(110.0f,1.000f,0.010f);
-    int i1 = 2*(n1-1)/4, i2 = 2*(n2-1)/4;
-    float[][] ts = computeSerial(n1,n2,i1,i2,tensors);
-    float[][] tp = computeParallel(n1,n2,i1,i2,tensors);
-    float[][] te = Array.div(Array.abs(Array.sub(tp,ts)),ts);
-    te[i2][i1] = 0.0f;
-    float temax = Array.max(te);
-    trace("temax="+temax);
-    plot(ts,ColorMap.PRISM);
-    plot(tp,ColorMap.PRISM);
-    plot(te,ColorMap.JET);
-    if (temax>0.1f)
-      System.exit(-1);
-  }
-
   private static void testTsai() {
     int n1 = 101, n2 = 101;
     TsaiTensors tensors = new TsaiTensors(n1,n2);
     int i1 = 2*(n1-1)/4, i2 = 2*(n2-1)/4;
     TimeSolver2 ts = new TimeSolver2(n1,n2,tensors);
+    //ts.setConcurrency(TimeSolver2.Concurrency.SERIAL);
     ts.zeroAt(50,50);
     ts.zeroAt(10,25);
     float[][] t = ts.getTimes();
     //plot(t,ColorMap.PRISM);
     plot(t,ColorMap.JET);
+  }
+
+  private static void testConstant() {
+    int n1 = 1001, n2 = 1001;
+    ConstantTensors tensors = makeConstantTensors(110.0f,1.000f,0.010f);
+    TimeSolver2 ts = new TimeSolver2(n1,n2,tensors);
+    //ts.setConcurrency(TimeSolver2.Concurrency.SERIAL);
+    ts.zeroAt(1*(n1-1)/4,2*(n2-1)/4);
+    ts.zeroAt(3*(n1-1)/4,2*(n2-1)/4);
+    plot(ts.getTimes(),ColorMap.JET);
+  }
+
+  private static void testSmall() {
+    int n1 = 5, n2 = 5;
+    ConstantTensors tensors = makeConstantTensors(135.0f,1.000f,0.100f);
+    TimeSolver2 ts = new TimeSolver2(n1,n2,tensors);
+    ts.setConcurrency(TimeSolver2.Concurrency.SERIAL);
+    ts.zeroAt(0*(n1-1)/4,0*(n2-1)/4);
+    plot(ts.getTimes(),ColorMap.JET);
+    ts.zeroAt(4*(n1-1)/4,4*(n2-1)/4);
+    plot(ts.getTimes(),ColorMap.JET);
   }
 
   private static void trace(String s) {
@@ -721,8 +756,9 @@ public class TimeSolver2 {
     //SwingUtilities.invokeLater(new Runnable() {
     //  public void run() {
         //benchConstant();
-        //testConstant();
-        testTsai();
+        testConstant();
+        //testTsai();
+        //testSmall();
     //  }
     //});
   }
