@@ -395,6 +395,7 @@ public class TimeSolver2 {
     }
     final AtomicInteger ai = new AtomicInteger();
     int ntotal = 0;
+    int niter = 0;
     while (!al.isEmpty()) {
       ai.set(0); // initialize the shared block index to zero
       final int n = al.size(); // number of samples in active (A) list
@@ -435,6 +436,9 @@ public class TimeSolver2 {
         al.appendIfAbsent(bl[itask]);
         bl[itask].clear();
       }
+      ++niter;
+      //if (niter%100==1)
+      //  plot(_t,ColorMap.JET);
     }
     es.shutdown();
     trace("solveParallel: ntotal="+ntotal);
@@ -588,178 +592,11 @@ public class TimeSolver2 {
     return t1+(float)u1;
   }
 
-  ///////////////////////////////////////////////////////////////////////////
-  ///////////////////////////////////////////////////////////////////////////
-  ///////////////////////////////////////////////////////////////////////////
-  // testing
-
-  private static void plot(float[][] x, IndexColorModel icm) {
-    float[][] y = Array.copy(x);
-    int n1 = y[0].length;
-    int n2 = y.length;
-    for (int i2=0; i2<n2; ++i2) {
-      for (int i1=0; i1<n1; ++i1) {
-        if (y[i2][i1]==INFINITY) {
-          y[i2][i1] = 0.0f;
-        }
-      }
-    }
-    SimplePlot sp = new SimplePlot();
-    sp.setSize(800,790);
-    PixelsView pv = sp.addPixels(y);
-    pv.setColorModel(icm);
-    //pv.setClips(0.0f,24.0f);
-    //pv.setInterpolation(PixelsView.Interpolation.NEAREST);
-    pv.setInterpolation(PixelsView.Interpolation.LINEAR);
-  }
-
-  private static class ConstantTensors implements Tensors2 {
-    ConstantTensors(float d11, float d12, float d22) {
-      _d11 = d11;
-      _d12 = d12;
-      _d22 = d22;
-    }
-    public void getTensor(int i1, int i2, float[] d) {
-      d[0] = _d11;
-      d[1] = _d12;
-      d[2] = _d22;
-    }
-    private float _d11,_d12,_d22;
-  }
-
-  private static ConstantTensors makeConstantTensors(
-    float a, float su, float sv) 
-  {
-    a *= FLT_PI/180.0f;
-    float cosa = cos(a);
-    float sina = sin(a);
-    float d11 = su*cosa*cosa+sv*sina*sina;
-    float d12 = (su-sv)*sina*cosa;
-    float d22 = sv*cosa*cosa+su*sina*sina;
-    return new ConstantTensors(d11,d12,d22);
-  }
-
-  private static class TsaiTensors extends EigenTensors2 {
-    TsaiTensors(int n1, int n2) {
-      super(n1,n2);
-      float a1 = 2.0f*FLT_PI;
-      float a2 = 2.0f*FLT_PI;
-      float d1 = 2.0f/(float)(n1-1);
-      float d2 = 2.0f/(float)(n2-1);
-      float f1 = -1.0f;
-      float f2 = -1.0f;
-      float[][] f = new float[n2][n1];
-      for (int i2=0; i2<n2; ++i2) {
-        float x2 = f2+i2*d2;
-        for (int i1=0; i1<n1; ++i1) {
-          float x1 = f1+i1*d1;
-          f[i2][i1] = cos(a1*x1)*sin(a2*x2);
-          float e1 = -a1*sin(a1*x1)*sin(a2*x2);
-          float e2 =  a2*cos(a1*x1)*cos(a2*x2);
-          float den =  1.0f+e1*e1+e2*e2;
-          float d11 =  1.0f-e1*e1/den;
-          float d22 =  1.0f-e2*e2/den;
-          float d12 = -2.0f*e1*e2/den;
-          float[] d = {d11,d12,d22};
-          setTensor(i1,i2,d);
-        }
-      }
-      plot(f,ColorMap.JET);
-    }
-  }
-
-  private static float[][] computeSerial(
-    int n1, int n2, int i1, int i2, Tensors2 tensors)
-  {
-    trace("computeSerial:");
-    return computeTimes(
-      n1,n2,i1,i2,tensors,TimeSolver2.Concurrency.SERIAL);
-  }
-
-  private static float[][] computeParallel(
-    int n1, int n2, int i1, int i2, Tensors2 tensors)
-  {
-    trace("computeParallel:");
-    return computeTimes(
-      n1,n2,i1,i2,tensors,TimeSolver2.Concurrency.PARALLEL);
-  }
-
-  private static float[][] computeTimes(
-    int n1, int n2, int i1, int i2,
-    Tensors2 tensors, TimeSolver2.Concurrency concurrency) 
-  {
-    TimeSolver2 ts = new TimeSolver2(n1,n2,tensors);
-    ts.setConcurrency(concurrency);
-    Stopwatch sw = new Stopwatch();
-    sw.start();
-    ts.zeroAt(i1,i2);
-    sw.stop();
-    float[][] t = ts.getTimes();
-    trace("  time="+sw.time()+" sum="+Array.sum(t));
-    return t;
-  }
-
-  private static void benchConstant() {
-    int n1 = 2001, n2 = 2001;
-    ConstantTensors tensors = makeConstantTensors(110.0f,1.000f,0.010f);
-    int i1 = 2*(n1-1)/4, i2 = 2*(n2-1)/4;
-    for (;;) {
-      computeSerial(n1,n2,i1,i2,tensors);
-      computeParallel(n1,n2,i1,i2,tensors);
-      trace("********************************************************");
-    }
-  }
-
-  private static void testTsai() {
-    int n1 = 101, n2 = 101;
-    TsaiTensors tensors = new TsaiTensors(n1,n2);
-    int i1 = 2*(n1-1)/4, i2 = 2*(n2-1)/4;
-    TimeSolver2 ts = new TimeSolver2(n1,n2,tensors);
-    //ts.setConcurrency(TimeSolver2.Concurrency.SERIAL);
-    ts.zeroAt(50,50);
-    ts.zeroAt(10,25);
-    float[][] t = ts.getTimes();
-    //plot(t,ColorMap.PRISM);
-    plot(t,ColorMap.JET);
-  }
-
-  private static void testConstant() {
-    int n1 = 1001, n2 = 1001;
-    ConstantTensors tensors = makeConstantTensors(110.0f,1.000f,0.010f);
-    TimeSolver2 ts = new TimeSolver2(n1,n2,tensors);
-    //ts.setConcurrency(TimeSolver2.Concurrency.SERIAL);
-    ts.zeroAt(1*(n1-1)/4,2*(n2-1)/4);
-    ts.zeroAt(3*(n1-1)/4,2*(n2-1)/4);
-    plot(ts.getTimes(),ColorMap.JET);
-  }
-
-  private static void testSmall() {
-    int n1 = 5, n2 = 5;
-    ConstantTensors tensors = makeConstantTensors(135.0f,1.000f,0.100f);
-    TimeSolver2 ts = new TimeSolver2(n1,n2,tensors);
-    ts.setConcurrency(TimeSolver2.Concurrency.SERIAL);
-    ts.zeroAt(0*(n1-1)/4,0*(n2-1)/4);
-    plot(ts.getTimes(),ColorMap.JET);
-    ts.zeroAt(4*(n1-1)/4,4*(n2-1)/4);
-    plot(ts.getTimes(),ColorMap.JET);
-  }
-
   private static void trace(String s) {
     System.out.println(s);
   }
   private static void trace(int i1, int i2, String s) {
     //if (i1==2 && i2==2)
     //  trace(s);
-  }
-
-  public static void main(String[] args) {
-    //SwingUtilities.invokeLater(new Runnable() {
-    //  public void run() {
-        //benchConstant();
-        testConstant();
-        //testTsai();
-        //testSmall();
-    //  }
-    //});
   }
 }

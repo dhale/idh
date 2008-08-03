@@ -35,31 +35,6 @@ public class FmmSolver2 {
     FOUR,
     EIGHT
   };
-
-  /**
-   * An interface for classes of structure tensors. Each tensor is a
-   * symmetric positive-definite 2-by-2 matrix {{s11,s12},{s12,s22}}.
-   */
-  public interface Tensors {
-
-    /**
-     * Gets structure tensor elements for specified indices.
-     * @param i1 index for 1st dimension.
-     * @param i2 index for 2nd dimension.
-     * @param d array {s11,s12,s22} of tensor elements.
-     */
-    public void getTensor(int i1, int i2, float[] d);
-  }
-
-  /**
-   * Constructs a solver with constant identity structure tensors.
-   * All times are initially infinite (very large).
-   * @param n1 number of samples in 1st dimension.
-   * @param n2 number of samples in 2nd dimension.
-   */
-  public FmmSolver2(int n1, int n2, Stencil stencil) {
-    init(n1,n2,null,stencil,new IdentityTensors());
-  }
   
   /**
    * Constructs a solver for the specified structure tensor field.
@@ -68,7 +43,7 @@ public class FmmSolver2 {
    * @param n2 number of samples in 2nd dimension.
    * @param tensors structure tensors.
    */
-  public FmmSolver2(int n1, int n2, Stencil stencil, Tensors tensors) {
+  public FmmSolver2(int n1, int n2, Stencil stencil, Tensors2 tensors) {
     init(n1,n2,null,stencil,tensors);
   }
   
@@ -78,7 +53,7 @@ public class FmmSolver2 {
    * @param t array of times to be updated by this solver; 
    * @param tensors structure tensors.
    */
-  public FmmSolver2(float[][] t, Stencil stencil, Tensors tensors) {
+  public FmmSolver2(float[][] t, Stencil stencil, Tensors2 tensors) {
     init(t[0].length,t.length,t,stencil,tensors);
   }
 
@@ -114,15 +89,6 @@ public class FmmSolver2 {
 
   ///////////////////////////////////////////////////////////////////////////
   // private
-
-  // Structure tensors.
-  private static class IdentityTensors implements Tensors {
-    public void getTensor(int i1, int i2, float[] s) {
-      s[0] = 1.00f; // s11
-      s[1] = 0.00f; // s12
-      s[2] = 1.00f; // s22
-    }
-  }
 
   // Initial huge value for times not yet computed.
   private static final float INFINITY = Float.MAX_VALUE;
@@ -177,7 +143,7 @@ public class FmmSolver2 {
 
   private int _n1,_n2; // numbers of samples in each dimension
   private float[][] _t; // array of times computed by this solver
-  private Tensors _tensors; // structure tensors
+  private Tensors2 _tensors; // structure tensors
   private int[][] _mark; // samples are marked far, trial, or known
   private TimeHeap2 _heap; // min-heap of sample indices and times 
   private int[] _k1,_k2,_k11,_k12,_k21,_k22; // indices of neighbor samples
@@ -208,7 +174,7 @@ public class FmmSolver2 {
   }
 
   private void init(
-    int n1, int n2, float[][] t, Stencil stencil, Tensors tensors) 
+    int n1, int n2, float[][] t, Stencil stencil, Tensors2 tensors) 
   {
     _n1 = n1;
     _n2 = n2;
@@ -393,7 +359,27 @@ public class FmmSolver2 {
   ///////////////////////////////////////////////////////////////////////////
   // testing
 
-  private static class ConstantTensors implements FmmSolver2.Tensors {
+  private static void plot(float[][] x, IndexColorModel icm) {
+    float[][] y = Array.copy(x);
+    int n1 = y[0].length;
+    int n2 = y.length;
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        if (y[i2][i1]==INFINITY) {
+          y[i2][i1] = 0.0f;
+        }
+      }
+    }
+    SimplePlot sp = new SimplePlot(SimplePlot.Origin.UPPER_LEFT);
+    sp.setSize(920,900);
+    PixelsView pv = sp.addPixels(y);
+    pv.setColorModel(icm);
+    //pv.setClips(0.0f,24.0f);
+    //pv.setInterpolation(PixelsView.Interpolation.NEAREST);
+    pv.setInterpolation(PixelsView.Interpolation.LINEAR);
+  }
+
+  private static class ConstantTensors implements Tensors2 {
     ConstantTensors(float s11, float s12, float s22) {
       _s11 = s11;
       _s12 = s12;
@@ -407,51 +393,101 @@ public class FmmSolver2 {
     private float _s11,_s12,_s22;
   }
 
-  private static void plot(float[][] x) {
-    float[][] y = Array.copy(x);
-    int n1 = y[0].length;
-    int n2 = y.length;
-    for (int i2=0; i2<n2; ++i2) {
-      for (int i1=0; i1<n1; ++i1) {
-        if (y[i2][i1]==INFINITY) {
-          y[i2][i1] = 0.0f;
+  private static ConstantTensors makeConstantTensors(
+    float a, float su, float sv) 
+  {
+    a *= FLT_PI/180.0f;
+    float cosa = cos(a);
+    float sina = sin(a);
+    float d11 = su*sina*sina+sv*cosa*cosa;
+    float d12 = (su-sv)*sina*cosa;
+    float d22 = sv*sina*sina+su*cosa*cosa;
+    return new ConstantTensors(d11,d12,d22);
+  }
+
+  private static class SineTensors extends EigenTensors2 {
+    SineTensors(int n1, int n2) {
+      super(n1,n2);
+      float b1 = 9.0f*2.0f*FLT_PI/(n1-1);
+      float b2 = 3.0f*2.0f*FLT_PI/(n2-1);
+      float a1 = 200.0f;
+      float a2 = atan(30.0f*FLT_PI/180.0f)/b2;
+      float[][] f = new float[n2][n1];
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          float s2 = a2*sin(b2*i2);
+          f[i2][i1] = a1*cos(b1*(i1+s2));
+          float e1 = -a1*b1*sin(b1*(i1+s2));
+          float e2 = e1*a2*b2*cos(b2*i2);
+          float den = 1.0f+e1*e1+e2*e2;
+          float d11 = (1.0f+e2*e2)/den;
+          float d22 = (1.0f+e1*e1)/den;
+          float d12 = -e1*e2/den;
+          float det = d11*d22-d12*d12;
+          float s11 =  d22/det;
+          float s12 = -d12/det;
+          float s22 =  d11/det;
+          float[] s = {s11,s12,s22};
+          setTensor(i1,i2,s);
+        }
+      }
+      plot(f,ColorMap.JET);
+    }
+  }
+
+  private static class WaveTensors extends EigenTensors2 {
+    WaveTensors(int n1, int n2) {
+      super(n1,n2);
+      float amax = 30.0f*FLT_PI/180.0f;
+      float dmin = 0.1f;
+      float k1 = 6.0f*2.0f*FLT_PI/n1;
+      float k2 = 3.0f*2.0f*FLT_PI/n2;
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          float d = dmin+(1.0f-dmin)*0.5f*(1.0f+cos(i1*k1));
+          float su = 1000.0f/d;
+          float sv = 1.000f/d;
+          float a = amax*sin(i2*k2);
+          float u1 =  cos(a);
+          float u2 = -sin(a);
+          setEigenvalues(i1,i2,su,sv);
+          setEigenvectorU(i1,i2,u1,u2);
         }
       }
     }
-    SimplePlot sp = new SimplePlot();
-    sp.setSize(800,790);
-    PixelsView pv = sp.addPixels(y);
-    pv.setColorModel(ColorMap.PRISM);
-    //pv.setInterpolation(PixelsView.Interpolation.NEAREST);
-    pv.setInterpolation(PixelsView.Interpolation.LINEAR);
   }
 
   private static void testConstant() {
-    int n1 = 2001;
-    int n2 = 2001;
-    float angle = FLT_PI*110.0f/180.0f;
-    //float su = 1.000f;
-    float su = 0.010f;
-    float sv = 1.000f;
-    float cosa = cos(angle);
-    float sina = sin(angle);
-    float s11 = su*cosa*cosa+sv*sina*sina;
-    float s12 = (su-sv)*sina*cosa;
-    float s22 = sv*cosa*cosa+su*sina*sina;
-    trace("s11="+s11+" s12="+s12+" s22="+s22+" s="+(s11*s22-s12*s12));
+    int n1 = 1001, n2 = 1001;
+    ConstantTensors tensors = makeConstantTensors(20.0f,0.010f,1.000f);
     FmmSolver2.Stencil stencil = FmmSolver2.Stencil.EIGHT;
-    ConstantTensors tensors = new ConstantTensors(s11,s12,s22);
+    FmmSolver2 fs = new FmmSolver2(n1,n2,stencil,tensors);
+    fs.zeroAt(2*(n1-1)/4,2*(n2-1)/4);
+    plot(fs.getTimes(),ColorMap.JET);
+  }
+
+  private static void testSine() {
+    int n1 = 601, n2 = 601;
+    SineTensors tensors = new SineTensors(n1,n2);
+    FmmSolver2.Stencil stencil = FmmSolver2.Stencil.EIGHT;
     FmmSolver2 fs = new FmmSolver2(n1,n2,stencil,tensors);
     Stopwatch sw = new Stopwatch();
     sw.start();
-    fs.zeroAt(2*n1/4,2*n2/4);
-    //fs.zeroAt(1*n1/4,1*n2/4);
-    //fs.zeroAt(3*n1/4,3*n2/4);
+    fs.zeroAt(2*(n1-1)/4,2*(n2-1)/4);
     sw.stop();
-    trace("time="+sw.time());
-    float[][] t = fs.getTimes();
-    //Array.dump(t);
-    plot(t);
+    plot(fs.getTimes(),ColorMap.PRISM);
+    trace("testSine: time="+sw.time()+" tmax="+Array.max(fs.getTimes()));
+  }
+
+  private static void testWave() {
+    int n1 = 601, n2 = 601;
+    WaveTensors tensors = new WaveTensors(n1,n2);
+    //FmmSolver2.Stencil stencil = FmmSolver2.Stencil.FOUR;
+    FmmSolver2.Stencil stencil = FmmSolver2.Stencil.EIGHT;
+    FmmSolver2 fs = new FmmSolver2(n1,n2,stencil,tensors);
+    fs.zeroAt(2*(n1-1)/4,2*(n2-1)/4);
+    plot(fs.getTimes(),ColorMap.PRISM);
+    trace("testWave: tmax="+Array.max(fs.getTimes()));
   }
 
   private static void trace(String s) {
@@ -465,7 +501,9 @@ public class FmmSolver2 {
   public static void main(String[] args) {
     SwingUtilities.invokeLater(new Runnable() {
       public void run() {
-        testConstant();
+        //testConstant();
+        testSine();
+        //testWave();
       }
     });
   }
