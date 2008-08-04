@@ -17,9 +17,6 @@ from edu.mines.jtk.util import *
 
 from fmm import *
 
-True = 1
-False = 0
-
 #############################################################################
 # global parameters
 
