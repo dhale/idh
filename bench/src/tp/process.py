@@ -46,8 +46,8 @@ def main(args):
   #goPaintWells(20)
   #goPaint()
   #doPlot3dList(["pp20w2d.dat","pp.dat"],[cjet,cjet])
-  #doPlot3dList(["tp3s.dat"],[cgray])
-  goSubset2d()
+  doPlot3dList(["tp3s.dat"],[cgray])
+  #goSubset2d()
 
 def goSubset2d():
   x = readFloats("tp3s.dat",n1,n2,n3)

@@ -44,13 +44,13 @@ n3= 401; d3=0.0200; f3=0.0000
 def main(args):
   #plot12(0);
   #plot12(100);
-  testFormat()
+  #testFormat()
   #subset(i1s,i2s,i3s)
-  #ais = ArrayInputStream(dataDir+"atws.dat")
-  #y = Array.zerofloat(n1,n2,n3)
-  #ais.readFloats(y)
-  #ais.close()
-  #plot3d(y)
+  ais = ArrayInputStream(dataDir+"atws.dat")
+  y = Array.zerofloat(n1,n2,n3)
+  ais.readFloats(y)
+  ais.close()
+  plot3d(y)
   return
 
 def subset(i1s,i2s,i3s):
