@@ -33,8 +33,9 @@ prism = ColorMap.PRISM
 
 def main(args):
   #testConstant()
-  testSine()
+  #testSine()
   #testTsai()
+  testSeismic()
   return
  
 def testConstant():
@@ -61,8 +62,105 @@ def testTsai():
     ts.zeroAt(2*(n1-1)/4,2*(n2-1)/4)
     plot(ts.getTimes(),0,0,jet)
 
+def testSeismic():
+  n1,n2 = 251,357
+  x = readFloats(n1,n2,dataDir+"/seis/tp/tp73.dat")
+  #x = gpow(x,0.75)
+  plot(x,0,0,gray)
+  tensors = SeismicTensors2(x,100,3)
+  ts = TimeSolver2(n1,n2,tensors)
+  #ts.zeroAt(65,180)
+  ts.zeroAt(95,180)
+  #ts.zeroAt(118,180)
+  #ts.zeroAt( 83,180)
+  plot(ts.getTimes(),0,0,prism)
+
+#############################################################################
+# other functions
+
+def readFloats(n1,n2,fileName):
+  x = Array.zerofloat(n1,n2)
+  ais = ArrayInputStream(fileName)
+  ais.readFloats(x)
+  ais.close()
+  return x
+
+def gpow(x,gamma):
+  return Array.mul(Array.sgn(x),Array.pow(Array.abs(x),gamma))
+
+def coherence(x,sigma):
+  n1,n2 = len(x[0]),len(x)
+  lof1 = LocalOrientFilter(sigma*2)
+  lof2 = LocalOrientFilter(sigma*8)
+  u11 = Array.zerofloat(n1,n2)
+  u21 = Array.zerofloat(n1,n2)
+  su1 = Array.zerofloat(n1,n2)
+  sv1 = Array.zerofloat(n1,n2)
+  u12 = Array.zerofloat(n1,n2)
+  u22 = Array.zerofloat(n1,n2)
+  su2 = Array.zerofloat(n1,n2)
+  sv2 = Array.zerofloat(n1,n2)
+  lof1.apply(x,None,u11,u21,None,None,su1,sv1,None)
+  lof2.apply(x,None,u12,u22,None,None,su2,sv2,None)
+  c = u11;
+  for i2 in range(n2):
+    for i1 in range(n1):
+      u11i = u11[i2][i1]
+      u21i = u21[i2][i1]
+      su1i = su1[i2][i1]
+      sv1i = sv1[i2][i1]
+      u12i = u12[i2][i1]
+      u22i = u22[i2][i1]
+      su2i = su2[i2][i1]
+      sv2i = sv2[i2][i1]
+      s111 = (su1i-sv1i)*u11i*u11i+sv1i
+      s121 = (su1i-sv1i)*u11i*u21i     
+      s221 = (su1i-sv1i)*u21i*u21i+sv1i
+      s112 = (su2i-sv2i)*u12i*u12i+sv2i
+      s122 = (su2i-sv2i)*u12i*u22i     
+      s222 = (su2i-sv2i)*u22i*u22i+sv2i
+      s113 = s111*s112+s121*s122
+      s223 = s121*s122+s221*s222
+      t1 = s111+s221
+      t2 = s112+s222
+      t3 = s113+s223
+      t12 = t1*t2
+      if t12>0.0:
+        c[i2][i1] = t3/t12
+      else:
+        c[i2][i1] = 0.0
+  return c
+
 #############################################################################
 # tensors
+
+class SeismicTensors2(EigenTensors2):
+  """
+  2D tensors computed from a seismic image
+  """
+  def __init__(self,x,alpha,sigma):
+    EigenTensors2.__init__(self,len(x[0]),len(x))
+    n1,n2 = len(x[0]),len(x)
+    u1 = Array.zerofloat(n1,n2)
+    u2 = Array.zerofloat(n1,n2)
+    su = Array.zerofloat(n1,n2)
+    sv = Array.zerofloat(n1,n2)
+    lof = LocalOrientFilter(sigma)
+    lof.apply(x,None,u1,u2,None,None,su,sv,None)
+    #c = coherence(x,sigma)
+    #c = Array.pow(c,8.0)
+    #c = Array.div(1.0,Array.sub(1.0,c))
+    #c = Array.div(1.0,Array.pow(Array.sub(1.0,c),0.25))
+    c = Array.fillfloat(1.0,n1,n2)
+    #plot(c,0,0,jet)
+    smax = Array.max(su)
+    scale = (alpha*alpha-1.0)/smax
+    for i2 in range(n2):
+      for i1 in range(n1):
+        du = c[i2][i1]/(1.0+scale*su[i2][i1])
+        dv = c[i2][i1]/(1.0+scale*sv[i2][i1])
+        self.setEigenvalues(i1,i2,du,dv)
+        self.setEigenvectorU(i1,i2,u1[i2][i1],u2[i2][i1])
 
 class ConstantTensors2(EigenTensors2):
   """
