@@ -37,166 +37,10 @@ public class MarchingCubes {
   public MarchingCubes() {
   }
 
-
-  public Triangles getTriangles(
-    float v, 
-    Sampling s1, Sampling s2, Sampling s3, float[][][] f) 
-  {
-    int n1 = f[0][0].length;
-    int n2 = f[0].length;
-    int n3 = f.length;
-    IntList ijkList = new IntList();
-    FloatList xyzList = new FloatList();
-    FloatList uvwList = new FloatList();
-    int cubeIndex = 0;
-
-    // For all cubes, ...
-    for (int i3=0; i3<n3-1; ++i3) {
-      for (int i2=0; i2<n2-1; ++i2) {
-        for (int i1=0; i1<n1-1; ++i1) {
-
-          // Eight sample values for this cube.
-          float f0 = f[i3  ][i2  ][i1  ];
-          float f1 = f[i3  ][i2  ][i1+1];
-          float f2 = f[i3  ][i2+1][i1+1];
-          float f3 = f[i3  ][i2+1][i1  ];
-          float f4 = f[i3+1][i2  ][i1  ];
-          float f5 = f[i3+1][i2  ][i1+1];
-          float f6 = f[i3+1][i2+1][i1+1];
-          float f7 = f[i3+1][i2+1][i1  ];
-
-          // Case index for this cube.
-          int caseIndex = 0;
-          if (f0>v) caseIndex +=   1;
-          if (f1>v) caseIndex +=   2;
-          if (f2>v) caseIndex +=   4;
-          if (f3>v) caseIndex +=   8;
-          if (f4>v) caseIndex +=  16;
-          if (f5>v) caseIndex +=  32;
-          if (f6>v) caseIndex +=  64;
-          if (f7>v) caseIndex += 128;
-
-          // If at least one triangle for this case, ...
-          if (caseIndex!=0 && caseIndex!=255) {
-            int edges = _edges[caseIndex];
-            int ne = edges.length;
-
-            // For all triangles, ...
-            for (int ie=0; ie<ne; ie+=3) {
-
-              // For each of three triangle vertices.
-              for (int je=0; je<3; ++je) {
-
-                // Decode edge into starting point and axis.
-                int edge = edges[ie+je];
-                float fa,fb;
-                int j1,j2,j3;
-                int axis;
-                switch(edge) {
-                case 0: // 0-1
-                  fa = f0;
-                  fb = f1;
-                  j1 = i1;
-                  j2 = i2;
-                  j3 = i3;
-                  axis = 1;
-                  break;
-                case 1: // 1-2
-                  fa = f1;
-                  fb = f2;
-                  j1 = i1+1;
-                  j2 = i2;
-                  j3 = i3;
-                  axis = 2;
-                  break;
-                case 2: // 3-2
-                  fa = f3;
-                  fb = f2;
-                  j1 = i1;
-                  j2 = i2+1;
-                  j3 = i3;
-                  axis = 1;
-                case 3: // 0-3
-                  fa = f0;
-                  fb = f3;
-                  j1 = i1;
-                  j2 = i2;
-                  j3 = i3;
-                  axis = 2;
-                case 4: // 4-5
-                  fa = f4;
-                  fb = f5;
-                  j1 = i1;
-                  j2 = i2;
-                  j3 = i3+1;
-                  axis = 1;
-                  break;
-                case 5: // 5-6
-                  fa = f5;
-                  fb = f6;
-                  j1 = i1+1;
-                  j2 = i2;
-                  j3 = i3+1;
-                  axis = 2;
-                  break;
-                case 6: // 7-6
-                  fa = f7;
-                  fb = f6;
-                  j1 = i1;
-                  j2 = i2+1;
-                  j3 = i3+1;
-                  axis = 1;
-                case 7: // 4-7
-                  fa = f4;
-                  fb = f7;
-                  j1 = i1;
-                  j2 = i2;
-                  j3 = i3+1;
-                  axis = 2;
-                case 8: // 0-4
-                  fa = f0;
-                  fb = f1;
-                  j1 = i1;
-                  j2 = i2;
-                  j3 = i3;
-                  axis = 1;
-                  break;
-                case 9: // 1-5
-                  fa = f1;
-                  fb = f2;
-                  j1 = i1+1;
-                  j2 = i2;
-                  j3 = i3;
-                  axis = 2;
-                  break;
-                case 10: // 3-7
-                  fa = f3;
-                  fb = f2;
-                  j1 = i1;
-                  j2 = i2+1;
-                  j3 = i3;
-                  axis = 1;
-                case 11: // 2-6
-                  fa = f0;
-                  fb = f3;
-                  j1 = i1;
-                  j2 = i2;
-                  j3 = i3;
-                  axis = 2;
-
-                getVertex(e
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
   ///////////////////////////////////////////////////////////////////////////
   // private
 
-  //  For each cube, samples and edges are numbered as follows:
+  // In the code below, corners and edges for each cube have indices:
   //         .7----6---.6
   //      11  |     10  |
   //    .     7   .     5
@@ -239,6 +83,292 @@ public class MarchingCubes {
       int[] t = new int[n];
       System.arraycopy(a,0,t,0,n);
       return t;
+    }
+  }
+
+  private static void computeNormalVector(
+    int j1, int j2, int j3, int k1, int k2, int k3,
+    int n1, int n2, int n3, double d1, double d2, double d3,
+    double dx, float[][][] f, float[] u)
+  {
+    double u1,u2,u3;
+    double v1,v2,v3;
+    if (j1==0) {
+      u1 = (f[j3][j2][j1+1]-f[j3][j2][j1  ]);
+    } else {
+      u1 = (f[j3][j2][j1+1]-f[j3][j2][j1-1])*0.5;
+    }
+    if (k1==n1-1) {
+      v1 = (f[k3][k2][k1  ]-f[k3][k2][k1-1]);
+    } else {
+      v1 = (f[k3][k2][k1+1]-f[k3][k2][k1-1])*0.5;
+    }
+    if (j2==0) {
+      u2 = (f[j3][j2+1][j1]-f[j3][j2  ][j1]);
+    } else {
+      u2 = (f[j3][j2+1][j1]-f[j3][j2-1][j1])*0.5;
+    }
+    if (k2==n2-1) {
+      v2 = (f[k3][k2 ][k1 ]-f[k3][k2-1][k1]);
+    } else {
+      v2 = (f[k3][k2+1][k1]-f[k3][k2-1][k1])*0.5;
+    }
+    if (j3==0) {
+      u3 = (f[j3+1][j2][j1]-f[j3  ][j2][j1]);
+    } else {
+      u3 = (f[j3+1][j2][j1]-f[j3-1][j2][j1])*0.5;
+    }
+    if (k3==n3-1) {
+      v3 = (f[k3  ][k2][k1]-f[k3-1][k2][k1]);
+    } else {
+      v3 = (f[k3+1][k2][k1]-f[k3-1][k2][k1])*0.5;
+    }
+    u1 = (u1+(v1-u1)*dx)/d1;
+    u2 = (u2+(v2-u2)*dx)/d2;
+    u3 = (u3+(v3-u3)*dx)/d3;
+    us = 1.0/sqrt(u1*u1+u2*u2+u3*u3);
+    u[0] = (float)(u1*us);
+    u[1] = (float)(u2*us);
+    u[2] = (float)(u3*us);
+  }
+
+  private static Triangles[] getTriangles(
+    int n1, int n2, int n3,
+    double d1, double d2, double d3,
+    double f1, double f2, double f3,
+    float[][][] f, float c,
+    IntList tlist, FloatList xlist, FloatList ulist)
+  {
+    float[] ui = new float[3];
+
+    // Arrays of indices of vertices computed only once and stored in lists.
+    // These two 2D arrays ixa and ixb contain indices for one slab of cubes.
+    // A non-negative index in either array points to a computed vertex, and
+    // a triangle is represented by three such indices.
+    int[][][] ixa = new int[n2][n1][3];
+    int[][][] ixb = new int[n2][n1][3];
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        for (int kk=0; kk<3; ++kk) {
+          ixa[i2][i1][kk] = -1;
+          ixb[i2][i1][kk] = -1;
+        }
+      }
+    }
+
+    // For all slabs of cubes, ...
+    for (int i3=0; i3<n3-1; ++i3) {
+
+      // For all cubes in this slab, ...
+      for (int i2=0; i2<n2-1; ++i2) {
+        for (int i1=0; i1<n1-1; ++i1) {
+
+          // Eight sample values for this cube.
+          float f0 = f[i3  ][i2  ][i1  ];
+          float f1 = f[i3  ][i2  ][i1+1];
+          float f2 = f[i3  ][i2+1][i1+1];
+          float f3 = f[i3  ][i2+1][i1  ];
+          float f4 = f[i3+1][i2  ][i1  ];
+          float f5 = f[i3+1][i2  ][i1+1];
+          float f6 = f[i3+1][i2+1][i1+1];
+          float f7 = f[i3+1][i2+1][i1  ];
+
+          // Case index for this cube.
+          int caseIndex = 0;
+          if (f0>c) caseIndex +=   1;
+          if (f1>c) caseIndex +=   2;
+          if (f2>c) caseIndex +=   4;
+          if (f3>c) caseIndex +=   8;
+          if (f4>c) caseIndex +=  16;
+          if (f5>c) caseIndex +=  32;
+          if (f6>c) caseIndex +=  64;
+          if (f7>c) caseIndex += 128;
+
+          // If at least one triangle for this case, ...
+          if (caseIndex!=0 && caseIndex!=255) {
+
+            // Edges intersected by contour.
+            int edges = _edges[caseIndex];
+            int ne = edges.length;
+
+            // For all triangles, ...
+            for (int ie=0; ie<ne; ie+=3) {
+
+              // For each of three triangle vertices, ...
+              for (int je=0; je<3; ++je) {
+
+                // Decode edge into indices of sample j and axis to sample k.
+                int edge = edges[ie+je];
+                float fj,fk;
+                int j1,j2,j3,kk;
+                switch(edge) {
+                case 0: // 0->1
+                  fj = f0;
+                  fk = f1;
+                  j1 = i1;
+                  j2 = i2;
+                  j3 = i3;
+                  kk = 0;
+                  break;
+                case 1: // 1->2
+                  fj = f1;
+                  fk = f2;
+                  j1 = i1+1;
+                  j2 = i2;
+                  j3 = i3;
+                  kk = 1;
+                  break;
+                case 2: // 3->2
+                  fj = f3;
+                  fk = f2;
+                  j1 = i1;
+                  j2 = i2+1;
+                  j3 = i3;
+                  kk = 0;
+                  break;
+                case 3: // 0->3
+                  fj = f0;
+                  fk = f3;
+                  j1 = i1;
+                  j2 = i2;
+                  j3 = i3;
+                  kk = 1;
+                  break;
+                case 4: // 4->5
+                  fj = f4;
+                  fk = f5;
+                  j1 = i1;
+                  j2 = i2;
+                  j3 = i3+1;
+                  kk = 0;
+                  break;
+                case 5: // 5->6
+                  fa = f5;
+                  fk = f6;
+                  j1 = i1+1;
+                  j2 = i2;
+                  j3 = i3+1;
+                  kk = 1;
+                  break;
+                case 6: // 7->6
+                  fj = f7;
+                  fk = f6;
+                  j1 = i1;
+                  j2 = i2+1;
+                  j3 = i3+1;
+                  kk = 0;
+                  break;
+                case 7: // 4->7
+                  fj = f4;
+                  fk = f7;
+                  j1 = i1;
+                  j2 = i2;
+                  j3 = i3+1;
+                  kk = 1;
+                  break;
+                case 8: // 0->4
+                  fj = f0;
+                  fk = f1;
+                  j1 = i1;
+                  j2 = i2;
+                  j3 = i3;
+                  kk = 2;
+                  break;
+                case 9: // 1->5
+                  fj = f1;
+                  fk = f2;
+                  j1 = i1+1;
+                  j2 = i2;
+                  j3 = i3;
+                  kk = 2;
+                  break;
+                case 10: // 3->7
+                  fj = f3;
+                  fk = f2;
+                  j1 = i1+1;
+                  j2 = i2+1;
+                  j3 = i3;
+                  kk = 2;
+                  break;
+                default: // case 11: 2->6
+                  fj = f0;
+                  fk = f3;
+                  j1 = i1;
+                  j2 = i2+1;
+                  j3 = i3;
+                  kk = 2;
+                }
+
+                // Index of vertex, if already computed; or -1, if not.
+                float[][][] ixjj = (j3==i3)?ixa[j2][j1]:ixb[j2][j1];
+                int ix = ixjj[kk];
+
+                // If vertex not yet computed, compute and append coordinates,
+                // and optionally compute and store normal vector components.
+                if (ix<0) {
+                  int k1,k2,k3;
+                  double x1,x2,x3;
+                  float dx = (c-fj)/(fk-fj);
+                  switch(kk) {
+                  case 0:
+                    k1 = j1+kk;
+                    k2 = j2;
+                    k3 = j3;
+                    x1 = f1+d1*(j1+dx);
+                    x2 = f2+d2*(j2   );
+                    x3 = f3+d3*(j3   );
+                    break;
+                  case 1:
+                    k1 = j1;
+                    k2 = j2+kk;
+                    k3 = j3;
+                    x1 = f1+d1*(j1   );
+                    x2 = f2+d2*(j2+dx);
+                    x3 = f3+d3*(j3   );
+                    break;
+                  default: // case 2:
+                    k1 = j1;
+                    k2 = j2;
+                    k3 = j3+kk;
+                    x1 = f1+d1*(j1   );
+                    x2 = f2+d2*(j2   );
+                    x3 = f3+d3*(j3+dx);
+                  }
+                  ix = ixjj[kk] = nx*3;
+                  xlist.append((float)x1);
+                  xlist.append((float)x2);
+                  xlist.append((float)x3);
+                  ++nx;
+                  if (ulist!=null) {
+                    computeNormalVector(j1,j2,j3,k1,k2,k3,
+                                        n1,n2,n3,d1,d2,d3,
+                                        dx,f,ui);
+                    ulist.append(ui[0]);
+                    ulist.append(ui[1]);
+                    ulist.append(ui[2]);
+                  }
+                }
+
+                // Append index of vertex to triangle list.
+                tlist.append(ix);
+                ++nt;
+              }
+            }
+          }
+        }
+      }
+
+      // Swap the index arrays ixa and ixb, and re-initialize ixb.
+      int[][][] ixt = ixa;
+      ixa = ixb;
+      ixb = ixt;
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          for (int kk=0; kk<3; ++kk) {
+            ixb[i2][i1][kk] = -1;
+          }
+        }
+      }
     }
   }
 
@@ -504,7 +634,7 @@ public class MarchingCubes {
     { 0, 8, 3}, // 254 1
     {} // 255 0
   };
-  static int[][][] _edges = { 
+  private static final int[][][] _edgesX = { 
     {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 0 0
     { 0, 3, 8, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 1 1
     { 0, 9, 1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 2 1
@@ -762,5 +892,4 @@ public class MarchingCubes {
     { 0, 8, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}, // 254 1
     {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1} // 255 0
   };
-
 }
