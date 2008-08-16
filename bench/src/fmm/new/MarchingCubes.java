@@ -197,7 +197,7 @@ public class MarchingCubes {
     float[] u = new float[3];
 
     // Arrays of indices of vertices computed only once and stored in lists.
-    // These two arrays ixa and ixb contain indices for one slab of cubes.
+    // The two arrays ixa and ixb contain indices for one 2D slab of cubes.
     // A non-negative index in either array points to a computed vertex, and
     // a triangle is represented by three such indices. Here we initialize
     // all of the indices to -1, since no vertices have yet been computed.
@@ -355,7 +355,7 @@ public class MarchingCubes {
                   kk = 2;
                 }
 
-                // Index of vertex, if already computed; or -1, if not.
+                // Index of vertex, if already computed; or -1, if not yet.
                 float[][][] ixjj = (j3==i3)?ixa[j2][j1]:ixb[j2][j1];
                 int ix = ixjj[kk];
 
