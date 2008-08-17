@@ -60,17 +60,14 @@ jet = ColorMap.JET
 prism = ColorMap.PRISM
 
 def plot(s1,s2,s3,f,contour):
-  ijk = contour.i
-  xyz = contour.x
-  uvw = contour.u
-  tg = TriangleGroup(ijk,xyz,uvw)
+  tg = TriangleGroup(contour.i,contour.x,contour.u)
   states = StateSet()
   cs = ColorState()
   cs.setColor(Color.CYAN)
   states.add(cs)
-  lms = LightModelState()
-  lms.setTwoSide(True)
-  states.add(lms)
+  #lms = LightModelState()
+  #lms.setTwoSide(True)
+  #states.add(lms)
   ms = MaterialState()
   ms.setColorMaterial(GL_AMBIENT_AND_DIFFUSE)
   ms.setSpecular(Color.WHITE)
