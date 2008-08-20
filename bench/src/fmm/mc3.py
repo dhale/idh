@@ -34,7 +34,7 @@ def main(args):
   return
  
 def testSphere():
-  n1,n2,n3 = 131,131,131
+  n1,n2,n3 = 101,111,121
   s1,s2,s3 = Sampling(n1),Sampling(n2),Sampling(n3)
   f = Array.zerofloat(n1,n2,n3)
   x1 = (n1-1)/2.0
@@ -65,16 +65,16 @@ def plot(s1,s2,s3,f,contour):
   cs = ColorState()
   cs.setColor(Color.CYAN)
   states.add(cs)
-  #lms = LightModelState()
-  #lms.setTwoSide(True)
-  #states.add(lms)
+  lms = LightModelState()
+  lms.setTwoSide(True)
+  states.add(lms)
   ms = MaterialState()
   ms.setColorMaterial(GL_AMBIENT_AND_DIFFUSE)
   ms.setSpecular(Color.WHITE)
   ms.setShininess(100.0)
   states.add(ms)
   tg.setStates(states);
-  ipg = ImagePanelGroup(s1,s2,s3,SimpleFloat3(f))
+  ipg = ImagePanelGroup(s3,s2,s1,SimpleFloat3(f))
   ipg.setColorModel(jet)
   world = World()
   world.addChild(tg)

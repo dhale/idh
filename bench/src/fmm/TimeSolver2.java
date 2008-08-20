@@ -108,6 +108,13 @@ public class TimeSolver2 {
   }
 
   /**
+   * Resets all times to infinity.
+   */
+  public void reset() {
+    Array.fill(INFINITY,_t);
+  }
+
+  /**
    * Adds the specified listener.
    * @param listener the listener.
    */

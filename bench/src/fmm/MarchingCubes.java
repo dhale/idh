@@ -22,7 +22,7 @@ import edu.mines.jtk.io.*;
 import edu.mines.jtk.mosaic.*;
 
 /**
- * The marching cubes algorithm.
+ * The marching cubes algorithm for contour surfaces of f(x1,x2,x3).
  * @author Dave Hale, Colorado School of Mines
  * @version 2008.08.15
  */
@@ -61,13 +61,22 @@ public class MarchingCubes {
    * @param s1 sampling of 1st dimension.
    * @param s2 sampling of 2nd dimension.
    * @param s3 sampling of 3rd dimension.
-   * @param f 3D array of image values.
+   * @param f 3D array of image values; referenced (not copied).
    */
   public MarchingCubes(Sampling s1, Sampling s2, Sampling s3, float[][][] f) {
     _s1 = s1;
     _s2 = s2;
     _s3 = s3;
     _f = f;
+  }
+
+  /**
+   * Sets the sampling for the image
+   */
+  public void setSampling(Sampling s1, Sampling s2, Sampling s3) {
+    _s1 = s1;
+    _s2 = s2;
+    _s3 = s3;
   }
 
   /**
@@ -487,20 +496,11 @@ public class MarchingCubes {
     }
   }
 
-  // In the code below, corners and edges for each cube have indices:
-  //         .7----6---.6
-  //      10  |     11  |
-  //    .     7   .     5
-  //  3----2----2       |
-  //  |      .4-|--4---.5
-  //  3    8    1    9
-  //  | .       | . 
-  //  0----0----1
-
   // Edges intersected. Each group of three indices represents a triangle. 
   // For the eight sample values in each cube, there are 256 cases. However, 
   // most of those 256 cases are complements or rotations of 16 base cases.
   // Comments at end of each line are case number and base-case number.
+  // This table was adapted from one in VTK, the Visualization ToolKit.
   private static final int[][] _edges = { 
     {}, // 0 0
     { 0, 3, 8}, // 1 1

@@ -124,6 +124,13 @@ public class TimeSolver3 {
   }
 
   /**
+   * Resets all times to infinity.
+   */
+  public void reset() {
+    Array.fill(INFINITY,_t);
+  }
+
+  /**
    * Adds the specified listener.
    * @param listener the listener.
    */
