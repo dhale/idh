@@ -71,7 +71,10 @@ public class MarchingCubes {
   }
 
   /**
-   * Sets the sampling for the image
+   * Sets the sampling for the image.
+   * @param s1 sampling of 1st dimension.
+   * @param s2 sampling of 2nd dimension.
+   * @param s3 sampling of 3rd dimension.
    */
   public void setSampling(Sampling s1, Sampling s2, Sampling s3) {
     _s1 = s1;
