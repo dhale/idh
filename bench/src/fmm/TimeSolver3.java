@@ -100,6 +100,15 @@ public class TimeSolver3 {
   }
 
   /**
+   * Sets the maximum time computed by this solver.
+   * The default maximum time is infinity.
+   * @param tmax the maximum time.
+   */
+  public void setMaxTime(float tmax) {
+    _tmax = tmax;
+  }
+
+  /**
    * Zeros the time at the specified sample and computes times for neighbors.
    * Times of neighbor samples are computed recursively while computed times 
    * are less than current times. In other words, this method only decreases 
@@ -158,6 +167,7 @@ public class TimeSolver3 {
   private int _n1,_n2,_n3;
   private int _n1m,_n2m,_n3m;
   private Tensors3 _tensors;
+  private float _tmax = INFINITY;
   private float[][][] _t;
   private Sample[][][] _s;
   private Concurrency _concurrency = Concurrency.PARALLEL;
@@ -492,38 +502,43 @@ public class TimeSolver3 {
     // Current time and new time computed from all neighbors.
     float ti = _t[i3][i2][i1];
     float ci = computeTime(i1,i2,i3,K1S[6],K2S[6],K3S[6],d);
-    _t[i3][i2][i1] = ci;
 
-    // If new and current times are close enough (converged), then ...
-    if (ti-ci<=ti*EPSILON) {
+    // If computed time does not exceed maximum time, ...
+    if (ci<=_tmax) {
+      _t[i3][i2][i1] = ci;
 
-      // For all six neighbors, ...
-      for (int k=0; k<6; ++k) {
+      // If new and current times are close enough (converged), then ...
+      if (ti-ci<=ti*EPSILON) {
 
-        // Neighbor sample indices; skip if out of bounds.
-        int j1 = i1+K1[k];  if (j1<0 || j1>=_n1) continue;
-        int j2 = i2+K2[k];  if (j2<0 || j2>=_n2) continue;
-        int j3 = i3+K3[k];  if (j3<0 || j3>=_n3) continue;
+        // For all six neighbors, ...
+        for (int k=0; k<6; ++k) {
 
-        // Compute time for neighbor.
-        float tj = _t[j3][j2][j1];
-        float cj = computeTime(j1,j2,j3,K1S[k],K2S[k],K3S[k],d);
+          // Neighbor sample indices; skip if out of bounds.
+          int j1 = i1+K1[k];  if (j1<0 || j1>=_n1) continue;
+          int j2 = i2+K2[k];  if (j2<0 || j2>=_n2) continue;
+          int j3 = i3+K3[k];  if (j3<0 || j3>=_n3) continue;
 
-        // If computed time significantly less than neighbor's current time, ...
-        if (tj-cj>tj*EPSILON) {
+          // Compute time for neighbor.
+          float tj = _t[j3][j2][j1];
+          float cj = computeTime(j1,j2,j3,K1S[k],K2S[k],K3S[k],d);
 
-          // Replace the current time.
-          _t[j3][j2][j1] = cj;
-          
-          // Append neighbor to the B list.
-          bl.append(_s[j3][j2][j1]);
+          // If computed time does not exceed maximum time and is
+          // significantly less than neighbor's current time, ...
+          if (cj<=_tmax && tj-cj>tj*EPSILON) {
+
+            // Replace the current time.
+            _t[j3][j2][j1] = cj;
+            
+            // Append neighbor to the B list.
+            bl.append(_s[j3][j2][j1]);
+          }
         }
       }
-    }
 
-    // Else, if not converged, append this sample to the B list.
-    else {
-      bl.append(s);
+      // Else, if not converged, append this sample to the B list.
+      else {
+        bl.append(s);
+      }
     }
   }
 
