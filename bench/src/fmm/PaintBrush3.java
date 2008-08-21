@@ -6,20 +6,8 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package fmm;
 
-import edu.mines.jtk.util.*;
-import static edu.mines.jtk.util.MathPlus.*;
-
-// for testing
-import java.awt.*;
-import java.awt.image.*;
-import java.io.*;
-import java.util.*;
-import javax.swing.JFrame;
-import javax.swing.SwingUtilities;
-import edu.mines.jtk.awt.*;
 import edu.mines.jtk.dsp.*;
-import edu.mines.jtk.io.*;
-import edu.mines.jtk.mosaic.*;
+import static edu.mines.jtk.util.MathPlus.*;
 
 /**
  * A paint brush for 3D images.
@@ -141,7 +129,7 @@ public class PaintBrush3 {
   ///////////////////////////////////////////////////////////////////////////
   // private
 
-  // Brush tensors are subset of the painting tensors.
+  // Brush tensors are a subset of the painting tensors.
   private class BrushTensors3 implements Tensors3 {
     public void getTensor(int i1, int i2, int i3, float[] a) {
       i1 = max(0,min(_n1-1,i1+_k1-_nh));
