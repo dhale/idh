@@ -116,6 +116,8 @@ public class PaintBrush3 {
    */
   public Contour getContour() {
     if (_dirty) {
+      _ts.reset();
+      _ts.zeroAt(_nh,_nh,_nh);
       MarchingCubes.Contour contour = _mc.getContour((float)_size);
       _contour = new Contour();
       _contour.x = contour.x;
