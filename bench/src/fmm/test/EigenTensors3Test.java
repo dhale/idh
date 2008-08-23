@@ -6,8 +6,10 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package fmm.test;
 
+import java.io.*;
 import junit.framework.*;
 
+import edu.mines.jtk.util.Array;
 import fmm.EigenTensors3;
 
 /**
@@ -22,15 +24,15 @@ public class EigenTensors3Test extends TestCase {
   }
 
   public static void testRandom() {
-    testRandom(false,0.1,1.0e-6);
     testRandom(true,1.0,1.0e-3);
+    testRandom(false,0.1,1.0e-6);
   }
 
   private static void testRandom(
-    boolean compressed, double errorAngle, double errorCoeff) 
+    boolean compressed, double errorAngle, double errorValue) 
   {
     int n1 = 3, n2 = 4, n3 = 5;
-    EigenTensors3 et = new EigenTensors3(n1,n2,n3,false);
+    EigenTensors3 et = new EigenTensors3(n1,n2,n3,compressed);
     for (int i3=0; i3<n3; ++i3) {
       for (int i2=0; i2<n2; ++i2) {
         for (int i1=0; i1<n1; ++i1) {
@@ -43,27 +45,90 @@ public class EigenTensors3Test extends TestCase {
           float[] c;
           c = et.getEigenvectorU(i1,i2,i3); checkEigenvectors(u,c,errorAngle);
           c = et.getEigenvectorW(i1,i2,i3); checkEigenvectors(w,c,errorAngle);
-          c = et.getEigenvalues(i1,i2,i3); checkEigenvalues(c,a,errorCoeff);
+          c = et.getEigenvalues(i1,i2,i3); checkEigenvalues(a,c,errorValue);
+          errorAngle *= 2.0;
           et.setTensor(i1,i2,i3,et.getTensor(i1,i2,i3));
           c = et.getEigenvectorU(i1,i2,i3); checkEigenvectors(u,c,errorAngle);
           c = et.getEigenvectorW(i1,i2,i3); checkEigenvectors(w,c,errorAngle);
-          c = et.getEigenvalues(i1,i2,i3); checkEigenvalues(c,a,errorCoeff);
+          c = et.getEigenvalues(i1,i2,i3); checkEigenvalues(a,c,errorValue);
         }
       }
     }
   }
 
-  private static void checkEigenvalues(float[] c, float[] a, double e) {
-    assertEquals(c[0],a[0],e);
-    assertEquals(c[1],a[1],e);
-    assertEquals(c[2],a[2],e);
+  public void testIO() throws IOException,ClassNotFoundException {
+
+    // Make random eigen-tensors.
+    int n1 = 3, n2 = 4, n3 = 5;
+    EigenTensors3 et1 = new EigenTensors3(n1,n2,n3,false);
+    for (int i3=0; i3<n3; ++i3) {
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          float[] a = makeRandomEigenvalues();
+          float[] u = makeRandomEigenvector();
+          float[] w = makeOrthogonalVector(u);
+          et1.setEigenvalues(i1,i2,i3,a);
+          et1.setEigenvectorU(i1,i2,i3,u);
+          et1.setEigenvectorW(i1,i2,i3,w);
+        }
+      }
+    }
+
+    // Write and read them.
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    ObjectOutputStream oos = new ObjectOutputStream(baos);
+    oos.writeObject(et1);
+    baos.close();
+    ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
+    ObjectInputStream ois = new ObjectInputStream(bais);
+    EigenTensors3 et2 = (EigenTensors3)ois.readObject();
+    bais.close();
+
+    // Compare; should be exactly equal.
+    float[] a1 = new float[3];
+    float[] u1 = new float[3];
+    float[] w1 = new float[3];
+    float[] a2 = new float[3];
+    float[] u2 = new float[3];
+    float[] w2 = new float[3];
+    for (int i3=0; i3<n3; ++i3) {
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          et1.getEigenvalues(i1,i2,i3,a1);
+          et1.getEigenvectorU(i1,i2,i3,u1);
+          et1.getEigenvectorW(i1,i2,i3,w1);
+          et2.getEigenvalues(i1,i2,i3,a2);
+          et2.getEigenvectorU(i1,i2,i3,u2);
+          et2.getEigenvectorW(i1,i2,i3,w2);
+          assertEqual(a1,a2);
+          assertEqual(u1,u2);
+          assertEqual(w1,w2);
+        }
+      }
+    }
+  }
+  private void assertEqual(float[] e, float[] a) {
+    assertEquals(e[0],a[0],0.0);
+    assertEquals(e[1],a[1],0.0);
+    assertEquals(e[2],a[2],0.0);
+  }
+
+  private static void checkEigenvalues(float[] a, float[] b, double e) {
+    assertEquals(a[0],b[0],e);
+    assertEquals(a[1],b[1],e);
+    assertEquals(a[2],b[2],e);
   }
 
   private static void checkEigenvectors(float[] u, float[] v, double e) {
-    float uv = u[0]*v[0]+u[1]*v[1]+u[2]*v[2];
-    double ca = Math.min(uv,1.0f);
-    double a = Math.toDegrees(Math.acos(ca));
-    assertEquals(0.0,a,e);
+    float uv = Math.abs(u[0]*v[0]+u[1]*v[1]+u[2]*v[2]);
+    double ce = 1.0-Math.cos(Math.toRadians(e));
+    boolean ok = Math.abs(1.0-uv)<ce;
+    if (!ok) {
+      System.out.println("uv="+uv+" ce="+ce);
+      System.out.println("expect:"); Array.dump(u);
+      System.out.println("actual:"); Array.dump(v);
+    }
+    assertEquals(1.0,uv,ce);
   }
 
   private static java.util.Random r = new java.util.Random();

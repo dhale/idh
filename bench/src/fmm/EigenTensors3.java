@@ -6,8 +6,10 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package fmm;
 
+import java.io.*;
 import ldf.UnitSphereSampling;
 import edu.mines.jtk.dsp.Eigen;
+import edu.mines.jtk.io.*;
 
 /**
  * An array of eigen-decompositions of tensors for 3D image processing.
@@ -46,7 +48,8 @@ import edu.mines.jtk.dsp.Eigen;
  * @author Dave Hale, Colorado School of Mines
  * @version 2008.06.07
  */
-public class EigenTensors3 implements Tensors3 {
+public class EigenTensors3 implements Tensors3,Serializable {
+  private static final long serialVersionUID = 1L;
 
   /**
    * Constructs tensors for specified array dimensions. All eigenvalues 
@@ -66,7 +69,8 @@ public class EigenTensors3 implements Tensors3 {
       _bw = new short[n3][n2][n1];
       _iu = new short[n3][n2][n1];
       _iw = new short[n3][n2][n1];
-      _uss = new UnitSphereSampling(16);
+      if (_uss==null) 
+        _uss = new UnitSphereSampling(16);
     } else {
       _au = new float[n3][n2][n1];
       _aw = new float[n3][n2][n1];
@@ -391,8 +395,8 @@ public class EigenTensors3 implements Tensors3 {
     float asum = au+av+aw;
     if (_compressed) {
       float ascale = (asum>0.0f)?AS_SET/asum:0.0f;
-      _bu[i3][i2][i1] = (short)(au*AS_SET+0.5f);
-      _bw[i3][i2][i1] = (short)(aw*AS_SET+0.5f);
+      _bu[i3][i2][i1] = (short)(au*ascale+0.5f);
+      _bw[i3][i2][i1] = (short)(aw*ascale+0.5f);
     } else {
       _au[i3][i2][i1] = au;
       _aw[i3][i2][i1] = aw;
@@ -519,5 +523,79 @@ public class EigenTensors3 implements Tensors3 {
   private static float c3(float c1, float c2) {
     float c3s = 1.0f-c1*c1-c2*c2;
     return (c3s>0.0f)?(float)Math.sqrt(c3s):0.0f;
+  }
+
+  @SuppressWarnings("unchecked")
+  private void readObject(ObjectInputStream in)
+    throws IOException, ClassNotFoundException 
+  {
+    int format = in.readInt();
+    if (format==1) {
+      boolean compressed = _compressed = in.readBoolean();
+      int n1 = _n1 = in.readInt();
+      int n2 = _n2 = in.readInt();
+      int n3 = _n3 = in.readInt();
+      ArrayInputStream ais = new ArrayInputStream(in);
+      if (compressed) {
+        _bu = new short[n3][n2][n1];
+        _bw = new short[n3][n2][n1];
+        _iu = new short[n3][n2][n1];
+        _iw = new short[n3][n2][n1];
+        ais.readShorts(_bu);
+        ais.readShorts(_bw);
+        ais.readShorts(_iu);
+        ais.readShorts(_iw);
+        if (_uss==null)
+          _uss = new UnitSphereSampling(16);
+      } else {
+        _au = new float[n3][n2][n1];
+        _aw = new float[n3][n2][n1];
+        _u1 = new float[n3][n2][n1];
+        _u2 = new float[n3][n2][n1];
+        _w1 = new float[n3][n2][n1];
+        _w2 = new float[n3][n2][n1];
+        ais.readFloats(_au);
+        ais.readFloats(_aw);
+        ais.readFloats(_u1);
+        ais.readFloats(_u2);
+        ais.readFloats(_w1);
+        ais.readFloats(_w2);
+      }
+      _as = new float[n3][n2][n1];
+      ais.readFloats(_as);
+    }
+
+  //else if (format==2) {
+  //  ...
+  //}
+
+    else {
+      throw new InvalidClassException("invalid format");
+    }
+  }
+
+  private void writeObject(ObjectOutputStream out)
+    throws IOException 
+  {
+    out.writeInt(1); // format
+    out.writeBoolean(_compressed);
+    out.writeInt(_n1);
+    out.writeInt(_n2);
+    out.writeInt(_n3);
+    ArrayOutputStream aos = new ArrayOutputStream(out);
+    if (_compressed) {
+      aos.writeShorts(_bu);
+      aos.writeShorts(_bw);
+      aos.writeShorts(_iu);
+      aos.writeShorts(_iw);
+    } else {
+      aos.writeFloats(_au);
+      aos.writeFloats(_aw);
+      aos.writeFloats(_u1);
+      aos.writeFloats(_u2);
+      aos.writeFloats(_w1);
+      aos.writeFloats(_w2);
+    }
+    aos.writeFloats(_as);
   }
 }

@@ -373,6 +373,7 @@ public class TimeSolver3 {
    * any listeners of all times decreased.
    */
   private void solveFrom(int i1, int i2, int i3) {
+    trace("solveFrom: i1="+i1+" i2="+i2+" i3="+i3);
 
     // Zero the time for the specified sample.
     _t[i3][i2][i1] = 0.0f;
