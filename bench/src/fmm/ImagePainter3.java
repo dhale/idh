@@ -29,15 +29,14 @@ import static edu.mines.jtk.util.MathPlus.*;
  */
 public class ImagePainter3 {
 
-  public ImagePainter3(float[][][] image) {
+  public ImagePainter3(float[][][] image, EigenTensors3 tensors) {
     _n1 = image[0][0].length;
     _n2 = image[0].length;
     _n3 = image.length;
     _image = image;
-    //_pt = new PaintTensors(SIGMA,2.0f,1.0f,1.0f,_image);
-    //writeTensors(_pt,"/data/seis/tp/tpet.dat");
-    _pt = readTensors("/data/seis/tp/tpet.dat");
+    _pt = tensors;
     _pb = new PaintBrush3(_n1,_n2,_n3,_pt);
+    _pb.setSize(30);
 
     Sampling s1 = new Sampling(_n1);
     Sampling s2 = new Sampling(_n2);
@@ -51,6 +50,29 @@ public class ImagePainter3 {
     makeFrame();
   }
 
+  public static EigenTensors3 readTensors(String fileName) {
+    try {
+      FileInputStream fis = new FileInputStream(fileName);
+      ObjectInputStream ois = new ObjectInputStream(fis);
+      EigenTensors3 et = (EigenTensors3)ois.readObject();
+      fis.close();
+      return et;
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  public static void writeTensors(EigenTensors3 et, String fileName) {
+    try {
+      FileOutputStream fos = new FileOutputStream(fileName);
+      ObjectOutputStream oos = new ObjectOutputStream(fos);
+      oos.writeObject(et);
+      fos.close();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
   ///////////////////////////////////////////////////////////////////////////
   // private
 
@@ -60,7 +82,7 @@ public class ImagePainter3 {
 
   private int _n1,_n2,_n3;
   private float[][][] _image;
-  private PaintTensors _pt;
+  private EigenTensors3 _pt;
   private JFrame _frame;
   private ViewCanvas _canvas;
   private World _world;
@@ -190,20 +212,37 @@ public class ImagePainter3 {
       }
     }
     private boolean _painting;
+    private MouseConstrained _mouseConstrained;
     private MouseListener _ml = new MouseAdapter() {
       public void mousePressed(MouseEvent e) {
         PickResult pr = pick(e);
         if (pr!=null) {
-          Node node = pr.getNode(AxisAlignedPanel.class);
-          //if (node!=null) {
-            _canvas.addMouseMotionListener(_mml);
+          Node node = pr.getNode(AxisAlignedQuad.class);
+          if (node!=null) {
             _painting = true;
-            paintAt(pr);
-          //}
+            _canvas.addMouseMotionListener(_mml);
+            AxisAlignedQuad quad = (AxisAlignedQuad)node;
+            AxisAlignedFrame frame = quad.getFrame();
+            Axis axis = frame.getAxis();
+            Point3 origin = pr.getPointWorld();
+            Vector3 normal = null;
+            if (axis==Axis.X) {
+              normal = new Vector3(1.0,0.0,0.0);
+            } else if (axis==Axis.Y) {
+              normal = new Vector3(0.0,1.0,0.0);
+            } else if (axis==Axis.Z) {
+              normal = new Vector3(0.0,0.0,1.0);
+            }
+            Plane plane = new Plane(origin,normal);
+            Matrix44 worldToPixel = pr.getWorldToPixel();
+            _mouseConstrained = new MouseOnPlane(e,origin,plane,worldToPixel);
+            paintAt(origin);
+          }
         }
       }
       public void mouseReleased(MouseEvent e) {
         if (_painting) {
+          _mouseConstrained = null;
           _canvas.removeMouseMotionListener(_mml);
           _painting = false;
         }
@@ -211,20 +250,20 @@ public class ImagePainter3 {
     };
     private MouseMotionListener _mml = new MouseMotionAdapter() {
       public void mouseDragged(MouseEvent e) {
-        //PickResult pickResult = pick(e);
+        Point3 point = _mouseConstrained.getPoint(e);
+        paintAt(point);
       }
     };
-    private void paintAt(PickResult pr) {
-      Point3 pw = pr.getPointWorld();
-      int i1 = max(0,min(_n1-1,(int)(pw.z+0.5)));
-      int i2 = max(0,min(_n2-1,(int)(pw.y+0.5)));
-      int i3 = max(0,min(_n3-1,(int)(pw.x+0.5)));
-      trace("paintAt: i1="+i1+" i2="+i2+" i3="+i3);
+
+    private void paintAt(Point3 point) {
+      int i1 = max(0,min(_n1-1,(int)(point.z+0.5)));
+      int i2 = max(0,min(_n2-1,(int)(point.y+0.5)));
+      int i3 = max(0,min(_n3-1,(int)(point.x+0.5)));
+      //trace("paintAt: i1="+i1+" i2="+i2+" i3="+i3);
       _pb.setLocation(i1,i2,i3);
       if (_pbtg!=null)
         _world.removeChild(_pbtg);
       PaintBrush3.Contour contour = _pb.getContour();
-      Array.dump(contour.x);
       _pbtg = new TriangleGroup(contour.i,contour.x,contour.u);
       StateSet states = new StateSet();
       ColorState cs = new ColorState();
@@ -258,167 +297,8 @@ public class ImagePainter3 {
   }
 
   private void updatePaintTensors(float alpha, float beta, float gamma) {
-    _pt = new PaintTensors(SIGMA,alpha,beta,gamma,_image);
+    _pt = readTensors("/data/seis/tp/pt3s211.dat");
     _pb = new PaintBrush3(_n1,_n2,_n3,_pt);
-  }
-
-  private static class PaintTensors extends EigenTensors3 {
-    PaintTensors(int n1, int n2, int n3) {
-      super(n1,n2,n3,false);
-    }
-    PaintTensors(float sigma, float[][][] x) {
-      this(sigma,1.0f,1.0f,1.0f,x);
-    }
-    PaintTensors(
-      float sigma, float alpha, float beta, float gamma, float[][][] x) 
-    {
-      super(x[0][0].length,x[0].length,x.length,false);
-      int n1 = x[0][0].length;
-      int n2 = x[0].length;
-      int n3 = x.length;
-      float[][][] u1 = new float[n3][n2][n1];
-      float[][][] u2 = new float[n3][n2][n1];
-      float[][][] u3 = new float[n3][n2][n1];
-      float[][][] w1 = new float[n3][n2][n1];
-      float[][][] w2 = new float[n3][n2][n1];
-      float[][][] w3 = new float[n3][n2][n1];
-      float[][][] su = new float[n3][n2][n1];
-      float[][][] sv = new float[n3][n2][n1];
-      float[][][] sw = new float[n3][n2][n1];
-      LocalOrientFilter lof = new LocalOrientFilter(sigma);
-      lof.apply(x,null,null,
-                u1,u2,u3,
-                null,null,null,
-                w1,w2,w3,
-                su,sv,sw,
-                null,null);
-      float[][][] dc = Array.pow(Array.sub(1.0f,coherence(sigma,x)),-gamma);
-      float[][][] du = Array.mul(dc,Array.pow(su,-alpha));
-      float[][][] dv = Array.mul(du,Array.pow(Array.div(sv,su),-beta));
-      float[][][] dw = Array.mul(du,Array.pow(Array.div(sw,su),-beta));
-      float ds = 1.0f/Array.max(dw);
-      du = Array.mul(ds,du);
-      dv = Array.mul(ds,dv);
-      dw = Array.mul(ds,dw);
-      for (int i3=0; i3<n3; ++i3) {
-        for (int i2=0; i2<n2; ++i2) {
-          for (int i1=0; i1<n1; ++i1) {
-            setEigenvectorU(i1,i2,i3,
-                            u1[i3][i2][i1],u2[i3][i2][i1],u3[i3][i2][i1]);
-            setEigenvectorW(i1,i2,i3,
-                            w1[i3][i2][i1],w2[i3][i2][i1],w3[i3][i2][i1]);
-            setEigenvalues(i1,i2,i3,
-                           du[i3][i2][i1],dv[i3][i2][i1],dw[i3][i2][i1]);
-          }
-        }
-      }
-    }
-  }
-  private static PaintTensors readTensors(String fileName) {
-    PaintTensors pt = null;
-    try {
-      ArrayInputStream ais = new ArrayInputStream(fileName);
-      int n1 = ais.readInt();
-      int n2 = ais.readInt();
-      int n3 = ais.readInt();
-      pt = new PaintTensors(n1,n2,n3);
-      float[] u = new float[n1*3];
-      float[] w = new float[n1*3];
-      float[] e = new float[n1*3];
-      for (int i3=0; i3<n3; ++i3) {
-        for (int i2=0; i2<n2; ++i2) {
-          ais.readFloats(u);
-          ais.readFloats(w);
-          ais.readFloats(e);
-          for (int i1=0,i=0; i1<n1; ++i1,i+=3) {
-            pt.setEigenvectorU(i1,i2,i3,u[i],u[i+1],u[i+2]);
-            pt.setEigenvectorW(i1,i2,i3,w[i],w[i+1],w[i+2]);
-            pt.setEigenvalues(i1,i2,i3,e[i],e[i+1],e[i+2]);
-          }
-        }
-      }
-      ais.close();
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-    return pt;
-  }
-  private static void writeTensors(EigenTensors3 et, String fileName) {
-    try {
-      ArrayOutputStream aos = new ArrayOutputStream(fileName);
-      int n1 = et.getN1();
-      int n2 = et.getN2();
-      int n3 = et.getN3();
-      aos.writeInt(n1);
-      aos.writeInt(n2);
-      aos.writeInt(n3);
-      float[] u = new float[3];
-      float[] w = new float[3];
-      float[] e = new float[3];
-      for (int i3=0; i3<n3; ++i3) {
-        for (int i2=0; i2<n2; ++i2) {
-          for (int i1=0; i1<n1; ++i1) {
-            et.getEigenvectorU(i1,i2,i3,u);
-            et.getEigenvectorW(i1,i2,i3,w);
-            et.getEigenvalues(i1,i2,i3,e);
-            aos.writeFloats(u);
-            aos.writeFloats(w);
-            aos.writeFloats(e);
-          }
-        }
-      }
-      aos.close();
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-  private static float[][][] coherence(double sigma, float[][][] x) {
-    int n1 = x[0][0].length;
-    int n2 = x[0].length;
-    int n3 = x.length;
-    return Array.fillfloat(1.0f,n1,n2,n3);
-    /*
-    LocalOrientFilter lof1 = new LocalOrientFilter(sigma);
-    LocalOrientFilter lof2 = new LocalOrientFilter(sigma*4);
-    float[][] u11 = new float[n2][n1];
-    float[][] u21 = new float[n2][n1];
-    float[][] su1 = new float[n2][n1];
-    float[][] sv1 = new float[n2][n1];
-    float[][] u12 = new float[n2][n1];
-    float[][] u22 = new float[n2][n1];
-    float[][] su2 = new float[n2][n1];
-    float[][] sv2 = new float[n2][n1];
-    lof1.apply(x,null,u11,u21,null,null,su1,sv1,null);
-    lof2.apply(x,null,u12,u22,null,null,su2,sv2,null);
-    float[][] c = u11;
-    for (int i2=0; i2<n2; ++i2) {
-      for (int i1=0; i1<n1; ++i1) {
-        float u11i = u11[i2][i1];
-        float u21i = u21[i2][i1];
-        float su1i = su1[i2][i1];
-        float sv1i = sv1[i2][i1];
-        float u12i = u12[i2][i1];
-        float u22i = u22[i2][i1];
-        float su2i = su2[i2][i1];
-        float sv2i = sv2[i2][i1];
-        float s111 = (su1i-sv1i)*u11i*u11i+sv1i;
-        float s121 = (su1i-sv1i)*u11i*u21i     ;
-        float s221 = (su1i-sv1i)*u21i*u21i+sv1i;
-        float s112 = (su2i-sv2i)*u12i*u12i+sv2i;
-        float s122 = (su2i-sv2i)*u12i*u22i     ;
-        float s222 = (su2i-sv2i)*u22i*u22i+sv2i;
-        float s113 = s111*s112+s121*s122;
-        float s223 = s121*s122+s221*s222;
-        float t1 = s111+s221;
-        float t2 = s112+s222;
-        float t3 = s113+s223;
-        float t12 = t1*t2;
-        c[i2][i1] = (t12>0.0f)?t3/t12:0.0f;
-      }
-    }
-    return c;
-    */
   }
 
   private static void testImagePainter() {
@@ -426,7 +306,9 @@ public class ImagePainter3 {
     int n2 = 161;
     int n3 = 357;
     float[][][] image = readImage(n1,n2,n3,"/data/seis/tp/tp3s.dat");
-    ImagePainter3 ip = new ImagePainter3(image);
+    image = Array.add(image,Array.mul(0.001f,Array.randfloat(n1,n2,n3)));
+    EigenTensors3 tensors = readTensors("/data/seis/tp/et3s211.dat");
+    ImagePainter3 ip = new ImagePainter3(image,tensors);
   }
 
   private static void trace(String s) {

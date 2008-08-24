@@ -526,16 +526,16 @@ public class EigenTensors3 implements Tensors3,Serializable {
   }
 
   @SuppressWarnings("unchecked")
-  private void readObject(ObjectInputStream in)
+  private void readObject(ObjectInputStream ois)
     throws IOException, ClassNotFoundException 
   {
-    int format = in.readInt();
+    int format = ois.readInt();
     if (format==1) {
-      boolean compressed = _compressed = in.readBoolean();
-      int n1 = _n1 = in.readInt();
-      int n2 = _n2 = in.readInt();
-      int n3 = _n3 = in.readInt();
-      ArrayInputStream ais = new ArrayInputStream(in);
+      boolean compressed = _compressed = ois.readBoolean();
+      int n1 = _n1 = ois.readInt();
+      int n2 = _n2 = ois.readInt();
+      int n3 = _n3 = ois.readInt();
+      ArrayInputStream ais = new ArrayInputStream(ois);
       if (compressed) {
         _bu = new short[n3][n2][n1];
         _bw = new short[n3][n2][n1];
@@ -574,15 +574,15 @@ public class EigenTensors3 implements Tensors3,Serializable {
     }
   }
 
-  private void writeObject(ObjectOutputStream out)
+  private void writeObject(ObjectOutputStream oos)
     throws IOException 
   {
-    out.writeInt(1); // format
-    out.writeBoolean(_compressed);
-    out.writeInt(_n1);
-    out.writeInt(_n2);
-    out.writeInt(_n3);
-    ArrayOutputStream aos = new ArrayOutputStream(out);
+    oos.writeInt(1); // format
+    oos.writeBoolean(_compressed);
+    oos.writeInt(_n1);
+    oos.writeInt(_n2);
+    oos.writeInt(_n3);
+    ArrayOutputStream aos = new ArrayOutputStream(oos);
     if (_compressed) {
       aos.writeShorts(_bu);
       aos.writeShorts(_bw);

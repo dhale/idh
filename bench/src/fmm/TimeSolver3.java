@@ -373,7 +373,6 @@ public class TimeSolver3 {
    * any listeners of all times decreased.
    */
   private void solveFrom(int i1, int i2, int i3) {
-    trace("solveFrom: i1="+i1+" i2="+i2+" i3="+i3);
 
     // Zero the time for the specified sample.
     _t[i3][i2][i1] = 0.0f;
@@ -414,8 +413,8 @@ public class TimeSolver3 {
       al.appendIfAbsent(bl);
       bl.clear();
     }
-    trace("solveSerial: ntotal="+ntotal);
-    trace("             nratio="+(float)ntotal/(float)(_n1*_n2*_n3));
+    //trace("solveSerial: ntotal="+ntotal);
+    //trace("             nratio="+(float)ntotal/(float)(_n1*_n2*_n3));
   }
   
   /**
@@ -485,8 +484,8 @@ public class TimeSolver3 {
       }
     }
     es.shutdown();
-    trace("solveParallel: ntotal="+ntotal);
-    trace("               nratio="+(float)ntotal/(float)(_n1*_n2*_n3));
+    //trace("solveParallel: ntotal="+ntotal);
+    //trace("               nratio="+(float)ntotal/(float)(_n1*_n2*_n3));
   }
 
   /**
@@ -503,6 +502,7 @@ public class TimeSolver3 {
     // Current time and new time computed from all neighbors.
     float ti = _t[i3][i2][i1];
     float ci = computeTime(i1,i2,i3,K1S[6],K2S[6],K3S[6],d);
+    //trace("i1="+i1+" i2="+i2+" i3="+i3+" ci="+ci);
 
     // If computed time does not exceed maximum time, ...
     if (ci<=_tmax) {
@@ -522,10 +522,11 @@ public class TimeSolver3 {
           // Compute time for neighbor.
           float tj = _t[j3][j2][j1];
           float cj = computeTime(j1,j2,j3,K1S[k],K2S[k],K3S[k],d);
+          //trace("  j1="+j1+" j2="+j2+" j3="+j3+" cj="+cj);
 
           // If computed time does not exceed maximum time and is
           // significantly less than neighbor's current time, ...
-          if (cj<=_tmax && tj-cj>tj*EPSILON) {
+          if (tj-cj>tj*EPSILON) {
 
             // Replace the current time.
             _t[j3][j2][j1] = cj;

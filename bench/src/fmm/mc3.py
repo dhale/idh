@@ -34,7 +34,8 @@ def main(args):
   return
  
 def testSphere():
-  n1,n2,n3 = 101,111,121
+  #n1,n2,n3 = 101,111,121
+  n1,n2,n3 = 61,61,61
   s1,s2,s3 = Sampling(n1),Sampling(n2),Sampling(n3)
   f = Array.zerofloat(n1,n2,n3)
   x1 = (n1-1)/2.0
@@ -60,6 +61,7 @@ jet = ColorMap.JET
 prism = ColorMap.PRISM
 
 def plot(s1,s2,s3,f,contour):
+  #tg = TriangleGroup(contour.i,contour.x)
   tg = TriangleGroup(contour.i,contour.x,contour.u)
   states = StateSet()
   cs = ColorState()

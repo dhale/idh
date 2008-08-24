@@ -101,7 +101,7 @@ public class PaintBrush3 {
       Sampling sb = new Sampling(nb,db,fb);
       _bt = new BrushTensors3();
       _ts = new TimeSolver3(nb,nb,nb,_bt);
-      _ts.setMaxTime(_tmax);
+      _ts.setMaxTime(2.0f*_tmax);
       _mc = new MarchingCubes(sb,sb,sb,_ts.getTimes());
       _mc.setSwap13(true);
       _nb = nb;
@@ -118,6 +118,10 @@ public class PaintBrush3 {
     if (_dirty) {
       _ts.reset();
       _ts.zeroAt(_nh,_nh,_nh);
+      Sampling s1 = new Sampling(_nb,1.0,_k1-_nh);
+      Sampling s2 = new Sampling(_nb,1.0,_k2-_nh);
+      Sampling s3 = new Sampling(_nb,1.0,_k3-_nh);
+      _mc.setSampling(s1,s2,s3);
       MarchingCubes.Contour contour = _mc.getContour((float)_size);
       _contour = new Contour();
       _contour.x = contour.x;
