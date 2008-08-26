@@ -95,7 +95,7 @@ public class ImagePainter3 {
     mm.add(_canvas);
     OrbitViewMode ovm = new OrbitViewMode(mm);
     SelectDragMode sdm = new SelectDragMode(mm);
-    PaintMode pm = new PaintMode(mm);
+    PaintBrushMode pbm = new PaintBrushMode(mm);
 
     JPopupMenu.setDefaultLightWeightPopupEnabled(false);
     ToolTipManager.sharedInstance().setLightWeightPopupEnabled(false);
@@ -119,6 +119,8 @@ public class ImagePainter3 {
     modeMenu.add(ovmItem);
     JMenuItem sdmItem = new ModeMenuItem(sdm);
     modeMenu.add(sdmItem);
+    JMenuItem pbmItem = new ModeMenuItem(pbm);
+    modeMenu.add(pbmItem);
 
     // Paint menu.
     JMenu paintMenu = new JMenu("Paint");
@@ -152,7 +154,7 @@ public class ImagePainter3 {
     toolBar.setRollover(true);
     toolBar.add(new ModeToggleButton(ovm));
     toolBar.add(new ModeToggleButton(sdm));
-    toolBar.add(new ModeToggleButton(pm));
+    toolBar.add(new ModeToggleButton(pbm));
     ovm.setActive(true);
 
     // Frame.
@@ -188,14 +190,15 @@ public class ImagePainter3 {
     return pickResult;
   }
 
-  private class PaintMode extends Mode {
-    public PaintMode(ModeManager modeManager) {
+  private class PaintBrushMode extends Mode {
+    public PaintBrushMode(ModeManager modeManager) {
       super(modeManager);
       setName("Paint");
-      setIcon(loadIcon(PaintMode.class,"resources/PaintIcon16.png"));
-      setMnemonicKey(KeyEvent.VK_P);
-      setAcceleratorKey(KeyStroke.getKeyStroke(KeyEvent.VK_P,0));
-      setShortDescription("Paint");
+      Class<PaintBrushMode> cls = PaintBrushMode.class;
+      setIcon(loadIcon(cls,"resources/PaintIcon16.png"));
+      setMnemonicKey(KeyEvent.VK_B);
+      setAcceleratorKey(KeyStroke.getKeyStroke(KeyEvent.VK_B,0));
+      setShortDescription("Paint brush");
     }
     protected void setActive(Component component, boolean active) {
       if (component instanceof ViewCanvas) {

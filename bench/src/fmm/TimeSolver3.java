@@ -100,7 +100,7 @@ public class TimeSolver3 {
   }
 
   /**
-   * Sets the maximum time computed by this solver.
+   * Sets the maximum time of interest for this solver.
    * The default maximum time is infinity.
    * @param tmax the maximum time.
    */
@@ -502,45 +502,39 @@ public class TimeSolver3 {
     // Current time and new time computed from all neighbors.
     float ti = _t[i3][i2][i1];
     float ci = computeTime(i1,i2,i3,K1S[6],K2S[6],K3S[6],d);
-    //trace("i1="+i1+" i2="+i2+" i3="+i3+" ci="+ci);
+    _t[i3][i2][i1] = ci;
 
-    // If computed time does not exceed maximum time, ...
-    if (ci<=_tmax) {
-      _t[i3][i2][i1] = ci;
+    // If new and current times are close enough (converged), then ...
+    if (ti-ci<=ti*EPSILON) {
 
-      // If new and current times are close enough (converged), then ...
-      if (ti-ci<=ti*EPSILON) {
+      // For all six neighbors, ...
+      for (int k=0; k<6; ++k) {
 
-        // For all six neighbors, ...
-        for (int k=0; k<6; ++k) {
+        // Neighbor sample indices; skip if out of bounds.
+        int j1 = i1+K1[k];  if (j1<0 || j1>=_n1) continue;
+        int j2 = i2+K2[k];  if (j2<0 || j2>=_n2) continue;
+        int j3 = i3+K3[k];  if (j3<0 || j3>=_n3) continue;
 
-          // Neighbor sample indices; skip if out of bounds.
-          int j1 = i1+K1[k];  if (j1<0 || j1>=_n1) continue;
-          int j2 = i2+K2[k];  if (j2<0 || j2>=_n2) continue;
-          int j3 = i3+K3[k];  if (j3<0 || j3>=_n3) continue;
+        // Compute time for neighbor.
+        float tj = _t[j3][j2][j1];
+        float cj = computeTime(j1,j2,j3,K1S[k],K2S[k],K3S[k],d);
 
-          // Compute time for neighbor.
-          float tj = _t[j3][j2][j1];
-          float cj = computeTime(j1,j2,j3,K1S[k],K2S[k],K3S[k],d);
-          //trace("  j1="+j1+" j2="+j2+" j3="+j3+" cj="+cj);
+        // If computed time does not exceed maximum time and is
+        // significantly less than neighbor's current time, ...
+        if (tj-cj>tj*EPSILON) {
 
-          // If computed time does not exceed maximum time and is
-          // significantly less than neighbor's current time, ...
-          if (tj-cj>tj*EPSILON) {
-
-            // Replace the current time.
-            _t[j3][j2][j1] = cj;
-            
-            // Append neighbor to the B list.
-            bl.append(_s[j3][j2][j1]);
-          }
+          // Replace the current time.
+          _t[j3][j2][j1] = cj;
+          
+          // Append neighbor to the B list.
+          bl.append(_s[j3][j2][j1]);
         }
       }
+    }
 
-      // Else, if not converged, append this sample to the B list.
-      else {
-        bl.append(s);
-      }
+    // Else, if not converged, append this sample to the B list.
+    else {
+      bl.append(s);
     }
   }
 
@@ -594,27 +588,34 @@ public class TimeSolver3 {
         t1 = (k1<0)?t1m:t1p;  if (t1==INFINITY) continue;
         t2 = (k2<0)?t2m:t2p;  if (t2==INFINITY) continue;
         t3 = (k3<0)?t3m:t3p;  if (t3==INFINITY) continue;
+        if (t1>_tmax && t2>_tmax && t3>_tmax) continue;
         t0 = computeTime(d11,d12,d13,d22,d23,d33,k1,k2,k3,t1,t2,t3);
       } else if (k1!=0 && k2!=0) {
         t1 = (k1<0)?t1m:t1p;  if (t1==INFINITY) continue;
         t2 = (k2<0)?t2m:t2p;  if (t2==INFINITY) continue;
+        if (t1>_tmax && t2>_tmax) continue;
         t0 = computeTime(a11,a12,a22,k1,k2,t1,t2);
       } else if (k1!=0 && k3!=0) {
         t1 = (k1<0)?t1m:t1p;  if (t1==INFINITY) continue;
         t3 = (k3<0)?t3m:t3p;  if (t3==INFINITY) continue;
+        if (t1>_tmax && t3>_tmax) continue;
         t0 = computeTime(b11,b13,b33,k1,k3,t1,t3);
       } else if (k2!=0 && k3!=0) {
         t2 = (k2<0)?t2m:t2p;  if (t2==INFINITY) continue;
         t3 = (k3<0)?t3m:t3p;  if (t3==INFINITY) continue;
+        if (t2>_tmax && t3>_tmax) continue;
         t0 = computeTime(c22,c23,c33,k2,k3,t2,t3);
       } else if (k1!=0) {
         t1 = (k1<0)?t1m:t1p;  if (t1==INFINITY) continue;
+        if (t1>_tmax) continue;
         t0 = t1+sqrt(a22*e12);
       } else if (k2!=0) {
         t2 = (k2<0)?t2m:t2p;  if (t2==INFINITY) continue;
+        if (t2>_tmax) continue;
         t0 = t2+sqrt(a11*e12);
       } else { // k3!=0
         t3 = (k3<0)?t3m:t3p;  if (t3==INFINITY) continue;
+        if (t3>_tmax) continue;
         t0 = t3+sqrt(b11*e13);
       }
       if (t0<tc)
