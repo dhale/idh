@@ -157,7 +157,7 @@ public class Warp3 {
     for (int iaxis=0; iaxis<axes.length; ++iaxis) {
       AxisAlignedQuad aaq = new AxisAlignedQuad(axes[iaxis],qmin,qmax);
       AxisAlignedFrame aaf = aaq.getFrame();
-      ImagePanel ip = new ImagePanel(sx,sy,sz,sf3);
+      ImagePanel ip = new ImagePanel(sz,sy,sx,sf3);
       if (clip!=0.0f)
         ip.setClips(-clip,clip);
       ip.setColorModel(icm);

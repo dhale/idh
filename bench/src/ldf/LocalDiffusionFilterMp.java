@@ -1106,13 +1106,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
   // Plots a 3-D array.
   public static void plot3d(float[][][] x) {
     System.out.println("x min="+Array.min(x)+" max="+Array.max(x));
-    int n1 = x[0][0].length;
-    int n2 = x[0].length;
-    int n3 = x.length;
-    Sampling s1 = new Sampling(n1);
-    Sampling s2 = new Sampling(n2);
-    Sampling s3 = new Sampling(n3);
-    ImagePanelGroup ipg = new ImagePanelGroup(s1,s2,s3,new SimpleFloat3(x));
+    ImagePanelGroup ipg = new ImagePanelGroup(x);
     ipg.setClips(0.0f,1.0f);
     ipg.setColorModel(ColorMap.JET);
     World world = new World();

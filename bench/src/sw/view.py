@@ -179,8 +179,7 @@ def plot3dAll():
 
 def ipg(file,clip,cmod):
   x = readFloats3(file)
-  x3 = SimpleFloat3(x)
-  ipg = ImagePanelGroup(s3,s2,s1,x3)
+  ipg = ImagePanelGroup(s1,s2,s3,x)
   ipg.setClips(-clip,clip)
   ipg.setColorModel(cmod)
   return ipg

@@ -713,13 +713,7 @@ public class TimeSolver3 {
   // testing
 
   private static void plot(float[][][] t, IndexColorModel cm) {
-    int n1 = t[0][0].length;
-    int n2 = t[0].length;
-    int n3 = t.length;
-    Sampling s1 = new Sampling(n1);
-    Sampling s2 = new Sampling(n2);
-    Sampling s3 = new Sampling(n3);
-    ImagePanelGroup ipg = new ImagePanelGroup(s1,s2,s3,new SimpleFloat3(t));
+    ImagePanelGroup ipg = new ImagePanelGroup(t);
     ipg.setColorModel(cm);
     World world = new World();
     world.addChild(ipg);

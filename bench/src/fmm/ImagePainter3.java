@@ -37,12 +37,7 @@ public class ImagePainter3 {
     _pt = tensors;
     _pb = new PaintBrush3(_n1,_n2,_n3,_pt);
     _pb.setSize(30);
-
-    Sampling s1 = new Sampling(_n1);
-    Sampling s2 = new Sampling(_n2);
-    Sampling s3 = new Sampling(_n3);
-    ImagePanelGroup ipg = new ImagePanelGroup(s3,s2,s1,
-                                              new SimpleFloat3(_image));
+    ImagePanelGroup ipg = new ImagePanelGroup(_image);
     ipg.setColorModel(ColorMap.GRAY);
 
     _world = new World();

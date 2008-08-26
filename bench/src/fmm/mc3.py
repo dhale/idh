@@ -76,7 +76,7 @@ def plot(s1,s2,s3,f,contour):
   ms.setShininess(100.0)
   states.add(ms)
   tg.setStates(states);
-  ipg = ImagePanelGroup(s3,s2,s1,SimpleFloat3(f))
+  ipg = ImagePanelGroup(s1,s2,s3,f)
   ipg.setColorModel(jet)
   world = World()
   world.addChild(tg)

@@ -85,14 +85,10 @@ def plot12(i3):
 
 def plot3d(x):
   print "x min =",Array.min(x)," max =",Array.max(x)
-  #s1 = Sampling(n1,d1,f1)
-  #s2 = Sampling(n2,d2,f2)
-  #s3 = Sampling(n3,d3,f3)
   n1,n2,n3 = len(x[0][0]),len(x[0]),len(x)
-  #s1,s2,s3 = Sampling(n1,1.0,0.0),Sampling(n2,1.0,0.0),Sampling(n3,1.0,0.0)
+  #s1,s2,s3 = Sampling(n1),Sampling(n2),Sampling(n3)
   s1,s2,s3 = Sampling(n1,d1,f1),Sampling(n2,d2,f2),Sampling(n3,d3,f3)
-  x3 = SimpleFloat3(x)
-  ipg = ImagePanelGroup(s3,s2,s1,x3)
+  ipg = ImagePanelGroup(s1,s2,s3,x)
   clip = 2.5e4
   ipg.setClips(-clip,clip)
   world = World()

@@ -138,7 +138,7 @@ public class IvusFrame extends JFrame {
     for (int iaxis=0; iaxis<axes.length; ++iaxis) {
       AxisAlignedQuad aaq = new AxisAlignedQuad(axes[iaxis],qmin,qmax);
       AxisAlignedFrame aaf = aaq.getFrame();
-      ImagePanel ip = new ImagePanel(sx,sy,sz,f);
+      ImagePanel ip = new ImagePanel(sz,sy,sx,f);
       ip.setColorModel(ColorMap.GRAY);
       System.out.println("clip min="+ip.getClipMin()+" max="+ip.getClipMax());
       aaf.addChild(ip);

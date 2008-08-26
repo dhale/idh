@@ -542,13 +542,7 @@ public class LocalInterpolationFilterIc {
 
   private static void plot3d(float[][][] x) {
     x = Array.copy(x);
-    int n1 = x[0][0].length;
-    int n2 = x[0].length;
-    int n3 = x.length;
-    Sampling s1 = new Sampling(n1);
-    Sampling s2 = new Sampling(n2);
-    Sampling s3 = new Sampling(n3);
-    ImagePanelGroup ipg = new ImagePanelGroup(s3,s2,s1,new SimpleFloat3(x));
+    ImagePanelGroup ipg = new ImagePanelGroup(x);
     ipg.setColorModel(ColorMap.JET);
     World world = new World();
     world.addChild(ipg);

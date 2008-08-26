@@ -68,13 +68,7 @@ class ConstantTensors3(EigenTensors3):
 # plotting
 
 def plot(t,cm):
-  n1 = len(t[0][0])
-  n2 = len(t[0])
-  n3 = len(t)
-  s1 = Sampling(n1)
-  s2 = Sampling(n2)
-  s3 = Sampling(n3)
-  ipg = ImagePanelGroup(s1,s2,s3,SimpleFloat3(t))
+  ipg = ImagePanelGroup(t)
   ipg.setColorModel(cm)
   world = World()
   world.addChild(ipg)

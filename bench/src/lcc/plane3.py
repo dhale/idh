@@ -100,9 +100,7 @@ def frequencyResponse(x):
 
 def plot3d(x):
   print "x min =",Array.min(x)," max =",Array.max(x)
-  n1,n2,n3 = len(x[0][0]),len(x[0]),len(x)
-  s1,s2,s3 = Sampling(n1),Sampling(n2),Sampling(n3)
-  ipg = ImagePanelGroup(s1,s2,s3,SimpleFloat3(x))
+  ipg = ImagePanelGroup(x)
   ipg.setColorModel(ColorMap.JET)
   world = World()
   world.addChild(ipg)

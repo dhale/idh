@@ -153,7 +153,7 @@ public class SwView extends JFrame {
     World world, Float3 f, 
     float clip, IndexColorModel icm)
   {
-    ImagePanelGroup ipg = new ImagePanelGroup(SX,SY,SZ,f);
+    ImagePanelGroup ipg = new ImagePanelGroup(SZ,SY,SX,f);
     ipg.setClips(-clip,clip);
     ipg.setColorModel(icm);
     System.out.println("clip min="+ipg.getClipMin()+" max="+ipg.getClipMax());
