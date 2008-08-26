@@ -29,19 +29,23 @@ import static edu.mines.jtk.util.MathPlus.*;
  */
 public class ImagePainter3 {
 
-  public ImagePainter3(float[][][] image, EigenTensors3 tensors) {
+  public ImagePainter3(
+    float[][][] image, float[][][] paint, EigenTensors3 tensors) 
+  {
     _n1 = image[0][0].length;
     _n2 = image[0].length;
     _n3 = image.length;
     _image = image;
+    _paint = paint;
     _pt = tensors;
     _pb = new PaintBrush3(_n1,_n2,_n3,_pt);
     _pb.setSize(30);
-    ImagePanelGroup ipg = new ImagePanelGroup(_image);
-    ipg.setColorModel(ColorMap.GRAY);
-
+    _ipg = new ImagePanelGroup2(_image,_paint);
+    _ipg.setColorModel1(ColorMap.getGray());
+    _ipg.setColorModel2(ColorMap.getJet(0.3f));
+    _ipg.setClips2(0.0f,1.0f);
     _world = new World();
-    _world.addChild(ipg);
+    _world.addChild(_ipg);
     makeFrame();
   }
 
@@ -77,12 +81,14 @@ public class ImagePainter3 {
 
   private int _n1,_n2,_n3;
   private float[][][] _image;
+  private float[][][] _paint;
   private EigenTensors3 _pt;
   private JFrame _frame;
   private ViewCanvas _canvas;
   private World _world;
   private PaintBrush3 _pb;
   private TriangleGroup _pbtg;
+  private ImagePanelGroup2 _ipg;
 
   private void makeFrame() {
     OrbitView view = new OrbitView(_world);
@@ -204,8 +210,10 @@ public class ImagePainter3 {
       if (component instanceof ViewCanvas) {
         if (active) {
           component.addMouseListener(_ml);
+          component.addMouseWheelListener(_mwl);
         } else {
           component.removeMouseListener(_ml);
+          component.removeMouseWheelListener(_mwl);
         }
       }
     }
@@ -252,20 +260,36 @@ public class ImagePainter3 {
         paintAt(point);
       }
     };
-
+    private MouseWheelListener _mwl = new MouseWheelListener() {
+      public void mouseWheelMoved(MouseWheelEvent e) {
+        int nclicks = e.getWheelRotation();
+        int size = _pb.getSize();
+        size += nclicks;
+        _pb.setSize(size);
+        updateContour();
+        updatePaint();
+      }
+    };
     private void paintAt(Point3 point) {
       int i1 = max(0,min(_n1-1,(int)(point.z+0.5)));
       int i2 = max(0,min(_n2-1,(int)(point.y+0.5)));
       int i3 = max(0,min(_n3-1,(int)(point.x+0.5)));
+      paintAt(i1,i2,i3);
+    }
+    private void paintAt(int i1, int i2, int i3) {
       //trace("paintAt: i1="+i1+" i2="+i2+" i3="+i3);
       _pb.setLocation(i1,i2,i3);
+      updateContour();
+      updatePaint();
+    }
+    private void updateContour() {
       if (_pbtg!=null)
         _world.removeChild(_pbtg);
       PaintBrush3.Contour contour = _pb.getContour();
       _pbtg = new TriangleGroup(contour.i,contour.x,contour.u);
       StateSet states = new StateSet();
       ColorState cs = new ColorState();
-      cs.setColor(Color.CYAN);
+      cs.setColor(Color.RED);
       states.add(cs);
       LightModelState lms = new LightModelState();
       lms.setTwoSide(true);
@@ -277,6 +301,27 @@ public class ImagePainter3 {
       states.add(ms);
       _pbtg.setStates(states);
       _world.addChild(_pbtg);
+    }
+    private void updatePaint() {
+      int[] k = _pb.getLocation();
+      int k1 = k[0], k2 = k[1], k3 = k[2];
+      boolean[][][] mask = _pb.getMask();
+      int m1 = mask[0][0].length;
+      int m2 = mask[0].length;
+      int m3 = mask.length;
+      for (int i3=0,j3=k3-(m3-1)/2; i3<m3; ++i3,++j3) {
+        if (j3<0 || j3>=_n3) continue;
+        for (int i2=0,j2=k2-(m2-1)/2; i2<m2; ++i2,++j2) {
+          if (j2<0 || j2>=_n2) continue;
+          for (int i1=0,j1=k1-(m1-1)/2; i1<m1; ++i1,++j1) {
+            if (j1<0 || j1>=_n1) continue;
+            if (mask[i3][i2][i1]) {
+              _paint[j3][j2][j1] = 1.0f;
+            }
+          }
+        }
+      }
+      _ipg.update2();
     }
   }
 
@@ -304,9 +349,10 @@ public class ImagePainter3 {
     int n2 = 161;
     int n3 = 357;
     float[][][] image = readImage(n1,n2,n3,"/data/seis/tp/tp3s.dat");
+    float[][][] paint = Array.fillfloat(0.0f,n1,n2,n3);
     image = Array.add(image,Array.mul(0.001f,Array.randfloat(n1,n2,n3)));
     EigenTensors3 tensors = readTensors("/data/seis/tp/et3s211.dat");
-    ImagePainter3 ip = new ImagePainter3(image,tensors);
+    ImagePainter3 ip = new ImagePainter3(image,paint,tensors);
   }
 
   private static void trace(String s) {

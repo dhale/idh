@@ -59,6 +59,18 @@ public class PaintBrush3 {
   }
 
   /**
+   * Gets the location (k1,k2,k3) of this brush.
+   * @return array {k1,k2,k3} with location.
+   */
+  public int[] getLocation() {
+    int[] k = new int[3];
+    k[0] = _k1;
+    k[1] = _k2;
+    k[2] = _k3;
+    return k;
+  }
+
+  /**
    * Sets the location (k1,k2,k3) of this brush.
    * The default location is (0,0,0).
    * @param k1 sample index in 1st dimension.
@@ -75,6 +87,14 @@ public class PaintBrush3 {
   }
 
   /**
+   * Gets the size of this paint brush.
+   * @return the size.
+   */
+  public int getSize() {
+    return _size;
+  }
+
+  /**
    * Sets the size of this paint brush. For an identity painting tensor
    * (for which time equals distance), the brush size equals its radius.
    * A brush with size zero covers only the one sample where it is located.
@@ -87,27 +107,49 @@ public class PaintBrush3 {
     // Maximum time.
     _tmax = (float)(1+size);
 
-    // Half of number of samples in array of brush times; double as necessary
-    int nh = max(1,_nh);
+    // Half of number of samples in array of brush times; modify as necessary.
+    int nh = 1;
     while (nh<=size)
       nh += nh;
     
     // If number of samples in array of brush times has increased,
     // construct new brush tensors, time solver and marching cubes.
-    if (_nh<nh) {
+    if (_nh!=nh) {
       int nb = 1+2*nh;
       double db = 1.0;
       double fb = -nh;
       Sampling sb = new Sampling(nb,db,fb);
       _bt = new BrushTensors3();
       _ts = new TimeSolver3(nb,nb,nb,_bt);
-      _ts.setMaxTime(2.0f*_tmax);
       _mc = new MarchingCubes(sb,sb,sb,_ts.getTimes());
       _mc.setSwap13(true);
       _nb = nb;
       _nh = nh;
-      _dirty = true;
+      trace("setSize: nh="+nh);
     }
+
+    // Set maximum time for time solver, and note solution not valid.
+    _ts.setMaxTime(2.0f*_tmax);
+    _dirty = true;
+  }
+
+  public boolean[][][] getMask() {
+    float[][][] ts = _ts.getTimes();
+    int nm = 1+2*_size;
+    boolean[][][] mask = new boolean[nm][nm][nm];
+    int nmask = 0;
+    for (int i3=0,j3=_nh-_size; i3<nm; ++i3,++j3) {
+      for (int i2=0,j2=_nh-_size; i2<nm; ++i2,++j2) {
+        for (int i1=0,j1=_nh-_size; i1<nm; ++i1,++j1) {
+          float tj = ts[j3][j2][j1];
+          if (tj<=_tmax) {
+            mask[i3][i2][i1] = true;
+            ++nmask;
+          }
+        }
+      }
+    }
+    return mask;
   }
 
   /** 
