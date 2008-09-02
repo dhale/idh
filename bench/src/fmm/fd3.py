@@ -42,9 +42,9 @@ niter = 100
 # test functions
 
 def main(args):
-  doTensors()
-  doSemblance()
-  #doVariance()
+  #doTensors()
+  doVariance()
+  #doSemblance()
 
 #############################################################################
 # functions
@@ -80,20 +80,31 @@ def doVariance():
   f = readImage(n1,n2,n3,imageFile)
   d = readTensors(tensorsFile)
   g = Array.zerofloat(n1,n2,n3)
-  scale = 0.5*sigma*sigma
-  small = 0.01
-  niter = 100
-  lsf = LocalSmoothingFilter(scale,small,niter)
+  vn = Array.zerofloat(n1,n2,n3)
+  vd = Array.zerofloat(n1,n2,n3)
+  svn = Array.zerofloat(n1,n2,n3)
+  svd = Array.zerofloat(n1,n2,n3)
+  d.setEigenvalues(0.0,1.0,1.0)
+  scale2 = 0.5*sigma2*sigma2
+  lsf = LocalSmoothingFilter(scale2,small,niter)
   lsf.apply(d,f,g)
   Array.sub(f,g,g)
-  Array.mul(g,g,g)
-  rgf = RecursiveGaussianFilter(sigma)
-  rgf.apply000(g,g)
-  h = Array.mul(f,f)
-  rgf.apply000(h,h)
-  Array.div(g,h,g)
-  writeImage(g,varianceFile)
-  plot3(g)
+  Array.mul(g,g,vn)
+  Array.mul(f,f,vd)
+  d.setEigenvalues(1.0,0.0,0.0)
+  scale1 = 4.0*0.5*sigma1*sigma1
+  lsf = LocalSmoothingFilter(scale1,small,niter)
+  lsf.apply(d,vn,svn)
+  lsf.apply(d,vd,svd)
+  rgf = RecursiveGaussianFilter(1.0)
+  rgf.apply000(svn,svn)
+  rgf.apply000(svd,svd)
+  svb = 1.0e-3*Array.max(svd)
+  Array.add(svb,svd,svd)
+  v = Array.div(svn,svd)
+  Array.sub(1.0,v,v)
+  plot3s([f,v])
+  writeImage(v,varianceFile)
 
 def doTensors():
   tensors = computeTensors(imageFile)
