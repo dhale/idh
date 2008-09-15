@@ -42,8 +42,8 @@ niter = 100
 # test functions
 
 def main(args):
-  #doTensors()
-  doVariance()
+  doTensors()
+  #doVariance()
   #doSemblance()
 
 #############################################################################

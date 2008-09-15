@@ -1,5 +1,5 @@
 #############################################################################
-# Tests MarchingCubes
+# Image painting in 3D.
 
 import sys
 from org.python.util import PythonObjectInputStream
