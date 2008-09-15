@@ -30,8 +30,12 @@ n1,n2,n3 = 251,161,357
 #n1,n2,n3 = 10,10,10
 imageFile = dataDir+"tp3s.dat"
 tensorsFile = dataDir+"tpst4.dat"
-varianceFile = dataDir+"tpvar4.dat"
-semblanceFile = dataDir+"tpsem4.dat"
+psemblanceFile = dataDir+"psem4.dat"
+lsemblanceFile = dataDir+"lsem4.dat"
+pvarianceFile = dataDir+"pvar4.dat"
+lnpsFile = dataDir+"lnps4.dat"
+lnpeFile = dataDir+"lnpe4.dat"
+faultFile = dataDir+"tpflt4.dat"
 sigma = 4.0
 sigma2 = sigma
 sigma1 = sigma
@@ -42,14 +46,62 @@ niter = 100
 # test functions
 
 def main(args):
-  doTensors()
-  #doVariance()
-  #doSemblance()
+  #doTensors()
+  #doPlanarVariance()
+  #doPlanarSemblance()
+  #doLinearSemblance()
+  #doLinearNotPlanarSemblance()
+  doLinearNotPlanarEigenvalues()
+  #doFaultMask()
 
 #############################################################################
 # functions
 
-def doSemblance():
+def doLinearEigenvalues():
+  f = readImage(n1,n2,n3,imageFile)
+  d = readTensors(tensorsFile)
+  eu = Array.zerofloat(n1,n2,n3)
+  ev = Array.zerofloat(n1,n2,n3)
+  ew = Array.zerofloat(n1,n2,n3)
+  d.getEigenvalues(eu,ev,ew)
+  es = 0.001*Array.max(eu)
+  eu = Array.add(es,eu)
+  ep = Array.div(Array.sub(eu,ev),eu)
+  el = Array.div(Array.sub(ev,ew),eu)
+  ei = Array.div(ew,eu)
+  el = Array.mul(el,Array.sub(1.0,ep))
+  el = Array.mul(el,Array.sub(1.0,ei))
+  writeImage(el,lnpeFile)
+  plot3s([f,Array.sub(1.0,el)])
+
+def doLinearSemblance():
+  f = readImage(n1,n2,n3,imageFile)
+  d = readTensors(tensorsFile)
+  ff = Array.zerofloat(n1,n2,n3)
+  sn = Array.zerofloat(n1,n2,n3)
+  sd = Array.zerofloat(n1,n2,n3)
+  d.setEigenvalues(0.0,0.0,1.0)
+  scale2 = 0.5*sigma2*sigma2
+  lsf = LocalSmoothingFilter(scale2,small,niter)
+  lsf.apply(d,f,sn)
+  Array.mul(sn,sn,sn)
+  Array.mul(f,f,ff)
+  lsf.apply(d,ff,sd)
+  ssn = Array.zerofloat(n1,n2,n3)
+  ssd = Array.zerofloat(n1,n2,n3)
+  d.setEigenvalues(1.0,1.0,0.0)
+  scale1 = 0.5*sigma1*sigma1
+  lsf = LocalSmoothingFilter(scale1,small,niter)
+  lsf.apply(d,sn,ssn)
+  lsf.apply(d,sd,ssd)
+  rgf = RecursiveGaussianFilter(1.0)
+  rgf.apply000(ssn,ssn)
+  rgf.apply000(ssd,ssd)
+  s = Array.div(ssn,ssd)
+  plot3s([f,s])
+  writeImage(s,lsemblanceFile)
+
+def doPlanarSemblance():
   f = readImage(n1,n2,n3,imageFile)
   d = readTensors(tensorsFile)
   ff = Array.zerofloat(n1,n2,n3)
@@ -74,9 +126,16 @@ def doSemblance():
   rgf.apply000(ssd,ssd)
   s = Array.div(ssn,ssd)
   plot3s([f,s])
-  writeImage(s,semblanceFile)
+  writeImage(s,psemblanceFile)
 
-def doVariance():
+def doFaultMask():
+  f = readImage(n1,n2,n3,imageFile)
+  s = readImage(n1,n2,n3,semblanceFile)
+  g = Array.mul(Array.sub(1.0,s),f)
+  plot3s([f,g])
+  writeImage(g,faultFile)
+
+def doPlanarVariance():
   f = readImage(n1,n2,n3,imageFile)
   d = readTensors(tensorsFile)
   g = Array.zerofloat(n1,n2,n3)
@@ -104,7 +163,7 @@ def doVariance():
   v = Array.div(svn,svd)
   Array.sub(1.0,v,v)
   plot3s([f,v])
-  writeImage(v,varianceFile)
+  writeImage(v,pvarianceFile)
 
 def doTensors():
   tensors = computeTensors(imageFile)
@@ -155,7 +214,7 @@ def plot3(f,clip=0.0):
   if clip!=0.0:
     ipg.setClips(-clip,clip)
   else:
-    ipg.setPercentiles(1.0,99.0)
+    ipg.setPercentiles(0.0,100.0)
   clipMin = ipg.getClipMin()
   clipMax = ipg.getClipMax()
   print "clip min =",clipMin,"max =",clipMax
@@ -168,6 +227,7 @@ def plot3s(flist):
   for f in flist:
     ipg = ImagePanelGroup(f)
     ipg.setPercentiles(1.0,99.0)
+    #ipg.setClips(0.0,1.0)
     world.addChild(ipg)
     clipMin = ipg.getClipMin()
     clipMax = ipg.getClipMax()
