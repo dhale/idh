@@ -39,6 +39,7 @@ def main(args):
 
 def doInterpolateTest():
   s1,s2 = Sampling(n1),Sampling(n2)
+  #x1,x2 = makeUniformSubsampling(s1,s2,ms)
   x1,x2 = makePerturbedSubsampling(s1,s2,ms)
 
   # make mesh
