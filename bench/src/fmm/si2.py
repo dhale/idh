@@ -23,8 +23,8 @@ from fmm import *
 #############################################################################
 # global parameters
 
-pngDir = "./png"
-#pngDir = None
+#pngDir = "./png"
+pngDir = None
 
 n1,n2 = 251,357 # image dimensions (as for Teapot dome image)
 ms = 50 # nominal spacing between nodes
@@ -40,23 +40,33 @@ def main(args):
 def doInterpolateTest():
   s1,s2 = Sampling(n1),Sampling(n2)
   #x1,x2 = makeUniformSubsampling(s1,s2,ms)
-  x1,x2 = makePerturbedSubsampling(s1,s2,ms)
+  #x1,x2 = makePerturbedSubsampling(s1,s2,ms)
+  x1,x2 = makeRandomSubsampling(s1,s2,ms)
 
   # make mesh
   mesh = makeTriMesh(x1,x2,sinusoid)
   fs = sampleFunction(sinusoid,s1,s2)
-  plotfab(fs,mesh,None,False,True,"fsp")
+  plotfab(fs,mesh,None,False,False,"fs")
 
   # interpolate with natural neighbors and plot
   fi = interpolateNatural(mesh,s1,s2)
   plotfab(fi,mesh,None,False,False,"fi")
-  plotfab(fi,mesh,None,False,True,"fip")
 
   # interpolate with approximate natural neighbors and plot
-  mesha = makeTriMesh(x1,x2,sinusoid)
-  fj = interpolateNaturalApproximate(mesha,s1,s2)
+  tsmall = 0.01
+  fj = interpolateNaturalApproximate(mesh,s1,s2,tsmall)
   plotfab(fj,mesh,None,False,False,"fj")
-  plotfab(fj,mesh,None,False,True,"fjp")
+  fji = Array.sub(fj,fi)
+  print " fji max =",Array.max(Array.abs(fji))
+  plotfab(fji,mesh,None,False,False,"fji")
+
+  # interpolate with approximate natural neighbors and plot
+  tsmall = 10.0
+  fk = interpolateNaturalApproximate(mesh,s1,s2,tsmall)
+  plotfab(fk,mesh,None,False,False,"fk")
+  fki = Array.sub(fk,fi)
+  print " fki max =",Array.max(Array.abs(fki))
+  plotfab(fki,mesh,None,False,False,"fki")
 
 def doShowSibson(sampling):
 
@@ -121,6 +131,21 @@ def makePerturbedSubsampling(s1,s2,ms):
       dx2 = d2*(r.nextFloat()-0.5)
       x1[i2][i1] += dx1
       x2[i2][i1] += dx2
+      x1[i2][i1] = s1.valueOfNearest(x1[i2][i1])
+      x2[i2][i1] = s2.valueOfNearest(x2[i2][i1])
+  return x1,x2
+
+def makeRandomSubsampling(s1,s2,ms):
+  x1,x2 = makeUniformSubsampling(s1,s2,ms)
+  n1,n2 = len(x1[0]),len(x1)
+  d1,d2 = x1[0][1]-x1[0][0],x2[1][0]-x2[0][0]
+  f1,f2 = s1.first,s2.first
+  l1,l2 = f1+d1*(n1-1),f2+d2*(n2-1)
+  r = Random(314159)
+  for i2 in range(1,n2-1):
+    for i1 in range(1,n1-1):
+      x1[i2][i1] = f1+(l1-f1)*r.nextFloat()
+      x2[i2][i1] = f2+(l2-f2)*r.nextFloat()
       x1[i2][i1] = s1.valueOfNearest(x1[i2][i1])
       x2[i2][i1] = s2.valueOfNearest(x2[i2][i1])
   return x1,x2
@@ -212,39 +237,28 @@ def interpolateNearest(mesh,s1,s2):
       fi[i2][i1] = fmap.get(node)
   return fi
 
-def interpolateNaturalApproximate(mesh,s1,s2):
-  """
-  construct time map
-  construct max-heap with all non-zero times
-  while heap not empty:
-    remove sample from heap with largest time tmax
-    interpolate function value
-    add new node to mesh
-    for all samples within time tmax:
-      compute new time t
-      if t > 0 and t less than time in map:
-        reduce time in map to t
-  """
-  fmap = mesh.getNodePropertyMap("f")
+def interpolateNaturalApproximate(mesh,s1,s2,tsmall):
+  meshc = copyMesh(mesh)
+  fmap = meshc.getNodePropertyMap("f")
   n1,n2 = s1.count,s2.count 
   fi = Array.zerofloat(n1,n2)
-  tmap = distanceMap(mesh,s1,s2)
-  plotf(tmap)
+  tmap = distanceMap(meshc,s1,s2)
   heap = TimeHeap2(TimeHeap2.Type.MAX,n1,n2)
   for i2 in range(n2):
     for i1 in range(n1):
-      if tmap[i2][i1]>0.0:
-        heap.insert(i1,i2,tmap[i2][i1])
+      heap.insert(i1,i2,tmap[i2][i1])
+  plotfab(tmap,mesh,None,False,False,"tmapk")
   while not heap.isEmpty():
     e = heap.remove()
     i1,i2,ti = e.i1,e.i2,e.t
     x1 = s1.getValue(i1)
     x2 = s2.getValue(i2)
-    #print "x1 =",x1,"x2 =",x2,"ti =",ti
+    fi[i2][i1] = meshc.interpolateSibson(x1,x2,fmap,0.0)
+    if ti<tsmall:
+      continue
     tmap[i2][i1] = 0.0
-    fi[i2][i1] = mesh.interpolateSibson(x1,x2,fmap,0.0)
     node = TriMesh.Node(x1,x2)
-    mesh.addNode(node)
+    meshc.addNode(node)
     fmap.put(node,Float(fi[i2][i1]))
     it = 1+int(0.5*ti) # assume sampling intervals both equal one
     j2lo = max(0,i2-it)
@@ -256,12 +270,12 @@ def interpolateNaturalApproximate(mesh,s1,s2):
       x2 = s2.getValue(j2)
       for j1 in range(j1lo,j1hi):
         x1 = s1.getValue(j1)
-        node = mesh.findNodeNearest(x1,x2)
+        node = meshc.findNodeNearest(x1,x2)
         tj = distance(x1,x2,node.x(),node.y())
-        if tj>0.0 and tj<tmap[j2][j1]-tiny:
-          #print "j1 =",j1,"j2 =",j2,"tj =",tj,"tmap =",tmap[j2][j1]
+        if tj<tmap[j2][j1]-tiny:
           tmap[j2][j1] = tj
           heap.reduce(j1,j2,tj)
+  plotfab(tmap,mesh,None,False,False,"tmaps")
   return fi
 
 def distanceMap(mesh,s1,s2):
@@ -280,6 +294,19 @@ def distance(x1,y1,x2,y2):
   dy = y2-y1
   return sqrt(dx*dx+dy*dy)
 
+def copyMesh(mesha):
+  meshc = TriMesh()
+  fmapa = mesha.getNodePropertyMap("f")
+  fmapc = meshc.getNodePropertyMap("f")
+  nodes = mesha.getNodes()
+  while nodes.hasNext():
+    nodea = nodes.next()
+    nodec = TriMesh.Node(nodea.x(),nodea.y())
+    f = fmapa.get(nodea)
+    meshc.addNode(nodec)
+    fmapc.put(nodec,Float(f))
+  return meshc
+
 #############################################################################
 # plotting
 
@@ -297,6 +324,8 @@ def plotfab(f,mesha=None,meshb=None,tris=False,polys=True,png=None):
   ppo = PlotPanel.Orientation.X1DOWN_X2RIGHT;
   ppa = PlotPanel.AxesPlacement.NONE
   panel = PlotPanel(1,1,ppo,ppa);
+  if png:
+    panel.setTitle(png)
   mosaic = panel.getMosaic();
   tile = mosaic.getTile(0,0)
   pv = panel.addPixels(f);
@@ -328,7 +357,7 @@ def plotfab(f,mesha=None,meshb=None,tris=False,polys=True,png=None):
   frame = PlotFrame(panel);
   frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
   frame.setFontSize(24)
-  frame.setSize(1000,680);
+  frame.setSize(1000,750);
   frame.setVisible(True);
   if png and pngDir:
     frame.paintToPng(200,6,pngDir+"/"+png+".png")
