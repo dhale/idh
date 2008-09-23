@@ -144,7 +144,7 @@ public class SteerableFilter3 {
         double aobs = aob*aob;
         double cobs = cob*cob;
         double faambb2 = (faa-fbb)*2.0;
-        double fccmbb2 = (fbb-fbb)*2.0;
+        double fccmbb2 = (fcc-fbb)*2.0;
         double aobsp1 = aobs+1.0;
         double cobsp1 = cobs+1.0;
         double ga = a*(faambb2+cob*fbc)-b*(1.0-aobs)*fab-c*fac;
@@ -584,6 +584,22 @@ public class SteerableFilter3 {
     ftests[5] = new double[]{0.0,0.0,0.0,0.0,0.0,1.0};
     ftests[6] = new double[]{0.0,0.0,1.0,1.0,1.0,1.0};
     */
+    ftests[0] = new double[]{
+      -0.1985327030717713,
+       0.09742635963656265,
+      -0.3801624013886773,
+       0.06162326013941677,
+      -0.233385358971406,
+      -0.26045753013799466
+    };
+    ftests[1] = new double[]{
+      0.3230484517043609,
+      0.4263561654944583,
+     -0.4130341047874344,
+     -0.004895721621528071,
+      0.2025989210726613,
+      0.0795547452177835
+    };
     for (int itest=0; itest<ntest; ++itest) {
       double[] f = ftests[itest];
       double f0 = f[0], f1 = f[1], f2 = f[2], f3 = f[3], f4 = f[4], f5 = f[5];
