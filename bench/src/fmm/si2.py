@@ -49,8 +49,13 @@ def doInterpolateTest():
   plotfab(fs,mesh,None,False,False,"fs")
 
   # interpolate with natural neighbors and plot
-  fi = interpolateNatural(mesh,s1,s2)
-  plotfab(fi,mesh,None,False,False,"fi")
+  fi0 = interpolateNatural(mesh,s1,s2)
+  plotfab(fi0,mesh,None,False,False,"fi0")
+
+  # interpolate with natural neighbors and plot
+  fi1 = interpolateNatural1(mesh,s1,s2)
+  plotfab(fi1,mesh,None,False,False,"fi1")
+  return
 
   # interpolate with approximate natural neighbors and plot
   tsmall = 0.01
@@ -225,6 +230,19 @@ def interpolateNatural(mesh,s1,s2):
       fi[i2][i1] = mesh.interpolateSibson(x1,x2,fmap,0.0)
   return fi
 
+def interpolateNatural1(mesh,s1,s2):
+  fmap = mesh.getNodePropertyMap("f")
+  fgmap = mesh.getNodePropertyMap("fg")
+  mesh.estimateGradients(fmap,fgmap);
+  n1,n2 = s1.count,s2.count 
+  fi = Array.zerofloat(n1,n2)
+  for i2 in range(n2):
+    x2 = s2.getValue(i2)
+    for i1 in range(n1):
+      x1 = s1.getValue(i1)
+      fi[i2][i1] = mesh.interpolateSibson1(x1,x2,fgmap,0.0)
+  return fi
+
 def interpolateNearest(mesh,s1,s2):
   fmap = mesh.getNodePropertyMap("f")
   n1,n2 = s1.count,s2.count 
@@ -324,8 +342,8 @@ def plotfab(f,mesha=None,meshb=None,tris=False,polys=True,png=None):
   ppo = PlotPanel.Orientation.X1DOWN_X2RIGHT;
   ppa = PlotPanel.AxesPlacement.NONE
   panel = PlotPanel(1,1,ppo,ppa);
-  if png:
-    panel.setTitle(png)
+  #if png:
+  #  panel.setTitle(png)
   mosaic = panel.getMosaic();
   tile = mosaic.getTile(0,0)
   pv = panel.addPixels(f);
@@ -357,7 +375,7 @@ def plotfab(f,mesha=None,meshb=None,tris=False,polys=True,png=None):
   frame = PlotFrame(panel);
   frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
   frame.setFontSize(24)
-  frame.setSize(1000,750);
+  frame.setSize(1000,720);
   frame.setVisible(True);
   if png and pngDir:
     frame.paintToPng(200,6,pngDir+"/"+png+".png")
