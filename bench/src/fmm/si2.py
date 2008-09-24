@@ -35,9 +35,10 @@ ms = 50 # nominal spacing between nodes
 def main(args):
   #doShowSibson("u")
   #doShowSibson("p")
-  doInterpolateTest()
+  #doInterpolateTest()
+  doInterpolateSibson01()
 
-def doInterpolateTest():
+def doInterpolateSibson01():
   s1,s2 = Sampling(n1),Sampling(n2)
   #x1,x2 = makeUniformSubsampling(s1,s2,ms)
   #x1,x2 = makePerturbedSubsampling(s1,s2,ms)
@@ -55,7 +56,21 @@ def doInterpolateTest():
   # interpolate with natural neighbors and plot
   fi1 = interpolateNatural1(mesh,s1,s2)
   plotfab(fi1,mesh,None,False,False,"fi1")
-  return
+
+def doInterpolateTest():
+  s1,s2 = Sampling(n1),Sampling(n2)
+  #x1,x2 = makeUniformSubsampling(s1,s2,ms)
+  #x1,x2 = makePerturbedSubsampling(s1,s2,ms)
+  x1,x2 = makeRandomSubsampling(s1,s2,ms)
+
+  # make mesh
+  mesh = makeTriMesh(x1,x2,sinusoid)
+  fs = sampleFunction(sinusoid,s1,s2)
+  plotfab(fs,mesh,None,False,False,"fs")
+
+  # interpolate with natural neighbors and plot
+  fi = interpolateNatural(mesh,s1,s2)
+  plotfab(fi,mesh,None,False,False,"fi")
 
   # interpolate with approximate natural neighbors and plot
   tsmall = 0.01
@@ -79,8 +94,10 @@ def doShowSibson(sampling):
   s1,s2 = Sampling(n1),Sampling(n2)
   if sampling=="u":
     x1,x2 = makeUniformSubsampling(s1,s2,ms)
-  else:
+  elif sampling=="p":
     x1,x2 = makePerturbedSubsampling(s1,s2,ms)
+  else:
+    x1,x2 = makeRandomSubsampling(s1,s2,ms)
   mesha = makeTriMesh(x1,x2,sinusoid)
 
   # mesh B is mesh A with one extra sample
@@ -227,7 +244,7 @@ def interpolateNatural(mesh,s1,s2):
     x2 = s2.getValue(i2)
     for i1 in range(n1):
       x1 = s1.getValue(i1)
-      fi[i2][i1] = mesh.interpolateSibson(x1,x2,fmap,0.0)
+      fi[i2][i1] = mesh.interpolateSibson0(x1,x2,fmap,0.0)
   return fi
 
 def interpolateNatural1(mesh,s1,s2):
