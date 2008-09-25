@@ -23,8 +23,8 @@ from fmm import *
 #############################################################################
 # global parameters
 
-#pngDir = "./png"
-pngDir = None
+pngDir = "./png"
+#pngDir = None
 
 n1,n2 = 251,357 # image dimensions (as for Teapot dome image)
 ms = 50 # nominal spacing between nodes
@@ -35,8 +35,8 @@ ms = 50 # nominal spacing between nodes
 def main(args):
   #doShowSibson("u")
   #doShowSibson("p")
-  #doInterpolateTest()
-  doInterpolateSibson01()
+  doInterpolateTest()
+  #doInterpolateSibson01()
 
 def doInterpolateSibson01():
   s1,s2 = Sampling(n1),Sampling(n2)
@@ -288,7 +288,7 @@ def interpolateNaturalApproximate(mesh,s1,s2,tsmall):
     i1,i2,ti = e.i1,e.i2,e.t
     x1 = s1.getValue(i1)
     x2 = s2.getValue(i2)
-    fi[i2][i1] = meshc.interpolateSibson(x1,x2,fmap,0.0)
+    fi[i2][i1] = meshc.interpolateSibson0(x1,x2,fmap,0.0)
     if ti<tsmall:
       continue
     tmap[i2][i1] = 0.0
