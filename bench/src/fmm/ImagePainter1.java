@@ -63,6 +63,16 @@ public class ImagePainter1 {
   }
 
   /**
+   * Sets normalization used in interpolation. With normalization,
+   * interpolation weights are computed from distance divided by
+   * velocity.
+   * @param normalize true, for normalization; false, otherwise.
+   */
+  public void setNormalize(boolean normalize) {
+    _normalize = normalize;
+  }
+
+  /**
    * Clears all painted values, including all fixed values.
    */
   public void clearAll() {
@@ -221,6 +231,12 @@ public class ImagePainter1 {
       int k1 = te.i1;
       float tk = te.t;
 
+      // Sum of weights in weighted sum of values.
+      float wi = 1.0f/_d[k1];
+      if (_normalize)
+        wi /= _d[k1];
+      float ws = wi;
+
       // The values to be interpolated. This array will be assigned to 
       // all extrapolated samples during the march away from the 
       // interpolated sample. This assignment is one reason that an 
@@ -229,11 +245,8 @@ public class ImagePainter1 {
       // have completed the computation of the interpolated values, those 
       // values will already be referenced by all extrapolated samples 
       // nearest to the interpolated sample.
-      float[] vk = Array.copy(_vk[k1]);
+      float[] vk = Array.mul(wi,_vk[k1]);
       _vk[k1] = vk;
-
-      // Sum of weights in weighted sum of values.
-      float ws = 1.0f;
 
       // Mark all samples as far, set the type of the interpolated sample,
       // mark the interpolated sample as known with time zero, and update 
@@ -259,8 +272,9 @@ public class ImagePainter1 {
 
         // Weighted sum of values for the extrapolated sample.
         float[] vki = _vk[i1];
-        float wi = 1.0f/_d[i1];
-        //float wi = 1.0f;
+        wi = 1.0f;
+        if (_normalize)
+          wi /= _d[i1];
         ws += wi;
         for (int iv=0; iv<_nv; ++iv)
           vk[iv] += wi*vki[iv];
@@ -381,6 +395,7 @@ public class ImagePainter1 {
   private byte[] _type; // fixed, extra, 
   private TimeHeap1 _hmin; // the min heap
   private TimeHeap1 _hmax; // the max heap
+  private boolean _normalize; // true, for normalization by velocity.
 
   private void updateNabors(int i1) {
     for (int k1=-1; k1<=1; k1+=2) {
@@ -410,29 +425,61 @@ public class ImagePainter1 {
     System.out.println(s);
   }
 
+  private static void plotSequence(Sampling sx, float[] f) {
+    SimplePlot sp = SimplePlot.asSequence(sx,f);
+    double xmin = sx.getFirst();
+    double xmax = sx.getLast();
+    double fmin = Array.min(f);
+    double fmax = Array.max(f);
+    double xpad = 0.05*(xmax-xmin);
+    double fpad = 0.05*(fmax-fmin);
+    sp.setHLimits(xmin-xpad,xmax+xpad);
+    sp.setVLimits(fmin-fpad,fmax+fpad);
+  }
+
+  private static void plotPoints(Sampling sx, float[] f, String file) {
+    double xmin = sx.getFirst();
+    double xmax = sx.getLast();
+    double fmin = Array.min(f);
+    double fmax = Array.max(f);
+    double xpad = 0.05*(xmax-xmin);
+    double fpad = 0.05*(fmax-fmin);
+    SimplePlot sp = new SimplePlot();
+    sp.setVisible(false);
+    sp.setHLimits(xmin-xpad,xmax+xpad);
+    sp.setVLimits(fmin-fpad,fmax+fpad);
+    sp.setSize(700,500);
+    sp.addPoints(sx,f);
+    sp.setVisible(true);
+    if (file!=null)
+      sp.paintToPng(300,6,"png/"+file+".png");
+  }
+
   public static void main(String[] args) {
     SwingUtilities.invokeLater(new Runnable() {
       public void run() {
-        int n1 = 4197;
+        int n1 = 4001;
         float d1 = 1.0f/(float)(n1-1);
+        //float d1 = 1.0f;
         float f1 = 0.0f;
         Sampling s1 = new Sampling(n1,d1,f1);
         float[] d = new float[n1];
         for (int i1=0; i1<n1; ++i1) {
-          d[i1] = i1<4*(n1-1)/10?1.0f:0.01f;
+          d[i1] = i1<4*(n1-1)/10?1.0f:0.5f;
           //float x1 = f1+i1*d1;
           //d[i1] = pow((1.00001f-x1*x1*(3.0f-2.0f*x1)),0.25f);
         }
-        SimplePlot.asPoints(s1,d);
+        plotPoints(s1,d,"ip1v");
         ImagePainter1 ip = new ImagePainter1(d);
+        ip.setNormalize(true);
         ip.paintAt(   0,0.0f);
         ip.paintAt(n1-1,1.0f);
-        SimplePlot.asPoints(s1,ip.getValues());
+        plotPoints(s1,ip.getValues(),null);
         ip.extrapolate();
-        SimplePlot.asPoints(s1,ip.getValues());
-        SimplePlot.asPoints(s1,ip.getTimes());
+        plotPoints(s1,ip.getValues(),"ip1fe");
+        plotPoints(s1,Array.mul(d1,ip.getTimes()),"ip1t");
         ip.interpolate();
-        SimplePlot.asPoints(s1,ip.getValues());
+        plotPoints(s1,ip.getValues(),"ip1fi");
       }
     });
   }

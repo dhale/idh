@@ -329,6 +329,14 @@ public class PaintingX {
       int k2 = te.i2;
       float tk = te.t;
 
+      // Initial weight and sum of weights in weighted sum of values.
+      float[] ds = new float[3];
+      _st.getTensor(k1,k2,ds);
+      float d11 = ds[0], d12 = ds[1], d22 = ds[2];
+      float wi = sqrt(d11*d22-d12*d12);
+      //float wi = 1.0f;
+      float ws = wi;
+
       // The values to be interpolated. In stage 1, this array will be
       // assigned to all extrapolated samples during the march away from 
       // the interpolated sample. This assignment is one reason that an 
@@ -340,7 +348,7 @@ public class PaintingX {
       // In stage 2, interpolated values are not extrapolated, and must not
       // affect other interpolated values, so we store them in a separate
       // array of values to be merged later.
-      float[] vk = Array.copy(_vk[k2][k1]);
+      float[] vk = Array.mul(wi,_vk[k2][k1]);
       if (stage1) {
         _vk[k2][k1] = vk;
       } else {
@@ -352,9 +360,6 @@ public class PaintingX {
         tl.clear();
         tl.append(k1,k2,tk);
       }
-
-      // Count of values accumulated for the interpolated sample.
-      int nk = 1;
 
       // Mark all samples as far, set the type of the interpolated sample,
       // mark the interpolated sample as known with time zero, and update 
@@ -381,10 +386,14 @@ public class PaintingX {
         float ti = e.t;
 
         // Accumulate values for the extrapolated sample.
+        _st.getTensor(i1,i2,ds);
+        d11 = ds[0]; d12 = ds[1]; d22 = ds[2];
+        wi = sqrt(d11*d22-d12*d12);
+        //wi = 1.0f;
+        ws += wi;
         float[] vki = _vk[i2][i1];
         for (int iv=0; iv<_nv; ++iv)
-          vk[iv] += vki[iv];
-        ++nk;
+          vk[iv] += wi*vki[iv];
 
         // Mark the extrapolated sample known. In stage 1, reduce it's
         // time in the max-heap. Also, in stage 1, it's values will be 
@@ -401,10 +410,9 @@ public class PaintingX {
       }
 
       // The march is complete, and nearby values have been accumulated.
-      // Now simply divide by the number of values accumulated.
-      float vs = 1.0f/(float)nk;
+      // Now simply divide by the sum of the weights.
       for (int iv=0; iv<_nv; ++iv)
-        vk[iv] *= vs;
+        vk[iv] /= ws;
 
       // In stage 2, restore any times saved during marching.
       if (stage2) {
