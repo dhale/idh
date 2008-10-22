@@ -11,6 +11,8 @@ from java.util import *
 from java.nio import *
 from javax.swing import *
 
+from ldf import *
+
 from edu.mines.jtk.awt import *
 from edu.mines.jtk.dsp import *
 from edu.mines.jtk.io import *
@@ -18,6 +20,7 @@ from edu.mines.jtk.ogl.Gl import *
 from edu.mines.jtk.sgl import *
 from edu.mines.jtk.sgl.test import *
 from edu.mines.jtk.util import *
+
 
 #############################################################################
 # global parameters
@@ -31,14 +34,16 @@ n1,n2,n3 = 251,161,357
 imageFile = dataDir+"tp3s.dat"
 tensorsFile = dataDir+"tpst4.dat"
 psemblanceFile = dataDir+"psem4.dat"
+psmoothedFile = dataDir+"psmo4.dat"
+psubtractFile = dataDir+"psub4.dat"
 lsemblanceFile = dataDir+"lsem4.dat"
 pvarianceFile = dataDir+"pvar4.dat"
 lnpsFile = dataDir+"lnps4.dat"
 lnpeFile = dataDir+"lnpe4.dat"
 faultFile = dataDir+"tpflt4.dat"
 sigma = 4.0
-sigma2 = sigma
-sigma1 = sigma
+sigma2 = 1.0*sigma
+sigma1 = 1.0*sigma
 small = 0.01
 niter = 100
 
@@ -47,15 +52,109 @@ niter = 100
 
 def main(args):
   #doTensors()
+  doPlanarSemblance()
+  #doPlanarSmooth()
+  #doPlanarSubtract()
   #doPlanarVariance()
-  #doPlanarSemblance()
   #doLinearSemblance()
   #doLinearNotPlanarSemblance()
-  doLinearNotPlanarEigenvalues()
+  #doLinearNotPlanarEigenvalues()
   #doFaultMask()
 
 #############################################################################
 # functions
+
+def doPlanarSemblance():
+  f = readImage(n1,n2,n3,imageFile)
+  s = semblancePlanar(f)
+  writeImage(s,psemblanceFile)
+  plot3s([f,s])
+
+def doPlanarSmooth():
+  f = readImage(n1,n2,n3,imageFile)
+  s = readImage(n1,n2,n3,psemblanceFile)
+  print "psemblance min =",Array.min(s)," max =",Array.max(s)
+  d = readTensors(tensorsFile)
+  g = smoothPlanar(s,d,f)
+  writeImage(g,psmoothedFile)
+  plot3s([f,g])
+
+def doPlanarSubtract():
+  f = readImage(n1,n2,n3,imageFile)
+  g = readImage(n1,n2,n3,psmoothedFile)
+  h = Array.sub(f,g)
+  writeImage(h,psubtractFile)
+  plot3s([f,h])
+
+def semblanceIso(f,g):
+  n1,n2,n3 = len(f[0][0]),len(f[0]),len(f)
+  rgf = RecursiveGaussianFilter(sigma)
+  sf = Array.zerofloat(n1,n2,n3)
+  sg = Array.zerofloat(n1,n2,n3)
+  rgf.apply000(f,sf)
+  rgf.apply000(g,sg)
+  Array.sub(f,sf,sf)
+  Array.sub(g,sg,sg)
+  fg = Array.mul(sf,sg)
+  ff = Array.mul(sf,sf)
+  gg = Array.mul(sg,sg)
+  print "before smoothing"
+  print "fg min =",Array.min(fg)," max =",Array.max(fg)
+  print "ff min =",Array.min(ff)," max =",Array.max(ff)
+  print "gg min =",Array.min(gg)," max =",Array.max(gg)
+  rgf.apply000(fg,fg)
+  rgf.apply000(ff,ff)
+  rgf.apply000(gg,gg)
+  print "after smoothing"
+  print "fg min =",Array.min(fg)," max =",Array.max(fg)
+  print "ff min =",Array.min(ff)," max =",Array.max(ff)
+  print "gg min =",Array.min(gg)," max =",Array.max(gg)
+  sn = Array.mul(fg,fg)
+  sd = Array.mul(ff,gg)
+  return Array.div(sn,sd)
+
+def semblancePlanar(f):
+  n1,n2,n3 = len(f[0][0]),len(f[0]),len(f)
+  scale1 = 0.5*sigma1*sigma1
+  scale2 = 0.5*sigma2*sigma2
+  lsf1 = LocalSmoothingFilterX(scale1,small,niter)
+  lsf2 = LocalSmoothingFilterX(scale2,small,niter)
+  g = Array.zerofloat(n1,n2,n3)
+  t = readTensors(tensorsFile)
+  t.setEigenvalues(0.0,1.0,1.0)
+  lsf2.apply(t,f,g)
+  h = Array.sub(f,g)
+  ff = Array.mul(f,f)
+  hh = Array.mul(h,h)
+  plot3s([ff,hh])
+  sff = Array.zerofloat(n1,n2,n3)
+  shh = Array.zerofloat(n1,n2,n3)
+  t.setEigenvalues(1.0,0.0,0.0)
+  lsf1.apply(t,ff,sff)
+  lsf1.apply(t,hh,shh)
+  plot3s([sff,shh])
+  Array.add(0.0001*Array.max(sff),sff,sff)
+  return Array.sub(1.0,Array.div(shh,sff))
+
+def smoothPlanar(s,d,f):
+  eu = Array.fillfloat(0.0,n1,n2,n3)
+  ev = Array.fillfloat(1.0,n1,n2,n3)
+  ew = Array.fillfloat(1.0,n1,n2,n3)
+  Array.mul(s,ev,ev)
+  Array.mul(s,ew,ew)
+  d.setEigenvalues(eu,ev,ew)
+  scale2 = 0.5*sigma2*sigma2
+  lsf = LocalSmoothingFilterX(scale2,small,niter)
+  g = Array.zerofloat(n1,n2,n3)
+  lsf.apply(d,f,g)
+  return g
+
+def getEigenvalues(d):
+  eu = Array.zerofloat(n1,n2,n3)
+  ev = Array.zerofloat(n1,n2,n3)
+  ew = Array.zerofloat(n1,n2,n3)
+  d.getEigenvalues(eu,ev,ew)
+  return eu,ev,ew
 
 def doLinearEigenvalues():
   f = readImage(n1,n2,n3,imageFile)
@@ -82,7 +181,7 @@ def doLinearSemblance():
   sd = Array.zerofloat(n1,n2,n3)
   d.setEigenvalues(0.0,0.0,1.0)
   scale2 = 0.5*sigma2*sigma2
-  lsf = LocalSmoothingFilter(scale2,small,niter)
+  lsf = LocalSmoothingFilterX(scale2,small,niter)
   lsf.apply(d,f,sn)
   Array.mul(sn,sn,sn)
   Array.mul(f,f,ff)
@@ -91,7 +190,7 @@ def doLinearSemblance():
   ssd = Array.zerofloat(n1,n2,n3)
   d.setEigenvalues(1.0,1.0,0.0)
   scale1 = 0.5*sigma1*sigma1
-  lsf = LocalSmoothingFilter(scale1,small,niter)
+  lsf = LocalSmoothingFilterX(scale1,small,niter)
   lsf.apply(d,sn,ssn)
   lsf.apply(d,sd,ssd)
   rgf = RecursiveGaussianFilter(1.0)
@@ -100,33 +199,6 @@ def doLinearSemblance():
   s = Array.div(ssn,ssd)
   plot3s([f,s])
   writeImage(s,lsemblanceFile)
-
-def doPlanarSemblance():
-  f = readImage(n1,n2,n3,imageFile)
-  d = readTensors(tensorsFile)
-  ff = Array.zerofloat(n1,n2,n3)
-  sn = Array.zerofloat(n1,n2,n3)
-  sd = Array.zerofloat(n1,n2,n3)
-  d.setEigenvalues(0.0,1.0,1.0)
-  scale2 = 0.5*sigma2*sigma2
-  lsf = LocalSmoothingFilter(scale2,small,niter)
-  lsf.apply(d,f,sn)
-  Array.mul(sn,sn,sn)
-  Array.mul(f,f,ff)
-  lsf.apply(d,ff,sd)
-  ssn = Array.zerofloat(n1,n2,n3)
-  ssd = Array.zerofloat(n1,n2,n3)
-  d.setEigenvalues(1.0,0.0,0.0)
-  scale1 = 0.5*sigma1*sigma1
-  lsf = LocalSmoothingFilter(scale1,small,niter)
-  lsf.apply(d,sn,ssn)
-  lsf.apply(d,sd,ssd)
-  rgf = RecursiveGaussianFilter(1.0)
-  rgf.apply000(ssn,ssn)
-  rgf.apply000(ssd,ssd)
-  s = Array.div(ssn,ssd)
-  plot3s([f,s])
-  writeImage(s,psemblanceFile)
 
 def doFaultMask():
   f = readImage(n1,n2,n3,imageFile)
@@ -145,14 +217,14 @@ def doPlanarVariance():
   svd = Array.zerofloat(n1,n2,n3)
   d.setEigenvalues(0.0,1.0,1.0)
   scale2 = 0.5*sigma2*sigma2
-  lsf = LocalSmoothingFilter(scale2,small,niter)
+  lsf = LocalSmoothingFilterX(scale2,small,niter)
   lsf.apply(d,f,g)
   Array.sub(f,g,g)
   Array.mul(g,g,vn)
   Array.mul(f,f,vd)
   d.setEigenvalues(1.0,0.0,0.0)
   scale1 = 4.0*0.5*sigma1*sigma1
-  lsf = LocalSmoothingFilter(scale1,small,niter)
+  lsf = LocalSmoothingFilterX(scale1,small,niter)
   lsf.apply(d,vn,svn)
   lsf.apply(d,vd,svd)
   rgf = RecursiveGaussianFilter(1.0)
@@ -199,6 +271,12 @@ def writeImage(f,fileName):
   aos = ArrayOutputStream(fileName)
   aos.writeFloats(f)
   aos.close()
+
+def applyGaussianFilter(sigma,f):
+  g = Array.copy(f)
+  rgf = RecursiveGaussianFilter(sigma)
+  rgf.apply000(f,g)
+  return g
 
 #############################################################################
 # plotting
