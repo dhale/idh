@@ -330,11 +330,13 @@ public class PaintingX {
       float tk = te.t;
 
       // Initial weight and sum of weights in weighted sum of values.
+      /*
       float[] ds = new float[3];
       _st.getTensor(k1,k2,ds);
       float d11 = ds[0], d12 = ds[1], d22 = ds[2];
       float wi = sqrt(d11*d22-d12*d12);
-      //float wi = 1.0f;
+      */
+      float wi = 1.0f;
       float ws = wi;
 
       // The values to be interpolated. In stage 1, this array will be
@@ -386,10 +388,12 @@ public class PaintingX {
         float ti = e.t;
 
         // Accumulate values for the extrapolated sample.
+        /*
         _st.getTensor(i1,i2,ds);
         d11 = ds[0]; d12 = ds[1]; d22 = ds[2];
         wi = sqrt(d11*d22-d12*d12);
-        //wi = 1.0f;
+        */
+        wi = 1.0f;
         ws += wi;
         float[] vki = _vk[i2][i1];
         for (int iv=0; iv<_nv; ++iv)

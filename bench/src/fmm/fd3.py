@@ -123,6 +123,13 @@ def semblancePlanar(f):
   t = readTensors(tensorsFile)
   t.setEigenvalues(0.0,1.0,1.0)
   lsf2.apply(t,f,g)
+  sn = Array.mul(Array.mul(f,g),Array.mul(f,g))
+  sd = Array.mul(Array.mul(f,f),Array.mul(g,g))
+  sd = Array.clip(0.0001,Array.max(sd),sd)
+  plot3s([sn,sd])
+  s = Array.clip(0.0,1.0,Array.div(sn,sd))
+  plot3s([f,s])
+  return
   h = Array.sub(f,g)
   ff = Array.mul(f,f)
   hh = Array.mul(h,h)
@@ -133,8 +140,7 @@ def semblancePlanar(f):
   lsf1.apply(t,ff,sff)
   lsf1.apply(t,hh,shh)
   plot3s([sff,shh])
-  Array.add(0.0001*Array.max(sff),sff,sff)
-  return Array.sub(1.0,Array.div(shh,sff))
+  return Array.clip(0.0,1.0,Array.sub(1.0,Array.div(shh,sff)))
 
 def smoothPlanar(s,d,f):
   eu = Array.fillfloat(0.0,n1,n2,n3)

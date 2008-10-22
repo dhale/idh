@@ -646,7 +646,7 @@ public class ImagePainterX {
     SwingUtilities.invokeLater(new Runnable() {
       public void run() {
         testImagePainterA();
-        //testImagePainterB();
+        testImagePainterB();
       }
     });
   }
