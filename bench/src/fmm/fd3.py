@@ -32,7 +32,7 @@ pngDir = None
 n1,n2,n3 = 251,161,357
 #n1,n2,n3 = 10,10,10
 imageFile = dataDir+"tp3s.dat"
-tensorsFile = dataDir+"tpst4.dat"
+tensorsFile = dataDir+"tpst8.dat"
 psemblanceFile = dataDir+"psem4.dat"
 psmoothedFile = dataDir+"psmo4.dat"
 psubtractFile = dataDir+"psub4.dat"
@@ -123,24 +123,20 @@ def semblancePlanar(f):
   t = readTensors(tensorsFile)
   t.setEigenvalues(0.0,1.0,1.0)
   lsf2.apply(t,f,g)
-  sn = Array.mul(Array.mul(f,g),Array.mul(f,g))
-  sd = Array.mul(Array.mul(f,f),Array.mul(g,g))
-  sd = Array.clip(0.0001,Array.max(sd),sd)
-  plot3s([sn,sd])
-  s = Array.clip(0.0,1.0,Array.div(sn,sd))
-  plot3s([f,s])
-  return
-  h = Array.sub(f,g)
+  plot3s([f,g])
   ff = Array.mul(f,f)
-  hh = Array.mul(h,h)
-  plot3s([ff,hh])
-  sff = Array.zerofloat(n1,n2,n3)
-  shh = Array.zerofloat(n1,n2,n3)
+  sn = Array.mul(g,g)
+  sd = Array.zerofloat(n1,n2,n3)
+  lsf2.apply(t,ff,sd)
+  ssn = Array.zerofloat(n1,n2,n3)
+  ssd = Array.zerofloat(n1,n2,n3)
   t.setEigenvalues(1.0,0.0,0.0)
-  lsf1.apply(t,ff,sff)
-  lsf1.apply(t,hh,shh)
-  plot3s([sff,shh])
-  return Array.clip(0.0,1.0,Array.sub(1.0,Array.div(shh,sff)))
+  lsf1.apply(t,sn,ssn)
+  lsf1.apply(t,sd,ssd)
+  plot3s([ssn,ssd])
+  s = Array.div(ssn,ssd)
+  s = Array.clip(0.0,1.0,s)
+  return s
 
 def smoothPlanar(s,d,f):
   eu = Array.fillfloat(0.0,n1,n2,n3)
