@@ -21,7 +21,6 @@ from edu.mines.jtk.sgl import *
 from edu.mines.jtk.sgl.test import *
 from edu.mines.jtk.util import *
 
-
 #############################################################################
 # global parameters
 
@@ -30,20 +29,18 @@ dataDir = "/data/seis/tp/"
 pngDir = None
 
 n1,n2,n3 = 251,161,357
-#n1,n2,n3 = 10,10,10
-imageFile = dataDir+"tp3s.dat"
-tensorsFile = dataDir+"tpst8.dat"
-psemblanceFile = dataDir+"psem4.dat"
-psmoothedFile = dataDir+"psmo4.dat"
-psubtractFile = dataDir+"psub4.dat"
-lsemblanceFile = dataDir+"lsem4.dat"
-pvarianceFile = dataDir+"pvar4.dat"
-lnpsFile = dataDir+"lnps4.dat"
-lnpeFile = dataDir+"lnpe4.dat"
-faultFile = dataDir+"tpflt4.dat"
-sigma = 4.0
+tensorsFile = dataDir+"tp_st8.dat" # structure tensors
+fFile = dataDir+"tp_f.dat" # input image
+gFile = dataDir+"tp_pg.dat" # planar-smoothed image
+ffFile = dataDir+"tp_pff.dat" # square of planar-smoothed image
+ggFile = dataDir+"tp_pgg.dat" # planar-smoothed image-squared
+sffFile = dataDir+"tp_psff.dat" # numerator of planar semblance
+sggFile = dataDir+"tp_psgg.dat" # denominator of planar semblance
+psFile = dataDir+"tp_ps.dat" # planar semblance
+tsFile = dataDir+"tp_ts.dat" # tensor semblance
+sigma = 3.0
 sigma2 = 1.0*sigma
-sigma1 = 1.0*sigma
+sigma1 = 2.0*sigma
 small = 0.01
 niter = 100
 
@@ -51,195 +48,84 @@ niter = 100
 # test functions
 
 def main(args):
-  #doTensors()
-  doPlanarSemblance()
-  #doPlanarSmooth()
-  #doPlanarSubtract()
-  #doPlanarVariance()
-  #doLinearSemblance()
-  #doLinearNotPlanarSemblance()
-  #doLinearNotPlanarEigenvalues()
-  #doFaultMask()
+  #makeTensors()
+  #makePlanarSemblance()
+  #plotPlanarSemblance()
+  #plotPlanarSemblanceLimits()
+  makeTensorSemblance()
+  #plotPlanarTensorSemblance()
 
 #############################################################################
 # functions
 
-def doPlanarSemblance():
-  f = readImage(n1,n2,n3,imageFile)
-  s = semblancePlanar(f)
-  writeImage(s,psemblanceFile)
+def plotPlanarTensorSemblance():
+  f = readImage(n1,n2,n3,fFile)
+  ps = readImage(n1,n2,n3,psFile)
+  ts = readImage(n1,n2,n3,tsFile)
+  plot3s([f,ps])
+  plot3s([f,ts])
+  plot3s([ps,ts])
+
+def makeTensorSemblance():
+  sigma1,sigma2 = 2.0,8.0
+  f = readImage(n1,n2,n3,fFile)
+  s = SemblanceFilter.applyTensorTraces(sigma1,sigma2,f)
+  writeImage(s,tsFile)
   plot3s([f,s])
 
-def doPlanarSmooth():
-  f = readImage(n1,n2,n3,imageFile)
-  s = readImage(n1,n2,n3,psemblanceFile)
-  print "psemblance min =",Array.min(s)," max =",Array.max(s)
-  d = readTensors(tensorsFile)
-  g = smoothPlanar(s,d,f)
-  writeImage(g,psmoothedFile)
-  plot3s([f,g])
-
-def doPlanarSubtract():
-  f = readImage(n1,n2,n3,imageFile)
-  g = readImage(n1,n2,n3,psmoothedFile)
-  h = Array.sub(f,g)
-  writeImage(h,psubtractFile)
-  plot3s([f,h])
-
-def semblanceIso(f,g):
-  n1,n2,n3 = len(f[0][0]),len(f[0]),len(f)
-  rgf = RecursiveGaussianFilter(sigma)
-  sf = Array.zerofloat(n1,n2,n3)
-  sg = Array.zerofloat(n1,n2,n3)
-  rgf.apply000(f,sf)
-  rgf.apply000(g,sg)
-  Array.sub(f,sf,sf)
-  Array.sub(g,sg,sg)
-  fg = Array.mul(sf,sg)
-  ff = Array.mul(sf,sf)
-  gg = Array.mul(sg,sg)
-  print "before smoothing"
-  print "fg min =",Array.min(fg)," max =",Array.max(fg)
-  print "ff min =",Array.min(ff)," max =",Array.max(ff)
-  print "gg min =",Array.min(gg)," max =",Array.max(gg)
-  rgf.apply000(fg,fg)
-  rgf.apply000(ff,ff)
-  rgf.apply000(gg,gg)
-  print "after smoothing"
-  print "fg min =",Array.min(fg)," max =",Array.max(fg)
-  print "ff min =",Array.min(ff)," max =",Array.max(ff)
-  print "gg min =",Array.min(gg)," max =",Array.max(gg)
-  sn = Array.mul(fg,fg)
-  sd = Array.mul(ff,gg)
-  return Array.div(sn,sd)
-
-def semblancePlanar(f):
-  n1,n2,n3 = len(f[0][0]),len(f[0]),len(f)
+def makePlanarSemblance():
+  f = readImage(n1,n2,n3,fFile)
+  g = Array.zerofloat(n1,n2,n3)
   scale1 = 0.5*sigma1*sigma1
   scale2 = 0.5*sigma2*sigma2
   lsf1 = LocalSmoothingFilterX(scale1,small,niter)
   lsf2 = LocalSmoothingFilterX(scale2,small,niter)
-  g = Array.zerofloat(n1,n2,n3)
   t = readTensors(tensorsFile)
   t.setEigenvalues(0.0,1.0,1.0)
   lsf2.apply(t,f,g)
-  plot3s([f,g])
+  writeImage(g,gFile)
   ff = Array.mul(f,f)
-  sn = Array.mul(g,g)
-  sd = Array.zerofloat(n1,n2,n3)
-  lsf2.apply(t,ff,sd)
-  ssn = Array.zerofloat(n1,n2,n3)
-  ssd = Array.zerofloat(n1,n2,n3)
+  gg = Array.mul(g,g)
+  lsf2.apply(t,Array.copy(ff),ff)
+  writeImage(ff,ffFile)
+  writeImage(gg,ggFile)
+  sff = Array.zerofloat(n1,n2,n3)
+  sgg = Array.zerofloat(n1,n2,n3)
   t.setEigenvalues(1.0,0.0,0.0)
-  lsf1.apply(t,sn,ssn)
-  lsf1.apply(t,sd,ssd)
-  plot3s([ssn,ssd])
-  s = Array.div(ssn,ssd)
-  s = Array.clip(0.0,1.0,s)
-  return s
+  lsf1.apply(t,ff,sff)
+  lsf1.apply(t,gg,sgg)
+  writeImage(sff,sffFile)
+  writeImage(sgg,sggFile)
+  ps = Array.div(sgg,sff)
+  ps = Array.clip(0.0,1.0,ps)
+  writeImage(ps,psFile)
 
-def smoothPlanar(s,d,f):
-  eu = Array.fillfloat(0.0,n1,n2,n3)
-  ev = Array.fillfloat(1.0,n1,n2,n3)
-  ew = Array.fillfloat(1.0,n1,n2,n3)
-  Array.mul(s,ev,ev)
-  Array.mul(s,ew,ew)
-  d.setEigenvalues(eu,ev,ew)
-  scale2 = 0.5*sigma2*sigma2
-  lsf = LocalSmoothingFilterX(scale2,small,niter)
-  g = Array.zerofloat(n1,n2,n3)
-  lsf.apply(d,f,g)
-  return g
-
-def getEigenvalues(d):
-  eu = Array.zerofloat(n1,n2,n3)
-  ev = Array.zerofloat(n1,n2,n3)
-  ew = Array.zerofloat(n1,n2,n3)
-  d.getEigenvalues(eu,ev,ew)
-  return eu,ev,ew
-
-def doLinearEigenvalues():
-  f = readImage(n1,n2,n3,imageFile)
-  d = readTensors(tensorsFile)
-  eu = Array.zerofloat(n1,n2,n3)
-  ev = Array.zerofloat(n1,n2,n3)
-  ew = Array.zerofloat(n1,n2,n3)
-  d.getEigenvalues(eu,ev,ew)
-  es = 0.001*Array.max(eu)
-  eu = Array.add(es,eu)
-  ep = Array.div(Array.sub(eu,ev),eu)
-  el = Array.div(Array.sub(ev,ew),eu)
-  ei = Array.div(ew,eu)
-  el = Array.mul(el,Array.sub(1.0,ep))
-  el = Array.mul(el,Array.sub(1.0,ei))
-  writeImage(el,lnpeFile)
-  plot3s([f,Array.sub(1.0,el)])
-
-def doLinearSemblance():
-  f = readImage(n1,n2,n3,imageFile)
-  d = readTensors(tensorsFile)
-  ff = Array.zerofloat(n1,n2,n3)
-  sn = Array.zerofloat(n1,n2,n3)
-  sd = Array.zerofloat(n1,n2,n3)
-  d.setEigenvalues(0.0,0.0,1.0)
-  scale2 = 0.5*sigma2*sigma2
-  lsf = LocalSmoothingFilterX(scale2,small,niter)
-  lsf.apply(d,f,sn)
-  Array.mul(sn,sn,sn)
-  Array.mul(f,f,ff)
-  lsf.apply(d,ff,sd)
-  ssn = Array.zerofloat(n1,n2,n3)
-  ssd = Array.zerofloat(n1,n2,n3)
-  d.setEigenvalues(1.0,1.0,0.0)
-  scale1 = 0.5*sigma1*sigma1
-  lsf = LocalSmoothingFilterX(scale1,small,niter)
-  lsf.apply(d,sn,ssn)
-  lsf.apply(d,sd,ssd)
-  rgf = RecursiveGaussianFilter(1.0)
-  rgf.apply000(ssn,ssn)
-  rgf.apply000(ssd,ssd)
-  s = Array.div(ssn,ssd)
-  plot3s([f,s])
-  writeImage(s,lsemblanceFile)
-
-def doFaultMask():
-  f = readImage(n1,n2,n3,imageFile)
-  s = readImage(n1,n2,n3,semblanceFile)
-  g = Array.mul(Array.sub(1.0,s),f)
+def plotPlanarSemblance():
+  f = readImage(n1,n2,n3,fFile)
+  g = readImage(n1,n2,n3,gFile)
+  ff = readImage(n1,n2,n3,ffFile)
+  gg = readImage(n1,n2,n3,ggFile)
+  sff = readImage(n1,n2,n3,sffFile)
+  sgg = readImage(n1,n2,n3,sggFile)
+  ps = readImage(n1,n2,n3,psFile)
   plot3s([f,g])
-  writeImage(g,faultFile)
+  plot3s([ff,gg])
+  plot3s([sff,sgg])
+  plot3s([f,ps])
 
-def doPlanarVariance():
-  f = readImage(n1,n2,n3,imageFile)
-  d = readTensors(tensorsFile)
-  g = Array.zerofloat(n1,n2,n3)
-  vn = Array.zerofloat(n1,n2,n3)
-  vd = Array.zerofloat(n1,n2,n3)
-  svn = Array.zerofloat(n1,n2,n3)
-  svd = Array.zerofloat(n1,n2,n3)
-  d.setEigenvalues(0.0,1.0,1.0)
-  scale2 = 0.5*sigma2*sigma2
-  lsf = LocalSmoothingFilterX(scale2,small,niter)
-  lsf.apply(d,f,g)
-  Array.sub(f,g,g)
-  Array.mul(g,g,vn)
-  Array.mul(f,f,vd)
-  d.setEigenvalues(1.0,0.0,0.0)
-  scale1 = 4.0*0.5*sigma1*sigma1
-  lsf = LocalSmoothingFilterX(scale1,small,niter)
-  lsf.apply(d,vn,svn)
-  lsf.apply(d,vd,svd)
-  rgf = RecursiveGaussianFilter(1.0)
-  rgf.apply000(svn,svn)
-  rgf.apply000(svd,svd)
-  svb = 1.0e-3*Array.max(svd)
-  Array.add(svb,svd,svd)
-  v = Array.div(svn,svd)
-  Array.sub(1.0,v,v)
-  plot3s([f,v])
-  writeImage(v,pvarianceFile)
+def plotPlanarSemblanceLimits():
+  f = readImage(n1,n2,n3,fFile)
+  sff = readImage(n1,n2,n3,sffFile)
+  sgg = readImage(n1,n2,n3,sggFile)
+  ps = Array.div(sgg,sff)
+  pslo = Array.clip(-0.01,0.01,ps)
+  pshi = Array.clip( 0.99,1.01,ps)
+  print "pslo min =",Array.min(pslo)," max =",Array.max(pslo)
+  print "pshi min =",Array.min(pshi)," max =",Array.max(pshi)
+  plot3s([f,pslo])
+  plot3s([f,pshi])
 
-def doTensors():
+def makeTensors():
   tensors = computeTensors(imageFile)
   writeTensors(tensors,tensorsFile)
  
@@ -274,12 +160,6 @@ def writeImage(f,fileName):
   aos.writeFloats(f)
   aos.close()
 
-def applyGaussianFilter(sigma,f):
-  g = Array.copy(f)
-  rgf = RecursiveGaussianFilter(sigma)
-  rgf.apply000(f,g)
-  return g
-
 #############################################################################
 # plotting
 
@@ -312,29 +192,6 @@ def plot3s(flist):
     clipMin = ipg.getClipMin()
     clipMax = ipg.getClipMax()
     print "clip min =",clipMin,"max =",clipMax
-  frame = TestFrame(world)
-  frame.setVisible(True)
-
-def plot(s1,s2,s3,f,contour):
-  tg = TriangleGroup(contour.i,contour.x,contour.u)
-  states = StateSet()
-  cs = ColorState()
-  cs.setColor(Color.CYAN)
-  states.add(cs)
-  lms = LightModelState()
-  lms.setTwoSide(True)
-  states.add(lms)
-  ms = MaterialState()
-  ms.setColorMaterial(GL_AMBIENT_AND_DIFFUSE)
-  ms.setSpecular(Color.WHITE)
-  ms.setShininess(100.0)
-  states.add(ms)
-  tg.setStates(states);
-  ipg = ImagePanelGroup(s1,s2,s3,f)
-  ipg.setColorModel(jet)
-  world = World()
-  world.addChild(tg)
-  world.addChild(ipg)
   frame = TestFrame(world)
   frame.setVisible(True)
 
