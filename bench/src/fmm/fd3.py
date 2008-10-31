@@ -36,6 +36,7 @@ ffFile = dataDir+"tp_pff.dat" # square of planar-smoothed image
 ggFile = dataDir+"tp_pgg.dat" # planar-smoothed image-squared
 sffFile = dataDir+"tp_psff.dat" # numerator of planar semblance
 sggFile = dataDir+"tp_psgg.dat" # denominator of planar semblance
+hsFile = dataDir+"tp_hs.dat" # horizontal semblance
 psFile = dataDir+"tp_ps.dat" # planar semblance
 tsFile = dataDir+"tp_ts.dat" # tensor semblance
 sigma = 3.0
@@ -51,8 +52,10 @@ def main(args):
   #makeTensors()
   #makePlanarSemblance()
   #plotPlanarSemblance()
+  #makeHorizontalSemblance()
+  plotHorizontalSemblance()
   #plotPlanarSemblanceLimits()
-  makeTensorSemblance()
+  #makeTensorSemblance()
   #plotPlanarTensorSemblance()
 
 #############################################################################
@@ -99,6 +102,32 @@ def makePlanarSemblance():
   ps = Array.div(sgg,sff)
   ps = Array.clip(0.0,1.0,ps)
   writeImage(ps,psFile)
+
+def makeHorizontalSemblance():
+  f = readImage(n1,n2,n3,fFile)
+  g = Array.zerofloat(n1,n2,n3)
+  rgf1 = RecursiveGaussianFilter(sigma1);
+  rgf2 = RecursiveGaussianFilter(sigma2);
+  rgf2.applyXX0(f,g);
+  rgf2.applyX0X(g,g);
+  ff = Array.mul(f,f)
+  gg = Array.mul(g,g)
+  rgf2.applyXX0(ff,ff)
+  rgf2.applyX0X(ff,ff)
+  sff = Array.zerofloat(n1,n2,n3)
+  sgg = Array.zerofloat(n1,n2,n3)
+  rgf1.apply0XX(ff,sff)
+  rgf1.apply0XX(gg,sgg)
+  hs = Array.div(sgg,sff)
+  hs = Array.clip(0.0,1.0,hs)
+  writeImage(hs,hsFile)
+
+def plotHorizontalSemblance():
+  f = readImage(n1,n2,n3,fFile)
+  hs = readImage(n1,n2,n3,hsFile)
+  ps = readImage(n1,n2,n3,psFile)
+  plot3s([f,hs])
+  plot3s([hs,ps])
 
 def plotPlanarSemblance():
   f = readImage(n1,n2,n3,fFile)
