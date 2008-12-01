@@ -460,8 +460,8 @@ public class ImagePainter2 {
     int n1, int n2, int ns, EigenTensors2 et) 
   {
     int nt = 51;
-    int m1 = (n1-1)/ns;
-    int m2 = (n2-1)/ns;
+    int m1 = 1+(n1-1)/ns;
+    int m2 = 1+(n2-1)/ns;
     int j1 = (n1-1-(m1-1)*ns)/2;
     int j2 = (n2-1-(m2-1)*ns)/2;
     int nm = m1*m2;
@@ -618,10 +618,19 @@ public class ImagePainter2 {
     return c;
   }
 
-  private static void testImagePainter() {
+  private static void testImagePainterA() {
     int n1 = 251;
     int n2 = 357;
     float[][] image = readImage(n1,n2,"/data/seis/tp/tp73.dat");
+    image = gain(image);
+    ImagePainter2 ip = new ImagePainter2(image);
+    ip.setValueRange(0.0,1.0);
+  }
+
+  private static void testImagePainterB() {
+    int n1 = 500;
+    int n2 = 500;
+    float[][] image = readImage(n1,n2,"/data/seis/atw/atwj1s.dat");
     image = gain(image);
     ImagePainter2 ip = new ImagePainter2(image);
     ip.setValueRange(0.0,1.0);
@@ -634,7 +643,8 @@ public class ImagePainter2 {
   public static void main(String[] args) {
     SwingUtilities.invokeLater(new Runnable() {
       public void run() {
-        testImagePainter();
+        testImagePainterA();
+        testImagePainterB();
       }
     });
   }

@@ -290,7 +290,8 @@ public class PaintingX {
     // of the the total number of samples. This is an important parameter. 
     // Higher fractions close to one yield smoother interpolations, but
     // can be much more costly than lower fractions.
-    int nstage2 = (int)(0.05*_n1*_n2);
+    //int nstage2 = (int)(0.05*_n1*_n2);
+    int nstage2 = (int)(0.9*_n1*_n2);
 
     // Insert all extrapolated samples into the max-heap with their
     // current times. After the max-heap is built, the extrapolated
@@ -1249,13 +1250,14 @@ public class PaintingX {
     int n1 = 301;
     int n2 = 301;
     int nv = 1;
-    float su = 4.0f;
+    //float su = 4.0f;
+    float su = 1.0f;
     float sv = 1.0f;
     float v1 = sin(0.0f*FLT_PI/8.0f);
     SimpleTensors st = new SimpleTensors(n1,n2,su,sv,v1);
     PaintingX p = new PaintingX(n1,n2,nv,st);
-    p.paintAt(1*n1/4,2*n2/4,1.0f);
-    p.paintAt(3*n1/4,2*n2/4,2.0f);
+    p.paintAt(1*n1/4,1*n2/4,1.0f);
+    p.paintAt(3*n1/4,3*n2/4,2.0f);
     /*
     p.paintAt(   1,   1,1.0f);
     p.paintAt(n1-1,   1,1.0f);
@@ -1323,9 +1325,9 @@ public class PaintingX {
   public static void main(String[] args) {
     SwingUtilities.invokeLater(new Runnable() {
       public void run() {
-        testSeismic();
+        //testSeismic();
         //testChannels();
-        //testIsotropic();
+        testIsotropic();
         //testTarget();
       }
     });

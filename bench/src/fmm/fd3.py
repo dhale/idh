@@ -51,9 +51,9 @@ niter = 100
 def main(args):
   #makeTensors()
   #makePlanarSemblance()
-  #plotPlanarSemblance()
+  plotPlanarSemblance()
   #makeHorizontalSemblance()
-  plotHorizontalSemblance()
+  #plotHorizontalSemblance()
   #plotPlanarSemblanceLimits()
   #makeTensorSemblance()
   #plotPlanarTensorSemblance()
@@ -131,15 +131,15 @@ def plotHorizontalSemblance():
 
 def plotPlanarSemblance():
   f = readImage(n1,n2,n3,fFile)
-  g = readImage(n1,n2,n3,gFile)
-  ff = readImage(n1,n2,n3,ffFile)
-  gg = readImage(n1,n2,n3,ggFile)
-  sff = readImage(n1,n2,n3,sffFile)
-  sgg = readImage(n1,n2,n3,sggFile)
+  #g = readImage(n1,n2,n3,gFile)
+  #ff = readImage(n1,n2,n3,ffFile)
+  #gg = readImage(n1,n2,n3,ggFile)
+  #sff = readImage(n1,n2,n3,sffFile)
+  #sgg = readImage(n1,n2,n3,sggFile)
   ps = readImage(n1,n2,n3,psFile)
-  plot3s([f,g])
-  plot3s([ff,gg])
-  plot3s([sff,sgg])
+  #plot3s([f,g])
+  #plot3s([ff,gg])
+  #plot3s([sff,sgg])
   plot3s([f,ps])
 
 def plotPlanarSemblanceLimits():

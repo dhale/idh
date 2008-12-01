@@ -47,6 +47,7 @@ public class Painting2 {
     _n1 = n1;
     _n2 = n2;
     _nv = nv;
+    _pt = pt;
     _dv = new float[nv];
     _k1 = new int[n2][n1];
     _k2 = new int[n2][n1];
@@ -64,6 +65,7 @@ public class Painting2 {
    * @param pt painting tensors.
    */
   public void setTensors(Tensors2 pt) {
+    _pt = pt;
     _tsol.setTensors(pt);
   }
 
@@ -220,169 +222,44 @@ public class Painting2 {
    * After interpolation, all samples are either fixed or interpolated.
    */
   public void interpolate() {
-  /*
 
-    // Interpolation occurs in two stages. Both stages compute times by 
-    // fast marching away from the sample to be interpolated. In stage 1, 
-    // times and values for samples reached while marching are modified,
-    // so that each sample interpolated in this first stage will affect
-    // samples interpolated later. In stage 2, times (but not values) 
-    // are again modified during marching, but are restored after marching. 
-    // Therefore, values interpolated in stage 2 do not affect other 
-    // interpolated values. 
-    boolean stage1 = true;
-    boolean stage2 = false;
-
-    // In stage 2, times that must be restored are saved in a list while 
-    // marching, and values interpolated are saved in a separate array so
-    // that they will not affect other interpolated values. At the end of
-    // stage 2, we will merge the two arrays of values. In stage 1, both
-    // the time list and values array are null and not used.
-    TimeList tl = null;
-    float[][][] va = null;
-
-    // Minimum number of samples to interpolate in stage 2, a fraction 
-    // of the the total number of samples. This is an important parameter. 
-    // Higher fractions close to one yield smoother interpolations, but
-    // can be much more costly than lower fractions.
-    int nstage2 = (int)(0.05*_n1*_n2);
-
-    // Insert all extrapolated samples into the max-heap with their
-    // current times. After the max-heap is built, the extrapolated
-    // sample with largest time is at the top of the heap.
-    _heap.clear();
+    // Ensure that all value arrays are unique (not shared).
     for (int i2=0; i2<_n2; ++i2) {
       for (int i1=0; i1<_n1; ++i1) {
-        if (_type[i2][i1]==EXTRA) {
-          _heap.insert(i1,i2,_tk[i2][i1]);
-        }
+        float[] vk = _vk[i2][i1];
+        if (vk==null)
+          return;
+        _vk[i2][i1] = Array.copy(vk);
       }
     }
 
-    // Interpolate all extrapolated (not-fixed) samples, one at a time, 
-    // in order of decreasing time. The extrapolated sample with the 
-    // largest time is at the top of the max-heap. In stage 1, as we 
-    // interpolate this sample, times for other extrapolated samples 
-    // that remain in the heap may be reduced, so that their order may 
-    // change. We choose a decreasing order in stage 1 to reduce the 
-    // number of extrapolated samples that are reached while marching.
-    // In stage 2, the order will not matter.
-    while (!_heap.isEmpty()) {
+    // Prepare for local smoothing filter.
+    float c = 0.25f;
+    float[][] s = Array.mul(_tk,_tk);
+    float[][] v = new float[_n2][_n1];
+    float[][] w = new float[_n2][_n1];
+    LocalSmoothingFilter lsf = new LocalSmoothingFilter(0.01,1000);
 
-      // Switch to stage 2 when number of samples left is small enough. 
-      if (stage1 && _heap.size()<nstage2) {
-        stage1 = false;
-        stage2 = true;
-        tl = new TimeList();
-        va = new float[_n2][_n1][];
-      }
-
-      // Remove from the max-heap the extrapolated sample with largest time.
-      // This is the sample to be interpolated; the "interpolated sample".
-      TimeHeap2.Entry te = _heap.remove();
-      int k1 = te.i1;
-      int k2 = te.i2;
-      float tk = te.t;
-
-      // The values to be interpolated. In stage 1, this array will be
-      // assigned to all extrapolated samples during the march away from 
-      // the interpolated sample. This assignment is one reason that an 
-      // array of values is so useful, for we will not actually know the 
-      // interpolated values until the march is complete. Later, when we 
-      // have completed the computation of the interpolated values, those 
-      // values will already be referenced by all extrapolated samples 
-      // nearest to the interpolated sample.
-      // In stage 2, interpolated values are not extrapolated, and must not
-      // affect other interpolated values, so we store them in a separate
-      // array of values to be merged later.
-      float[] vk = Array.copy(_vk[k2][k1]);
-      if (stage1) {
-        _vk[k2][k1] = vk;
-      } else {
-        va[k2][k1] = vk;
-      }
-
-      // In stage 2, save the time for the interpolated sample.
-      if (stage2) {
-        tl.clear();
-        tl.append(k1,k2,tk);
-      }
-
-      // Count of values accumulated for the interpolated sample.
-      int nk = 1;
-
-      // Mark all samples as far, set the type of the interpolated sample,
-      // mark the interpolated sample as known with time zero, and update 
-      // its neighbors.
-      clearMarks();
-      _hmin.clear();
-      _type[k2][k1] = INTER;
-      _mark[k2][k1] = _known;
-      _k1[k2][k1] = k1;
-      _k2[k2][k1] = k2;
-      _tk[k2][k1] = 0.0f;
-      updateNabors(k1,k2,tl);
-
-      // March away from the interpolated sample to all extrapolated
-      // samples that are nearer to the interpolated sample than to any 
-      // fixed samples or samples previously interpolated in stage 1.
-      // While marching, accumulate values needed for interpolation.
-      while (!_hmin.isEmpty()) {
-
-        // Get the extrapolated sample with minimum time.
-        TimeHeap2.Entry e = _hmin.remove();
-        int i1 = e.i1;
-        int i2 = e.i2;
-        float ti = e.t;
-
-        // Accumulate values for the extrapolated sample.
-        float[] vki = _vk[i2][i1];
-        for (int iv=0; iv<_nv; ++iv)
-          vk[iv] += vki[iv];
-        ++nk;
-
-        // Mark the extrapolated sample known. In stage 1, reduce it's
-        // time in the max-heap. Also, in stage 1, it's values will be 
-        // those of the interpolated sample. Continue marching by updating 
-        // the nabor samples.
-        _mark[i2][i1] = _known;
-        if (stage1) {
-          _heap.reduce(i1,i2,ti);
-          _k1[i2][i1] = k1;
-          _k2[i2][i1] = k2;
-          _vk[i2][i1] = vk;
-        }
-        updateNabors(i1,i2,tl);
-      }
-
-      // The march is complete, and nearby values have been accumulated.
-      // Now simply divide by the number of values accumulated.
-      float vs = 1.0f/(float)nk;
-      for (int iv=0; iv<_nv; ++iv)
-        vk[iv] *= vs;
-
-      // In stage 2, restore any times saved during marching.
-      if (stage2) {
-        int nl = tl.n;
-        int[] k1l = tl.k1List;
-        int[] k2l = tl.k2List;
-        float[] tkl = tl.tkList;
-        for (int il=0; il<nl; ++il)
-          _tk[k2l[il]][k1l[il]] = tkl[il];
-      }
-    }
-
-    // Finally, merge any interpolated values that were saved in stage 2.
-    if (va!=null) {
+    // For all values, interpolate by smoothing extrapolated values.
+    for (int iv=0; iv<_nv; ++iv) {
       for (int i2=0; i2<_n2; ++i2) {
         for (int i1=0; i1<_n1; ++i1) {
-          float[] vi = va[i2][i1];
-          if (vi!=null)
-            _vk[i2][i1] = vi;
+          w[i2][i1] = v[i2][i1] = _vk[i2][i1][iv];
+        }
+      }
+      lsf.apply(_pt,c,s,v,w);
+      trace("s min="+Array.min(s)+" max="+Array.max(s));
+      trace("v min="+Array.min(v)+" max="+Array.max(v));
+      trace("w min="+Array.min(w)+" max="+Array.max(w));
+      for (int i2=0; i2<_n2; ++i2) {
+        for (int i1=0; i1<_n1; ++i1) {
+          if (_type[i2][i1]!=FIXED) {
+            _type[i2][i1] = INTER;
+            _vk[i2][i1][iv] = w[i2][i1];
+          }
         }
       }
     }
-  */
   }
 
   /**
@@ -456,6 +333,7 @@ public class Painting2 {
   private static final byte EXTRA = 2; // values painted by extrapolation
   private static final byte INTER = 3; // values painted by interpolation
 
+  private Tensors2 _pt; // painting tensors`
   private int _n1,_n2; // painting dimensions
   private int _nv; // number of values associated with each sample
   private float[] _dv; // default values for clear samples
@@ -522,39 +400,20 @@ public class Painting2 {
     sp.getPlotPanel().getTile(0,0).addTiledView(ev);
   }
 
-  private static class Plot {
-    Plot(float[][] f) {
-      this(f,null);
-    }
-    Plot(float[][] f, IndexColorModel icm) {
-      _sp = new SimplePlot(SimplePlot.Origin.UPPER_LEFT);
-      //_sp.setSize(650,600);
-      _sp.setSize(950,900);
-      //_sp.setSize(1130,820);
-      _pv = _sp.addPixels(f);
-      if (icm==null) icm = ColorMap.JET;
-      _pv.setColorModel(icm);
-      //_pv.setInterpolation(PixelsView.Interpolation.NEAREST);
-      _pv.setInterpolation(PixelsView.Interpolation.LINEAR);
-    }
-    void set(final float[][] f) {
-      sleep(1000);
-      SwingUtilities.invokeLater(new Runnable() {
-        public void run() {
-          _pv.set(f);
-        }
-      });
-    }
-    final private SimplePlot _sp;
-    final private PixelsView _pv;
-  }
-
   private static void plot(float[][] f) {
     plot(f,null);
   }
 
   private static void plot(float[][] f, IndexColorModel icm) {
-    new Plot(f,icm);
+      SimplePlot sp = new SimplePlot(SimplePlot.Origin.UPPER_LEFT);
+      //sp.setSize(650,600);
+      //sp.setSize(1130,820);
+      sp.setSize(950,900);
+      PixelsView pv = sp.addPixels(f);
+      if (icm==null) icm = ColorMap.JET;
+      pv.setColorModel(icm);
+      //pv.setInterpolation(PixelsView.Interpolation.NEAREST);
+      pv.setInterpolation(PixelsView.Interpolation.LINEAR);
   }
 
   private static float[][] readImage(int n1, int n2, String fileName) {
@@ -698,7 +557,8 @@ public class Painting2 {
     int n1 = 301;
     int n2 = 301;
     int nv = 1;
-    float du = 0.010f;
+    //float du = 0.010f;
+    float du = 1.000f;
     float dv = 1.000f;
     float v1 = sin(-45.0f*FLT_PI/180.0f);
     SimpleTensors st = new SimpleTensors(n1,n2,du,dv,v1);
@@ -709,6 +569,13 @@ public class Painting2 {
     //plotImageTensors(p.getTimes(),st);
     plot(p.getTimes(),ColorMap.PRISM);
     plot(p.getValues());
+    p.interpolate();
+    plot(p.getValues());
+    float[][] v = p.getValues();
+    float[] w = new float[n1];
+    for (int i1=0; i1<n1; ++i1)
+      w[i1] = v[i1][i1];
+    edu.mines.jtk.mosaic.SimplePlot.asPoints(w);
   }
 
   private static float[][] makeTargetImage(int n1, int n2) {

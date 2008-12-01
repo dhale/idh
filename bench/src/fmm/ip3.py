@@ -37,6 +37,7 @@ n1,n2,n3 = 251,161,357
 def main(args):
   imageFile = dataDir+"tp3s.dat"
   tensorsFile = dataDir+"et3s211.dat"
+  #tensorsFile = dataDir+"tp_et211.dat"
   makeTensors(imageFile,tensorsFile)
 
 #############################################################################
@@ -83,17 +84,21 @@ def computeTensors(imageFile):
   sv = Array.add(sv,sbias)
   sw = Array.add(sw,sbias)
   print "max su =",Array.max(su)," sv =",Array.max(sv)," sw =",Array.max(sw)
-  #dc = Array.pow(Array.sub(1.0,coherence(sigma,x)),-gamma)
+  #ps = readImage(n1,n2,n3,dataDir+"tp_ps.dat")
+  #print "ps min =",Array.min(ps)," max =",Array.max(ps)
+  #dc = Array.pow(Array.sub(1.01,ps),-gamma)
   dc = Array.fillfloat(1.0,n1,n2,n3)
   du = Array.mul(dc,Array.pow(su,-alpha))
   dv = Array.mul(du,Array.pow(Array.div(sv,su),-beta))
   dw = Array.mul(du,Array.pow(Array.div(sw,su),-beta))
+  print "min du =",Array.min(du)," dv =",Array.min(dv)," dw =",Array.min(dw)
   print "max du =",Array.max(du)," dv =",Array.max(dv)," dw =",Array.max(dw)
   ds = 1.0/Array.max(dw)
   du = Array.mul(ds,du)
   dv = Array.mul(ds,dv)
   dw = Array.mul(ds,dw)
   print "ds =",ds
+  print "min du =",Array.min(du)," dv =",Array.min(dv)," dw =",Array.min(dw)
   print "max du =",Array.max(du)," dv =",Array.max(dv)," dw =",Array.max(dw)
   return EigenTensors3(u1,u2,w1,w2,du,dv,dw,True) 
 

@@ -352,6 +352,7 @@ public class ImagePainter3 {
     float[][][] paint = Array.fillfloat(0.0f,n1,n2,n3);
     image = Array.add(image,Array.mul(0.001f,Array.randfloat(n1,n2,n3)));
     EigenTensors3 tensors = readTensors("/data/seis/tp/et3s211.dat");
+    //EigenTensors3 tensors = readTensors("/data/seis/tp/tp_et211.dat");
     ImagePainter3 ip = new ImagePainter3(image,paint,tensors);
   }
 
