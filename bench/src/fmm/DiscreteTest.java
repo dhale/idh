@@ -136,8 +136,14 @@ public class DiscreteTest {
     float scale = 1.0f/(float)(n1+n2);
     Random r = new Random(314159);
     for (int i=0; i<n; ++i) {
-      int i1 = r.nextInt(n1);
-      int i2 = r.nextInt(n2);
+      int i1,i2;
+      if (i==0) {
+        i1 = n1/2;
+        i2 = n2/2;
+      } else {
+        i1 = r.nextInt(n1);
+        i2 = r.nextInt(n2);
+      }
       x1[i] = i1;
       x2[i] = i2;
       if (mode==0) {
@@ -150,6 +156,10 @@ public class DiscreteTest {
         g2[i] = scale;
       } else if (mode==2) {
         f[i] = 0.25f+0.50f*r.nextFloat();
+      } else if (mode==3) {
+        f[i] = (i==0)?1.0f:0.5f;
+        g1[i] = 0.0f;
+        g2[i] = 0.0f;
       }
     }
     return new float[][]{f,g1,g2,x1,x2};
@@ -266,19 +276,19 @@ public class DiscreteTest {
     return q;
   }
 
-  private static float[][] interpolateApproxSibson(float[][] f) {
-    int n1 = f[0].length;
-    int n2 = f.length;
-    PaintingX p = new PaintingX(n1,n2,1);
+  private static float[][] interpolateApproxSibson(float[][] d, float[][] p) {
+    int n1 = d[0].length;
+    int n2 = d.length;
+    PaintingX px = new PaintingX(n1,n2,1);
     for (int i2=0; i2<n2; ++i2) {
       for (int i1=0; i1<n1; ++i1) {
-        if (f[i2][i1]!=0.0f)
-          p.paintAt(i1,i2,f[i2][i1]);
+        if (d[i2][i1]==0.0f)
+          px.paintAt(i1,i2,p[i2][i1]);
       }
     }
-    p.extrapolate();
-    p.interpolate();
-    return p.getValues();
+    px.extrapolate();
+    px.interpolate();
+    return px.getValues();
   }
 
   private static float[][] interpolateSibson(float[][] d, float[][] p) {
@@ -382,10 +392,12 @@ public class DiscreteTest {
     TestFrame frame = new TestFrame(world);
     OrbitView view = frame.getOrbitView();
     view.setScale(2.0f);
-    view.setElevation(30.0f); // good for sinsin points
-    view.setAzimuth(-70.0f);
+    //view.setElevation(30.0f); // good for sinsin points
+    //view.setAzimuth(-70.0f);
     //view.setElevation(40.714287f); // good for random points
     //view.setAzimuth(-130.72289f);
+    view.setElevation(30.0f); // good for impulse points
+    view.setAzimuth(18.0f);
     view.setWorldSphere(new BoundingSphere(0.5,0.5,-0.5,1.0));
     BoundingSphere bs = world.getBoundingSphere(true);
     //trace("bs center: "+bs.getCenter());
@@ -405,6 +417,7 @@ public class DiscreteTest {
     float[][][] dp = getDistanceNearest(f,g1,g2,x1,x2,n1,n2);
     float[][] d = dp[0];
     float[][] p = dp[1];
+    //float[][] q0 = interpolateApproxSibson(d,p);
     float[][] q1 = interpolateSibson(d,p);
     float[][] q2 = interpolateSmooth(d,p);
     //float[][] q3 = interpolateLaplace(d,p);
@@ -415,7 +428,8 @@ public class DiscreteTest {
     //plot("Discrete Sibson interpolation",q1);
     //plot("Discrete smooth interpolation",q2);
     //plot("Discrete Laplace interpolation",q3);
-    plot3d(s1,s2,p);
+    //plot3d(s1,s2,p);
+    //plot3d(s1,s2,q0);
     plot3d(s1,s2,q1);
     plot3d(s1,s2,q2);
     //plot3d(s1,s2,q3);
@@ -430,6 +444,9 @@ public class DiscreteTest {
   private static void testRandom() {
     testInterpolation(2);
   }
+  private static void testImpulse() {
+    testInterpolation(3);
+  }
 
   private static void trace(String s) {
     System.out.println(s);
@@ -439,9 +456,10 @@ public class DiscreteTest {
     SwingUtilities.invokeLater(new Runnable() {
       public void run() {
         //testInterpolation1();
-        testSinSin();
+        //testSinSin();
         //testRandom();
         //testLinear();
+        testImpulse();
       }
     });
   }
