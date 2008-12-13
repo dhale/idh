@@ -134,12 +134,27 @@ public class DiscreteTest {
     float[] x1 = new float[n];
     float[] x2 = new float[n];
     float scale = 1.0f/(float)(n1+n2);
+    double radius = 0.25*min(n1,n2);
+    double dtheta = 4.0*PI/(n-1);
     Random r = new Random(314159);
     for (int i=0; i<n; ++i) {
       int i1,i2;
       if (i==0) {
         i1 = n1/2;
         i2 = n2/2;
+      } else if (mode==4) {
+        double y1,y2,theta;
+        if (i<=n/2) {
+          theta = i*dtheta;
+          y1 = radius*cos(theta);
+          y2 = radius*sin(theta);
+        } else {
+          theta = (i-n/2)*dtheta;
+          y1 = 1.5*radius*cos(theta);
+          y2 = 1.5*radius*sin(theta);
+        }
+        i1 = (int)(n1/2+y1+0.5);
+        i2 = (int)(n2/2+y2+0.5);
       } else {
         i1 = r.nextInt(n1);
         i2 = r.nextInt(n2);
@@ -156,8 +171,8 @@ public class DiscreteTest {
         g2[i] = scale;
       } else if (mode==2) {
         f[i] = 0.25f+0.50f*r.nextFloat();
-      } else if (mode==3) {
-        f[i] = (i==0)?1.0f:0.5f;
+      } else if (mode==3 || mode==4) {
+        f[i] = (i==0)?0.9f:0.5f;
         g1[i] = 0.0f;
         g2[i] = 0.0f;
       }
@@ -409,31 +424,32 @@ public class DiscreteTest {
   private static void testInterpolation(int mode) {
     int n1 = 315;
     int n2 = 315;
+    int n = (mode==4)?51:50;
     Sampling s1 = new Sampling(n1,1.0/(n1-1),0.0);
     Sampling s2 = new Sampling(n2,1.0/(n2-1),0.0);
-    float[][] s = makeSamples(mode,50,n1,n2);
+    float[][] s = makeSamples(mode,n,n1,n2);
     float[] f = s[0], g1 = s[1], g2 = s[2], x1 = s[3], x2 = s[4];
     g1 = g2 = null;
     float[][][] dp = getDistanceNearest(f,g1,g2,x1,x2,n1,n2);
     float[][] d = dp[0];
     float[][] p = dp[1];
-    //float[][] q0 = interpolateApproxSibson(d,p);
+    float[][] q0 = interpolateApproxSibson(d,p);
     float[][] q1 = interpolateSibson(d,p);
     float[][] q2 = interpolateSmooth(d,p);
-    //float[][] q3 = interpolateLaplace(d,p);
-    //float[][] q4 = interpolateBiLaplace(d,p);
+    float[][] q3 = interpolateLaplace(d,p);
+    float[][] q4 = interpolateBiLaplace(d,p);
     //plot("Samples",f);
     //plot("Distance map",d);
     //plot("Nearest-neighbor interpolation",p);
     //plot("Discrete Sibson interpolation",q1);
     //plot("Discrete smooth interpolation",q2);
     //plot("Discrete Laplace interpolation",q3);
-    //plot3d(s1,s2,p);
-    //plot3d(s1,s2,q0);
+    plot3d(s1,s2,p);
+    plot3d(s1,s2,q0);
     plot3d(s1,s2,q1);
     plot3d(s1,s2,q2);
-    //plot3d(s1,s2,q3);
-    //plot3d(s1,s2,q4);
+    plot3d(s1,s2,q3);
+    plot3d(s1,s2,q4);
   }
   private static void testSinSin() {
     testInterpolation(0);
@@ -447,6 +463,9 @@ public class DiscreteTest {
   private static void testImpulse() {
     testInterpolation(3);
   }
+  private static void testCircle() {
+    testInterpolation(4);
+  }
 
   private static void trace(String s) {
     System.out.println(s);
@@ -459,7 +478,8 @@ public class DiscreteTest {
         //testSinSin();
         //testRandom();
         //testLinear();
-        testImpulse();
+        //testImpulse();
+        testCircle();
       }
     });
   }
