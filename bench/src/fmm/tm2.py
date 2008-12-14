@@ -1,5 +1,5 @@
 #############################################################################
-# Tests 2D time solvers.
+# Tests 2D time mapper.
 
 import sys
 from math import *
@@ -32,139 +32,68 @@ prism = ColorMap.PRISM
 # test functions
 
 def main(args):
-  #testConstant()
-  testSine()
+  testConstant()
+  #testSine()
   #testTsai()
-  #testSeismic()
   return
  
 def testConstant():
-  n1,n2 = 1001,1001
-  tensors = ConstantTensors2(n1,n2,20.0,0.010,1.000)
-  for ts in [TimeSolver2(n1,n2,tensors),
-             AfmmSolver2(n1,n2,tensors)]:
-    ts.zeroAt(2*(n1-1)/4,2*(n2-1)/4)
-    plot(ts.getTimes(),0,0,prism)
+  n1,n2 = 513,513
+  #i1 = [3*n1/8,6*n1/8,4*n1/8]
+  #i2 = [2*n2/8,4*n2/8,6*n2/8]
+  i1 = [9*n1/16,7*n1/16]
+  i2 = [7*n2/16,9*n2/16]
+  #tensors = ConstantTensors2(n1,n2,-30.0,1.000,1.000)
+  #tensors = ConstantTensors2(n1,n2,10.0,0.001,1.000)
+  tensors = ConstantTensors2(n1,n2,-30.0,0.050,1.000)
+  tm = TimeMapper2(n1,n2,tensors)
+  dotest(n1,n2,i1,i2,tensors)
  
 def testSine():
   n1,n2 = 601,601
-  tensors = SineTensors2(n1,n2,200.0,30.0)
-  for ts in [TimeSolver2(n1,n2,tensors),
-             AfmmSolver2(n1,n2,tensors)]:
-    ts.zeroAt(2*(n1-1)/4,2*(n2-1)/4)
-    plot(ts.getTimes(),0,0,prism)
+  i1 = [7*n1/8,3*n1/8,5*n1/8,2*n1/8]
+  i2 = [1*n2/8,4*n2/8,4*n2/8,6*n2/8]
+  tensors = SineTensors2(n1,n2,400.0,30.0)
+  dotest(n1,n2,i1,i2,tensors)
  
 def testTsai():
   n1,n2 = 101,101
+  i1 = [3*n1/8,3*n1/8,5*n1/8,1*n1/8]
+  i2 = [2*n2/8,5*n2/8,6*n2/8,6*n2/8]
   tensors = TsaiTensors2(n1,n2)
-  for ts in [TimeSolver2(n1,n2,tensors),
-             AfmmSolver2(n1,n2,tensors)]:
-    #ts.zeroAt(2*(n1-1)/4,2*(n2-1)/4)
-    i1 = [3*n1/8,3*n1/8,5*n1/8,1*n1/8]
-    i2 = [2*n2/8,5*n2/8,6*n2/8,6*n2/8]
-    for i in range(len(i1)):
-      ts.zeroAt(i1[i],i2[i])
-    plot(ts.getTimes(),0,0,jet)
+  dotest(n1,n2,i1,i2,tensors)
 
-def testSeismic():
-  n1,n2 = 251,357
-  x = readFloats(n1,n2,dataDir+"/seis/tp/tp73.dat")
-  #x = gpow(x,0.75)
-  plot(x,0,0,gray)
-  tensors = SeismicTensors2(x,100,3)
-  ts = TimeSolver2(n1,n2,tensors)
-  #ts.zeroAt(65,180)
-  ts.zeroAt(95,180)
-  #ts.zeroAt(118,180)
-  #ts.zeroAt( 83,180)
-  plot(ts.getTimes(),0,0,prism)
+def dotest(n1,n2,i1,i2,tensors):
+  known = Array.zerobyte(n1,n2)
+  times = Array.zerofloat(n1,n2)
+  marks = Array.zeroint(n1,n2)
+  for k in range(len(i1)):
+    k1,k2 = i1[k],i2[k]
+    known[k2][k1] = 1
+    times[k2][k1] = 0.0
+    marks[k2][k1] = 1+k
+  tm = TimeMapper2(n1,n2,tensors)
+  tm.apply(known,times,marks)
+  print "times min =",Array.min(times),"max =",Array.max(times)
+  print "marks min =",Array.min(marks),"max =",Array.max(marks)
+  marks = floatsFromInts(marks)
+  plot(times,0,0,prism)
+  plot(marks,0,0,jet)
 
 #############################################################################
 # other functions
 
-def readFloats(n1,n2,fileName):
-  x = Array.zerofloat(n1,n2)
-  ais = ArrayInputStream(fileName)
-  ais.readFloats(x)
-  ais.close()
-  return x
-
-def gpow(x,gamma):
-  return Array.mul(Array.sgn(x),Array.pow(Array.abs(x),gamma))
-
-def coherence(x,sigma):
-  n1,n2 = len(x[0]),len(x)
-  lof1 = LocalOrientFilter(sigma*2)
-  lof2 = LocalOrientFilter(sigma*8)
-  u11 = Array.zerofloat(n1,n2)
-  u21 = Array.zerofloat(n1,n2)
-  su1 = Array.zerofloat(n1,n2)
-  sv1 = Array.zerofloat(n1,n2)
-  u12 = Array.zerofloat(n1,n2)
-  u22 = Array.zerofloat(n1,n2)
-  su2 = Array.zerofloat(n1,n2)
-  sv2 = Array.zerofloat(n1,n2)
-  lof1.apply(x,None,u11,u21,None,None,su1,sv1,None)
-  lof2.apply(x,None,u12,u22,None,None,su2,sv2,None)
-  c = u11;
+def floatsFromInts(i):
+  n1 = len(i[0])
+  n2 = len(i)
+  f = Array.zerofloat(n1,n2)
   for i2 in range(n2):
     for i1 in range(n1):
-      u11i = u11[i2][i1]
-      u21i = u21[i2][i1]
-      su1i = su1[i2][i1]
-      sv1i = sv1[i2][i1]
-      u12i = u12[i2][i1]
-      u22i = u22[i2][i1]
-      su2i = su2[i2][i1]
-      sv2i = sv2[i2][i1]
-      s111 = (su1i-sv1i)*u11i*u11i+sv1i
-      s121 = (su1i-sv1i)*u11i*u21i     
-      s221 = (su1i-sv1i)*u21i*u21i+sv1i
-      s112 = (su2i-sv2i)*u12i*u12i+sv2i
-      s122 = (su2i-sv2i)*u12i*u22i     
-      s222 = (su2i-sv2i)*u22i*u22i+sv2i
-      s113 = s111*s112+s121*s122
-      s223 = s121*s122+s221*s222
-      t1 = s111+s221
-      t2 = s112+s222
-      t3 = s113+s223
-      t12 = t1*t2
-      if t12>0.0:
-        c[i2][i1] = t3/t12
-      else:
-        c[i2][i1] = 0.0
-  return c
+      f[i2][i1] = i[i2][i1]
+  return f
 
 #############################################################################
 # tensors
-
-class SeismicTensors2(EigenTensors2):
-  """
-  2D tensors computed from a seismic image
-  """
-  def __init__(self,x,alpha,sigma):
-    EigenTensors2.__init__(self,len(x[0]),len(x))
-    n1,n2 = len(x[0]),len(x)
-    u1 = Array.zerofloat(n1,n2)
-    u2 = Array.zerofloat(n1,n2)
-    su = Array.zerofloat(n1,n2)
-    sv = Array.zerofloat(n1,n2)
-    lof = LocalOrientFilter(sigma)
-    lof.apply(x,None,u1,u2,None,None,su,sv,None)
-    #c = coherence(x,sigma)
-    #c = Array.pow(c,8.0)
-    #c = Array.div(1.0,Array.sub(1.0,c))
-    #c = Array.div(1.0,Array.pow(Array.sub(1.0,c),0.25))
-    c = Array.fillfloat(1.0,n1,n2)
-    #plot(c,0,0,jet)
-    smax = Array.max(su)
-    scale = (alpha*alpha-1.0)/smax
-    for i2 in range(n2):
-      for i1 in range(n1):
-        du = c[i2][i1]/(1.0+scale*su[i2][i1])
-        dv = c[i2][i1]/(1.0+scale*sv[i2][i1])
-        self.setEigenvalues(i1,i2,du,dv)
-        self.setEigenvectorU(i1,i2,u1[i2][i1],u2[i2][i1])
 
 class ConstantTensors2(EigenTensors2):
   """
@@ -209,7 +138,7 @@ class SineTensors2(EigenTensors2):
         d22 = (1.0+e1*e1)/den
         d12 = -e1*e2/den
         self.setTensor(i1,i2,(d11,d12,d22))
-    plot(f)
+    #plot(f)
 
 class TsaiTensors2(EigenTensors2):
   """
@@ -236,7 +165,7 @@ class TsaiTensors2(EigenTensors2):
         d22 =  1.0-e2*e2/den
         d12 = -e1*e2/den
         self.setTensor(i1,i2,(d11,d12,d22))
-    plot(f)
+    #plot(f)
 
 #############################################################################
 # plotting

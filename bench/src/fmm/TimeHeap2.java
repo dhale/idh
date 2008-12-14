@@ -142,6 +142,16 @@ public class TimeHeap2 {
   }
 
   /**
+   * Determines whether this help contains an entry with the specified indices.
+   * @param i1 the sample index in 1st dimension.
+   * @param i2 the sample index in 2nd dimension.
+   * @return true, if in the heap; false, otherwise.
+   */
+  public boolean contains(int i1, int i2) {
+    return indexOf(i1,i2)>=0;
+  }
+
+  /**
    * Removes all entries from this heap.
    */
   public void clear() {
