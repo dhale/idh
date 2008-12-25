@@ -131,7 +131,6 @@ public class TimeMapper2 {
   private static final float ONE_MINUS_EPSILON2 = 1.0f-EPSILON2;
 
   private int _n1,_n2;
-  private int _n1m,_n2m;
   private Tensors2 _tensors;
   private Sample[][] _s;
   private Concurrency _concurrency = Concurrency.PARALLEL;
@@ -140,8 +139,6 @@ public class TimeMapper2 {
   private void init(int n1, int n2, Tensors2 tensors) {
     _n1 = n1;
     _n2 = n2;
-    _n1m = n1-1;
-    _n2m = n2-1;
     _tensors = tensors;
     _s = new Sample[n2][n1];
     for (int i2=0; i2<n2; ++i2)
