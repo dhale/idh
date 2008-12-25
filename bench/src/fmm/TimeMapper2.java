@@ -35,7 +35,7 @@ import static edu.mines.jtk.util.MathPlus.*;
  * This transform uses an iterative sweeping method to compute the time map.
  * Iterations are similar to those described by Tsai et al., 2002.
  * @author Dave Hale, Colorado School of Mines
- * @version 2008.12.07
+ * @version 2008.12.24
  */
 public class TimeMapper2 {
 
@@ -86,6 +86,7 @@ public class TimeMapper2 {
     short[][] kk = indexKnownSamples(known);
     short[] k1 = kk[0];
     short[] k2 = kk[1];
+    shuffle(k1,k2);
     int nk = k1.length;
 
     // Active list of samples used to compute times.
@@ -271,10 +272,9 @@ public class TimeMapper2 {
   }
 
   /**
-   * Returns arrays of indices of known samples in random order.
+   * Returns arrays of indices of known samples.
    * Includes only known samples adjacent to at least one unknown sample.
    * (Does not include known samples surrounded by other known samples.)
-   * Indices are shuffled to speed up computation of times and marks.
    */
   private short[][] indexKnownSamples(byte[][] known) {
     ShortStack ss1 = new ShortStack();
@@ -298,15 +298,21 @@ public class TimeMapper2 {
     }
     short[] i1 = ss1.array();
     short[] i2 = ss2.array();
+    return new short[][]{i1,i2};
+  }
+
+  /**
+   * Randomly (but consistently) shuffles the specified arrays of indices.
+   */
+  private static void shuffle(short[] i1, short[] i2) {
     int n = i1.length;
     Random r = new Random();
     short ii;
     for (int i=n-1; i>0; --i) {
-      int j = r.nextInt(i);
+      int j = r.nextInt(i+1);
       ii = i1[i]; i1[i] = i1[j]; i1[j] = ii;
       ii = i2[i]; i2[i] = i2[j]; i2[j] = ii;
     }
-    return new short[][]{i1,i2};
   }
 
   // More efficient than ArrayStack<Short>.

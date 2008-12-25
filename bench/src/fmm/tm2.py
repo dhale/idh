@@ -51,9 +51,9 @@ def testConstant():
   #i2 = [2*n2/8,4*n2/8,6*n2/8]
   i1 = [9*n1/16,7*n1/16]
   i2 = [7*n2/16,9*n2/16]
-  tensors = ConstantTensors2(n1,n2,-30.0,1.000,1.000)
+  #tensors = ConstantTensors2(n1,n2,-30.0,1.000,1.000)
   #tensors = ConstantTensors2(n1,n2,10.0,0.001,1.000)
-  #tensors = ConstantTensors2(n1,n2,-30.0,0.050,1.000)
+  tensors = ConstantTensors2(n1,n2,-30.0,0.050,1.000)
   testMapper(n1,n2,i1,i2,tensors)
  
 def testSine():
@@ -205,7 +205,7 @@ def plot(f,cmin=0.0,cmax=0.0,cmap=jet,png=None):
     pv.setClips(cmin,cmax)
   else:
     pv.setPercentiles(0.0,100.0)
-  pv.setInterpolation(PixelsView.Interpolation.LINEAR)
+  pv.setInterpolation(PixelsView.Interpolation.NEAREST)
   pv.setColorModel(cmap)
   frame(p,png)
 
