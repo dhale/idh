@@ -471,7 +471,7 @@ public class TimeSolver2 {
         float tj = _t[j2][j1];
         float cj = computeTime(j1,j2,K1S[k],K2S[k],d);
 
-        // If computed significantly time less than neighbor's current time, ...
+        // If computed time significantly less than neighbor's current time, ...
         if (cj<tj*ONE_MINUS_EPSILON) {
 
           // Replace the current time.

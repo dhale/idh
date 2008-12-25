@@ -32,10 +32,18 @@ prism = ColorMap.PRISM
 # test functions
 
 def main(args):
+  #testSimple()
   testConstant()
   #testSine()
   #testTsai()
   return
+
+def testSimple():
+  n1,n2 = 101,101
+  i1 = [10,23]
+  i2 = [50,69]
+  tensors = ConstantTensors2(n1,n2,-30.0,1.000,1.000)
+  testMapper(n1,n2,i1,i2,tensors)
  
 def testConstant():
   n1,n2 = 513,513
@@ -43,27 +51,27 @@ def testConstant():
   #i2 = [2*n2/8,4*n2/8,6*n2/8]
   i1 = [9*n1/16,7*n1/16]
   i2 = [7*n2/16,9*n2/16]
-  #tensors = ConstantTensors2(n1,n2,-30.0,1.000,1.000)
+  tensors = ConstantTensors2(n1,n2,-30.0,1.000,1.000)
   #tensors = ConstantTensors2(n1,n2,10.0,0.001,1.000)
-  tensors = ConstantTensors2(n1,n2,-30.0,0.050,1.000)
-  tm = TimeMapper2(n1,n2,tensors)
-  dotest(n1,n2,i1,i2,tensors)
+  #tensors = ConstantTensors2(n1,n2,-30.0,0.050,1.000)
+  testMapper(n1,n2,i1,i2,tensors)
  
 def testSine():
   n1,n2 = 601,601
   i1 = [7*n1/8,3*n1/8,5*n1/8,2*n1/8]
   i2 = [1*n2/8,4*n2/8,4*n2/8,6*n2/8]
   tensors = SineTensors2(n1,n2,400.0,30.0)
-  dotest(n1,n2,i1,i2,tensors)
+  #tensors = SineTensors2(n1,n2,0.0,30.0)
+  testMapper(n1,n2,i1,i2,tensors)
  
 def testTsai():
   n1,n2 = 101,101
   i1 = [3*n1/8,3*n1/8,5*n1/8,1*n1/8]
   i2 = [2*n2/8,5*n2/8,6*n2/8,6*n2/8]
   tensors = TsaiTensors2(n1,n2)
-  dotest(n1,n2,i1,i2,tensors)
+  testMapper(n1,n2,i1,i2,tensors)
 
-def dotest(n1,n2,i1,i2,tensors):
+def testMapper(n1,n2,i1,i2,tensors):
   known = Array.zerobyte(n1,n2)
   times = Array.zerofloat(n1,n2)
   marks = Array.zeroint(n1,n2)
@@ -79,6 +87,18 @@ def dotest(n1,n2,i1,i2,tensors):
   marks = floatsFromInts(marks)
   plot(times,0,0,prism)
   plot(marks,0,0,jet)
+
+def testSolver(n1,n2,i1,i2,tensors):
+  known = Array.zerobyte(n1,n2)
+  times = Array.zerofloat(n1,n2)
+  marks = Array.zeroint(n1,n2)
+  ts = TimeSolver2(n1,n2,tensors)
+  for k in range(len(i1)):
+    k1,k2 = i1[k],i2[k]
+    ts.zeroAt(k1,k2)
+  times = ts.getTimes()
+  print "times min =",Array.min(times),"max =",Array.max(times)
+  plot(times,0,0,prism)
 
 #############################################################################
 # other functions

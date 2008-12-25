@@ -48,10 +48,14 @@ def testConstant():
  
 def testSine():
   n1,n2 = 601,601
-  tensors = SineTensors2(n1,n2,200.0,30.0)
+  tensors = SineTensors2(n1,n2,400.0,30.0)
+  i1 = [7*n1/8,3*n1/8,5*n1/8,2*n1/8]
+  i2 = [1*n2/8,4*n2/8,4*n2/8,6*n2/8]
   for ts in [TimeSolver2(n1,n2,tensors),
              AfmmSolver2(n1,n2,tensors)]:
-    ts.zeroAt(2*(n1-1)/4,2*(n2-1)/4)
+    #ts.zeroAt(2*(n1-1)/4,2*(n2-1)/4)
+    for i in range(len(i1)):
+      ts.zeroAt(i1[i],i2[i])
     plot(ts.getTimes(),0,0,prism)
  
 def testTsai():

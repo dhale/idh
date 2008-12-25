@@ -433,23 +433,23 @@ public class DiscreteTest {
     float[][][] dp = getDistanceNearest(f,g1,g2,x1,x2,n1,n2);
     float[][] d = dp[0];
     float[][] p = dp[1];
-    float[][] q0 = interpolateApproxSibson(d,p);
+    //float[][] q0 = interpolateApproxSibson(d,p);
     float[][] q1 = interpolateSibson(d,p);
     float[][] q2 = interpolateSmooth(d,p);
-    float[][] q3 = interpolateLaplace(d,p);
-    float[][] q4 = interpolateBiLaplace(d,p);
+    //float[][] q3 = interpolateLaplace(d,p);
+    //float[][] q4 = interpolateBiLaplace(d,p);
     //plot("Samples",f);
     //plot("Distance map",d);
     //plot("Nearest-neighbor interpolation",p);
     //plot("Discrete Sibson interpolation",q1);
     //plot("Discrete smooth interpolation",q2);
     //plot("Discrete Laplace interpolation",q3);
-    plot3d(s1,s2,p);
-    plot3d(s1,s2,q0);
+    //plot3d(s1,s2,p);
+    //plot3d(s1,s2,q0);
     plot3d(s1,s2,q1);
     plot3d(s1,s2,q2);
-    plot3d(s1,s2,q3);
-    plot3d(s1,s2,q4);
+    //plot3d(s1,s2,q3);
+    //plot3d(s1,s2,q4);
   }
   private static void testSinSin() {
     testInterpolation(0);
