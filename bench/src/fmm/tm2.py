@@ -39,9 +39,11 @@ def main(args):
   return
 
 def testSimple():
-  n1,n2 = 101,101
-  i1 = [10,23]
-  i2 = [50,69]
+  #n1,n2 = 101,101
+  #i1 = [10,23]
+  #i2 = [50,69]
+  n1,n2 = 501,503
+  i1,i2 = randomSites(10,n1,n2)
   tensors = ConstantTensors2(n1,n2,-30.0,1.000,1.000)
   testMapper(n1,n2,i1,i2,tensors)
  
@@ -49,25 +51,29 @@ def testConstant():
   n1,n2 = 513,513
   #i1 = [3*n1/8,6*n1/8,4*n1/8]
   #i2 = [2*n2/8,4*n2/8,6*n2/8]
-  i1 = [9*n1/16,7*n1/16]
-  i2 = [7*n2/16,9*n2/16]
+  #i1 = [9*n1/16,7*n1/16]
+  #i2 = [7*n2/16,9*n2/16]
+  i1,i2 = randomSites(10,n1,n2)
   #tensors = ConstantTensors2(n1,n2,-30.0,1.000,1.000)
   #tensors = ConstantTensors2(n1,n2,10.0,0.001,1.000)
   tensors = ConstantTensors2(n1,n2,-30.0,0.050,1.000)
+  #tensors = ConstantTensors2(n1,n2,0.0,0.050,1.000)
   testMapper(n1,n2,i1,i2,tensors)
  
 def testSine():
   n1,n2 = 601,601
-  i1 = [7*n1/8,3*n1/8,5*n1/8,2*n1/8]
-  i2 = [1*n2/8,4*n2/8,4*n2/8,6*n2/8]
+  #i1 = [7*n1/8,3*n1/8,5*n1/8,2*n1/8]
+  #i2 = [1*n2/8,4*n2/8,4*n2/8,6*n2/8]
+  i1,i2 = randomSites(10,n1,n2)
   tensors = SineTensors2(n1,n2,400.0,30.0)
   #tensors = SineTensors2(n1,n2,0.0,30.0)
   testMapper(n1,n2,i1,i2,tensors)
  
 def testTsai():
   n1,n2 = 101,101
-  i1 = [3*n1/8,3*n1/8,5*n1/8,1*n1/8]
-  i2 = [2*n2/8,5*n2/8,6*n2/8,6*n2/8]
+  #i1 = [3*n1/8,3*n1/8,5*n1/8,1*n1/8]
+  #i2 = [2*n2/8,5*n2/8,6*n2/8,6*n2/8]
+  i1,i2 = randomSites(10,n1,n2)
   tensors = TsaiTensors2(n1,n2)
   testMapper(n1,n2,i1,i2,tensors)
 
@@ -99,6 +105,18 @@ def testSolver(n1,n2,i1,i2,tensors):
   times = ts.getTimes()
   print "times min =",Array.min(times),"max =",Array.max(times)
   plot(times,0,0,prism)
+
+def randomSites(n,n1,n2):
+  random = Random()
+  seed = random.nextInt()
+  #seed = 1329742170 # curvy constant anisotropic test
+  print "seed =",seed
+  random.setSeed(seed)
+  i1,i2 = [],[]
+  for i in range(n):
+    i1.append(int(n1*random.nextFloat()))
+    i2.append(int(n2*random.nextFloat()))
+  return i1,i2
 
 #############################################################################
 # other functions
@@ -205,7 +223,7 @@ def plot(f,cmin=0.0,cmax=0.0,cmap=jet,png=None):
     pv.setClips(cmin,cmax)
   else:
     pv.setPercentiles(0.0,100.0)
-  pv.setInterpolation(PixelsView.Interpolation.NEAREST)
+  pv.setInterpolation(PixelsView.Interpolation.LINEAR)
   pv.setColorModel(cmap)
   frame(p,png)
 

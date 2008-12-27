@@ -76,9 +76,9 @@ public class TimeMapper2 {
     // Initialize unknown times to infinity.
     for (int i2=0; i2<_n2; ++i2) {
       for (int i1=0; i1<_n1; ++i1) {
-        if (known[i2][i1]==0) {
+        //if (known[i2][i1]==0) {
           times[i2][i1] = INFINITY;
-        }
+        //}
       }
     }
 
@@ -96,6 +96,9 @@ public class TimeMapper2 {
     for (int ik=0; ik<nk; ++ik) {
       int i1 = k1[ik];
       int i2 = k2[ik];
+      //trace("processing known sample at i1="+i1+" i2="+i2+
+      //      " mark="+marks[i2][i1]);
+      times[i2][i1] = 0.0f;
 
       // Clear activated flags so we can tell which samples become activated.
       clearActivated();
@@ -107,7 +110,7 @@ public class TimeMapper2 {
       solve(times,al);
 
       // Mark samples that were activated while solving for times.
-      markActivated(i1,i2,marks);
+      markActivated(i1,i2,known,marks);
     }
   }
 
@@ -126,8 +129,8 @@ public class TimeMapper2 {
   private static final float INFINITY = Float.MAX_VALUE;
 
   // Times are converged when the fractional change is less than this value.
-  private static final float EPSILON1 = 0.001f;
-  private static final float EPSILON2 = 0.001f;
+  private static final float EPSILON1 = 0.01f;
+  private static final float EPSILON2 = 0.01f;
   private static final float ONE_MINUS_EPSILON1 = 1.0f-EPSILON1;
   private static final float ONE_MINUS_EPSILON2 = 1.0f-EPSILON2;
 
@@ -306,7 +309,7 @@ public class TimeMapper2 {
    */
   private static void shuffle(short[] i1, short[] i2) {
     int n = i1.length;
-    Random r = new Random();
+    Random r = new Random(314159);
     short ii;
     for (int i=n-1; i>0; --i) {
       int j = r.nextInt(i+1);
@@ -320,8 +323,7 @@ public class TimeMapper2 {
     void push(int k) {
       if (_n==_a.length) {
         short[] a = new short[2*_n];
-        for (int i=0; i<_n; ++i)
-          a[i] = _a[i];
+        System.arraycopy(_a,0,a,0,_n);
         _a = a;
       }
       _a[_n++] = (short)k;
@@ -340,8 +342,7 @@ public class TimeMapper2 {
     }
     short[] array() {
       short[] a = new short[_n];
-      for (int i=0; i<_n; ++i)
-        a[i] = _a[i];
+      System.arraycopy(_a,0,a,0,_n);
       return a;
     }
     private int _n = 0;
@@ -366,7 +367,7 @@ public class TimeMapper2 {
    * a known sample with specified indices. Samples to mark are flagged
    * as activated. Activation flags are cleared as samples are marked.
    */
-  private void markActivated(int i1, int i2, int[][] marks) {
+  private void markActivated(int i1, int i2, byte[][] known, int[][] marks) {
     ShortStack ss1 = new ShortStack();
     ShortStack ss2 = new ShortStack();
     ss1.push(i1);
@@ -374,10 +375,13 @@ public class TimeMapper2 {
     Sample si = _s[i2][i1];
     int mark = marks[i2][i1];
     clearActivated(si);
+    int nmark = 0;
     while (!ss1.isEmpty()) {
       i1 = ss1.pop();
       i2 = ss2.pop();
-      marks[i2][i1] = mark;
+      if (known[i2][i1]==0)
+        marks[i2][i1] = mark;
+      ++nmark;
       for (int k=0; k<4; ++k) {
         int j1 = i1+K1[k];  if (j1<0 || j1>=_n1) continue;
         int j2 = i2+K2[k];  if (j2<0 || j2>=_n2) continue;
@@ -411,8 +415,8 @@ public class TimeMapper2 {
       al.appendIfAbsent(bl);
       bl.clear();
     }
-    trace("solveSerial: ntotal="+ntotal);
-    trace("             nratio="+(float)ntotal/(float)(_n1*_n2));
+    //trace("solveSerial: ntotal="+ntotal);
+    //trace("             nratio="+(float)ntotal/(float)(_n1*_n2));
   }
   
   /**
@@ -485,8 +489,8 @@ public class TimeMapper2 {
       //  plot(_t,ColorMap.JET);
     }
     es.shutdown();
-    trace("solveParallel: ntotal="+ntotal);
-    trace("               nratio="+(float)ntotal/(float)(_n1*_n2));
+    //trace("solveParallel: ntotal="+ntotal);
+    //trace("               nratio="+(float)ntotal/(float)(_n1*_n2));
   }
 
   /**
@@ -537,6 +541,7 @@ public class TimeMapper2 {
   }
 
   // Methods to get times for neighbors.
+  /*
   private float t1m(float[][] t, int i1, int i2) {
     return (--i1>=0 && wasActivated(_s[i2][i1]))?t[i2][i1]:INFINITY;
   }
@@ -549,7 +554,7 @@ public class TimeMapper2 {
   private float t2p(float[][] t, int i1, int i2) {
     return (++i2<_n2 && wasActivated(_s[i2][i1]))?t[i2][i1]:INFINITY;
   }
-  /*
+  */
   private float t1m(float[][] t, int i1, int i2) {
     return (--i1>=0)?t[i2][i1]:INFINITY;
   }
@@ -562,7 +567,6 @@ public class TimeMapper2 {
   private float t2p(float[][] t, int i1, int i2) {
     return (++i2<_n2)?t[i2][i1]:INFINITY;
   }
-  */
 
   /**
    * Returns a time t not greater than the current time for one sample.
@@ -597,6 +601,7 @@ public class TimeMapper2 {
         t0 = t2+sqrt(d11*e12);
       }
       if (t0<tc)
+        //tc = t0;
         return t0;
     }
     return tc;
