@@ -33,8 +33,8 @@ prism = ColorMap.PRISM
 
 def main(args):
   #testSimple()
-  testConstant()
-  #testSine()
+  #testConstant()
+  testSine()
   #testTsai()
   return
 
@@ -108,7 +108,7 @@ def testSolver(n1,n2,i1,i2,tensors):
 def randomSites(n,n1,n2):
   random = Random()
   seed = random.nextInt()
-  seed = 1329742170 # curvy boundary in constant anisotropic test
+  #seed = 1329742170 # curvy boundary in constant anisotropic test
   #seed = 124868546 # island in sine test
   #seed = 1527419053 # island in sine test
   print "seed =",seed

@@ -14,7 +14,7 @@ import edu.mines.jtk.util.*;
 import static edu.mines.jtk.util.MathPlus.*;
 
 /**
- * A time and closest-point transform for a 2D anisotropic eikonal equation. 
+ * A time and closest-point transform for 2D anisotropic eikonal equations.
  * Transforms an array of times and marks for known samples into an array 
  * of times and marks for all samples. Known samples are those for which
  * times are zero, and times and marks for known samples are not modified.
@@ -34,12 +34,14 @@ import static edu.mines.jtk.util.MathPlus.*;
  * for that known sample is used to mark all unknown samples for which
  * the solution time is smaller than the minimum time computed so far.
  * If marks for known samples are distinct, then output marks for unknown
- * samples indicate which known sample is closest. In this way, output
- * marks can represent a sampled Voronoi diagram, one that has been
- * generalized by replacing distance with time.
+ * samples indicate which known sample is closest. In this way output
+ * marks can represent a sampled Voronoi diagram, albeit one that has 
+ * been generalized by replacing distance with time.
  * <p>
  * This transform uses an iterative sweeping method to solve for times.
  * Iterations are similar to those described by Jeong and Whitaker (2007).
+ * Computational complexity is O(M log K), where M is the number of 
+ * unknown (missing) samples and K is the number of known samples.
  * @author Dave Hale, Colorado School of Mines
  * @version 2009.01.06
  */
@@ -76,9 +78,8 @@ public class TimeMarker2 {
    * Known samples are those for which times are zero, and times
    * and marks for these known samples are used to compute times
    * and marks for unknown samples.
-   * Times and marks for known
-   * @param times array of times.
-   * @param marks array of marks.
+   * @param times input/output array of times.
+   * @param marks input/output array of marks.
    */
   public void apply(float[][] times, int[][] marks) {
 
@@ -107,8 +108,8 @@ public class TimeMarker2 {
     for (int ik=0; ik<nk; ++ik) {
       int i1 = k1[ik];
       int i2 = k2[ik];
-      trace("processing known sample at i1="+i1+" i2="+i2+
-            " mark="+marks[i2][i1]);
+      //trace("processing known sample at i1="+i1+" i2="+i2+
+      //      " mark="+marks[i2][i1]);
 
       // Clear activated flags so we can tell which samples become activated.
       clearActivated();
@@ -147,7 +148,7 @@ public class TimeMarker2 {
   private int _n1,_n2;
   private Tensors2 _tensors;
   private Sample[][] _s;
-  private Concurrency _concurrency = Concurrency.SERIAL;
+  private Concurrency _concurrency = Concurrency.PARALLEL;
   private ArrayList<Sample> _stack = new ArrayList<Sample>(1024);
 
   private void init(int n1, int n2, Tensors2 tensors) {
@@ -284,6 +285,37 @@ public class TimeMarker2 {
     return s.activated==_activated;
   }
 
+  // More efficient than ArrayStack<Short>.
+  private static class ShortStack {
+    void push(int k) {
+      if (_n==_a.length) {
+        short[] a = new short[2*_n];
+        System.arraycopy(_a,0,a,0,_n);
+        _a = a;
+      }
+      _a[_n++] = (short)k;
+    }
+    short pop() {
+      return _a[--_n];
+    }
+    int size() {
+      return _n;
+    }
+    void clear() {
+      _n = 0;
+    }
+    boolean isEmpty() {
+      return _n==0;
+    }
+    short[] array() {
+      short[] a = new short[_n];
+      System.arraycopy(_a,0,a,0,_n);
+      return a;
+    }
+    private int _n = 0;
+    private short[] _a = new short[2048];
+  }
+
   /**
    * Returns arrays of indices of known samples with times zero.
    * Includes only known samples adjacent to at least one unknown sample.
@@ -326,37 +358,6 @@ public class TimeMarker2 {
       ii = i1[i]; i1[i] = i1[j]; i1[j] = ii;
       ii = i2[i]; i2[i] = i2[j]; i2[j] = ii;
     }
-  }
-
-  // More efficient than ArrayStack<Short>.
-  private static class ShortStack {
-    void push(int k) {
-      if (_n==_a.length) {
-        short[] a = new short[2*_n];
-        System.arraycopy(_a,0,a,0,_n);
-        _a = a;
-      }
-      _a[_n++] = (short)k;
-    }
-    short pop() {
-      return _a[--_n];
-    }
-    int size() {
-      return _n;
-    }
-    void clear() {
-      _n = 0;
-    }
-    boolean isEmpty() {
-      return _n==0;
-    }
-    short[] array() {
-      short[] a = new short[_n];
-      System.arraycopy(_a,0,a,0,_n);
-      return a;
-    }
-    private int _n = 0;
-    private short[] _a = new short[2048];
   }
 
   /**
@@ -523,9 +524,9 @@ public class TimeMarker2 {
   }
 
   /**
-   * Determines whether to process the sample with specified indices.
-   * As sample should be processed iff at least one of its neighbors
-   * is less than the minimum time computed so far.
+   * Determines whether to compute time for sample with specified indices.
+   * As sample should be processed iff at least one of its neighbors is 
+   * less than the minimum time computed so far.
    */
   private boolean doComputeTime(
     float[][] t, float[][] times, int i1, int i2) 
@@ -625,18 +626,11 @@ public class TimeMarker2 {
     return t1+(float)u1;
   }
 
+  ///////////////////////////////////////////////////////////////////////////
+  // debugging
+
   private static void trace(String s) {
     System.out.println(s);
-  }
-
-  private static float[][] toFloat(byte[][] b) {
-    int n1 = b[0].length;
-    int n2 = b.length;
-    float[][] f = new float[n2][n1];
-    for (int i2=0; i2<n2; ++i2)
-      for (int i1=0; i1<n1; ++i1)
-        f[i2][i1] = (float)b[i2][i1];
-    return f;
   }
   private static float[][] toFloat(int[][] i) {
     int n1 = i[0].length;
@@ -646,9 +640,6 @@ public class TimeMarker2 {
       for (int i1=0; i1<n1; ++i1)
         f[i2][i1] = (float)i[i2][i1];
     return f;
-  }
-  private static void plot(byte[][] b) {
-    plot(toFloat(b));
   }
   private static void plot(int[][] i) {
     plot(toFloat(i));
