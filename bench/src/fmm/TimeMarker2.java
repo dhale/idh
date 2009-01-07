@@ -499,7 +499,7 @@ public class TimeMarker2 {
         int j2 = i2+K2[k];  if (j2<0 || j2>=_n2) continue;
 
         // Skip neighbor sample if computed time would be too big.
-        if (!doComputeTime(t,times,j1,j2)) continue;
+        //if (!doComputeTime(t,times,j1,j2)) continue;
 
         // Current and computed times for the neighbor.
         float tj = currentTime(t,j1,j2);
