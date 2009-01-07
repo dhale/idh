@@ -118,20 +118,20 @@ public class TimeMarker2 {
       al.append(_s[i2][i1]);
 
       // Mark for this known sample.
-      int mark = marks[i2][i1];
+      int m = marks[i2][i1];
 
       // Process the active list until empty.
-      solve(al,t,mark,times,marks);
+      solve(al,t,m,times,marks);
     }
   }
 
   private void solve(
-    ActiveList al, float[][] t, int mark, float[][] times, int[][] marks) 
+    ActiveList al, float[][] t, int m, float[][] times, int[][] marks) 
   {
     if (_concurrency==Concurrency.PARALLEL) {
-      solveParallel(al,t,mark,times,marks);
+      solveParallel(al,t,m,times,marks);
     } else {
-      solveSerial(al,t,mark,times,marks);
+      solveSerial(al,t,m,times,marks);
     }
   }
 
@@ -365,7 +365,7 @@ public class TimeMarker2 {
    */
   private void solveSerial(
     ActiveList al, 
-    float[][] t, int mark, 
+    float[][] t, int m, 
     float[][] times, int[][] marks) 
   {
     float[] d = new float[3];
@@ -377,7 +377,7 @@ public class TimeMarker2 {
       ntotal += n;
       for (int i=0; i<n; ++i) {
         Sample s = al.get(i);
-        solveOne(t,mark,times,marks,s,bl,d);
+        solveOne(t,m,times,marks,s,bl,d);
       }
       bl.setAllAbsent();
       al.clear();
@@ -393,7 +393,7 @@ public class TimeMarker2 {
    */
   private void solveParallel(
     final ActiveList al,
-    final float[][] t, final int mark,
+    final float[][] t, final int m,
     final float[][] times, final int[][] marks)
   {
     int nthread = Runtime.getRuntime().availableProcessors();
@@ -425,7 +425,7 @@ public class TimeMarker2 {
               int j = min(i+mb,n); // beginning of next block (or end)
               for (int k=i; k<j; ++k) { // for each sample in block, ...
                 Sample s = al.get(k); // get k'th sample from A list
-                solveOne(t,mark,times,marks,s,bltask,dtask); // process sample
+                solveOne(t,m,times,marks,s,bltask,dtask); // process sample
               }
             }
             bltask.setAllAbsent(); // needed when merging B lists below
@@ -470,7 +470,7 @@ public class TimeMarker2 {
    * Appends samples not yet converged to the B list.
    */
   private void solveOne(
-    float[][] t, int mark, float[][] times, int[][] marks,
+    float[][] t, int m, float[][] times, int[][] marks,
     Sample s, ActiveList bl, float[] d) 
   {
     // Sample indices.
@@ -488,7 +488,7 @@ public class TimeMarker2 {
       // If computed time less than minimum time, mark this sample.
       if (ci<times[i2][i1]) {
         times[i2][i1] = ci;
-        marks[i2][i1] = mark;
+        marks[i2][i1] = m;
       }
 
       // For all four neighbors, ...
