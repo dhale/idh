@@ -14,30 +14,36 @@ import edu.mines.jtk.util.*;
 import static edu.mines.jtk.util.MathPlus.*;
 
 /**
- * A time transform for a 2D anisotropic eikonal equation. The non-linear 
- * equation is grad(t) dot W*grad(t) = 1, where t is the solution time 
- * map and W denotes a positive-definite (velocity-squared) metric tensor 
- * field.
+ * A time and closest-point transform for a 2D anisotropic eikonal equation. 
+ * Transforms an array of times and marks for known samples into an array 
+ * of times and marks for all samples. Known samples are those for which
+ * times are zero, and times and marks for known samples are not modified.
  * <p>
- * Times in a time map are flagged as either known or unknown. Times for 
- * known samples are typically zero (or near zero), and are never modified. 
- * Times for unknown samples are computed to be solutions to the eikonal 
- * equation. Each of these computed times represents the minimum time
- * to travel from the unknown sample to one of the known samples.
+ * Times for unknown samples are computed by solving an anisotropic eikonal 
+ * equation grad(t) dot W grad(t) = 1, where W denotes a positive-definite 
+ * (velocity-squared) metric tensor field. The solution times t represent 
+ * the traveltimes from one known sample to all unknown samples. Separate 
+ * solution times t are computed for each known sample that has at least 
+ * one unknown neighbor. (Such a known sample is sometimes called a 
+ * "source point.") The output time for each sample is the minimum time 
+ * computed in this way for all such known samples. Therefore, the times 
+ * output for unknown samples are the traveltimes to the closest known 
+ * samples, where "closest" here means least time, not least distance.
  * <p>
- * A separate map of marks may be computed as times are computed. The 
- * mark of each unknown sample equals the mark of that known sample for 
- * which the time between the two samples is minimized. For an isotropic 
- * homogeneous tensor field, time equals Euclidean distance, and a map of 
- * marks that represents a discrete Voronoi diagram can be computed by 
- * assigning each known sample a unique mark.
+ * As eikonal solutions t are computed for each known sample, the mark
+ * for that known sample is used to mark all unknown samples for which
+ * the solution time is smaller than the minimum time computed so far.
+ * If marks for known samples are distinct, then output marks for unknown
+ * samples indicate which known sample is closest. In this way, output
+ * marks can represent a sampled Voronoi diagram, one that has been
+ * generalized by replacing distance with time.
  * <p>
- * This transform uses an iterative sweeping method to compute the time map.
- * Iterations are similar to those described by Tsai et al., 2002.
+ * This transform uses an iterative sweeping method to solve for times.
+ * Iterations are similar to those described by Jeong and Whitaker (2007).
  * @author Dave Hale, Colorado School of Mines
- * @version 2008.12.24
+ * @version 2009.01.06
  */
-public class TimeMapper2 {
+public class TimeMarker2 {
 
   /**
    * Type of concurrency used by this transform.
@@ -48,17 +54,17 @@ public class TimeMapper2 {
   };
   
   /**
-   * Constructs a time mapper for the specified tensor field.
+   * Constructs a time marker for the specified tensor field.
    * @param n1 number of samples in 1st dimension.
    * @param n2 number of samples in 2nd dimension.
    * @param tensors velocity-squared tensors.
    */
-  public TimeMapper2(int n1, int n2, Tensors2 tensors) {
+  public TimeMarker2(int n1, int n2, Tensors2 tensors) {
     init(n1,n2,tensors);
   }
 
   /**
-   * Sets the tensors used by this time mapper.
+   * Sets the tensors used by this time marker.
    * @param tensors the tensors.
    */
   public void setTensors(Tensors2 tensors) {
@@ -66,28 +72,33 @@ public class TimeMapper2 {
   }
 
   /**
-   * Applys this transform to the specified array of times and marks.
-   * @param known array of flags; zero for unknown samples
-   * @param times array of times in which unknown times are to be computed.
-   * @param marks array of marks in which unknown marks are to be computed.
+   * Transforms the specified array of times and marks.
+   * Known samples are those for which times are zero, and times
+   * and marks for these known samples are used to compute times
+   * and marks for unknown samples.
+   * Times and marks for known
+   * @param times array of times.
+   * @param marks array of marks.
    */
-  public void apply(byte[][] known, float[][] times, int[][] marks) {
+  public void apply(float[][] times, int[][] marks) {
 
-    // Initialize unknown times to infinity.
+    // Initialize all unknown times to infinity.
     for (int i2=0; i2<_n2; ++i2) {
       for (int i1=0; i1<_n1; ++i1) {
-        //if (known[i2][i1]==0) {
+        if (times[i2][i1]!=0.0f)
           times[i2][i1] = INFINITY;
-        //}
       }
     }
 
     // Indices of known samples in random order.
-    short[][] kk = indexKnownSamples(known);
+    short[][] kk = indexKnownSamples(times);
     short[] k1 = kk[0];
     short[] k2 = kk[1];
     shuffle(k1,k2);
     int nk = k1.length;
+
+    // Array for the eikonal solution times.
+    float[][] t = new float[_n2][_n1];
 
     // Active list of samples used to compute times.
     ActiveList al = new ActiveList();
@@ -96,9 +107,8 @@ public class TimeMapper2 {
     for (int ik=0; ik<nk; ++ik) {
       int i1 = k1[ik];
       int i2 = k2[ik];
-      //trace("processing known sample at i1="+i1+" i2="+i2+
-      //      " mark="+marks[i2][i1]);
-      times[i2][i1] = 0.0f;
+      trace("processing known sample at i1="+i1+" i2="+i2+
+            " mark="+marks[i2][i1]);
 
       // Clear activated flags so we can tell which samples become activated.
       clearActivated();
@@ -106,20 +116,21 @@ public class TimeMapper2 {
       // Put the known sample into the active list.
       al.append(_s[i2][i1]);
 
-      // Process the active list until empty.
-      solve(times,al);
+      // Mark for this known sample.
+      int mark = marks[i2][i1];
 
-      // Mark samples that were activated while solving for times.
-      markActivated(i1,i2,known,marks);
-      //plot(marks);
+      // Process the active list until empty.
+      solve(al,t,mark,times,marks);
     }
   }
 
-  private void solve(float[][] times, ActiveList al) {
+  private void solve(
+    ActiveList al, float[][] t, int mark, float[][] times, int[][] marks) 
+  {
     if (_concurrency==Concurrency.PARALLEL) {
-      solveParallel(times,al);
+      solveParallel(al,t,mark,times,marks);
     } else {
-      solveSerial(times,al);
+      solveSerial(al,t,mark,times,marks);
     }
   }
 
@@ -130,13 +141,13 @@ public class TimeMapper2 {
   private static final float INFINITY = Float.MAX_VALUE;
 
   // Times are converged when the fractional change is less than this value.
-  private static final float EPSILON = 0.01f;
+  private static final float EPSILON = 0.001f;
   private static final float ONE_MINUS_EPSILON = 1.0f-EPSILON;
 
   private int _n1,_n2;
   private Tensors2 _tensors;
   private Sample[][] _s;
-  private Concurrency _concurrency = Concurrency.PARALLEL;
+  private Concurrency _concurrency = Concurrency.SERIAL;
   private ArrayList<Sample> _stack = new ArrayList<Sample>(1024);
 
   private void init(int n1, int n2, Tensors2 tensors) {
@@ -274,22 +285,22 @@ public class TimeMapper2 {
   }
 
   /**
-   * Returns arrays of indices of known samples.
+   * Returns arrays of indices of known samples with times zero.
    * Includes only known samples adjacent to at least one unknown sample.
    * (Does not include known samples surrounded by other known samples.)
    */
-  private short[][] indexKnownSamples(byte[][] known) {
+  private short[][] indexKnownSamples(float[][] times) {
     ShortStack ss1 = new ShortStack();
     ShortStack ss2 = new ShortStack();
     for (int i2=0; i2<_n2; ++i2) {
       for (int i1=0; i1<_n1; ++i1) {
-        if (known[i2][i1]!=0) {
+        if (times[i2][i1]==0.0f) {
           for (int k=0; k<4; ++k) {
             int k1 = K1[k];
             int k2 = K2[k];
             int j1 = i1+K1[k];  if (j1<0 || j1>=_n1) continue;
             int j2 = i2+K2[k];  if (j2<0 || j2>=_n2) continue;
-            if (known[j2][j1]==0) {
+            if (times[j2][j1]!=0.0f) {
               ss1.push(i1);
               ss2.push(i2);
               break;
@@ -349,55 +360,13 @@ public class TimeMapper2 {
   }
 
   /**
-   * Initializes all unknown times to infinity.
-   */
-  private void init(byte[][] known, float[][] times) {
-    for (int i2=0; i2<_n2; ++i2) {
-      for (int i1=0; i1<_n1; ++i1) {
-        if (known[i2][i1]==0) {
-          times[i2][i1] = INFINITY;
-        }
-      }
-    }
-  }
-
-  /**
-   * Marks samples that were activated during computation of times from
-   * a known sample with specified indices. Samples to mark are flagged
-   * as activated. Activation flags are cleared as samples are marked.
-   */
-  private void markActivated(int i1, int i2, byte[][] known, int[][] marks) {
-    ShortStack ss1 = new ShortStack();
-    ShortStack ss2 = new ShortStack();
-    ss1.push(i1);
-    ss2.push(i2);
-    Sample si = _s[i2][i1];
-    int mark = marks[i2][i1];
-    clearActivated(si);
-    int nmark = 0;
-    while (!ss1.isEmpty()) {
-      i1 = ss1.pop();
-      i2 = ss2.pop();
-      if (known[i2][i1]==0)
-        marks[i2][i1] = mark;
-      ++nmark;
-      for (int k=0; k<4; ++k) {
-        int j1 = i1+K1[k];  if (j1<0 || j1>=_n1) continue;
-        int j2 = i2+K2[k];  if (j2<0 || j2>=_n2) continue;
-        Sample sj = _s[j2][j1];
-        if (wasActivated(sj)) {
-          ss1.push(j1);
-          ss2.push(j2);
-          clearActivated(sj);
-        }
-      }
-    }
-  }
-
-  /**
    * Solves for times by sequentially processing each sample in active list.
    */
-  private void solveSerial(float[][] times, ActiveList al) {
+  private void solveSerial(
+    ActiveList al, 
+    float[][] t, int mark, 
+    float[][] times, int[][] marks) 
+  {
     float[] d = new float[3];
     ActiveList bl = new ActiveList();
     int ntotal = 0;
@@ -407,31 +376,26 @@ public class TimeMapper2 {
       ntotal += n;
       for (int i=0; i<n; ++i) {
         Sample s = al.get(i);
-        solveOne(times,s,bl,d);
+        solveOne(t,mark,times,marks,s,bl,d);
       }
       bl.setAllAbsent();
       al.clear();
       al.appendIfAbsent(bl);
       bl.clear();
     }
-    //trace("solveSerial: ntotal="+ntotal);
-    //trace("             nratio="+(float)ntotal/(float)(_n1*_n2));
+    trace("solveSerial: ntotal="+ntotal);
+    trace("             nratio="+(float)ntotal/(float)(_n1*_n2));
   }
   
   /**
    * Solves for times by processing samples in the active list in parallel.
    */
-  private void solveParallel(final float[][] times, final ActiveList al) {
+  private void solveParallel(
+    final ActiveList al,
+    final float[][] t, final int mark,
+    final float[][] times, final int[][] marks)
+  {
     int nthread = Runtime.getRuntime().availableProcessors();
-    /////////////////////////////////////////////////////////////////////////
-    // Benchmarks: 07/26/2008
-    // Anisotropic (angle=110.0,su=1.00,sv=0.01) constant tensor with 
-    // zero time at center sample of 2D array.
-    // Intel 2.4 GHz Core 2 Duo for size 2001^2
-    // serial         3.8 s
-    //nthread = 1; // 4.0 s
-    //nthread = 2; // 2.3 s
-    /////////////////////////////////////////////////////////////////////////
     ExecutorService es = Executors.newFixedThreadPool(nthread);
     CompletionService<Void> cs = new ExecutorCompletionService<Void>(es);
     ActiveList[] bl = new ActiveList[nthread];
@@ -460,7 +424,7 @@ public class TimeMapper2 {
               int j = min(i+mb,n); // beginning of next block (or end)
               for (int k=i; k<j; ++k) { // for each sample in block, ...
                 Sample s = al.get(k); // get k'th sample from A list
-                solveOne(times,s,bltask,dtask); // process the sample
+                solveOne(t,mark,times,marks,s,bltask,dtask); // process sample
               }
             }
             bltask.setAllAbsent(); // needed when merging B lists below
@@ -493,22 +457,38 @@ public class TimeMapper2 {
   }
 
   /**
+   * Gets the current times during one solution of the eikonal equation.
+   * Times for samples not yet activated are infinite.
+   */
+  private float currentTime(float[][] t, int i1, int i2) {
+    return wasActivated(_s[i2][i1])?t[i2][i1]:INFINITY;
+  }
+
+  /**
    * Processes one sample from the A list.
    * Appends samples not yet converged to the B list.
    */
-  private void solveOne(float[][] times, Sample s, ActiveList bl, float[] d) {
-
+  private void solveOne(
+    float[][] t, int mark, float[][] times, int[][] marks,
+    Sample s, ActiveList bl, float[] d) 
+  {
     // Sample indices.
     int i1 = s.i1;
     int i2 = s.i2;
 
     // Current time and new time computed from all neighbors.
-    float ti = times[i2][i1];
-    float ci = computeTime(times,i1,i2,K1S[4],K2S[4],d);
-    times[i2][i1] = ci;
+    float ti = currentTime(t,i1,i2);
+    float ci = computeTime(t,i1,i2,K1S[4],K2S[4],d);
+    t[i2][i1] = ci;
 
     // If new and current times are close enough (converged), then ...
     if (ci>=ti*ONE_MINUS_EPSILON) {
+
+      // If computed time less than minimum time, mark this sample.
+      if (ci<times[i2][i1]) {
+        times[i2][i1] = ci;
+        marks[i2][i1] = mark;
+      }
 
       // For all four neighbors, ...
       for (int k=0; k<4; ++k) {
@@ -517,17 +497,20 @@ public class TimeMapper2 {
         int j1 = i1+K1[k];  if (j1<0 || j1>=_n1) continue;
         int j2 = i2+K2[k];  if (j2<0 || j2>=_n2) continue;
 
-        // Compute time for neighbor.
-        float tj = times[j2][j1];
-        float cj = computeTime(times,j1,j2,K1S[k],K2S[k],d);
+        // Skip neighbor sample if computed time would be too big.
+        if (!doComputeTime(t,times,j1,j2)) continue;
 
-        // If computed time significantly less than neighbor's current time, ...
+        // Current and computed times for the neighbor.
+        float tj = currentTime(t,j1,j2);
+        float cj = computeTime(t,j1,j2,K1S[k],K2S[k],d);
+
+        // If the computed time is significantly less than the current time, ...
         if (cj<tj*ONE_MINUS_EPSILON) {
 
           // Replace the current time.
-          times[j2][j1] = cj;
+          t[j2][j1] = cj;
           
-          // Append neighbor to the B list.
+          // Append neighbor to the B list, thereby activating it.
           bl.append(_s[j2][j1]);
         }
       }
@@ -539,8 +522,22 @@ public class TimeMapper2 {
     }
   }
 
+  /**
+   * Determines whether to process the sample with specified indices.
+   * As sample should be processed iff at least one of its neighbors
+   * is less than the minimum time computed so far.
+   */
+  private boolean doComputeTime(
+    float[][] t, float[][] times, int i1, int i2) 
+  {
+    float timei = times[i2][i1];
+    return t1m(t,i1,i2)<=timei ||
+           t1p(t,i1,i2)<=timei ||
+           t2m(t,i1,i2)<=timei ||
+           t2p(t,i1,i2)<=timei;
+  }
+
   // Methods to get times for neighbors.
-  /*
   private float t1m(float[][] t, int i1, int i2) {
     return (--i1>=0 && wasActivated(_s[i2][i1]))?t[i2][i1]:INFINITY;
   }
@@ -552,19 +549,6 @@ public class TimeMapper2 {
   }
   private float t2p(float[][] t, int i1, int i2) {
     return (++i2<_n2 && wasActivated(_s[i2][i1]))?t[i2][i1]:INFINITY;
-  }
-  */
-  private float t1m(float[][] t, int i1, int i2) {
-    return (--i1>=0)?t[i2][i1]:INFINITY;
-  }
-  private float t1p(float[][] t, int i1, int i2) {
-    return (++i1<_n1)?t[i2][i1]:INFINITY;
-  }
-  private float t2m(float[][] t, int i1, int i2) {
-    return (--i2>=0)?t[i2][i1]:INFINITY;
-  }
-  private float t2p(float[][] t, int i1, int i2) {
-    return (++i2<_n2)?t[i2][i1]:INFINITY;
   }
 
   /**
@@ -579,7 +563,7 @@ public class TimeMapper2 {
     float d12 = d[1];
     float d22 = d[2];
     float e12 = 1.0f/(d11*d22-d12*d12);
-    float tc = t[i2][i1];
+    float tc = currentTime(t,i1,i2);
     float t1m = t1m(t,i1,i2);
     float t1p = t1p(t,i1,i2);
     float t2m = t2m(t,i1,i2);
@@ -670,6 +654,7 @@ public class TimeMapper2 {
     plot(toFloat(i));
   }
   private static void plot(float[][] f) {
+    trace("plot f min="+Array.min(f)+" max="+Array.max(f));
     edu.mines.jtk.mosaic.SimplePlot sp =
       new edu.mines.jtk.mosaic.SimplePlot(
         edu.mines.jtk.mosaic.SimplePlot.Origin.UPPER_LEFT);

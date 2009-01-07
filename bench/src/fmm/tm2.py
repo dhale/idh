@@ -39,13 +39,13 @@ def main(args):
   return
 
 def testSimple():
-  #n1,n2 = 101,101
-  #i1 = [10,23]
-  #i2 = [50,69]
   n1,n2 = 501,503
   i1,i2 = randomSites(10,n1,n2)
+  #n1,n2 = 11,11
+  #i1 = [n1/2]
+  #i2 = [n2/2]
   tensors = ConstantTensors2(n1,n2,-30.0,1.000,1.000)
-  testMapper(n1,n2,i1,i2,tensors)
+  testMarker(n1,n2,i1,i2,tensors)
  
 def testConstant():
   n1,n2 = 513,513
@@ -58,7 +58,8 @@ def testConstant():
   #tensors = ConstantTensors2(n1,n2,10.0,0.001,1.000)
   tensors = ConstantTensors2(n1,n2,-30.0,0.050,1.000)
   #tensors = ConstantTensors2(n1,n2,0.0,0.050,1.000)
-  testMapper(n1,n2,i1,i2,tensors)
+  testMarker(n1,n2,i1,i2,tensors)
+  #testSolver(n1,n2,i1,i2,tensors)
  
 def testSine():
   n1,n2 = 601,601
@@ -67,7 +68,7 @@ def testSine():
   i1,i2 = randomSites(10,n1,n2)
   tensors = SineTensors2(n1,n2,400.0,30.0)
   #tensors = SineTensors2(n1,n2,0.0,30.0)
-  testMapper(n1,n2,i1,i2,tensors)
+  testMarker(n1,n2,i1,i2,tensors)
  
 def testTsai():
   n1,n2 = 101,101
@@ -75,19 +76,17 @@ def testTsai():
   #i2 = [2*n2/8,5*n2/8,6*n2/8,6*n2/8]
   i1,i2 = randomSites(10,n1,n2)
   tensors = TsaiTensors2(n1,n2)
-  testMapper(n1,n2,i1,i2,tensors)
+  testMarker(n1,n2,i1,i2,tensors)
 
-def testMapper(n1,n2,i1,i2,tensors):
-  known = Array.zerobyte(n1,n2)
-  times = Array.zerofloat(n1,n2)
+def testMarker(n1,n2,i1,i2,tensors):
+  times = Array.fillfloat(Float.MAX_VALUE,n1,n2)
   marks = Array.zeroint(n1,n2)
   for k in range(len(i1)):
     k1,k2 = i1[k],i2[k]
-    known[k2][k1] = 1
     times[k2][k1] = 0.0
     marks[k2][k1] = 1+k
-  tm = TimeMapper2(n1,n2,tensors)
-  tm.apply(known,times,marks)
+  tm = TimeMarker2(n1,n2,tensors)
+  tm.apply(times,marks)
   print "times min =",Array.min(times),"max =",Array.max(times)
   print "marks min =",Array.min(marks),"max =",Array.max(marks)
   marks = floatsFromInts(marks)
@@ -109,7 +108,9 @@ def testSolver(n1,n2,i1,i2,tensors):
 def randomSites(n,n1,n2):
   random = Random()
   seed = random.nextInt()
-  #seed = 1329742170 # curvy constant anisotropic test
+  seed = 1329742170 # curvy boundary in constant anisotropic test
+  #seed = 124868546 # island in sine test
+  #seed = 1527419053 # island in sine test
   print "seed =",seed
   random.setSeed(seed)
   i1,i2 = [],[]
@@ -223,7 +224,7 @@ def plot(f,cmin=0.0,cmax=0.0,cmap=jet,png=None):
     pv.setClips(cmin,cmax)
   else:
     pv.setPercentiles(0.0,100.0)
-  pv.setInterpolation(PixelsView.Interpolation.LINEAR)
+  pv.setInterpolation(PixelsView.Interpolation.NEAREST)
   pv.setColorModel(cmap)
   frame(p,png)
 
