@@ -139,22 +139,24 @@ public class DiscreteTest {
     Random r = new Random(314159);
     for (int i=0; i<n; ++i) {
       int i1,i2;
-      if (i==0) {
-        i1 = n1/2;
-        i2 = n2/2;
-      } else if (mode==4) {
-        double y1,y2,theta;
-        if (i<=n/2) {
-          theta = i*dtheta;
-          y1 = radius*cos(theta);
-          y2 = radius*sin(theta);
+      if (mode==4) {
+        if (i==0) {
+          i1 = n1/2;
+          i2 = n2/2;
         } else {
-          theta = (i-n/2)*dtheta;
-          y1 = 1.5*radius*cos(theta);
-          y2 = 1.5*radius*sin(theta);
+          double y1,y2,theta;
+          if (i<=n/2) {
+            theta = i*dtheta;
+            y1 = radius*cos(theta);
+            y2 = radius*sin(theta);
+          } else {
+            theta = (i-n/2)*dtheta;
+            y1 = 1.5*radius*cos(theta);
+            y2 = 1.5*radius*sin(theta);
+          }
+          i1 = (int)(n1/2+y1+0.5);
+          i2 = (int)(n2/2+y2+0.5);
         }
-        i1 = (int)(n1/2+y1+0.5);
-        i2 = (int)(n2/2+y2+0.5);
       } else {
         i1 = r.nextInt(n1);
         i2 = r.nextInt(n2);
@@ -386,7 +388,41 @@ public class DiscreteTest {
     pv.setInterpolation(PixelsView.Interpolation.NEAREST);
   }
 
-  private static void plot3d(Sampling s1, Sampling s2, float[][] f) {
+  private static PointGroup makePointGroup(
+    float[][] s, Sampling s1, Sampling s2) 
+  {
+    float f1 = (float)s1.getFirst();
+    float f2 = (float)s2.getFirst();
+    float d1 = (float)s1.getDelta();
+    float d2 = (float)s2.getDelta();
+    int np = s[0].length;
+    float[] xyz = new float[3*np];
+    for (int ip=0,i=0; ip<np; ++ip) {
+      xyz[i++] =  f2+d2*s[4][ip];
+      xyz[i++] =  f1+d1*s[3][ip];
+      xyz[i++] = -s[0][ip];
+    }
+    float size = 3.0f*min(d1,d2);
+    PointGroup pg = new PointGroup(size,xyz);
+    StateSet states = new StateSet();
+    ColorState cs = new ColorState();
+    cs.setColor(Color.RED);
+    states.add(cs);
+    LightModelState lms = new LightModelState();
+    lms.setTwoSide(true);
+    states.add(lms);
+    MaterialState ms = new MaterialState();
+    ms.setColorMaterial(GL_AMBIENT_AND_DIFFUSE);
+    ms.setSpecular(Color.WHITE);
+    ms.setShininess(100.0f);
+    states.add(ms);
+    pg.setStates(states);
+    return pg;
+  }
+
+  private static TriangleGroup makeTriangleGroup(
+    Sampling s1, Sampling s2, float[][] f) 
+  {
     f = Array.neg(f);
     TriangleGroup tg = new TriangleGroup(true,s2,s1,f);
     StateSet states = new StateSet();
@@ -402,17 +438,26 @@ public class DiscreteTest {
     ms.setShininess(100.0f);
     states.add(ms);
     tg.setStates(states);
+    return tg;
+  }
+
+  private static void plot3d(
+    float[][] s, Sampling s1, Sampling s2, float[][] f) 
+  {
+    PointGroup pg = makePointGroup(s,s1,s2);
+    TriangleGroup tg = makeTriangleGroup(s2,s1,f);
     World world = new World();
+    world.addChild(pg);
     world.addChild(tg);
     TestFrame frame = new TestFrame(world);
     OrbitView view = frame.getOrbitView();
     view.setScale(2.0f);
     //view.setElevation(30.0f); // good for sinsin points
     //view.setAzimuth(-70.0f);
-    //view.setElevation(40.714287f); // good for random points
-    //view.setAzimuth(-130.72289f);
-    view.setElevation(30.0f); // good for impulse points
-    view.setAzimuth(18.0f);
+    view.setElevation(40.714287f); // good for random points
+    view.setAzimuth(-130.72289f);
+    //view.setElevation(30.0f); // good for impulse points
+    //view.setAzimuth(18.0f);
     view.setWorldSphere(new BoundingSphere(0.5,0.5,-0.5,1.0));
     BoundingSphere bs = world.getBoundingSphere(true);
     //trace("bs center: "+bs.getCenter());
@@ -436,7 +481,7 @@ public class DiscreteTest {
     //float[][] q0 = interpolateApproxSibson(d,p);
     float[][] q1 = interpolateSibson(d,p);
     float[][] q2 = interpolateSmooth(d,p);
-    //float[][] q3 = interpolateLaplace(d,p);
+    float[][] q3 = interpolateLaplace(d,p);
     //float[][] q4 = interpolateBiLaplace(d,p);
     //plot("Samples",f);
     //plot("Distance map",d);
@@ -444,12 +489,12 @@ public class DiscreteTest {
     //plot("Discrete Sibson interpolation",q1);
     //plot("Discrete smooth interpolation",q2);
     //plot("Discrete Laplace interpolation",q3);
-    //plot3d(s1,s2,p);
-    //plot3d(s1,s2,q0);
-    plot3d(s1,s2,q1);
-    plot3d(s1,s2,q2);
-    //plot3d(s1,s2,q3);
-    //plot3d(s1,s2,q4);
+    plot3d(s,s1,s2,p);
+    //plot3d(s,s1,s2,q0);
+    plot3d(s,s1,s2,q1);
+    plot3d(s,s1,s2,q2);
+    plot3d(s,s1,s2,q3);
+    //plot3d(s,s1,s2,q4);
   }
   private static void testSinSin() {
     testInterpolation(0);
@@ -476,10 +521,10 @@ public class DiscreteTest {
       public void run() {
         //testInterpolation1();
         //testSinSin();
-        //testRandom();
+        testRandom();
         //testLinear();
         //testImpulse();
-        testCircle();
+        //testCircle();
       }
     });
   }

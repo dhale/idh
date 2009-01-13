@@ -74,6 +74,15 @@ public class TimeMarker2 {
   }
 
   /**
+   * Sets the type of concurrency used to solve for times.
+   * The default concurrency is parallel.
+   * @param concurrency the type of concurrency.
+   */
+  public void setConcurrency(Concurrency concurrency) {
+    _concurrency = concurrency;
+  }
+
+  /**
    * Transforms the specified array of times and marks.
    * Known samples are those for which times are zero, and times
    * and marks for these known samples are used to compute times
@@ -114,10 +123,11 @@ public class TimeMarker2 {
       // Clear activated flags so we can tell which samples become activated.
       clearActivated();
 
-      // Put the known sample into the active list.
+      // Put the known sample with time zero into the active list.
+      t[i2][i1] = 0.0f;
       al.append(_s[i2][i1]);
 
-      // Mark for this known sample.
+      // The mark for the known sample.
       int m = marks[i2][i1];
 
       // Process the active list until empty.
@@ -142,7 +152,7 @@ public class TimeMarker2 {
   private static final float INFINITY = Float.MAX_VALUE;
 
   // Times are converged when the fractional change is less than this value.
-  private static final float EPSILON = 0.001f;
+  private static final float EPSILON = 0.0001f;
   private static final float ONE_MINUS_EPSILON = 1.0f-EPSILON;
 
   private int _n1,_n2;
@@ -453,8 +463,8 @@ public class TimeMarker2 {
       //  plot(_t,ColorMap.JET);
     }
     es.shutdown();
-    //trace("solveParallel: ntotal="+ntotal);
-    //trace("               nratio="+(float)ntotal/(float)(_n1*_n2));
+    trace("solveParallel: ntotal="+ntotal);
+    trace("               nratio="+(float)ntotal/(float)(_n1*_n2));
   }
 
   /**
@@ -477,7 +487,7 @@ public class TimeMarker2 {
     int i1 = s.i1;
     int i2 = s.i2;
 
-    // Current time and new time computed from all neighbors.
+    // Current time and new time computed from all four neighbors.
     float ti = currentTime(t,i1,i2);
     float ci = computeTime(t,i1,i2,K1S[4],K2S[4],d);
     t[i2][i1] = ci;
@@ -485,34 +495,44 @@ public class TimeMarker2 {
     // If new and current times are close enough (converged), then ...
     if (ci>=ti*ONE_MINUS_EPSILON) {
 
+      // Neighbors may need to be activated if computed time is small 
+      // relative to the minimum time computed so far. The factor 1.5 
+      // improves accuracy for large anisotropy. Cost increases as the
+      // square of this factor, so we do not want it to be too large.
+      boolean checkNabors = ci<=1.5f*times[i2][i1];
+
       // If computed time less than minimum time, mark this sample.
       if (ci<times[i2][i1]) {
         times[i2][i1] = ci;
         marks[i2][i1] = m;
       }
 
-      // For all four neighbors, ...
-      for (int k=0; k<4; ++k) {
+      // If necessary, check the neighbors.
+      if (checkNabors) {
 
-        // Neighbor sample indices; skip if out of bounds.
-        int j1 = i1+K1[k];  if (j1<0 || j1>=_n1) continue;
-        int j2 = i2+K2[k];  if (j2<0 || j2>=_n2) continue;
+        // For all four neighbors, ...
+        for (int k=0; k<4; ++k) {
 
-        // Skip neighbor sample if computed time would be too big.
-        //if (!doComputeTime(t,times,j1,j2)) continue;
+          // Neighbor sample indices; skip if out of bounds.
+          int j1 = i1+K1[k];  if (j1<0 || j1>=_n1) continue;
+          int j2 = i2+K2[k];  if (j2<0 || j2>=_n2) continue;
 
-        // Current and computed times for the neighbor.
-        float tj = currentTime(t,j1,j2);
-        float cj = computeTime(t,j1,j2,K1S[k],K2S[k],d);
+          // Skip neighbor sample if computed time would be too big.
+          //if (!doComputeTime(t,times,j1,j2)) continue;
 
-        // If the computed time is significantly less than the current time, ...
-        if (cj<tj*ONE_MINUS_EPSILON) {
+          // Current and computed times for the neighbor.
+          float tj = currentTime(t,j1,j2);
+          float cj = computeTime(t,j1,j2,K1S[k],K2S[k],d);
 
-          // Replace the current time.
-          t[j2][j1] = cj;
-          
-          // Append neighbor to the B list, thereby activating it.
-          bl.append(_s[j2][j1]);
+          // If the computed time is significantly less than the current time, ...
+          if (cj<tj*ONE_MINUS_EPSILON) {
+
+            // Replace the current time.
+            t[j2][j1] = cj;
+            
+            // Append neighbor to the B list, thereby activating it.
+            bl.append(_s[j2][j1]);
+          }
         }
       }
     }
@@ -531,7 +551,7 @@ public class TimeMarker2 {
   private boolean doComputeTime(
     float[][] t, float[][] times, int i1, int i2) 
   {
-    float timei = times[i2][i1];
+    float timei = 2.0f*times[i2][i1];
     return t1m(t,i1,i2)<=timei ||
            t1p(t,i1,i2)<=timei ||
            t2m(t,i1,i2)<=timei ||
@@ -618,8 +638,8 @@ public class TimeMarker2 {
     double d = b*b-4.0*a*c;
     if (d<0.0)
       return INFINITY;
-    double u1 = (-b+sqrt(d))/(2.0*a);
-    double u2 = u1+t12;
+    double u1 = (-b+sqrt(d))/(2.0*a); // t0-t1
+    double u2 = u1+t12;               // t0-t2
     if (ds11*u1+ds12*u2 < 0.0 ||
         ds12*u1+ds22*u2 < 0.0)
       return INFINITY;

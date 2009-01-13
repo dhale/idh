@@ -33,18 +33,15 @@ prism = ColorMap.PRISM
 
 def main(args):
   #testSimple()
-  #testConstant()
-  testSine()
+  testConstant()
+  #testSine()
   #testTsai()
   return
 
 def testSimple():
   n1,n2 = 501,503
   i1,i2 = randomSites(10,n1,n2)
-  #n1,n2 = 11,11
-  #i1 = [n1/2]
-  #i2 = [n2/2]
-  tensors = ConstantTensors2(n1,n2,-30.0,1.000,1.000)
+  tensors = ConstantTensors2(n1,n2,0.0,1.000,1.000)
   testMarker(n1,n2,i1,i2,tensors)
  
 def testConstant():
@@ -54,8 +51,8 @@ def testConstant():
   #i1 = [9*n1/16,7*n1/16]
   #i2 = [7*n2/16,9*n2/16]
   i1,i2 = randomSites(10,n1,n2)
-  #tensors = ConstantTensors2(n1,n2,-30.0,1.000,1.000)
-  #tensors = ConstantTensors2(n1,n2,10.0,0.001,1.000)
+  #tensors = ConstantTensors2(n1,n2,0.0,1.000,1.000)
+  #tensors = ConstantTensors2(n1,n2,-30.0,0.0001,1.000)
   tensors = ConstantTensors2(n1,n2,-30.0,0.050,1.000)
   #tensors = ConstantTensors2(n1,n2,0.0,0.050,1.000)
   testMarker(n1,n2,i1,i2,tensors)
@@ -66,7 +63,7 @@ def testSine():
   #i1 = [7*n1/8,3*n1/8,5*n1/8,2*n1/8]
   #i2 = [1*n2/8,4*n2/8,4*n2/8,6*n2/8]
   i1,i2 = randomSites(10,n1,n2)
-  tensors = SineTensors2(n1,n2,400.0,30.0)
+  tensors = SineTensors2(n1,n2,200.0,30.0)
   #tensors = SineTensors2(n1,n2,0.0,30.0)
   testMarker(n1,n2,i1,i2,tensors)
  
@@ -111,6 +108,7 @@ def randomSites(n,n1,n2):
   #seed = 1329742170 # curvy boundary in constant anisotropic test
   #seed = 124868546 # island in sine test
   #seed = 1527419053 # island in sine test
+  #seed = -652323882 # island in sine test
   print "seed =",seed
   random.setSeed(seed)
   i1,i2 = [],[]
