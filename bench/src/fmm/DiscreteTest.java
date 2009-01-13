@@ -157,6 +157,9 @@ public class DiscreteTest {
           i1 = (int)(n1/2+y1+0.5);
           i2 = (int)(n2/2+y2+0.5);
         }
+      } else if (mode==3 && i==0) {
+        i1 = n1/2;
+        i2 = n2/2;
       } else {
         i1 = r.nextInt(n1);
         i2 = r.nextInt(n2);
@@ -315,20 +318,25 @@ public class DiscreteTest {
     float[][] c = new float[n2][n1];
     for (int i2=0; i2<n2; ++i2) {
       for (int i1=0; i1<n1; ++i1) {
-        float di = d[i2][i1]+0.5f;
-        float ds = di*di;
         float pi = p[i2][i1];
-        int j1lo = max(0,(int)(i1-di));
-        int j1hi = min(n1,1+(int)(i1+di));
-        int j2lo = max(0,(int)(i2-di));
-        int j2hi = min(n2,1+(int)(i2+di));
-        for (int j2=j2lo; j2<j2hi; ++j2) {
-          for (int j1=j1lo; j1<j1hi; ++j1) {
-            float d1 = (float)(j1-i1);
-            float d2 = (float)(j2-i2);
-            if (d1*d1+d2*d2<ds) {
-              q[j2][j1] += pi;
-              c[j2][j1] += 1.0f;
+        float di = d[i2][i1];
+        if (di==0.0f) {
+          q[i2][i1] = pi;
+          c[i2][i1] = 1.0f;
+        } else {
+          float ds = di*di;
+          int j1lo = max( 0,(int)(i1-di)-1);
+          int j1hi = min(n1,(int)(i1+di)+2);
+          int j2lo = max( 0,(int)(i2-di)-1);
+          int j2hi = min(n2,(int)(i2+di)+2);
+          for (int j2=j2lo; j2<j2hi; ++j2) {
+            for (int j1=j1lo; j1<j1hi; ++j1) {
+              float d1 = (float)(j1-i1);
+              float d2 = (float)(j2-i2);
+              if (d1*d1+d2*d2<ds) {
+                q[j2][j1] += pi;
+                c[j2][j1] += 1.0f;
+              }
             }
           }
         }
@@ -364,7 +372,7 @@ public class DiscreteTest {
     float[][] q = Array.copy(p);
     float[][] s = Array.mul(d,d);
     shift(s);
-    float c = 0.500f;
+    float c = 0.333f;
     Tensors2 t2 = new IdentityTensors2();
     LocalSmoothingFilter lsf = new LocalSmoothingFilter(0.0001,10000);
     lsf.apply(t2,c,s,p,q);
@@ -452,10 +460,10 @@ public class DiscreteTest {
     TestFrame frame = new TestFrame(world);
     OrbitView view = frame.getOrbitView();
     view.setScale(2.0f);
-    //view.setElevation(30.0f); // good for sinsin points
-    //view.setAzimuth(-70.0f);
-    view.setElevation(40.714287f); // good for random points
-    view.setAzimuth(-130.72289f);
+    view.setElevation(30.0f); // good for sinsin points
+    view.setAzimuth(-70.0f);
+    //view.setElevation(40.714287f); // good for random points
+    //view.setAzimuth(-130.72289f);
     //view.setElevation(30.0f); // good for impulse points
     //view.setAzimuth(18.0f);
     view.setWorldSphere(new BoundingSphere(0.5,0.5,-0.5,1.0));
@@ -520,8 +528,8 @@ public class DiscreteTest {
     SwingUtilities.invokeLater(new Runnable() {
       public void run() {
         //testInterpolation1();
-        //testSinSin();
-        testRandom();
+        testSinSin();
+        //testRandom();
         //testLinear();
         //testImpulse();
         //testCircle();
