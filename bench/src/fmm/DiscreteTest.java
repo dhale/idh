@@ -372,7 +372,7 @@ public class DiscreteTest {
     float[][] q = Array.copy(p);
     float[][] s = Array.mul(d,d);
     shift(s);
-    float c = 0.333f;
+    float c = 0.500f;
     Tensors2 t2 = new IdentityTensors2();
     LocalSmoothingFilter lsf = new LocalSmoothingFilter(0.0001,10000);
     lsf.apply(t2,c,s,p,q);
