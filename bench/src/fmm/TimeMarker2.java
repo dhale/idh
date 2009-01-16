@@ -152,7 +152,7 @@ public class TimeMarker2 {
   private static final float INFINITY = Float.MAX_VALUE;
 
   // Times are converged when the fractional change is less than this value.
-  private static final float EPSILON = 0.0001f;
+  private static final float EPSILON = 0.001f;
   private static final float ONE_MINUS_EPSILON = 1.0f-EPSILON;
 
   private int _n1,_n2;
