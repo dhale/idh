@@ -410,7 +410,7 @@ public class DiscreteTest {
       xyz[i++] =  f1+d1*s[3][ip];
       xyz[i++] = -s[0][ip];
     }
-    float size = 3.0f*min(d1,d2);
+    float size = 2.0f*min(d1,d2);
     PointGroup pg = new PointGroup(size,xyz);
     StateSet states = new StateSet();
     ColorState cs = new ColorState();
@@ -460,12 +460,12 @@ public class DiscreteTest {
     TestFrame frame = new TestFrame(world);
     OrbitView view = frame.getOrbitView();
     view.setScale(2.0f);
-    view.setElevation(30.0f); // good for sinsin points
-    view.setAzimuth(-70.0f);
+    //view.setElevation(30.0f); // good for sinsin points
+    //view.setAzimuth(-70.0f);
     //view.setElevation(40.714287f); // good for random points
     //view.setAzimuth(-130.72289f);
-    //view.setElevation(30.0f); // good for impulse points
-    //view.setAzimuth(18.0f);
+    view.setElevation(30.0f); // good for impulse and circle points
+    view.setAzimuth(18.0f);
     view.setWorldSphere(new BoundingSphere(0.5,0.5,-0.5,1.0));
     BoundingSphere bs = world.getBoundingSphere(true);
     //trace("bs center: "+bs.getCenter());
@@ -528,11 +528,11 @@ public class DiscreteTest {
     SwingUtilities.invokeLater(new Runnable() {
       public void run() {
         //testInterpolation1();
-        testSinSin();
         //testRandom();
+        //testSinSin();
         //testLinear();
         //testImpulse();
-        //testCircle();
+        testCircle();
       }
     });
   }
