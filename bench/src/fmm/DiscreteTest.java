@@ -311,7 +311,7 @@ public class DiscreteTest {
     return px.getValues();
   }
 
-  private static float[][] interpolateSibson(float[][] d, float[][] p) {
+  private static float[][] interpolateDiscrSibson(float[][] d, float[][] p) {
     int n1 = d[0].length;
     int n2 = d.length;
     float[][] q = new float[n2][n1];
@@ -345,6 +345,41 @@ public class DiscreteTest {
     for (int i2=0; i2<n2; ++i2) {
       for (int i1=0; i1<n1; ++i1) {
         q[i2][i1] /= c[i2][i1];
+      }
+    }
+    return q;
+  }
+
+  private static float[][] interpolateExactSibson(float[][] d, float[][] p) {
+    int n1 = d[0].length;
+    int n2 = d.length;
+    TriMesh tm = new TriMesh();
+    TriMesh.NodePropertyMap map = tm.getNodePropertyMap("f");
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        if (d[i2][i1]==0.0f) {
+          TriMesh.Node node = new TriMesh.Node(i1,i2);
+          tm.addNode(node);
+          map.put(node,new Float(p[i2][i1]));
+        }
+      }
+    }
+    float extra = n1+n2;
+    for (int i2=0; i2<n2; i2+=n2-1) {
+      for (int i1=0; i1<n1; i1+=n1-1) {
+        float x1 = (i1==0)?-extra:(float)(n1-1)+extra;
+        float x2 = (i2==0)?-extra:(float)(n2-1)+extra;
+        TriMesh.Node near = tm.findNodeNearest(x1,x2);
+        TriMesh.Node node = new TriMesh.Node(x1,x2);
+        tm.addNode(node);
+        map.put(node,map.get(near));
+      }
+    }
+    float fnull = 0.0f;
+    float[][] q = new float[n2][n1];
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        q[i2][i1] = tm.interpolateSibson(i1,i2,map,fnull);
       }
     }
     return q;
@@ -462,10 +497,10 @@ public class DiscreteTest {
     view.setScale(2.0f);
     //view.setElevation(30.0f); // good for sinsin points
     //view.setAzimuth(-70.0f);
-    //view.setElevation(40.714287f); // good for random points
-    //view.setAzimuth(-130.72289f);
-    view.setElevation(30.0f); // good for impulse and circle points
-    view.setAzimuth(18.0f);
+    view.setElevation(40.714287f); // good for random points
+    view.setAzimuth(-130.72289f);
+    //view.setElevation(30.0f); // good for impulse and circle points
+    //view.setAzimuth(18.0f);
     view.setWorldSphere(new BoundingSphere(0.5,0.5,-0.5,1.0));
     BoundingSphere bs = world.getBoundingSphere(true);
     //trace("bs center: "+bs.getCenter());
@@ -487,22 +522,18 @@ public class DiscreteTest {
     float[][] d = dp[0];
     float[][] p = dp[1];
     //float[][] q0 = interpolateApproxSibson(d,p);
-    float[][] q1 = interpolateSibson(d,p);
-    float[][] q2 = interpolateSmooth(d,p);
-    float[][] q3 = interpolateLaplace(d,p);
-    //float[][] q4 = interpolateBiLaplace(d,p);
-    //plot("Samples",f);
-    //plot("Distance map",d);
-    //plot("Nearest-neighbor interpolation",p);
-    //plot("Discrete Sibson interpolation",q1);
-    //plot("Discrete smooth interpolation",q2);
-    //plot("Discrete Laplace interpolation",q3);
+    float[][] q1 = interpolateDiscrSibson(d,p);
+    float[][] q2 = interpolateExactSibson(d,p);
+    //float[][] q3 = interpolateSmooth(d,p);
+    //float[][] q4 = interpolateLaplace(d,p);
+    //float[][] q5 = interpolateBiLaplace(d,p);
     plot3d(s,s1,s2,p);
     //plot3d(s,s1,s2,q0);
     plot3d(s,s1,s2,q1);
     plot3d(s,s1,s2,q2);
-    plot3d(s,s1,s2,q3);
+    //plot3d(s,s1,s2,q3);
     //plot3d(s,s1,s2,q4);
+    //plot3d(s,s1,s2,q5);
   }
   private static void testSinSin() {
     testInterpolation(0);
@@ -528,11 +559,11 @@ public class DiscreteTest {
     SwingUtilities.invokeLater(new Runnable() {
       public void run() {
         //testInterpolation1();
-        //testRandom();
+        testRandom();
         //testSinSin();
         //testLinear();
         //testImpulse();
-        testCircle();
+        //testCircle();
       }
     });
   }
