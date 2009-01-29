@@ -431,6 +431,68 @@ public class DiscreteTest {
     pv.setInterpolation(PixelsView.Interpolation.NEAREST);
   }
 
+  private static void printSamples(float[][] s) {
+    float[] x1 = s[3];
+    float[] x2 = s[4];
+    float[] x3 = s[0];
+    int n = x1.length;
+    for (int i=0; i<n; ++i) {
+      System.out.printf("%10.2f %10.2f %10.2f%n",x1[i],x2[i],x3[i]);
+    }
+  }
+
+  private static void adjustSamples(int n1, int n2, float[][] s) {
+    float[] x1 = s[3];
+    float[] x2 = s[4];
+    float[] x3 = s[0];
+    Array.mul(1.0f/(float)(n1-1),x1,x1);
+    Array.mul(1.0f/(float)(n2-1),x2,x2);
+    Array.mul(100.0f,x3,x3);
+  }
+
+  private static void plotSamples(float[][] s) {
+    float[] x1 = s[3];
+    float[] x2 = s[4];
+    float[] x3 = s[0];
+    PlotPanel panel = new PlotPanel(1,1);
+    double pad = 0.05;
+    panel.setLimits(-pad,-pad,1.0+pad,1.0+pad);
+    PointsView pv = panel.addPoints(x1,x2,x3);
+    pv.setLineStyle(PointsView.Line.NONE);
+    pv.setMarkStyle(PointsView.Mark.FILLED_CIRCLE);
+    pv.setTextFormat("%2.0f");
+    PlotFrame frame = new PlotFrame(panel);
+    frame.setSize(800,800);
+    frame.setDefaultCloseOperation(PlotFrame.EXIT_ON_CLOSE);
+    frame.setVisible(true);
+    frame.paintToPng(300,6,"junk.png");
+  }
+
+  private static void plot(float[][] s, float[][] f) {
+    float[] x1 = s[3];
+    float[] x2 = s[4];
+    int n1 = f[0].length;
+    int n2 = f.length;
+    PlotPanel panel = new PlotPanel(1,1);
+    double pad = 0.05;
+    panel.setLimits(-pad,-pad,1.0+pad,1.0+pad);
+    panel.setColorBarWidthMinimum(60);
+    panel.addColorBar();
+    Sampling s1 = new Sampling(n1,1.0/(n1-1),0.0);
+    Sampling s2 = new Sampling(n2,1.0/(n2-1),0.0);
+    PixelsView fv = panel.addPixels(s1,s2,f);
+    fv.setColorModel(ColorMap.GRAY);
+    PointsView sv = panel.addPoints(x1,x2);
+    sv.setLineStyle(PointsView.Line.NONE);
+    sv.setMarkStyle(PointsView.Mark.FILLED_CIRCLE);
+    sv.setMarkColor(Color.RED);
+    PlotFrame frame = new PlotFrame(panel);
+    frame.setSize(910,800);
+    frame.setDefaultCloseOperation(PlotFrame.EXIT_ON_CLOSE);
+    frame.setVisible(true);
+    //frame.paintToPng(300,6,"junk.png");
+  }
+
   private static PointGroup makePointGroup(
     float[][] s, Sampling s1, Sampling s2) 
   {
@@ -522,18 +584,24 @@ public class DiscreteTest {
     float[][] d = dp[0];
     float[][] p = dp[1];
     //float[][] q0 = interpolateApproxSibson(d,p);
-    float[][] q1 = interpolateDiscrSibson(d,p);
+    //float[][] q1 = interpolateDiscrSibson(d,p);
     float[][] q2 = interpolateExactSibson(d,p);
     //float[][] q3 = interpolateSmooth(d,p);
     //float[][] q4 = interpolateLaplace(d,p);
     //float[][] q5 = interpolateBiLaplace(d,p);
-    plot3d(s,s1,s2,p);
+    //plot3d(s,s1,s2,p);
     //plot3d(s,s1,s2,q0);
-    plot3d(s,s1,s2,q1);
+    //plot3d(s,s1,s2,q1);
     plot3d(s,s1,s2,q2);
     //plot3d(s,s1,s2,q3);
     //plot3d(s,s1,s2,q4);
     //plot3d(s,s1,s2,q5);
+    /*
+    adjustSamples(n1,n2,s);
+    plotSamples(s);
+    printSamples(s);
+    plot(s,p);
+    */
   }
   private static void testSinSin() {
     testInterpolation(0);
