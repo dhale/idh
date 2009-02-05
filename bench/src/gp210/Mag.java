@@ -107,7 +107,10 @@ public class Mag {
     float ymax = Array.max(y);
     double fx = xmin;
     double fy = ymin;
-    double dx = 0.2;
+    double dx = 0.5;
+    //double dx = 0.2;
+    //double dx = 0.1;
+    //double dx = 0.05; // makes discrete Sibson really slow!
     double dy = dx;
     int nx = 2+(int)((xmax-xmin)/dx);
     int ny = 2+(int)((ymax-ymin)/dy);
@@ -168,6 +171,14 @@ public class Mag {
       }
     }
     return zi;
+  }
+
+  private static float[][] interpolateDiscreteSibson(
+    float[] x, float[] y, float[] z, Sampling sx, Sampling sy)
+  {
+    DiscreteSibsonInterpolator dsi = new DiscreteSibsonInterpolator(sx,sy);
+    dsi.setSmoothingIterations(0);
+    return dsi.apply(x,y,z);
   }
 
   private static float[][] interpolateSibson(
@@ -282,18 +293,25 @@ public class Mag {
     Array.mul(100.0f,z,z);
     Sampling[] s = makeSamplings(x,y);
     Sampling sx = s[0], sy = s[1];
+
     //float[][] z1 = interpolateSimple(x,y,z,sx,sy);
-    //float[][] z2 = interpolateSibson(x,y,z,sx,sy);
-    float[][] z3 = interpolateNearest(x,y,z,sx,sy);
-    //float[][] g1 = interpolateSimple(x,y,g,sx,sy);
-    //float[][] g2 = interpolateSibson(x,y,g,sx,sy);
-    float[][] g3 = interpolateNearest(x,y,g,sx,sy);
+    float[][] z2 = interpolateSibson(x,y,z,sx,sy);
+    //float[][] z3 = interpolateNearest(x,y,z,sx,sy);
+    float[][] z4 = interpolateDiscreteSibson(x,y,z,sx,sy);
     //plot(x,y,z,sx,sy,z1,"Simple elevation (cm)","elev1");
-    //plot(x,y,z,sx,sy,z2,"Sibson elevation (cm)","elev2");
-    plot(x,y,z,sx,sy,z3,"Nearest elevation (cm)","elev3");
+    plot(x,y,z,sx,sy,z2,"Sibson elevation (cm)","elev2");
+    //plot(x,y,z,sx,sy,z3,"Nearest elevation (cm)","elev3");
+    plot(x,y,z,sx,sy,z4,"Discrete Sibson elevation (cm)","elev4");
+
+    //float[][] g1 = interpolateSimple(x,y,g,sx,sy);
+    float[][] g2 = interpolateSibson(x,y,g,sx,sy);
+    //float[][] g3 = interpolateNearest(x,y,g,sx,sy);
+    //float[][] g4 = interpolateDiscreteSibson(x,y,g,sx,sy);
     //plot(x,y,g,sx,sy,g1,"Simple magnetic gradient","grad1");
-    //plot(x,y,g,sx,sy,g2,"Sibson magnetic gradient","grad2");
-    plot(x,y,g,sx,sy,g3,"Nearest magnetic gradient","grad3");
+    plot(x,y,g,sx,sy,g2,"Sibson magnetic gradient","grad2");
+    //plot(x,y,g,sx,sy,g3,"Nearest magnetic gradient","grad3");
+    //plot(x,y,g,sx,sy,g4,"Discrete Sibson magnetic gradient","grad4");
+
     //plot3d(x,y,z,sx,sy,z1);
     //plot3d(x,y,z,sx,sy,z2);
   }

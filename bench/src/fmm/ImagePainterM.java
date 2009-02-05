@@ -485,9 +485,9 @@ public class ImagePainterM {
     float[][] x2 = new float[nm][nt];
     double dt = 2.0*PI/(nt-1);
     double ft = 0.0f;
-    for (int i2=j2,im=0; i2<n2; i2+=ns) {
+    for (int i2=j2,k2=0,im=0; i2<n2 && k2<m2; i2+=ns,++k2) {
       double y2 = i2+r;
-      for (int i1=j1; i1<n1; i1+=ns,++im) {
+      for (int i1=j1,k1=0; i1<n1 && k1<m1; i1+=ns,++k1,++im) {
         float[] u = et.getEigenvectorU(i1,i2);
         float[] s = et.getEigenvalues(i1,i2);
         double u1 = u[0];
@@ -649,7 +649,7 @@ public class ImagePainterM {
     SwingUtilities.invokeLater(new Runnable() {
       public void run() {
         testImagePainterA();
-        //testImagePainterB();
+        testImagePainterB();
       }
     });
   }
