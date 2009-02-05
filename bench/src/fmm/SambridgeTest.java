@@ -135,9 +135,9 @@ public class SambridgeTest {
   private static void interpolateErrorUlp(
     float[] x, float[] y, float[] z, Sampling sx, Sampling sy)
   {
-    System.out.print("makeMesh ... ");
+    //System.out.print("makeMesh ... ");
     TriMesh mesh = makeMesh(x,y,z,sx,sy,true);
-    System.out.println("done");
+    //System.out.println("done");
     TriMesh.NodePropertyMap zmap = mesh.getNodePropertyMap("z");
     float znull = 0.5f*(Array.min(z)+Array.max(z));
     TriMesh.NodeIterator ni = mesh.getNodes();
@@ -166,17 +166,22 @@ public class SambridgeTest {
           float xi = xa+(float)is*dx;
           float yi = ya+(float)is*dy;
           ++nxy;
-          if (nxy%100000==0)
-            System.out.println("nxy="+nxy+" xi="+xi+" yi="+yi);
+          //if (nxy%100000==0)
+          //  System.out.println("nxy="+nxy+" xi="+xi+" yi="+yi);
           float z1 = mesh.interpolateSibson(xi,yi,zmap,znull);
           float z2 = mesh.interpolateSambridge(xi,yi,zmap,znull);
-          //if (z2!=z1) {
-          if (abs(z2-z1)>0.001f) {
+          float ze = 100.0f*abs(z2-z1)/z1;
+          if (ze>0.1f) {
+            System.out.println("-----------------------------------------");
             System.out.println("xi="+xi);
             System.out.println("yi="+yi);
             System.out.println("z1="+z1);
             System.out.println("z2="+z2);
+            System.out.println("ze="+ze);
+            System.out.println("-----------------------------------------");
           }
+          if (ze>1.0f)
+            System.exit(-1);
         }
       }
     }
@@ -341,7 +346,10 @@ public class SambridgeTest {
   public static void main(String[] args) {
     SwingUtilities.invokeLater(new Runnable() {
       public void run() {
-        interpolate();
+        while(true) {
+          System.out.println("#########################################");
+          interpolate();
+        }
       }
     });
   }
