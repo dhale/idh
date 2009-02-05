@@ -32,7 +32,7 @@ public class SambridgeTest {
     int seed = r.nextInt();
     System.out.println("seed="+seed);
     r.setSeed(seed);
-    int n = 500;
+    int n = 5000;
     float[] x = new float[n];
     float[] y = new float[n];
     float[] z = new float[n];
@@ -132,6 +132,64 @@ public class SambridgeTest {
     return zi;
   }
 
+  private static void interpolateErrorUlp(
+    float[] x, float[] y, float[] z, Sampling sx, Sampling sy)
+  {
+    System.out.print("makeMesh ... ");
+    TriMesh mesh = makeMesh(x,y,z,sx,sy,true);
+    System.out.println("done");
+    TriMesh.NodePropertyMap zmap = mesh.getNodePropertyMap("z");
+    float znull = 0.5f*(Array.min(z)+Array.max(z));
+    TriMesh.NodeIterator ni = mesh.getNodes();
+    TriMesh.NodeList nl = new TriMesh.NodeList();
+    long nxy = 0;
+    while (ni.hasNext()) {
+      TriMesh.Node na = ni.next();
+      float xa = na.x();
+      float ya = na.y();
+      if (xa<0.1f || xa>0.9f) continue;
+      if (ya<0.1f || ya>0.9f) continue;
+      nl.clear();
+      mesh.getNodeNabors(na,nl);
+      int nnabor = nl.nnode();
+      TriMesh.Node[] nabors = nl.nodes();
+      for (int inabor=0; inabor<nnabor; ++inabor) {
+        TriMesh.Node nb = nabors[inabor];
+        float xb = nb.x();
+        float yb = nb.y();
+        if (xb<0.1f || xb>0.9f) continue;
+        if (yb<0.1f || yb>0.9f) continue;
+        int ns = 1000;
+        float dx = (xb-xa)/(float)(ns-1);
+        float dy = (yb-ya)/(float)(ns-1);
+        for (int is=0; is<ns; ++is) {
+          float xi = xa+(float)is*dx;
+          float yi = ya+(float)is*dy;
+          ++nxy;
+          if (nxy%100000==0)
+            System.out.println("nxy="+nxy+" xi="+xi+" yi="+yi);
+          float z1 = mesh.interpolateSibson(xi,yi,zmap,znull);
+          float z2 = mesh.interpolateSambridge(xi,yi,zmap,znull);
+          //if (z2!=z1) {
+          if (abs(z2-z1)>0.001f) {
+            System.out.println("xi="+xi);
+            System.out.println("yi="+yi);
+            System.out.println("z1="+z1);
+            System.out.println("z2="+z2);
+          }
+        }
+      }
+    }
+    System.out.println("nxy="+nxy);
+  }
+
+  private static long nx(float xmin, float xmax) {
+    long n = 0;
+    for (float x=xmin; x<=xmax; x+=ulp(x),++n)
+      ;
+    return n;
+  }
+
   private static void plotMesh(
     float[] x, float[] y, float[] z,
     Sampling sx, Sampling sy, 
@@ -163,7 +221,7 @@ public class SambridgeTest {
     dv.setMarkStyle(PointsView.Mark.FILLED_CIRCLE);
     dv.setMarkSize(4.0f);
     dv.setTextFormat("%2.0f");
-    sp.paintToPng(300,6,png+"2.png");
+    //sp.paintToPng(300,6,png+".png");
   }
 
   private static void plot(
@@ -264,13 +322,16 @@ public class SambridgeTest {
     //plotMesh(x,y,z,sx,sy,false,true,true,"triangles & polygons","tp");
     //float[][] z1 = interpolate(1,x,y,z,sx,sy);
     //float[][] z2 = interpolate(2,x,y,z,sx,sy);
-    float[][] ze = interpolateError(x,y,z,sx,sy);
-    System.out.println("error = "+Array.max(Array.abs(ze)));
-    plot(x,y,z,sx,sy,ze,"error","se");
+    //float[][] ze = interpolateError(x,y,z,sx,sy);
+    //System.out.println("error = "+Array.max(Array.abs(ze)));
+    //plot(x,y,z,sx,sy,ze,"error","se");
     //plot(x,y,z,sx,sy,z1,"Sibson interpolation","si");
     //plot(x,y,z,sx,sy,z2,"Sambridge interpolation","sa");
     //plot3d(x,y,z,sx,sy,z1);
     //plot3d(x,y,z,sx,sy,z2);
+    //System.out.println("nx [0:1] = "+nx(0.0f,1.0f));
+    //System.out.println("nx [0.4:0.6] = "+nx(0.4f,0.6f));
+    interpolateErrorUlp(x,y,z,sx,sy);
   }
 
   public static final int PLOT_HEIGHT = 785;
