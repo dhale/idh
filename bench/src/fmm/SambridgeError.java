@@ -270,14 +270,14 @@ public class SambridgeError {
     float[] x = data[0], y = data[1], z = data[2];
     Sampling[] s = makeSamplings(x,y);
     Sampling sx = s[0], sy = s[1];
-    plotMesh(x,y,z,sx,sy,false,true,false,false,"Scattered data","sd");
+    //plotMesh(x,y,z,sx,sy,false,true,false,false,"Scattered data","sd");
     plotMesh(x,y,z,sx,sy,false,true,true,false,"Delaunay triangles","dt");
     float[][] z1 = interpolate(1,x,y,z,sx,sy);
     float[][] z2 = interpolate(2,x,y,z,sx,sy);
     plot(x,y,z,sx,sy,z1,"Sibson's method","si");
     plot(x,y,z,sx,sy,z2,"Sambridge's method","sa");
-    plot3d(x,y,z,sx,sy,z1);
-    plot3d(x,y,z,sx,sy,z2);
+    //plot3d(x,y,z,sx,sy,z1);
+    //plot3d(x,y,z,sx,sy,z2);
   }
 
   public static final int PLOT_HEIGHT = 785;
