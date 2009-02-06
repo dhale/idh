@@ -30,13 +30,20 @@ import static edu.mines.jtk.ogl.Gl.*;
 public class SambridgeError {
 
   // Parameters that will produce significant error.
+  /*
+  private static final int NNODE = 5000;
   private static final int SEED = 268695554;
   private static final float XBAD = 0.49457437f;
   private static final float YBAD = 0.7369756f;
+  */
+  private static final int NNODE = 50;
+  private static final int SEED = 1754078249;
+  private static final float XBAD = 0.6789419f;
+  private static final float YBAD = 0.64597934f;
 
   private static float[][] makeData() {
     Random r = new Random(SEED);
-    int n = 5000;
+    int n = NNODE;
     float[] x = new float[n];
     float[] y = new float[n];
     float[] z = new float[n];
@@ -135,7 +142,7 @@ public class SambridgeError {
     tv.setTrisVisible(tris);
     tv.setPolysVisible(polys);
     tv.setMarkColor(Color.BLACK);
-    tv.setTriColor(Color.RED);
+    tv.setTriColor(Color.BLACK);
     tv.setPolyColor(Color.BLUE);
     pp.getTile(0,0).addTiledView(tv);
     /*
@@ -250,7 +257,7 @@ public class SambridgeError {
     Sampling[] s = makeSamplings(x,y);
     Sampling sx = s[0], sy = s[1];
     plotMesh(x,y,z,sx,sy,false,true,false,false,"Scattered data","sd");
-    plotMesh(x,y,z,sx,sy,false,false,true,false,"Delaunay triangles","dt");
+    plotMesh(x,y,z,sx,sy,false,true,true,false,"Delaunay triangles","dt");
     float[][] z1 = interpolate(1,x,y,z,sx,sy);
     float[][] z2 = interpolate(2,x,y,z,sx,sy);
     plot(x,y,z,sx,sy,z1,"Sibson's method","si");

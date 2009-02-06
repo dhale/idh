@@ -32,7 +32,7 @@ public class SambridgeTest {
     int seed = r.nextInt();
     System.out.println("seed="+seed);
     r.setSeed(seed);
-    int n = 5000;
+    int n = 50;
     float[] x = new float[n];
     float[] y = new float[n];
     float[] z = new float[n];
@@ -132,7 +132,7 @@ public class SambridgeTest {
     return zi;
   }
 
-  private static void interpolateErrorUlp(
+  private static void interpolateErrorSearch(
     float[] x, float[] y, float[] z, Sampling sx, Sampling sy)
   {
     //System.out.print("makeMesh ... ");
@@ -159,12 +159,13 @@ public class SambridgeTest {
         float yb = nb.y();
         if (xb<0.1f || xb>0.9f) continue;
         if (yb<0.1f || yb>0.9f) continue;
-        int ns = 1000;
+        int ns = 100000;
         float dx = (xb-xa)/(float)(ns-1);
         float dy = (yb-ya)/(float)(ns-1);
         for (int is=0; is<ns; ++is) {
-          float xi = xa+(float)is*dx;
-          float yi = ya+(float)is*dy;
+          float si = (float)is;
+          float xi = xa+si*dx;
+          float yi = ya+si*dy;
           ++nxy;
           //if (nxy%100000==0)
           //  System.out.println("nxy="+nxy+" xi="+xi+" yi="+yi);
@@ -336,7 +337,7 @@ public class SambridgeTest {
     //plot3d(x,y,z,sx,sy,z2);
     //System.out.println("nx [0:1] = "+nx(0.0f,1.0f));
     //System.out.println("nx [0.4:0.6] = "+nx(0.4f,0.6f));
-    interpolateErrorUlp(x,y,z,sx,sy);
+    interpolateErrorSearch(x,y,z,sx,sy);
   }
 
   public static final int PLOT_HEIGHT = 785;
