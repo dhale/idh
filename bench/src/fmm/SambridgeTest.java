@@ -135,9 +135,7 @@ public class SambridgeTest {
   private static void interpolateErrorSearch(
     float[] x, float[] y, float[] z, Sampling sx, Sampling sy)
   {
-    //System.out.print("makeMesh ... ");
     TriMesh mesh = makeMesh(x,y,z,sx,sy,true);
-    //System.out.println("done");
     TriMesh.NodePropertyMap zmap = mesh.getNodePropertyMap("z");
     float znull = 0.5f*(Array.min(z)+Array.max(z));
     TriMesh.NodeIterator ni = mesh.getNodes();
@@ -147,8 +145,8 @@ public class SambridgeTest {
       TriMesh.Node na = ni.next();
       float xa = na.x();
       float ya = na.y();
-      if (xa<0.1f || xa>0.9f) continue;
-      if (ya<0.1f || ya>0.9f) continue;
+      if (xa<0.3f || xa>0.7f) continue;
+      if (ya<0.3f || ya>0.7f) continue;
       nl.clear();
       mesh.getNodeNabors(na,nl);
       int nnabor = nl.nnode();
@@ -157,8 +155,8 @@ public class SambridgeTest {
         TriMesh.Node nb = nabors[inabor];
         float xb = nb.x();
         float yb = nb.y();
-        if (xb<0.1f || xb>0.9f) continue;
-        if (yb<0.1f || yb>0.9f) continue;
+        if (xb<0.3f || xb>0.7f) continue;
+        if (yb<0.3f || yb>0.7f) continue;
         int ns = 100000;
         float dx = (xb-xa)/(float)(ns-1);
         float dy = (yb-ya)/(float)(ns-1);
@@ -167,12 +165,10 @@ public class SambridgeTest {
           float xi = xa+si*dx;
           float yi = ya+si*dy;
           ++nxy;
-          //if (nxy%100000==0)
-          //  System.out.println("nxy="+nxy+" xi="+xi+" yi="+yi);
           float z1 = mesh.interpolateSibson(xi,yi,zmap,znull);
           float z2 = mesh.interpolateSambridge(xi,yi,zmap,znull);
           float ze = 100.0f*abs(z2-z1)/z1;
-          if (ze>0.1f) {
+          if (ze>1.0f) {
             System.out.println("-----------------------------------------");
             System.out.println("xi="+xi);
             System.out.println("yi="+yi);
@@ -181,7 +177,7 @@ public class SambridgeTest {
             System.out.println("ze="+ze);
             System.out.println("-----------------------------------------");
           }
-          if (ze>1.0f)
+          if (ze>10.0f)
             System.exit(-1);
         }
       }

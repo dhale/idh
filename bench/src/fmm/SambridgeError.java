@@ -35,11 +35,25 @@ public class SambridgeError {
   private static final int SEED = 268695554;
   private static final float XBAD = 0.49457437f;
   private static final float YBAD = 0.7369756f;
-  */
+
+  // 6% (near the middle)
   private static final int NNODE = 50;
   private static final int SEED = 1754078249;
   private static final float XBAD = 0.6789419f;
   private static final float YBAD = 0.64597934f;
+
+  // 15.9% (but negative and too near the edge)
+  private static final int NNODE = 50;
+  private static final int SEED = 282375838;
+  private static final float XBAD = 0.76774025f;
+  private static final float YBAD = 0.13308403f;
+  */
+
+  // 13.5% (but negative and too near the edge) z1=73.94699 z2=64.0 ze=13.45
+  private static final int NNODE = 50;
+  private static final int SEED = 1679885684;
+  private static final float XBAD = 0.5697848f;
+  private static final float YBAD = 0.49317682f;
 
   private static float[][] makeData() {
     Random r = new Random(SEED);
