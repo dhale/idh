@@ -47,13 +47,25 @@ public class SambridgeError {
   private static final int SEED = 282375838;
   private static final float XBAD = 0.76774025f;
   private static final float YBAD = 0.13308403f;
-  */
 
-  // 13.5% (but negative and too near the edge) z1=73.94699 z2=64.0 ze=13.45
+  // 13.5% (near center but negative) z1=73.94699 z2=64.0 ze=13.45
   private static final int NNODE = 50;
   private static final int SEED = 1679885684;
   private static final float XBAD = 0.5697848f;
   private static final float YBAD = 0.49317682f;
+
+  // 7.0% (near center and positive) z1=73.5013 z2=78.676605 ze=7.0411115
+  private static final int NNODE = 50;
+  private static final int SEED = 674706574;
+  private static final float XBAD = 0.57742673f;
+  private static final float YBAD = 0.44822684f;
+  */
+
+  // 4.2% (near center and positive) z1=71.683334 z2=74.666664 ze=4.161818
+  private static final int NNODE = 50;
+  private static final int SEED = 853812808;
+  private static final float XBAD = 0.4459424f;
+  private static final float YBAD = 0.36336002f;
 
   private static float[][] makeData() {
     Random r = new Random(SEED);
@@ -215,7 +227,7 @@ public class SambridgeError {
     TestFrame frame = new TestFrame(world);
     OrbitView view = frame.getOrbitView();
     view.setScale(4.0f);
-    view.setAzimuth(35.0f);
+    view.setAzimuth(-65.0f);
     view.setElevation(3.0f);
     view.setAxesOrientation(View.AxesOrientation.XOUT_YRIGHT_ZUP);
     frame.setSize(new Dimension(1200,800));
@@ -276,8 +288,8 @@ public class SambridgeError {
     float[][] z2 = interpolate(2,x,y,z,sx,sy);
     plot(x,y,z,sx,sy,z1,"Sibson's method","si");
     plot(x,y,z,sx,sy,z2,"Sambridge's method","sa");
-    //plot3d(x,y,z,sx,sy,z1);
-    //plot3d(x,y,z,sx,sy,z2);
+    plot3d(x,y,z,sx,sy,z1);
+    plot3d(x,y,z,sx,sy,z2);
   }
 
   public static final int PLOT_HEIGHT = 785;
