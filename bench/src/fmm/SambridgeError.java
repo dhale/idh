@@ -83,8 +83,8 @@ public class SambridgeError {
   }
 
   private static Sampling[] makeSamplings(float[] x, float[] y) {
-    int nx = 201;
-    int ny = 201;
+    int nx = 401;
+    int ny = 401;
     double dx = 1.0/(nx-1);
     double dy = 1.0/(ny-1);
     double fx,fy;
