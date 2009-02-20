@@ -584,18 +584,18 @@ public class DiscreteTest {
     float[][] d = dp[0];
     float[][] p = dp[1];
     //float[][] q0 = interpolateApproxSibson(d,p);
-    //float[][] q1 = interpolateDiscrSibson(d,p);
+    float[][] q1 = interpolateDiscrSibson(d,p);
     float[][] q2 = interpolateExactSibson(d,p);
-    //float[][] q3 = interpolateSmooth(d,p);
-    //float[][] q4 = interpolateLaplace(d,p);
-    //float[][] q5 = interpolateBiLaplace(d,p);
-    //plot3d(s,s1,s2,p);
+    float[][] q3 = interpolateSmooth(d,p);
+    float[][] q4 = interpolateLaplace(d,p);
+    float[][] q5 = interpolateBiLaplace(d,p);
+    plot3d(s,s1,s2,p);
     //plot3d(s,s1,s2,q0);
-    //plot3d(s,s1,s2,q1);
+    plot3d(s,s1,s2,q1);
     plot3d(s,s1,s2,q2);
-    //plot3d(s,s1,s2,q3);
-    //plot3d(s,s1,s2,q4);
-    //plot3d(s,s1,s2,q5);
+    plot3d(s,s1,s2,q3);
+    plot3d(s,s1,s2,q4);
+    plot3d(s,s1,s2,q5);
     /*
     adjustSamples(n1,n2,s);
     plotSamples(s);

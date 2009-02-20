@@ -20,6 +20,7 @@ plotWidthColorBar = 80
 plotWidthColorBarTotal = plotWidthColorBar+53
 dataClip = 9.5
 
+"""
 n1,n2 = 251,357 # Teapot Dome slice vertical
 fileName = "tp73.dat"
 plotPref = "tpd"
@@ -30,8 +31,8 @@ sigmaSmooth = 2.0
 sigma1 = 1.0*sigmaSmooth
 sigma2 = 3.0*sigmaSmooth
 parallel = True
-
 """
+
 n1,n2 = 500,500 # Atwater channels slice horizontal
 fileName = "atwj1s.dat"
 plotPref = "atw"
@@ -41,8 +42,7 @@ sigmaTensor = 12.0
 sigmaSmooth = 6.0
 sigma1 = 1.0*sigmaSmooth
 sigma2 = 1.0*sigmaSmooth
-parallel = False
-"""
+parallel = True
 
 if parallel:
   plotPref += "p"
@@ -58,8 +58,8 @@ def setPlotWidthHeight():
 
 setPlotWidthHeight()
 plotFontSize = 24
-plotPngDir = "./png/"
-#plotPngDir = None
+#plotPngDir = "./png/"
+plotPngDir = None
 
 gray = ColorMap.GRAY
 jet = ColorMap.JET
@@ -131,9 +131,9 @@ def applySmooth(parallel,sigma,t,f):
   c = 0.5*sigma*sigma
   lsf = LocalSmoothingFilter(small,niter)
   if parallel:
-    t.setEigenvalues(0.0,1.0)
+    t.setEigenvalues(0.01,1.00)
   else:
-    t.setEigenvalues(1.0,0.0)
+    t.setEigenvalues(1.00,0.01)
   lsf.apply(t,c,f,g)
   return g
  

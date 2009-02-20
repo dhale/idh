@@ -28,17 +28,15 @@ import static edu.mines.jtk.util.MathPlus.*;
  */
 public class ImagePainterM {
 
-  public ImagePainterM(float[][] image) {
+  public ImagePainterM(int width, int height, float[][] image) {
     _n1 = image[0].length;
     _n2 = image.length;
     _image = image;
-    _pt = new PaintTensors(SIGMA,2.0f,1.0f,1.0f,_image);
+    _pt = new PaintTensors(SIGMA,1.0f,1.0f,1.0f,_image);
     _painting = new PaintingM(_n1,_n2,_pt);
     _painting.setDefaultValue(0.0f);
 
     int fontSize = 24;
-    int width = 1330;
-    int height = 860;
     int widthColorBar = 80;
 
     // Plot panel.
@@ -58,7 +56,7 @@ public class ImagePainterM {
     _paintView.setColorModel(ColorMap.JET);
 
     // Tensors view, if visible, on top of paint view.
-    float[][][] x12 = getTensorEllipses(_n1,_n2,10,_pt);
+    float[][][] x12 = getTensorEllipses(_n1,_n2,20,_pt);
     float[][] x1 = x12[0];
     float[][] x2 = x12[1];
     _tensorsView = new PointsView(x1,x2);
@@ -125,6 +123,10 @@ public class ImagePainterM {
     byte ba = (byte)(255.0*alpha);
     for (int i=0; i<n; ++i)
       a[i] = ba;
+    r[0] = (byte)255;
+    g[0] = (byte)255;
+    b[0] = (byte)255;
+    a[0] = 0;
     icm = new IndexColorModel(8,n,r,g,b,a);
     _paintView.setColorModel(icm);
   }
@@ -455,7 +457,7 @@ public class ImagePainterM {
   private void updatePaintTensors(float alpha, float beta, float gamma) {
     _pt = new PaintTensors(SIGMA,alpha,beta,gamma,_image);
     _painting.setTensors(_pt);
-    float[][][] x12 = getTensorEllipses(_n1,_n2,10,_pt);
+    float[][][] x12 = getTensorEllipses(_n1,_n2,20,_pt);
     float[][] x1 = x12[0];
     float[][] x2 = x12[1];
     _tensorsView.set(x1,x2);
@@ -624,20 +626,24 @@ public class ImagePainterM {
   }
 
   private static void testImagePainterA() {
+    int width = 1330;
+    int height = 860;
     int n1 = 251;
     int n2 = 357;
     float[][] image = readImage(n1,n2,"/data/seis/tp/tp73.dat");
     image = gain(image);
-    ImagePainterM ip = new ImagePainterM(image);
+    ImagePainterM ip = new ImagePainterM(width,height,image);
     ip.setValueRange(0.0,1.0);
   }
 
   private static void testImagePainterB() {
+    int width = 1000;
+    int height = 874;
     int n1 = 500;
     int n2 = 500;
     float[][] image = readImage(n1,n2,"/data/seis/atw/atwj1s.dat");
     image = gain(image);
-    ImagePainterM ip = new ImagePainterM(image);
+    ImagePainterM ip = new ImagePainterM(width,height,image);
     ip.setValueRange(0.0,1.0);
   }
 
