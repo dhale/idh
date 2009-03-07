@@ -28,7 +28,7 @@ d3 = 0.025
 f3 = 0
 s3 = Sampling(n3,d3,f3)
 
-datadir = "/data/seis/sw/"
+datadir = "/data/seis/sw/old/"
 
 ##############################################################################
 # Read/write
@@ -722,9 +722,36 @@ def plotSlices():
   #plotLags23(Array.mul(25,u3s11),8.5,"u3s11.png")
   plotLags13(Array.mul(25,u3s12),8.5,"u3s12.png")
 
+"""
+bench$ jy src/sw/go.py
+u1 0: min = -0.18873898684978485 max = 1.4737615585327148
+u1 1: min = -0.20387445390224457 max = 1.4161698818206787
+u1 d: min = -0.27576836943626404 max = 0.10653436928987503
+u2 0: min = -0.21161362528800964 max = 0.17512455582618713
+u2 1: min = -0.27334797382354736 max = 0.21972620487213135
+u2 d: min = -0.07022063434123993 max = 0.09084867686033249
+u3 0: min = -0.25989797711372375 max = 0.3284575343132019
+u3 1: min = -0.3893311619758606 max = 0.487124502658844
+u3 d: min = -0.1333954930305481 max = 0.1727544069290161
+"""
+def deltaShifts():
+  j1,j2,j3 = 30,30,30
+  m1,m2,m3 = n1-2*j1,n2-2*j2,n3-2*j3
+  for i in [1,2,3]:
+    si = "u"+str(i)
+    us0 = readFloats3(si+"s0.dat")
+    us1 = readFloats3(si+"s1.dat")
+    us0 = Array.copy(m1,m2,m3,j1,j2,j3,us0)
+    us1 = Array.copy(m1,m2,m3,j1,j2,j3,us1)
+    usd = Array.sub(us1,us0)
+    print si+" 0: min =",Array.min(us0),"max =",Array.max(us0)
+    print si+" 1: min =",Array.min(us1),"max =",Array.max(us1)
+    print si+" d: min =",Array.min(usd),"max =",Array.max(usd)
+
 def main(args):
-  plot3dAll()
+  #plot3dAll()
   #plotSlices()
+  deltaShifts()
   return
 
 # i2=288 is bin 1892 (288 = (1892-1316)/2)

@@ -1,0 +1,15 @@
+------------------------------
+Received data from Joe Stefani
+March, 2009
+
+SEGY IBM floating point
+n1=1000 d1=0.006 f1=0.0
+n2=1600 d2=0.0125 f2=0.0
+sgyFiles = [
+     "Ref_Gold.segy",    "Ref_Conv.segy",    "Ref_SimSrc.segy",
+  "TLapse_Gold.segy", "TLapse_Conv.segy", "TLapse_SimSrc.segy"] 
+
+Windowed data files
+datFiles = [
+  "s0f.dat", "s1f.dat", "s2f.dat",
+  "s0g.dat", "s1g.dat", "s2g.dat"]

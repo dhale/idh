@@ -23,8 +23,8 @@ width = 600
 height = 622
 widthColorBar = 0
 dataDir = "/data"
-pngDir = "."
-#pngDir = None
+#pngDir = "."
+pngDir = None
 
 n1 = 315
 n2 = 315
@@ -46,10 +46,11 @@ lcf = LocalCorrelationFilter(lcfType,lcfWindow,lcfSigma)
 
 def main(args):
   #goImages()
-  goLcc()
+  #goLcc()
   #goLagSearch()
   #goSequentialShifts()
   #doExact()
+  goErrors()
   return
 
 def goLcc():
@@ -92,6 +93,11 @@ def doImages():
 15*21
 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20
   1   3   5   7   9    11    13    15    17    19
+correlation tiles now sampled for
+  20  50  80  110  140 170   200   230   260   290 <= xcor tiles
+  20          110            200               290 <= axes labels
+was
+  15  45  75  105  135 165   195   225   255   285
 """
 def doLcc(f,g,whiten,smooth,tail=""):
   f,g,suffix = preprocess(f,g,whiten,smooth)
@@ -111,7 +117,7 @@ def doLcc(f,g,whiten,smooth,tail=""):
       lcf.correlate(lag1,lag2,t)
       lcf.normalize(lag1,lag2,t)
       #Array.copy(n1/m1,n2/m2,l1,l2,m1,m2,t,l1+lag1,l2+lag2,m1,m2,c)
-      Array.copy(10,10,m1,m2,2*m1,2*m2,t,l1+lag1,l2+lag2,m1,m2,c)
+      Array.copy(10,10,20,20,2*m1,2*m2,t,l1+lag1,l2+lag2,m1,m2,c)
       #for k in range(nk):
       #  ck[k][l2+lag2][l1+lag1] = t[k2[k]][k1[k]]
   #c = Array.copy(10*m1,10*m2,m1,m2,c)
@@ -120,6 +126,168 @@ def doLcc(f,g,whiten,smooth,tail=""):
   plotLccOneTile(c,"lcc1"+suffix+tail)
   #for k in range(nk):
   #  plot(ck[k],0.0,"lcc"+suffix+"_"+str(k1[k])+"_"+str(k2[k]))
+
+def getExactU():
+  u1 = disp.u1x()
+  u2 = disp.u2x()
+  #plotu(u1,d1max)
+  #plotu(u2,d2max)
+  return u1,u2
+
+def getQuadraticFitU(f,g,whiten,smooth):
+  f,g,suffix = preprocess(f,g,whiten,smooth)
+  lcf.setInputs(f,g)
+  l1 = Array.zerobyte(n1,n2)
+  l2 = Array.zerobyte(n1,n2)
+  lcf.findMaxLags(lmin,lmax,lmin,lmax,l1,l2)
+  u1 = Array.zerofloat(n1,n2)
+  u2 = Array.zerofloat(n1,n2)
+  lcf.refineLags(l1,l2,u1,u2)
+  #plotu(u1,d1max)
+  #plotu(u2,d2max)
+  return u1,u2
+
+def getCyclicSearchU(f,g,whiten,smooth,interp=True):
+  f,g,suffix = preprocess(f,g,whiten,smooth)
+  u1 = Array.zerofloat(n1,n2)
+  u2 = Array.zerofloat(n1,n2)
+  du = Array.zerofloat(n1,n2)
+  h = Array.copy(g)
+  sf = ShiftFinder(lcfSigma)
+  sf.setInterpolateDisplacements(interp)
+  for iter in range(4):
+    sf.find1(lmin,lmax,f,h,du)
+    sf.shift1(du,u1,u2,h)
+    sf.find2(lmin,lmax,f,h,du)
+    sf.shift2(du,u1,u2,h)
+    plotu(u1,d1max)
+    plotu(u2,d2max)
+  return u1,u2
+
+def goErrors():
+  f,g = doImages()
+  u1e,u2e = getExactU()
+  u1p,u2p = getQuadraticFitU(f,g,False,False)
+  f,g,suffix = preprocess(f,g,True,True)
+  u1q,u2q = getQuadraticFitU(f,g,False,False)
+  u1c,u2c = getCyclicSearchU(f,g,False,False)
+  rms1p,rms2p = rmsError(u1p,u1e),rmsError(u2p,u2e)
+  max1p,max2p = maxError(u1p,u1e),maxError(u2p,u2e)
+  rms1q,rms2q = rmsError(u1q,u1e),rmsError(u2q,u2e)
+  max1q,max2q = maxError(u1q,u1e),maxError(u2q,u2e)
+  rms1c,rms2c = rmsError(u1c,u1e),rmsError(u2c,u2e)
+  max1c,max2c = maxError(u1c,u1e),maxError(u2c,u2e)
+  rms1r,rms2r = rms1c/rms1q,rms2c/rms2q
+  max1r,max2r = max1c/max1q,max2c/max2q
+  print "rms error p",rms1p,rms2p
+  print "rms error q",rms1q,rms2q
+  print "rms error c",rms1c,rms2c
+  print "rms error c/q",rms1r,rms2r
+  print "max error p",max1p,max2p
+  print "max error q",max1q,max2q
+  print "max error c",max1c,max2c
+  print "max error c/q",max1r,max2r
+  """
+  nbin = 10
+  nsum1 = Array.zeroint(nbin)
+  nsum2 = Array.zeroint(nbin)
+  rms1q,rms2q = Array.zerofloat(nbin),Array.zerofloat(nbin)
+  rms1c,rms2c = Array.zerofloat(nbin),Array.zerofloat(nbin)
+  sum1q,sum2q = Array.zerofloat(nbin),Array.zerofloat(nbin)
+  sum1c,sum2c = Array.zerofloat(nbin),Array.zerofloat(nbin)
+  max1q,max2q = Array.zerofloat(nbin),Array.zerofloat(nbin)
+  max1c,max2c = Array.zerofloat(nbin),Array.zerofloat(nbin)
+  for i2 in range(n2):
+    for i1 in range(n1):
+      u1i = u1e[i2][i1]
+      u2i = u2e[i2][i1]
+      e1q = Math.abs(u1q[i2][i1]-u1i)
+      e2q = Math.abs(u2q[i2][i1]-u2i)
+      e1c = Math.abs(u1c[i2][i1]-u1i)
+      e2c = Math.abs(u2c[i2][i1]-u2i)
+      j1 = int(nbin*Math.abs(u1i-int(u1i))+0.5)%nbin
+      j2 = int(nbin*Math.abs(u2i-int(u2i))+0.5)%nbin
+      nsum1[j1] += 1
+      nsum2[j2] += 1
+      sum1q[j1] += e1q*e1q
+      sum2q[j2] += e2q*e2q
+      sum1c[j1] += e1c*e1c
+      sum2c[j2] += e2c*e2c
+      max1q[j1] = Math.max(max1q[j1],e1q)
+      max2q[j2] = Math.max(max2q[j2],e2q)
+      max1c[j1] = Math.max(max1c[j1],e1c)
+      max2c[j2] = Math.max(max2c[j2],e2c)
+  for j2 in range(nbin):
+    rms2q[j2] = Math.sqrt(sum2q[j2]/nsum2[j2])
+    rms2c[j2] = Math.sqrt(sum2c[j2]/nsum2[j2])
+  for j1 in range(nbin):
+    rms1q[j1] = Math.sqrt(sum1q[j1]/nsum1[j1])
+    rms1c[j1] = Math.sqrt(sum1c[j1]/nsum1[j1])
+  rms1r = Array.div(rms1c,rms1q)
+  rms2r = Array.div(rms2c,rms2q)
+  max1r = Array.div(max1c,max1q)
+  max2r = Array.div(max2c,max2q)
+  print "counts"; Array.dump(nsum1); Array.dump(nsum2)
+  print "rms error q"; Array.dump(rms1q); Array.dump(rms2q)
+  print "rms error c"; Array.dump(rms1c); Array.dump(rms2c)
+  print "rms error c/q"; Array.dump(rms1r); Array.dump(rms2r)
+  print "max error q"; Array.dump(max1q); Array.dump(max2q)
+  print "max error c"; Array.dump(max1c); Array.dump(max2c)
+  print "max error c/q"; Array.dump(max1r); Array.dump(max2r)
+  fracs = Array.rampfloat(0.0,1.0/nbin,nbin)
+  sp = SimplePlot()
+  sp.setSize(691,702)
+  sp.setVLimits(0.0,0.16)
+  sp.setHLimits(-0.05,0.95)
+  sp.setVLabel("rms error in shift (samples)")
+  sp.setHLabel("distance to nearest sample (samples)")
+  prms1q = sp.addPoints(fracs,rms1q)
+  prms1q.setLineStyle(PointsView.Line.NONE)
+  prms1q.setMarkStyle(PointsView.Mark.HOLLOW_CIRCLE)
+  prms1q.setMarkSize(24.0)
+  prms2q = sp.addPoints(fracs,rms2q)
+  prms2q.setLineStyle(PointsView.Line.NONE)
+  prms2q.setMarkStyle(PointsView.Mark.HOLLOW_SQUARE)
+  prms2q.setMarkSize(24.0)
+  prms1c = sp.addPoints(fracs,rms1c)
+  prms1c.setLineStyle(PointsView.Line.NONE)
+  prms1c.setMarkStyle(PointsView.Mark.FILLED_CIRCLE)
+  prms1c.setMarkSize(24.0)
+  prms2c = sp.addPoints(fracs,rms2c)
+  prms2c.setLineStyle(PointsView.Line.NONE)
+  prms2c.setMarkStyle(PointsView.Mark.FILLED_SQUARE)
+  prms2c.setMarkSize(24.0)
+  sp = SimplePlot()
+  sp.setSize(691,702)
+  sp.setVLimits(0.0,1.0)
+  sp.setHLimits(-0.05,0.95)
+  sp.setVLabel("max error in shift (samples)")
+  sp.setHLabel("distance to nearest sample (samples)")
+  pmax1q = sp.addPoints(fracs,max1q)
+  pmax1q.setLineStyle(PointsView.Line.NONE)
+  pmax1q.setMarkStyle(PointsView.Mark.HOLLOW_CIRCLE)
+  pmax1q.setMarkSize(24.0)
+  pmax2q = sp.addPoints(fracs,max2q)
+  pmax2q.setLineStyle(PointsView.Line.NONE)
+  pmax2q.setMarkStyle(PointsView.Mark.HOLLOW_SQUARE)
+  pmax2q.setMarkSize(24.0)
+  pmax1c = sp.addPoints(fracs,max1c)
+  pmax1c.setLineStyle(PointsView.Line.NONE)
+  pmax1c.setMarkStyle(PointsView.Mark.FILLED_CIRCLE)
+  pmax1c.setMarkSize(24.0)
+  pmax2c = sp.addPoints(fracs,max2c)
+  pmax2c.setLineStyle(PointsView.Line.NONE)
+  pmax2c.setMarkStyle(PointsView.Mark.FILLED_SQUARE)
+  pmax2c.setMarkSize(24.0)
+  """
+
+def maxError(y,x):
+  return Array.max(Array.abs(Array.sub(y,x)))
+
+def rmsError(y,x):
+  n1,n2 = len(x[0]),len(x)
+  e = Array.sub(y,x)
+  return Math.sqrt(Array.sum(Array.mul(e,e))/(n1*n2))
 
 def doLagSearch(f,g,whiten,smooth):
   fsave = Array.copy(f)
@@ -207,6 +375,8 @@ def plot(f,clip=0.0,png=None):
   else:
     pv.setPercentiles(0.0,100.0)
   pv.setInterpolation(PixelsView.Interpolation.NEAREST)
+  clipMin,clipMax = pv.getClipMin(),pv.getClipMax()
+  print "clip min =",clipMin," max =",clipMax
   frame(p,png)
 
 def plotLccAllTiles(c,png=None):
