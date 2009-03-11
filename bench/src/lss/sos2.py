@@ -29,39 +29,44 @@ d2UV = LocalSemblanceFilter.Direction2.UV
 plotTitleBarHeight = 23
 plotWidthColorBar = 80
 plotWidthColorBarTotal = plotWidthColorBar+53
-dataClip = 9.5
+fClip = 9
 
-"""
-n1,n2 = 251,357 # Teapot Dome slice vertical
-fileName = "tp73.dat"
-plotPref = "tpd"
-dataDir = "/data/seis/tp/"
-dataScale = dataClip/4.0
-halfWidth = 2
-halfWidth1 = 1*halfWidth
-halfWidth2 = 6*halfWidth
-sigmaTensor = 8.0
-"""
+def setTpd(): # Teapot Dome slice vertical
+  global n1,n2,fileName,plotPref,dataDir,fScale
+  global halfWidth,halfWidth1,halfWidth2,sigmaTensor
+  n1,n2 = 251,357
+  fileName = "tp73.dat"
+  plotPref = "tpd"
+  dataDir = "/data/seis/tp/"
+  fScale = fClip/4.0
+  halfWidth = 2
+  halfWidth1 = 1*halfWidth
+  halfWidth2 = 4*halfWidth
+  sigmaTensor = 8.0
+  setPlotWidthHeight()
 
-n1,n2 = 500,500 # Atwater channels slice horizontal
-fileName = "atwj1s.dat"
-plotPref = "atw"
-dataDir = "/data/seis/atw/"
-dataScale = dataClip/18000.0
-halfWidth = 20
-halfWidth1 = 1*halfWidth
-halfWidth2 = 1*halfWidth
-sigmaTensor = 12.0
+def setAtw(): # Atwater channels slice horizontal
+  global n1,n2,fileName,plotPref,dataDir,fScale
+  global halfWidth,halfWidth1,halfWidth2,sigmaTensor
+  n1,n2 = 500,500
+  fileName = "atwj1s.dat"
+  plotPref = "atw"
+  dataDir = "/data/seis/atw/"
+  fScale = fClip/15000.0
+  halfWidth = 4
+  halfWidth1 = 1*halfWidth
+  halfWidth2 = 1*halfWidth
+  sigmaTensor = 12.0
+  setPlotWidthHeight()
 
 def setPlotWidthHeight():
   global plotWidth,plotHeight
-  plotWidth = 800
+  plotWidth = 900
   plotHeight = plotWidth*n1/n2
   plotWidth += plotWidthColorBarTotal
   plotHeight += plotTitleBarHeight
 
-setPlotWidthHeight()
-plotFontSize = 24
+plotFontSize = 32
 #plotPngDir = "./png/"
 plotPngDir = None
 
@@ -69,54 +74,123 @@ gray = ColorMap.GRAY
 jet = ColorMap.JET
 prism = ColorMap.PRISM
 
-small = 0.01
-niter = 1000
-
 #############################################################################
 # functions
 
 def main(args):
-  f = goImage()
-  goSmooth2(halfWidth1,d2UV,f)
-  #goSemblance2(halfWidth1,halfWidth2,d2U,f)
-  #goSemblanceClassic()
+  #setAtw(); goAll()
+  setTpd(); goAll()
   return
+
+def goAll():
+  #goImage()
+  #goTensors()
+  #goSmoothGV()
+  #goSmoothHV()
+  goSemblanceV()
+  goSemblanceClassic()
 
 def goImage():
   f = readImage(n1,n2,fileName)
-  plot(f,-dataClip,dataClip,gray,"f")
-  return f
+  p = panel()
+  pf = p.addPixels(f)
+  pf.setClips(-fClip,fClip)
+  frame(p,"f")
 
-def goSmooth2(hw,d,f):
+def goTensors():
+  f = readImage(n1,n2,fileName)
+  p = panel()
+  pf = p.addPixels(f)
+  pf.setClips(-fClip,fClip)
   t = computeTensors(sigmaTensor,f)
-  k1 = 1+4*halfWidth1
-  k2 = 1+4*halfWidth1
-  f = makeImpulses(n1,n2,k1,k2)
+  xu1,xu2,xv1,xv2 = makeTensorVectors(t)
+  pv = p.addPoints(xv1,xv2)
+  pv.setLineColor(Color.YELLOW)
+  pv.setLineWidth(3)
+  frame(p,"fv")
+
+def goSmoothGV():
+  hw = 10
+  f = readImage(n1,n2,fileName)
+  t = computeTensors(sigmaTensor,f)
+  #f = makeRandom(n1,n2)
   for sm in [smBoxcar,smGaussian,smLaplacian]:
     lsf = LocalSemblanceFilter(sm,hw,sm,hw)
-    g = lsf.smooth1(d,t,f)
-    #plot(g,-dataClip,dataClip,gray,"g")
-    plot(g,0.0,0.0,gray,"g")
+    g = lsf.smooth1(d2V,t,f)
+    p = panel()
+    pf = p.addPixels(g)
+    pf.setClips(-fClip,fClip)
+    frame(p,"gv"+smstr(sm)+str(hw))
 
-def goSemblance2(hw1,hw2,d,f):
+def goSmoothGU():
+  hw = 10
+  f = readImage(n1,n2,fileName)
+  t = computeTensors(sigmaTensor,f)
+  #f = makeRandom(n1,n2)
+  for sm in [smBoxcar,smGaussian,smLaplacian]:
+    lsf = LocalSemblanceFilter(sm,hw,sm,hw)
+    g = lsf.smooth1(d2U,t,f)
+    p = panel()
+    pf = p.addPixels(g)
+    pf.setClips(-fClip,fClip)
+    frame(p,"gu"+smstr(sm)+str(hw))
+
+def goSmoothHV():
+  hw = 20
+  f = readImage(n1,n2,fileName)
+  t = computeTensors(sigmaTensor,f)
+  f = makeImpulses(n1,n2,1+4*hw,1+4*hw)
+  f = Array.mul(30*fClip,f)
+  for sm in [smLaplacian]:
+    lsf = LocalSemblanceFilter(sm,hw,sm,hw)
+    g = lsf.smooth1(d2V,t,f)
+    p = panel()
+    pf = p.addPixels(g)
+    pf.setClips(-fClip,fClip)
+    frame(p,"hv"+smstr(sm)+str(hw))
+    if n1>400:
+      p = panel()
+      p.setLimits(340,340,400,400)
+      p.setHInterval(20)
+      p.setVInterval(20)
+      pf = p.addPixels(g)
+      pf.setClips(-fClip,fClip)
+      frame(p,"hvz"+smstr(sm)+str(hw))
+
+def goSemblanceV():
+  hw1 = halfWidth1
+  hw2 = halfWidth2
+  f = readImage(n1,n2,fileName)
   t = computeTensors(sigmaTensor,f)
   for sm1 in [smBoxcar,smGaussian,smLaplacian]:
     sm2 = sm1
-    if d==d2UV:
-      sm2 = smNone
     lsf = LocalSemblanceFilter(sm1,hw1,sm2,hw2)
-    s = lsf.semblance(d,t,f)
-    plot(s,0.0,1.0,gray,"s")
+    s = lsf.semblance(d2V,t,f)
+    print "s min =",Array.min(s),"max =",Array.max(s)
+    p = panel()
+    ps = p.addPixels(s)
+    ps.setClips(0.0,1.0)
+    frame(p,"sv"+smstr(sm1)+str(hw1)+"_"+str(hw2))
+
+def smstr(sm):
+  if sm==smBoxcar:
+    return "b"
+  elif sm==smGaussian:
+    return "g"
+  else:
+    return "l"
 
 def goSemblanceClassic():
   f = readImage(n1,n2,fileName)
   t = computeTensors(sigmaTensor,f)
   pmax = 10.0
-  hw1 = int(sigma2+0.5)
-  hw2 = int(sigma1+0.5)
-  s = LocalSemblanceFilter.applyForSlopesInWindow(pmax,hw1,hw2,t,f)
-  #plot(f,-dataClip,dataClip,gray,"f")
-  plot(s,0.0,1.0,gray,"s")
+  hw1 = halfWidth1
+  hw2 = halfWidth2
+  s = LocalSemblanceFilter.semblanceForSlopes(pmax,hw1,hw2,t,f)
+  p = panel()
+  ps = p.addPixels(s)
+  ps.setClips(0.0,1.0)
+  frame(p,"ssc"+str(hw1)+"_"+str(hw2))
 
 def computeTensors(sigma,f):
   lof = LocalOrientFilter(sigma)
@@ -132,8 +206,41 @@ def makeImpulses(n1,n2,k1,k2):
   for i2 in range(m2):
     for i1 in range(m1):
       f[j2+i2*k2][j1+i1*k1] = 1.0
-  #return smooth(f)
   return f
+ 
+def makeTensorVectors(t):
+  k1 = 30
+  k2 = 30
+  s1 = k1/3.0
+  s2 = k2/3.0
+  m1 = n1/k1
+  m2 = n2/k2
+  j1 = (n1-(m1-1)*k1)/2
+  j2 = (n2-(m2-1)*k2)/2
+  xu1 = Array.zerofloat(2,m1*m2)
+  xu2 = Array.zerofloat(2,m1*m2)
+  xv1 = Array.zerofloat(2,m1*m2)
+  xv2 = Array.zerofloat(2,m1*m2)
+  u = Array.zerofloat(2)
+  v = Array.zerofloat(2)
+  for l2 in range(m2):
+    for l1 in range(m1):
+      ll = l1+l2*m1
+      i1 = j1+l1*k1
+      i2 = j2+l2*k2
+      t.getEigenvectorU(i1,i2,u)
+      t.getEigenvectorV(i1,i2,v)
+      u1,u2 = u[0],u[1]
+      v1,v2 = v[0],v[1]
+      xu1[ll][0] = i1-u1*s1
+      xu2[ll][0] = i2-u2*s2
+      xu1[ll][1] = i1+u1*s1
+      xu2[ll][1] = i2+u2*s2
+      xv1[ll][0] = i1-v1*s1
+      xv2[ll][0] = i2-v2*s2
+      xv1[ll][1] = i1+v1*s1
+      xv2[ll][1] = i2+v2*s2
+  return xu1,xu2,xv1,xv2
 
 def smooth(x):
   n1 = len(x[0])
@@ -145,12 +252,18 @@ def smooth(x):
   rgf.applyX0(t,y)
   return y
 
+def makeRandom(n1,n2):
+  f = Array.sub(Array.mul(2*fClip,Array.randfloat(n1,n2)),fClip)
+  f = Array.mul(2.0,f)
+  f = smooth(f)
+  return f
+
 def readImage(n1,n2,fileName):
   f = Array.zerofloat(n1,n2)
   ais = ArrayInputStream(dataDir+fileName)
   ais.readFloats(f)
   ais.close()
-  return Array.mul(dataScale,f)
+  return Array.mul(fScale,f)
 
 def writeImage(f,fileName):
   aos = ArrayOutputStream(fileName)
@@ -160,47 +273,17 @@ def writeImage(f,fileName):
 #############################################################################
 # plot
 
-def plot(f,cmin=0.0,cmax=0.0,cmap=ColorMap.GRAY,png=None):
-  print "f min =",Array.min(f),"  max =",Array.max(f)
-  n1,n2 = len(f[0]),len(f)
-  p = panel()
-  s1 = Sampling(n1,1.0,0.0)
-  s2 = Sampling(n2,1.0,0.0)
-  pv = p.addPixels(s1,s2,f)
-  if cmin<cmax:
-    pv.setClips(cmin,cmax)
-  else:
-    pv.setPercentiles(0.0,100.0)
-  pv.setInterpolation(PixelsView.Interpolation.LINEAR)
-  pv.setColorModel(cmap)
-  frame(p,png)
-
-def plot2(f,g,cmin=0,cmax=0,png=None):
-  n1 = len(f[0])
-  n2 = len(f)
-  p = panel()
-  s1 = Sampling(n1,1.0,0.0)
-  s2 = Sampling(n2,1.0,0.0)
-  pv = p.addPixels(s1,s2,f)
-  pv.setInterpolation(PixelsView.Interpolation.LINEAR)
-  pv.setColorModel(ColorMap.getGray())
-  pv.setClips(-10,10)
-  pv = p.addPixels(s1,s2,g)
-  pv.setInterpolation(PixelsView.Interpolation.LINEAR)
-  if cmin!=cmax:
-    pv.setClips(cmin,cmax)
-  pv.setColorModel(ColorMap.getJet(0.3))
-  frame(p,png)
-
 def panel():
-  p = PlotPanel(1,1,
-    PlotPanel.Orientation.X1DOWN_X2RIGHT,
-    PlotPanel.AxesPlacement.NONE)
   #p = PlotPanel(1,1,
   #  PlotPanel.Orientation.X1DOWN_X2RIGHT,
-  #  PlotPanel.AxesPlacement.LEFT_TOP)
+  #  PlotPanel.AxesPlacement.NONE)
+  p = PlotPanel(1,1,
+    PlotPanel.Orientation.X1DOWN_X2RIGHT,
+    PlotPanel.AxesPlacement.LEFT_TOP)
   p.addColorBar()
   p.setColorBarWidthMinimum(plotWidthColorBar)
+  p.setHInterval(100)
+  p.setVInterval(100)
   return p
 
 def frame(panel,png=None):

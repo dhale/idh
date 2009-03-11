@@ -167,18 +167,30 @@ public class LocalSemblanceFilter {
     sd = Array.mul(f,f);
     sd = smooth1(d,t,sd);
     sd = smooth2(d,t,sd);
+    int count0 = 0;
+    int count1 = 0;
     for (int i2=0; i2<n2; ++i2) {
-      for (int i1=0; i1<n1; ++i1) {
-        float sni = sn[i2][i1];
-        float sdi = sd[i2][i1];
-        if (sdi<=0.0f)
+      if (allZero(f[i2])) {
+        for (int i1=0; i1<n1; ++i1) {
           s[i2][i1] = 0.0f;
-        else if (sdi<sni)
-          s[i2][i1] = 1.0f;
-        else
-          s[i2][i1] = sni/sdi;
+        }
+      } else {
+        for (int i1=0; i1<n1; ++i1) {
+          float sni = sn[i2][i1];
+          float sdi = sd[i2][i1];
+          if (sdi<=0.0f || sni<0.0f) {
+            s[i2][i1] = 0.0f;
+            ++count0;
+          } if (sdi<sni) {
+            s[i2][i1] = 1.0f;
+            ++count1;
+          } else {
+            s[i2][i1] = sni/sdi;
+          }
+        }
       }
     }
+    trace("semblance2: count0="+count0+" count1="+count1);
   }
 
   public float[][] semblance(Direction2 d, EigenTensors2 t, float[][] f) {
@@ -200,20 +212,32 @@ public class LocalSemblanceFilter {
     sd = Array.mul(f,f);
     sd = smooth1(d,t,sd);
     sd = smooth2(d,t,sd);
+    int count0 = 0;
+    int count1 = 0;
     for (int i3=0; i3<n3; ++i3) {
       for (int i2=0; i2<n2; ++i2) {
-        for (int i1=0; i1<n1; ++i1) {
-          float sni = sn[i3][i2][i1];
-          float sdi = sd[i3][i2][i1];
-          if (sdi<=0.0f)
+        if (allZero(f[i3][i2])) {
+          for (int i1=0; i1<n1; ++i1) {
             s[i3][i2][i1] = 0.0f;
-          else if (sdi<sni)
-            s[i3][i2][i1] = 1.0f;
-          else
-            s[i3][i2][i1] = sni/sdi;
+          }
+        } else {
+          for (int i1=0; i1<n1; ++i1) {
+            float sni = sn[i3][i2][i1];
+            float sdi = sd[i3][i2][i1];
+            if (sdi<=0.0f || sni<0.0f) {
+              s[i3][i2][i1] = 0.0f;
+              ++count0;
+            } else if (sdi<sni) {
+              s[i3][i2][i1] = 1.0f;
+              ++count1;
+            } else {
+              s[i3][i2][i1] = sni/sdi;
+            }
+          }
         }
       }
     }
+    trace("semblance3: count0="+count0+" count1="+count1);
   }
 
   public float[][][] semblance(Direction3 d, EigenTensors3 t, float[][][] f) {
@@ -259,9 +283,13 @@ public class LocalSemblanceFilter {
     float[] f1 = new float[n1];
     float[] snum = new float[n1];
     float[] sden = new float[n1];
+    float[] tnum = x1;
+    float[] tden = f1;
     float[][] s = new float[n2][n1];
     SincInterpolator si = new SincInterpolator();
     si.setUniformSampling(n1,1.0,0.0);
+    float sigma2 = sigmaGaussian(hw2);
+    RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(sigma2);
 
     // For all samples i2, ...
     for (int i2=0; i2<n2; ++i2) {
@@ -280,8 +308,8 @@ public class LocalSemblanceFilter {
       }
 
       // Window of samples i2 in semblance computations.
-      int j2lo = max(   0,i2-hw2);
-      int j2hi = min(n2-1,i2+hw2);
+      int j2lo = max(   0,i2-hw1);
+      int j2hi = min(n2-1,i2+hw1);
       float scale2 = 1.0f/(j2hi-j2lo+1);
 
       // For all samples i2 in window, ...
@@ -306,14 +334,31 @@ public class LocalSemblanceFilter {
       for (int i1=0; i1<n1; ++i1)
         snum[i1] = snum[i1]*snum[i1]*scale2;
 
+      // Compute semblance from smoothed numerators and denominators.
+      rgf.apply0(snum,tnum);
+      rgf.apply0(sden,tden);
+      for (int i1=0; i1<n1; ++i1) {
+        //s[i2][i1] = tnum[i1]/tden[i1];
+        float sni = tnum[i1];
+        float sdi = tden[i1];
+        if (sdi<=0.0f || sni<0.0f) {
+          s[i2][i1] = 0.0f;
+        } else if (sdi<sni) {
+          s[i2][i1] = 1.0f;
+        } else {
+          s[i2][i1] = sni/sdi;
+        }
+      }
+
+      /*
       // Smooth semblance numerators and denominators over i1.
       float ssnum = 0.0f;
       float ssden = 0.0f;
-      for (int i1=0; i1<hw1; ++i1) {
+      for (int i1=0; i1<hw2; ++i1) {
         ssnum += snum[i1];
         ssden += sden[i1];
       }
-      for (int i1=0,i1m=i1-hw1-1,i1p=i1+hw1; i1<n1; ++i1,++i1m,++i1p) {
+      for (int i1=0,i1m=i1-hw2-1,i1p=i1+hw2; i1<n1; ++i1,++i1m,++i1p) {
         if (i1p<n1) {
           ssnum += snum[i1p];
           ssden += sden[i1p];
@@ -324,7 +369,100 @@ public class LocalSemblanceFilter {
         }
         s[i2][i1] = ssnum/ssden;
       }
+      */
     }
+    return s;
+  }
+  public static float[][][] semblanceForSlopes(
+    double pmax, int hw1, int hw2, EigenTensors3 et, float[][][] f) 
+  {
+    int n1 = f[0][0].length;
+    int n2 = f[0].length;
+    int n3 = f.length;
+    float[] u = new float[3];
+    float[] p = new float[n1];
+    float[] q = new float[n1];
+    float[] x1 = new float[n1];
+    float[] f1 = new float[n1];
+    float[] snum = new float[n1];
+    float[] sden = new float[n1];
+    float[] tnum = x1;
+    float[] tden = f1;
+    float[][][] s = new float[n3][n2][n1];
+    SincInterpolator si = new SincInterpolator();
+    si.setUniformSampling(n1,1.0,0.0);
+    float sigma2 = sigmaGaussian(hw2);
+    RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(sigma2);
+
+    // For all samples i2,i3, ...
+    for (int i3=0; i3<n3; ++i3) {
+    for (int i2=0; i2<n2; ++i2) {
+
+      // Compute slopes and zero semblance numerators and denominators.
+      for (int i1=0; i1<n1; ++i1) {
+        et.getEigenvectorU(i1,i2,i3,u);
+        float u1 = u[0];
+        float u2 = u[1];
+        float u3 = u[2];
+        double pi = -u2/u1;
+        double qi = -u3/u1;
+        if ( pi>pmax) pi =  pmax;
+        if (-pi>pmax) pi = -pmax;
+        if ( qi>pmax) qi =  pmax;
+        if (-qi>pmax) qi = -pmax;
+        p[i1] = (float)pi;
+        q[i1] = (float)qi;
+        snum[i1] = 0.0f;
+        sden[i1] = 0.0f;
+      }
+
+      // Window of samples i2,i3 in semblance computations.
+      int j2lo = max(   0,i2-hw1);
+      int j2hi = min(n2-1,i2+hw1);
+      int j3lo = max(   0,i3-hw1);
+      int j3hi = min(n3-1,i3+hw1);
+
+      // For all samples i2,i3 in window, ...
+      for (int j3=j3lo; j3<=j3hi; ++j3) {
+      for (int j2=j2lo; j2<=j2hi; ++j2) {
+
+        // Interpolate according to slopes of lines.
+        float d2 = j2-i2;
+        float d3 = j3-i3;
+        for (int i1=0; i1<n1; ++i1)
+          x1[i1] = i1+p[i1]*d2+q[i1]*d3;
+        si.setUniformSamples(f[j3][j2]);
+        si.interpolate(n1,x1,f1);
+
+        // Accumulate semblance numerators and denominators.
+        for (int i1=0; i1<n1; ++i1) {
+          float fi = f1[i1];
+          snum[i1] += fi;
+          sden[i1] += fi*fi;
+        }
+      }}
+
+      // Complete (square and scale) semblance numerators.
+      float scale23 = 1.0f/((j2hi-j2lo+1)*(j3hi-j3lo+1));
+      for (int i1=0; i1<n1; ++i1)
+        snum[i1] = snum[i1]*snum[i1]*scale23;
+
+      // Compute semblance from smoothed numerators and denominators.
+      rgf.apply0(snum,tnum);
+      rgf.apply0(sden,tden);
+      for (int i1=0; i1<n1; ++i1) {
+        //s[i3][i2][i1] = tnum[i1]/tden[i1];
+        float sni = tnum[i1];
+        float sdi = tden[i1];
+        if (sdi<=0.0f || sni<0.0f) {
+          s[i3][i2][i1] = 0.0f;
+        } else if (sdi<sni) {
+          s[i3][i2][i1] = 1.0f;
+        } else {
+          s[i3][i2][i1] = sni/sdi;
+        }
+      }
+    }}
     return s;
   }
 
@@ -387,7 +525,7 @@ public class LocalSemblanceFilter {
   private static class LaplacianSmoother implements Smoother {
     LaplacianSmoother(int halfWidth) {
       _lsf = new LocalSmoothingFilter();
-      _scale = halfWidth*(halfWidth+1)/6.0f;
+      _scale = scaleLaplacian(halfWidth);
     }
     public void apply(float[] f, float[] g) {
       _lsf.apply(_scale,f,g);
@@ -410,10 +548,15 @@ public class LocalSemblanceFilter {
 
   private static class FirSmoother implements Smoother {
     FirSmoother(Smoothing smoothing, int halfWidth) {
-      if (smoothing==Smoothing.BOXCAR)
-        _w = makeBoxcarWeights(halfWidth);
-      else if (smoothing==Smoothing.GAUSSIAN)
-        _w = makeGaussianWeights(halfWidth);
+      if (smoothing==Smoothing.BOXCAR) {
+        _w1 = makeBoxcar1(halfWidth);
+        _w2 = makeBoxcar2(halfWidth);
+        _w3 = makeBoxcar3(halfWidth);
+      } else if (smoothing==Smoothing.GAUSSIAN) {
+        _w1 = makeGaussian1(halfWidth);
+        _w2 = makeGaussian2(halfWidth);
+        _w3 = makeGaussian3(halfWidth);
+      }
     }
     public void apply(float[] f, float[] g) {
       applyAll(f,g);
@@ -428,7 +571,7 @@ public class LocalSemblanceFilter {
     }
     public void applyAll(float[] f, float[] g) {
       int n1 = f.length;
-      float[] w = sumWeights(sumWeights(_w));
+      float[] w = _w1;
       int n = w.length;
       int m = (n-1)/2;
       for (int i1=0; i1<n1; ++i1) {
@@ -445,7 +588,7 @@ public class LocalSemblanceFilter {
     {
       int n1 = f[0].length;
       int n2 = f.length;
-      float[] w = sumWeights(sumWeights(_w));
+      float[] w = _w1;
       int n = w.length;
       int m = (n-1)/2;
       float[] r = new float[2];
@@ -466,10 +609,40 @@ public class LocalSemblanceFilter {
         }
       }
     }
+    public void applyLinearSinc(
+      Direction2 d, EigenTensors2 t, float[][] f, float[][] g) 
+    {
+      int n1 = f[0].length;
+      int n2 = f.length;
+      float[] w = _w1;
+      int n = w.length;
+      int m = (n-1)/2;
+      float[] r = new float[2];
+      SincInterpolator si = new SincInterpolator();
+      si.setExtrapolation(SincInterpolator.Extrapolation.CONSTANT);
+      si.setUniformSampling(n1,1.0,0.0,n2,1.0,0.0);
+      si.setUniformSamples(f);
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          if (d==Direction2.U)
+            t.getEigenvectorU(i1,i2,r);
+          else
+            t.getEigenvectorV(i1,i2,r);
+          float r1 = r[0], r2 = r[1];
+          float gi = 0.0f;
+          for (int i=0,ir=-m; i<n; ++i,++ir) {
+            float ir1 = ir*r1, ir2 = ir*r2;
+            float x1 = i1+ir1, x2 = i2+ir2;
+            gi += w[i]*si.interpolate(x1,x2);
+          }
+          g[i2][i1] = gi;
+        }
+      }
+    }
     public void applyAll(float[][] f, float[][] g) {
       int n1 = f[0].length;
       int n2 = f.length;
-      float[][] w = sumWeights(_w);
+      float[][] w = _w2;
       int n = w.length;
       int m = (n-1)/2;
       for (int i2=0; i2<n2; ++i2) {
@@ -502,7 +675,7 @@ public class LocalSemblanceFilter {
       int n1 = f[0][0].length;
       int n2 = f[0].length;
       int n3 = f.length;
-      float[] w = sumWeights(sumWeights(_w));
+      float[] w = _w1;
       int n = w.length;
       int m = (n-1)/2;
       float[] r = new float[3];
@@ -533,7 +706,7 @@ public class LocalSemblanceFilter {
       int n1 = f[0][0].length;
       int n2 = f[0].length;
       int n3 = f.length;
-      float[][] w = sumWeights(_w);
+      float[][] w = _w2;
       int n = w.length;
       int m = (n-1)/2;
       float[] r = new float[3];
@@ -557,9 +730,9 @@ public class LocalSemblanceFilter {
             for (int i=0,ir=-m; i<n; ++i,++ir) {
               float ir1 = ir*r1, ir2 = ir*r2, ir3 = ir*r3;
               float x1 = i1+ir1, x2 = i2+ir2, x3 = i3+ir3;
-              for (int j=0,js=0; j<n; ++j,++js) {
+              for (int j=0,js=-m; j<n; ++j,++js) {
                 float js1 = js*s1, js2 = js*s2, js3 = js*s3;
-                float y1 = x1+js1, y2 = i2+js2, y3 = i3+js3;
+                float y1 = x1+js1, y2 = x2+js2, y3 = x3+js3;
                 gi += w[i][j]*interpolateTrilinear(y1,y2,y3,n1,n2,n3,f);
               }
             }
@@ -572,7 +745,7 @@ public class LocalSemblanceFilter {
       int n1 = f[0][0].length;
       int n2 = f[0].length;
       int n3 = f.length;
-      float[][][] w = _w;
+      float[][][] w = _w3;
       int n = w.length;
       int m = (n-1)/2;
       for (int i3=0; i3<n3; ++i3) {
@@ -594,7 +767,17 @@ public class LocalSemblanceFilter {
         }
       }
     }
-    private float[][][] _w;
+    private float[] _w1;
+    private float[][] _w2;
+    private float[][][] _w3;
+  }
+
+  private static boolean allZero(float[] f) {
+    int n1 = f.length;
+    for (int i1=0; i1<n1; ++i1)
+      if (f[i1]!=0.0f)
+        return false;
+    return true;
   }
 
   private static Smoother makeSmoothingFilter(Smoothing s, int hw) {
@@ -649,6 +832,13 @@ public class LocalSemblanceFilter {
     return new float[f.length][f[0].length][f[0][0].length];
   }
 
+  private static float sigmaGaussian(int halfWidth) {
+    return sqrt(halfWidth*(halfWidth+1)/3.0f);
+  }
+  private static float scaleLaplacian(int halfWidth) {
+    return halfWidth*(halfWidth+1)/6.0f;
+  }
+
   private static Direction2 orthogonal(Direction2 d) {
     if (d==Direction2.U)
       return Direction2.V;
@@ -669,61 +859,73 @@ public class LocalSemblanceFilter {
     else
       return Direction3.U;
   }
-  private static float[] sumWeights(float[][] w) {
-    int n = w.length;
-    float[] s = new float[n];
-    for (int i=0; i<n; ++i)
-      for (int j=0; j<n; ++j)
-          s[i] += w[i][j];
-    return s;
+  private static float[] normalize(float[] w) {
+    return Array.mul(w,1.0f/Array.sum(w));
   }
-  private static float[][] sumWeights(float[][][] w) {
-    int n = w.length;
-    float[][] s = new float[n][n];
-    for (int i=0; i<n; ++i)
-      for (int j=0; j<n; ++j)
-        for (int k=0; k<n; ++k)
-          s[i][j] += w[i][j][k];
-    return s;
+  private static float[][] normalize(float[][] w) {
+    return Array.mul(w,1.0f/Array.sum(w));
   }
-  private static float[][][] makeBoxcarWeights(int halfWidth) {
+  private static float[][][] normalize(float[][][] w) {
+    return Array.mul(w,1.0f/Array.sum(w));
+  }
+  private static float[] makeBoxcar1(int halfWidth) {
+    return normalize(Array.fillfloat(1.0f,2*halfWidth+1));
+  }
+  private static float[][] makeBoxcar2(int halfWidth) {
     int m = halfWidth;
-    int n = m+1+m;
-    float s = 1.0f/(n*n*n);
-    float[][][] w = new float[n][n][n];
-    for (int i=0; i<n; ++i) {
-      for (int j=0; j<n; ++j) {
-        for (int k=0; k<n; ++k) {
-          w[i][j][k] = s;
-        }
-      }
-    }
-    return w;
+    int n = 2*m+1;
+    float[][] w = new float[n][n];
+    float mm = m*m;
+    for (int i=0,ii=-m; i<n; ++i,++ii)
+      for (int j=0,jj=-m; j<n; ++j,++jj)
+        if (ii*ii+jj*jj<=mm)
+          w[i][j] = 1.0f;
+    return normalize(w);
   }
-  private static float[][][] makeGaussianWeights(int halfWidth) {
-    float sigma = sqrt(halfWidth*(halfWidth+1)/3.0f);
+  private static float[][][] makeBoxcar3(int halfWidth) {
+    int m = halfWidth;
+    int n = 2*m+1;
+    float[][][] w = new float[n][n][n];
+    float mm = m*m;
+    for (int i=0,ii=-m; i<n; ++i,++ii)
+      for (int j=0,jj=-m; j<n; ++j,++jj)
+        for (int k=0,kk=-m; k<n; ++k,++kk)
+          if (ii*ii+jj*jj+kk*kk<=mm)
+            w[i][j][k] = 1.0f;
+    return normalize(w);
+  }
+  private static float[] makeGaussian1(int halfWidth) {
+    float sigma = sigmaGaussian(halfWidth);
+    float s = 0.5f/(sigma*sigma);
+    int m = (int)(1.0f+3.0f*sigma);
+    int n = m+1+m;
+    float[] w = new float[n];
+    for (int i=0,ii=-m; i<n; ++i,++ii)
+      w[i] = exp(-s*(ii*ii));
+    return normalize(w);
+  }
+  private static float[][] makeGaussian2(int halfWidth) {
+    float sigma = sigmaGaussian(halfWidth);
+    float s = 0.5f/(sigma*sigma);
+    int m = (int)(1.0f+3.0f*sigma);
+    int n = m+1+m;
+    float[][] w = new float[n][n];
+    for (int i=0,ii=-m; i<n; ++i,++ii)
+      for (int j=0,jj=-m; j<n; ++j,++jj)
+        w[i][j] = exp(-s*(ii*ii+jj*jj));
+    return normalize(w);
+  }
+  private static float[][][] makeGaussian3(int halfWidth) {
+    float sigma = sigmaGaussian(halfWidth);
     float s = 0.5f/(sigma*sigma);
     int m = (int)(1.0f+3.0f*sigma);
     int n = m+1+m;
     float[][][] w = new float[n][n][n];
-    float wsum = 0.0f;
-    for (int i=0,ii=-m; i<n; ++i,++ii) {
-      for (int j=0,jj=-m; j<n; ++j,++jj) {
-        for (int k=0,kk=-m; k<n; ++k,++kk) {
+    for (int i=0,ii=-m; i<n; ++i,++ii)
+      for (int j=0,jj=-m; j<n; ++j,++jj)
+        for (int k=0,kk=-m; k<n; ++k,++kk)
           w[i][j][k] = exp(-s*(ii*ii+jj*jj+kk*kk));
-          wsum += w[i][j][k];
-        }
-      }
-    }
-    s = 1.0f/wsum;
-    for (int i=0; i<n; ++i) {
-      for (int j=0; j<n; ++j) {
-        for (int k=0; k<n; ++k) {
-          w[i][j][k] *= s;
-        }
-      }
-    }
-    return w;
+    return normalize(w);
   }
 
   private static float interpolateBilinear(
