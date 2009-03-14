@@ -524,7 +524,7 @@ public class LocalSemblanceFilter {
 
   private static class LaplacianSmoother implements Smoother {
     LaplacianSmoother(int halfWidth) {
-      _lsf = new LocalSmoothingFilter();
+      _lsf = new LocalSmoothingFilter(0.01,1000);
       _scale = scaleLaplacian(halfWidth);
     }
     public void apply(float[] f, float[] g) {

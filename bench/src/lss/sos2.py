@@ -34,30 +34,38 @@ fClip = 9
 def setTpd(): # Teapot Dome slice vertical
   global n1,n2,fileName,plotPref,dataDir,fScale
   global halfWidth,halfWidth1,halfWidth2,sigmaTensor
+  global hlabel,vlabel,plotWidth,plotHeight
   n1,n2 = 251,357
   fileName = "tp73.dat"
   plotPref = "tpd"
   dataDir = "/data/seis/tp/"
+  hlabel = "crossline (samples)"
+  vlabel = "depth (samples)"
   fScale = fClip/4.0
-  halfWidth = 2
+  halfWidth = 4
   halfWidth1 = 1*halfWidth
   halfWidth2 = 4*halfWidth
   sigmaTensor = 8.0
-  setPlotWidthHeight()
+  plotWidth = 1035
+  plotHeight = 670
 
 def setAtw(): # Atwater channels slice horizontal
   global n1,n2,fileName,plotPref,dataDir,fScale
   global halfWidth,halfWidth1,halfWidth2,sigmaTensor
+  global hlabel,vlabel,plotWidth,plotHeight
   n1,n2 = 500,500
   fileName = "atwj1s.dat"
   plotPref = "atw"
   dataDir = "/data/seis/atw/"
+  hlabel = "crossline (samples)"
+  vlabel = "inline (samples)"
   fScale = fClip/15000.0
   halfWidth = 4
   halfWidth1 = 1*halfWidth
   halfWidth2 = 1*halfWidth
   sigmaTensor = 12.0
-  setPlotWidthHeight()
+  plotWidth = 1035
+  plotHeight = 900
 
 def setPlotWidthHeight():
   global plotWidth,plotHeight
@@ -67,8 +75,8 @@ def setPlotWidthHeight():
   plotHeight += plotTitleBarHeight
 
 plotFontSize = 32
-#plotPngDir = "./png/"
-plotPngDir = None
+plotPngDir = "./png/sos/"
+#plotPngDir = None
 
 gray = ColorMap.GRAY
 jet = ColorMap.JET
@@ -78,7 +86,7 @@ prism = ColorMap.PRISM
 # functions
 
 def main(args):
-  #setAtw(); goAll()
+  setAtw(); goAll()
   setTpd(); goAll()
   return
 
@@ -86,9 +94,10 @@ def goAll():
   #goImage()
   #goTensors()
   #goSmoothGV()
-  #goSmoothHV()
-  goSemblanceV()
-  goSemblanceClassic()
+  goSmoothHV()
+  #goSmoothGSV()
+  #goSemblanceV()
+  #goSemblanceClassic()
 
 def goImage():
   f = readImage(n1,n2,fileName)
@@ -110,17 +119,39 @@ def goTensors():
   frame(p,"fv")
 
 def goSmoothGV():
-  hw = 10
+  hw = 5
   f = readImage(n1,n2,fileName)
   t = computeTensors(sigmaTensor,f)
   #f = makeRandom(n1,n2)
-  for sm in [smBoxcar,smGaussian,smLaplacian]:
+  #for sm in [smBoxcar,smGaussian,smLaplacian]:
+  for sm in [smLaplacian]:
     lsf = LocalSemblanceFilter(sm,hw,sm,hw)
     g = lsf.smooth1(d2V,t,f)
     p = panel()
     pf = p.addPixels(g)
     pf.setClips(-fClip,fClip)
     frame(p,"gv"+smstr(sm)+str(hw))
+
+def goSmoothGSV():
+  hw = 10
+  hw1 = halfWidth1
+  hw2 = halfWidth2
+  sm = smLaplacian
+  f = readImage(n1,n2,fileName)
+  t = computeTensors(sigmaTensor,f)
+  lsf = LocalSemblanceFilter(sm,hw1,sm,hw2)
+  s = lsf.semblance(d2V,t,f)
+  s = Array.mul(s,s)
+  s = Array.mul(s,s)
+  t.setEigenvalues(0.0,1.0)
+  lsf = LocalSmoothingFilter()
+  c = hw*(hw+1)/6.0
+  g = Array.copy(f)
+  lsf.apply(t,c,s,f,g)
+  p = panel()
+  pf = p.addPixels(g)
+  pf.setClips(-fClip,fClip)
+  frame(p,"gsv"+smstr(sm)+str(hw))
 
 def goSmoothGU():
   hw = 10
@@ -140,21 +171,24 @@ def goSmoothHV():
   f = readImage(n1,n2,fileName)
   t = computeTensors(sigmaTensor,f)
   f = makeImpulses(n1,n2,1+4*hw,1+4*hw)
-  f = Array.mul(30*fClip,f)
+  #f = Array.mul(30*fClip,f)
+  f = Array.mul(100,f)
   for sm in [smLaplacian]:
     lsf = LocalSemblanceFilter(sm,hw,sm,hw)
     g = lsf.smooth1(d2V,t,f)
     p = panel()
     pf = p.addPixels(g)
-    pf.setClips(-fClip,fClip)
+    #pf.setClips(-fClip,fClip)
+    pf.setClips(-5.0,5.0)
     frame(p,"hv"+smstr(sm)+str(hw))
     if n1>400:
       p = panel()
-      p.setLimits(340,340,400,400)
-      p.setHInterval(20)
-      p.setVInterval(20)
+      p.setLimits(320,320,499,499)
+      p.setHInterval(50)
+      p.setVInterval(50)
       pf = p.addPixels(g)
-      pf.setClips(-fClip,fClip)
+      #pf.setClips(-fClip,fClip)
+      pf.setClips(-5.0,5.0)
       frame(p,"hvz"+smstr(sm)+str(hw))
 
 def goSemblanceV():
@@ -162,7 +196,8 @@ def goSemblanceV():
   hw2 = halfWidth2
   f = readImage(n1,n2,fileName)
   t = computeTensors(sigmaTensor,f)
-  for sm1 in [smBoxcar,smGaussian,smLaplacian]:
+  #for sm1 in [smBoxcar,smGaussian,smLaplacian]:
+  for sm1 in [smLaplacian]:
     sm2 = sm1
     lsf = LocalSemblanceFilter(sm1,hw1,sm2,hw2)
     s = lsf.semblance(d2V,t,f)
@@ -221,6 +256,7 @@ def makeTensorVectors(t):
   xu2 = Array.zerofloat(2,m1*m2)
   xv1 = Array.zerofloat(2,m1*m2)
   xv2 = Array.zerofloat(2,m1*m2)
+  e = Array.zerofloat(2)
   u = Array.zerofloat(2)
   v = Array.zerofloat(2)
   for l2 in range(m2):
@@ -230,16 +266,19 @@ def makeTensorVectors(t):
       i2 = j2+l2*k2
       t.getEigenvectorU(i1,i2,u)
       t.getEigenvectorV(i1,i2,v)
+      t.getEigenvalues(i1,i2,e)
+      eu,ev = e[0],e[1]
       u1,u2 = u[0],u[1]
       v1,v2 = v[0],v[1]
-      xu1[ll][0] = i1-u1*s1
-      xu2[ll][0] = i2-u2*s2
-      xu1[ll][1] = i1+u1*s1
-      xu2[ll][1] = i2+u2*s2
-      xv1[ll][0] = i1-v1*s1
-      xv2[ll][0] = i2-v2*s2
-      xv1[ll][1] = i1+v1*s1
-      xv2[ll][1] = i2+v2*s2
+      el = (eu-ev)/eu
+      xu1[ll][0] = i1-u1*s1*el
+      xu2[ll][0] = i2-u2*s2*el
+      xu1[ll][1] = i1+u1*s1*el
+      xu2[ll][1] = i2+u2*s2*el
+      xv1[ll][0] = i1-v1*s1*el
+      xv2[ll][0] = i2-v2*s2*el
+      xv1[ll][1] = i1+v1*s1*el
+      xv2[ll][1] = i2+v2*s2*el
   return xu1,xu2,xv1,xv2
 
 def smooth(x):
@@ -284,6 +323,10 @@ def panel():
   p.setColorBarWidthMinimum(plotWidthColorBar)
   p.setHInterval(100)
   p.setVInterval(100)
+  #p.setHLabel(hlabel)
+  #p.setVLabel(vlabel)
+  p.setHLabel(" ")
+  p.setVLabel(" ")
   return p
 
 def frame(panel,png=None):

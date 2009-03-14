@@ -42,6 +42,7 @@ fClip = 9
 def setTpd(): # Teapot Dome slice vertical
   global n1,n2,n3,k1,k2,k3,dataDir,dataPref,fScale
   global halfWidth,halfWidth1,halfWidth2,sigmaTensor
+  global plotWidth,plotHeight
   n1,n2,n3 = 251,161,357
   k1,k2,k3 = 183,62,138 # good slices
   #k1,k2,k3 = 183,73,138 # good slices
@@ -53,32 +54,33 @@ def setTpd(): # Teapot Dome slice vertical
   halfWidth1 = 1*halfWidth
   halfWidth2 = 4*halfWidth
   sigmaTensor = 8.0
-  setPlotWidthHeight()
+  plotWidth = 1040
+  plotHeight = 745
 
 def setAtw(): # Atwater channels slice horizontal
   global n1,n2,n3,k1,k2,k3,dataDir,dataPref,fScale
   global halfWidth,halfWidth1,halfWidth2,sigmaTensor
+  global plotWidth,plotHeight
   n1,n2,n3 = 129,500,500
+  k1,k2,k3 =  40,260,190 # good slices?
   dataDir = "/data/seis/atw/"
   dataPref = "atw"
   fScale = fClip/15000.0
-  halfWidth = 4
+  halfWidth = 2
   halfWidth1 = 1*halfWidth
   halfWidth2 = 1*halfWidth
+  #halfWidth2 = 4*halfWidth
   sigmaTensor = 12.0
-  setPlotWidthHeight()
+  plotWidth = 1040
+  plotHeight = 610
 
 def setPlotWidthHeight():
   global plotWidth,plotHeight
-  """
   plotWidth = 900
   plotHeight = 700
   #plotHeight = plotWidth*n1/n2
   plotWidth += plotWidthColorBarTotal
   plotHeight += plotTitleBarHeight
-  """
-  plotWidth = 1040
-  plotHeight = 745
 
 plotFontSize = 32
 #plotPngDir = "./png/"
@@ -92,13 +94,15 @@ prism = ColorMap.PRISM
 # functions
 
 def main(args):
-  #setAtw(); goAll()
-  setTpd(); goAll()
+  setAtw(); goAll()
+  #setTpd(); goAll()
   return
 
 def goAll():
   #goImage()
-  goSemblanceVW()
+  #goTensors()
+  #goSemblanceVW()
+  #goSemblanceW()
   #goSemblanceClassic()
   goPlot()
 
@@ -106,11 +110,17 @@ def goImage():
   f = readImage(n1,n2,n3,"f",fScale)
   plot3([f])
 
+def goTensors():
+  f = readImage(n1,n2,n3,"f",fScale)
+  lof = LocalOrientFilter(sigmaTensor)
+  d = lof.applyForTensors(f)
+  writeTensors(d,"st12")
+
 def goSemblanceVW():
   hw1 = halfWidth1
   hw2 = halfWidth2
   f = readImage(n1,n2,n3,"f",fScale)
-  t = readTensors("st8")
+  t = readTensors()
   #for sm1 in [smBoxcar,smGaussian,smLaplacian]:
   for sm1 in [smLaplacian]:
     sm2 = sm1
@@ -119,14 +129,28 @@ def goSemblanceVW():
     name = "svw"+smstr(sm1)+str(hw1)+"_"+str(hw2)
     writeImage(s,name)
     print "s min =",Array.min(s),"max =",Array.max(s)
-    #plot3([f,s])
+    plot3([f,s])
+
+def goSemblanceW():
+  hw1 = halfWidth1
+  hw2 = halfWidth2
+  f = readImage(n1,n2,n3,"f",fScale)
+  t = readTensors()
+  for sm1 in [smLaplacian]:
+    sm2 = sm1
+    lsf = LocalSemblanceFilter(sm1,hw1,sm2,hw2)
+    s = lsf.semblance(d3W,t,f)
+    name = "sw"+smstr(sm1)+str(hw1)+"_"+str(hw2)
+    writeImage(s,name)
+    print "s min =",Array.min(s),"max =",Array.max(s)
+    plot3([f,s])
 
 def goSemblanceClassic():
   pmax = 10.0
   hw1 = halfWidth1
   hw2 = halfWidth2
   f = readImage(n1,n2,n3,"f",fScale)
-  t = readTensors("st8")
+  t = readTensors()
   s = LocalSemblanceFilter.semblanceForSlopes(pmax,hw1,hw2,t,f)
   name = "ssc"+str(hw1)+"_"+str(hw2)
   writeImage(s,name)
@@ -134,13 +158,14 @@ def goSemblanceClassic():
   plot3([f,s])
 
 def goPlot():
-  for name in ["f","svwl2_8","svwb2_8","svwg2_8","ssc2_8"]:
+  #for name in ["f","svwl2_8","svwb2_8","svwg2_8","ssc2_8"]:
+  for name in ["f","svwl2_2","swl2_2"]:
     if name=="f":
       f = readImage(n1,n2,n3,name,fScale)
       plotp3(k1,k2,k3,f,-fClip,fClip,name)
     else:
-      f = readImage(n1,n2,n3,name)
-      plotp3(k1,k2,k3,f,0.0,1.0,name)
+      s = readImage(n1,n2,n3,name)
+      plotp3(k1,k2,k3,s,0.0,1.0,name)
 
 def computeTensors(sigma,f):
   f = readImage(n1,n2,n3,"f")
@@ -160,7 +185,8 @@ def writeImage(f,fileName):
   aos.writeFloats(f)
   aos.close()
  
-def readTensors(tensorsFile):
+def readTensors():
+  tensorsFile = "st"+str(int(sigmaTensor))
   fis = FileInputStream(dataDir+dataPref+tensorsFile+".dat")
   ois = PythonObjectInputStream(fis)
   tensors = ois.readObject()
@@ -210,9 +236,9 @@ def plotp3(k1,k2,k3,f,cmin,cmax,png=None):
   panel.setInterval1(100.0)
   panel.setInterval2(100.0)
   panel.setInterval3(100.0)
-  panel.setLabel1("time (samples)")
-  panel.setLabel2("inline (samples)")
-  panel.setLabel3("crossline (samples)")
+  panel.setLabel1("time")
+  panel.setLabel2("inline")
+  panel.setLabel3("crossline")
   panel.setColorBarWidthMinimum(plotWidthColorBar)
   panel.setClips(cmin,cmax)
   panel.setLineColor(Color.BLACK)
