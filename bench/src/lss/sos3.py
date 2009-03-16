@@ -43,9 +43,10 @@ def setTpd(): # Teapot Dome slice vertical
   global n1,n2,n3,k1,k2,k3,dataDir,dataPref,fScale
   global halfWidth,halfWidth1,halfWidth2,sigmaTensor
   global plotWidth,plotHeight
+  global plotWidth2,plotHeight2
   n1,n2,n3 = 251,161,357
-  k1,k2,k3 = 183,62,138 # good slices
-  #k1,k2,k3 = 183,73,138 # good slices
+  #k1,k2,k3 = 183,62,138 # good slices
+  k1,k2,k3 = 183,73,138 # good slices
   dataDir = "/data/seis/tp/"
   dataPref = "tp3"
   fScale = fClip/4.0
@@ -56,11 +57,14 @@ def setTpd(): # Teapot Dome slice vertical
   sigmaTensor = 8.0
   plotWidth = 1040
   plotHeight = 745
+  plotWidth = 1035
+  plotHeight = 670
 
 def setAtw(): # Atwater channels slice horizontal
   global n1,n2,n3,k1,k2,k3,dataDir,dataPref,fScale
   global halfWidth,halfWidth1,halfWidth2,sigmaTensor
   global plotWidth,plotHeight
+  global plotWidth2,plotHeight2
   n1,n2,n3 = 129,500,500
   k1,k2,k3 =  40,260,190 # good slices?
   dataDir = "/data/seis/atw/"
@@ -73,6 +77,8 @@ def setAtw(): # Atwater channels slice horizontal
   sigmaTensor = 12.0
   plotWidth = 1040
   plotHeight = 610
+  plotWidth2 = 1035
+  plotHeight2 = 900
 
 def setPlotWidthHeight():
   global plotWidth,plotHeight
@@ -83,8 +89,8 @@ def setPlotWidthHeight():
   plotHeight += plotTitleBarHeight
 
 plotFontSize = 32
-#plotPngDir = "./png/"
-plotPngDir = None
+plotPngDir = "./png/sos/"
+#plotPngDir = None
 
 gray = ColorMap.GRAY
 jet = ColorMap.JET
@@ -94,8 +100,8 @@ prism = ColorMap.PRISM
 # functions
 
 def main(args):
-  setAtw(); goAll()
-  #setTpd(); goAll()
+  #setAtw(); goAll()
+  setTpd(); goAll()
   return
 
 def goAll():
@@ -105,6 +111,19 @@ def goAll():
   #goSemblanceW()
   #goSemblanceClassic()
   goPlot()
+  #goPlot2()
+
+def goPlot2():
+  global plotWidth,plotHeight
+  plotWidth = 1035
+  plotHeight = 900
+  for name in ["svwl2_2","swl2_2"]:
+    s = readImage(n1,n2,n3,name)
+    s = slice1(40,s)
+    p = panel()
+    ps = p.addPixels(s)
+    ps.setClips(0.0,1.0)
+    frame(p,name)
 
 def goImage():
   f = readImage(n1,n2,n3,"f",fScale)
@@ -159,13 +178,17 @@ def goSemblanceClassic():
 
 def goPlot():
   #for name in ["f","svwl2_8","svwb2_8","svwg2_8","ssc2_8"]:
-  for name in ["f","svwl2_2","swl2_2"]:
+  #for name in ["f","svwl2_2","swl2_2"]:
+  for name in ["f","svwl2_8"]:
     if name=="f":
       f = readImage(n1,n2,n3,name,fScale)
       plotp3(k1,k2,k3,f,-fClip,fClip,name)
     else:
       s = readImage(n1,n2,n3,name)
       plotp3(k1,k2,k3,s,0.0,1.0,name)
+
+def slice1(k1,f):
+  return Array.reshape(n2,n3,Array.flatten(Array.copy(1,n2,n3,40,0,0,f)))
 
 def computeTensors(sigma,f):
   f = readImage(n1,n2,n3,"f")
@@ -244,6 +267,20 @@ def plotp3(k1,k2,k3,f,cmin,cmax,png=None):
   panel.setLineColor(Color.BLACK)
   return frame(panel,png)
 
+def panel():
+  p = PlotPanel(1,1,
+    PlotPanel.Orientation.X1DOWN_X2RIGHT,
+    PlotPanel.AxesPlacement.LEFT_TOP)
+  p.addColorBar()
+  p.setColorBarWidthMinimum(plotWidthColorBar)
+  p.setHInterval(100)
+  p.setVInterval(100)
+  #p.setHLabel(hlabel)
+  #p.setVLabel(vlabel)
+  p.setHLabel(" ")
+  p.setVLabel(" ")
+  return p
+
 def frame(panel,png=None):
   frame = PlotFrame(panel)
   frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE)
@@ -253,7 +290,6 @@ def frame(panel,png=None):
   if png and plotPngDir:
     frame.paintToPng(200,6,plotPngDir+dataPref+png+".png")
   return frame
-
 
 #############################################################################
 # Do everything on Swing thread.

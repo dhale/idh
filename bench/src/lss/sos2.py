@@ -86,17 +86,17 @@ prism = ColorMap.PRISM
 # functions
 
 def main(args):
-  setAtw(); goAll()
+  #setAtw(); goAll()
   setTpd(); goAll()
   return
 
 def goAll():
-  #goImage()
+  goImage()
   #goTensors()
   #goSmoothGV()
-  goSmoothHV()
-  #goSmoothGSV()
-  #goSemblanceV()
+  #goSmoothHV()
+  goSmoothGSV()
+  goSemblanceV()
   #goSemblanceClassic()
 
 def goImage():
@@ -313,20 +313,20 @@ def writeImage(f,fileName):
 # plot
 
 def panel():
-  #p = PlotPanel(1,1,
-  #  PlotPanel.Orientation.X1DOWN_X2RIGHT,
-  #  PlotPanel.AxesPlacement.NONE)
   p = PlotPanel(1,1,
     PlotPanel.Orientation.X1DOWN_X2RIGHT,
-    PlotPanel.AxesPlacement.LEFT_TOP)
+    PlotPanel.AxesPlacement.NONE)
+  #p = PlotPanel(1,1,
+  #  PlotPanel.Orientation.X1DOWN_X2RIGHT,
+  #  PlotPanel.AxesPlacement.LEFT_TOP)
   p.addColorBar()
   p.setColorBarWidthMinimum(plotWidthColorBar)
   p.setHInterval(100)
   p.setVInterval(100)
   #p.setHLabel(hlabel)
   #p.setVLabel(vlabel)
-  p.setHLabel(" ")
-  p.setVLabel(" ")
+  #p.setHLabel(" ")
+  #p.setVLabel(" ")
   return p
 
 def frame(panel,png=None):

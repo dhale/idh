@@ -22,19 +22,28 @@ nbhed=400 # number of bytes in binary header
 nthed=240 # number of bytes in trace header
 
 # input segy sampling
+"""
 n1i=1000 # number of time samples (1st dimension)
-d1i=0.006 # 0.006 s = 6 ms
+d1i=0.006 # 0.006 km = 6 m
 f1i=0.000 
 n2i=1600 # number of traces in 2nd dimension
 d2i=0.0125 # 0.0125 km = 12.5 m
 f2i=0.000
 k1=150 # index of first sample in windowed data
+"""
+n1i=1600 # number of time samples (1st dimension)
+d1i=0.004 # 0.004 km = 4 m
+f1i=0.000 
+n2i=2000 # number of traces in 2nd dimension
+d2i=0.010 # 0.010 km = 10 m
+f2i=0.000
 
 # output data sampling (omit water layer/bottom and sides)
+k1=200 # index of first sample in windowed data
 n1=n1i-k1
 d1=d1i
 f1=k1*d1
-k2=160
+k2=200 # index of first trace in windowed data
 n2=n2i-2*k2
 d2=d2i
 f2=k2*d2
@@ -42,12 +51,12 @@ print "n1 =",n1,"d1 =",d1," f1=",f1
 print "n2 =",n2,"d2 =",d2," f2=",f2
 
 sgyFiles = [
-  "Ref_Gold.segy", "Ref_Conv.segy", "Ref_SimSrc.segy",
-  "TLapse_Gold.segy", "TLapse_Conv.segy", "TLapse_SimSrc.segy"] 
+  "Ref_Conv.segy", "Ref_SimSrc.segy",
+  "Mon_Conv.segy", "Mon_SimSrc.segy"] 
 
 datFiles = [
-  "s0f.dat", "s1f.dat", "s2f.dat",
-  "s0g.dat", "s1g.dat", "s2g.dat"]
+  "s1f.dat", "s2f.dat",
+  "s1g.dat", "s2g.dat"]
 
 def main(args):
   #testFormat()
@@ -69,7 +78,7 @@ def plot(x):
   sp.setSize(756,791)
   sp.setFontSize(36)
   sp.setHLabel("distance (km)")
-  sp.setVLabel("time (s)")
+  sp.setVLabel("depth (km)")
   s1,s2 = Sampling(n1,d1,f1),Sampling(n2,d2,f2)
   pv = sp.addPixels(s1,s2,x)
   pv.setPercentiles(2.0,98.0)
