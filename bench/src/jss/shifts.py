@@ -16,8 +16,8 @@ from jss import *
 # parameters
 
 dataDir = "/data/seis/jss/"
-pngDir = "png/jss/"
-#pngDir = None
+#pngDir = "png/jss/"
+pngDir = None
 
 # samplings
 n1 = 1400; d1 = 0.004; f1 = 0.8
@@ -35,7 +35,8 @@ prefix = "s"+str(index)
 # local correlation filter
 lmax = 3
 lmin = -lmax
-lcfSigma = 12.0
+lcfSigma = 24.0
+lcfWhiten = 6.0
 lcfType = LocalCorrelationFilter.Type.SIMPLE
 lcfWindow = LocalCorrelationFilter.Window.GAUSSIAN
 lcf = LocalCorrelationFilter(lcfType,lcfWindow,lcfSigma)
@@ -60,10 +61,10 @@ def doPair(i):
   index = i
   prefix = "s"+str(index)
   f,g = doImages()
-  uv = doShiftsV(f,g)
   fw,gw = doWhiten(f,g)
-  u1,u2 = doShifts(fw,gw)
-  ax,az,px,pz = doShiftsAP(u1,u2)
+  #uza1 = measureShiftsV(f,g)
+  uxa,uza = measureShifts(fw,gw)
+  uxv,uzv,ux,uz = deriveShifts(uxa,uza)
 
 def doImages():
   f = readImage(prefix+"f")
@@ -84,7 +85,7 @@ def doWhiten(f,g):
   plot(gw,2.0,"gw")
   return fw,gw
 
-def doShifts(f,g):
+def measureShifts(f,g):
   u1 = Array.zerofloat(n1,n2)
   u2 = Array.zerofloat(n1,n2)
   du = Array.zerofloat(n1,n2)
@@ -97,33 +98,32 @@ def doShifts(f,g):
     sf.shift2(du,u1,u2,h)
   u1 = Array.mul(1000.0*d1,u1)
   u2 = Array.mul(1000.0*d2,u2)
-  plotu(u1,uclip,"uz")
-  plotu(u2,uclip,"ux")
-  return u1,u2
+  plotu(u2,uclip,"uxa")
+  plotu(u1,uclip,"uza")
+  return u2,u1
 
-def doShiftsV(f,g):
-  uv = Array.zerofloat(n1,n2)
+def measureShiftsV(f,g):
+  u1 = Array.zerofloat(n1,n2)
   sf = LocalShiftFinder(lcfSigma)
-  sf.find1(lmin,lmax,f,g,uv)
-  uv = Array.mul(1000.0*d1,uv)
-  plotu(uv,uclip,"u1")
-  return uv
+  sf.find1(lmin,lmax,f,g,u1)
+  u1 = Array.mul(1000.0*d1,u1)
+  plotu(u1,uclip,"uza1")
+  return u1
 
-def doShiftsAP(u1,u2):
-  uz,ux = u1,u2 # u1 and u2 are in m
-  dz,dx = 1000.0*d1,1000.0*d2 # so convert d1 and d2 to m
+def deriveShifts(uxa,uza):
+  dz,dx = 1000.0*d1,1000.0*d2 # convert d1 and d2 to m
   nz,nx = n1,n2
   r = 5.0
-  vx = Array.zerofloat(nz,nx)
-  vz = Array.zerofloat(nz,nx)
-  px = Array.zerofloat(nz,nx)
-  pz = Array.zerofloat(nz,nx)
-  Shifts.shifts(r,dx,dz,ux,uz,vx,vz,px,pz)
-  plotu(vx,uclip,"vx")
-  plotu(vz,uclip,"vz")
-  plotu(px,0.5*uclip,"px")
-  plotu(pz,0.5*uclip,"pz")
-  return vx,vz,px,pz
+  uxv = Array.zerofloat(nz,nx)
+  uzv = Array.zerofloat(nz,nx)
+  ux = Array.zerofloat(nz,nx)
+  uz = Array.zerofloat(nz,nx)
+  Shifts.shifts(r,dx,dz,uxa,uza,uxv,uzv,ux,uz)
+  plotu(uxv,uclip,"uxv")
+  plotu(uzv,uclip,"uzv")
+  plotu(ux,0.5*uclip,"ux")
+  plotu(uz,0.5*uclip,"uz")
+  return uxv,uzv,ux,uz
 
 def readImage(fileName):
   fileName = dataDir+fileName+".dat"
