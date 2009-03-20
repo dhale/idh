@@ -16,8 +16,8 @@ from jss import *
 # parameters
 
 dataDir = "/data/seis/jss/"
-#pngDir = "png/jss/"
-pngDir = None
+pngDir = "png/jss/"
+#pngDir = None
 
 # samplings
 n1 = 1400; d1 = 0.004; f1 = 0.8
@@ -35,11 +35,11 @@ prefix = "s"+str(index)
 # local correlation filter
 lmax = 3
 lmin = -lmax
-lcfSigma = 24.0
+lcfSigma1 = 12.0
+lcfSigma2 = 36.0
 lcfWhiten = 6.0
 lcfType = LocalCorrelationFilter.Type.SIMPLE
 lcfWindow = LocalCorrelationFilter.Window.GAUSSIAN
-lcf = LocalCorrelationFilter(lcfType,lcfWindow,lcfSigma)
 
 # Clip for shifts
 uclip = 7.0
@@ -48,12 +48,12 @@ uclip = 7.0
 # functions
 
 def main(args):
-  doPair(1)
-  #doAllPairs()
+  #doPair(1)
+  doAllPairs()
   return
 
 def doAllPairs():
-  for i in [1,2]:
+  for i in [1,2,3]:
     doPair(i)
 
 def doPair(i):
@@ -62,9 +62,10 @@ def doPair(i):
   prefix = "s"+str(index)
   f,g = doImages()
   fw,gw = doWhiten(f,g)
-  #uza1 = measureShiftsV(f,g)
+  uza1 = measureShiftsV(f,g)
   uxa,uza = measureShifts(fw,gw)
-  uxv,uzv,ux,uz = deriveShifts(uxa,uza)
+  if i==1:
+    uxv,uzv,ux,uz = deriveShifts(uxa,uza)
 
 def doImages():
   f = readImage(prefix+"f")
@@ -90,7 +91,7 @@ def measureShifts(f,g):
   u2 = Array.zerofloat(n1,n2)
   du = Array.zerofloat(n1,n2)
   h = Array.copy(g)
-  sf = LocalShiftFinder(lcfSigma)
+  sf = LocalShiftFinder(lcfSigma1,lcfSigma2)
   for iter in range(3):
     sf.find1(lmin,lmax,f,h,du)
     sf.shift1(du,u1,u2,h)
@@ -104,7 +105,7 @@ def measureShifts(f,g):
 
 def measureShiftsV(f,g):
   u1 = Array.zerofloat(n1,n2)
-  sf = LocalShiftFinder(lcfSigma)
+  sf = LocalShiftFinder(lcfSigma1,lcfSigma2)
   sf.find1(lmin,lmax,f,g,u1)
   u1 = Array.mul(1000.0*d1,u1)
   plotu(u1,uclip,"uza1")
@@ -135,7 +136,7 @@ def readImage(fileName):
 
 def whiten(f):
   fw = Array.zerofloat(n1,n2)
-  sf = LocalShiftFinder(lcfSigma)
+  sf = LocalShiftFinder(lcfWhiten)
   sf.whiten(1.0,f,fw)
   return fw
 
@@ -189,6 +190,7 @@ def frame(panel,png=None):
   frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE)
   frame.setFontSize(36)
   frame.setSize(1100,770)
+  #frame.setSize(2200,1540)
   frame.setVisible(True)
   if png and pngDir:
     frame.paintToPng(300,6,pngDir+prefix+png+".png")
