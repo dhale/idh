@@ -16,8 +16,8 @@ from jss import *
 # parameters
 
 dataDir = "/data/seis/jss/"
-pngDir = "png/jss/"
-#pngDir = None
+#pngDir = "png/jss/"
+pngDir = None
 
 # samplings
 n1 = 1400; d1 = 0.004; f1 = 0.8
@@ -36,7 +36,7 @@ prefix = "s"+str(index)
 lmax = 3
 lmin = -lmax
 lcfSigma1 = 12.0
-lcfSigma2 = 36.0
+lcfSigma2 = 12.0 # make this 36.0 to reduce vertical stripes in uxv
 lcfWhiten = 6.0
 lcfType = LocalCorrelationFilter.Type.SIMPLE
 lcfWindow = LocalCorrelationFilter.Window.GAUSSIAN
@@ -48,8 +48,8 @@ uclip = 7.0
 # functions
 
 def main(args):
-  #doPair(1)
-  doAllPairs()
+  doPair(1)
+  #doAllPairs()
   return
 
 def doAllPairs():
@@ -66,6 +66,7 @@ def doPair(i):
   uxa,uza = measureShifts(fw,gw)
   if i==1:
     uxv,uzv,ux,uz = deriveShifts(uxa,uza)
+    writeImage(uz,prefix+"uz")
 
 def doImages():
   f = readImage(prefix+"f")
@@ -133,6 +134,12 @@ def readImage(fileName):
   ais.readFloats(f)
   ais.close()
   return f
+
+def writeImage(f,fileName):
+  outfile = dataDir+fileName+".dat"
+  aos = ArrayOutputStream(outfile)
+  aos.writeFloats(f)
+  aos.close()
 
 def whiten(f):
   fw = Array.zerofloat(n1,n2)

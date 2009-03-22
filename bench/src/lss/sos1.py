@@ -24,7 +24,7 @@ smLaplacian = LocalSemblanceFilter.Smoothing.LAPLACIAN
 
 plotWidth = 800
 plotHeight = 600
-plotFontSize = 32
+plotFontSize = 28
 plotPngDir = "./png/"
 #plotPngDir = None
 
@@ -72,7 +72,8 @@ def plotSequences(fs,png=None):
   s1 = Sampling(n1,1.0,-(n1-1)/2.0)
   cs = [Color.BLUE,Color.RED,Color.BLACK]
   p = panel()
-  p.setHLabel("sample index")
+  #p.setHLabel("sample index")
+  p.setHLabel(" ")
   p.setHInterval(10.0)
   for i in range(nf):
     sv = p.addSequence(s1,fs[i])
@@ -88,7 +89,8 @@ def plotSequencesX(fs,png=None):
         PointsView.Mark.FILLED_CIRCLE,
         PointsView.Mark.FILLED_CIRCLE]
   p = panel()
-  p.setHLabel("sample index")
+  #p.setHLabel("sample index")
+  p.setHLabel(" ")
   for i in range(nf):
     pv = p.addPoints(s1,fs[i])
     pv.setMarkColor(cs[i])
@@ -107,7 +109,8 @@ def plotSpectra(fs,png=None):
   p = panel()
   p.setHLimits(0.0,0.1)
   p.setVLimits(0.0,1.0)
-  p.setHLabel("frequency (cycles/sample)")
+  #p.setHLabel("frequency (cycles/sample)")
+  p.setHLabel(" ")
   for i in range(ns):
     pv = p.addPoints(sk,fs[i])
     pv.setLineWidth(5)
