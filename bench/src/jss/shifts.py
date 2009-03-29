@@ -16,8 +16,8 @@ from jss import *
 # parameters
 
 dataDir = "/data/seis/jss/"
-#pngDir = "png/jss/"
-pngDir = None
+pngDir = "png/jss/"
+#pngDir = None
 
 # samplings
 n1 = 1400; d1 = 0.004; f1 = 0.8
@@ -30,7 +30,8 @@ index = 1
 prefix = "s"+str(index)
 
 # scale factors for different pairs of images (make them easier to compare)
-#scales = [1.00,6.00,2.73]
+#scales = [5.00,1.00,6.00,2.73]
+scales = [5.00,1.00,1.00,1.00]
 
 # local correlation filter
 lmax = 3
@@ -48,13 +49,9 @@ uclip = 7.0
 # functions
 
 def main(args):
-  doPair(1)
-  #doAllPairs()
-  return
-
-def doAllPairs():
-  for i in [1,2,3]:
+  for i in [0,1]:
     doPair(i)
+  return
 
 def doPair(i):
   global index,prefix
@@ -64,13 +61,14 @@ def doPair(i):
   fw,gw = doWhiten(f,g)
   uza1 = measureShiftsV(f,g)
   uxa,uza = measureShifts(fw,gw)
-  if i==1:
+  if i==0 or i==1:
     uxv,uzv,ux,uz = deriveShifts(uxa,uza)
     writeImage(uz,prefix+"uz")
 
 def doImages():
   f = readImage(prefix+"f")
   g = readImage(prefix+"g")
+  f,g, = doScale(f,g)
   plot(f,20.0,"f")
   plot(g,20.0,"g")
   return f,g

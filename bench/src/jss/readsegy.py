@@ -51,12 +51,14 @@ print "n1 =",n1,"d1 =",d1," f1=",f1
 print "n2 =",n2,"d2 =",d2," f2=",f2
 
 sgyFiles = [
-  "Ref_Conv.segy", "Ref_SimSrc.segy", "Ref_SimSrc.segy",
-  "Mon_Conv.segy", "Mon_SimSrc.segy", "Mon_SimSrcRefDith.segy"] 
+  "Ref_ConvNearOffset.segy", "Ref_Conv.segy", 
+  "Ref_SimSrc.segy", "Ref_SimSrc.segy",
+  "Mon_ConvNearOffset.segy", "Mon_Conv.segy", 
+  "Mon_SimSrc.segy", "Mon_SimSrcRefDith.segy"] 
 
 datFiles = [
-  "s1f.dat", "s2f.dat", "s3f.dat",
-  "s1g.dat", "s2g.dat", "s3g.dat"]
+  "s0f.dat", "s1f.dat", "s2f.dat", "s3f.dat",
+  "s0g.dat", "s1g.dat", "s2g.dat", "s3g.dat"]
 
 def main(args):
   #testFormat()
