@@ -75,6 +75,10 @@ public class SambridgeError {
     74.2031700f,73.5038100f,73.2791300f,74.1930850f,73.3907f};
   private static final float XBAD = 0.57742673f;
   private static final float YBAD = 0.44822684f;
+  private static final float XGOOD = 0.56f;
+  private static final float YGOOD = 0.41f;
+  private static final float XNODE = XGOOD;
+  private static final float YNODE = YGOOD;
   private static final float XMIN = 0.41f;
   private static final float XMAX = 0.61f;
   private static final float YMIN = 0.32f;
@@ -151,8 +155,8 @@ public class SambridgeError {
     double dx = (XMAX-XMIN)/(nx-1);
     double dy = (YMAX-YMIN)/(ny-1);
     double fx,fy;
-    for (fx=XBAD; fx>=XMIN+dx; fx-=dx);
-    for (fy=YBAD; fy>=YMIN+dy; fy-=dy);
+    for (fx=XNODE; fx>=XMIN+dx; fx-=dx);
+    for (fy=YNODE; fy>=YMIN+dy; fy-=dy);
     Sampling sx = new Sampling(nx,dx,fx);
     Sampling sy = new Sampling(ny,dy,fy);
     return new Sampling[]{sx,sy};
@@ -160,7 +164,7 @@ public class SambridgeError {
 
   private static TriMesh makeMesh(
     float[] x, float[] y, float[] z, Sampling sx, Sampling sy, 
-    boolean extrap, boolean withBad)
+    boolean extrap, boolean withNode)
   {
     int n = x.length;
     int nx = sx.getCount();
@@ -187,10 +191,17 @@ public class SambridgeError {
         }
       }
     }
-    if (withBad) {
-      TriMesh.Node node = new TriMesh.Node(XBAD,YBAD);
+    if (withNode) {
+      float xnode = XNODE, ynode = YNODE;
+      System.out.println("node at x="+xnode+" y="+ynode);
+      TriMesh.Node node = new TriMesh.Node(xnode,ynode);
       mesh.addNode(node);
-      zmap.put(node,new Float(z(XBAD,YBAD)));
+      zmap.put(node,new Float(z(xnode,ynode)));
+      TriMesh.Tri[] tris = mesh.getTriNabors(node);
+      for (int itri=0; itri<tris.length; ++itri) {
+        double[] c = tris[itri].centerCircle();
+        System.out.println("center x="+c[0]+" y="+c[1]);
+      }
     }
     return mesh;
   }
@@ -201,7 +212,7 @@ public class SambridgeError {
     int nx = sx.getCount();
     int ny = sy.getCount();
     float[][] zi = new float[ny][nx];
-    TriMesh mesh = makeMesh(x,y,z,sx,sy,true,false);
+    TriMesh mesh = makeMesh(x,y,z,sx,sy,false,false);
     TriMesh.NodePropertyMap zmap = mesh.getNodePropertyMap("z");
     float znull = 0.5f*(Array.min(z)+Array.max(z));
     for (int iy=0; iy<ny; ++iy) {
@@ -221,7 +232,7 @@ public class SambridgeError {
   private static void plotMesh(
     float[] x, float[] y, float[] z,
     Sampling sx, Sampling sy, 
-    boolean nodes, boolean tris, boolean polys, boolean withBad,
+    boolean nodes, boolean tris, boolean polys, boolean withNode,
     String title, String png) 
   {
     SimplePlot sp = new SimplePlot();
@@ -231,7 +242,7 @@ public class SambridgeError {
     sp.setVLabel("y");
     PlotPanel pp = sp.getPlotPanel();
     pp.setLimits(XMIN,YMIN,XMAX,YMAX);
-    if (withBad) {
+    if (withNode) {
       TriMesh mesh = makeMesh(x,y,z,sx,sy,false,true);
       TriMeshView tv = new TriMeshView(mesh);
       tv.setNodesVisible(nodes);
@@ -387,8 +398,8 @@ public class SambridgeError {
     plotMesh(x,y,z,sx,sy,true,false,true,true,"Voronoi polygons","vp");
     float[][] z1 = interpolate(1,x,y,z,sx,sy);
     float[][] z2 = interpolate(2,x,y,z,sx,sy);
-    plot3d(x,y,z,sx,sy,z1);
-    plot3d(x,y,z,sx,sy,z2);
+    //plot3d(x,y,z,sx,sy,z1);
+    //plot3d(x,y,z,sx,sy,z2);
   }
 
   private static void showRoundingError() {
@@ -427,7 +438,7 @@ public class SambridgeError {
     SwingUtilities.invokeLater(new Runnable() {
       public void run() {
         interpolate();
-        showRoundingError();
+        //showRoundingError();
       }
     });
   }
