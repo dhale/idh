@@ -426,7 +426,7 @@ public class SambridgeError {
   public static void main(String[] args) {
     SwingUtilities.invokeLater(new Runnable() {
       public void run() {
-        //interpolate();
+        interpolate();
         showRoundingError();
       }
     });
