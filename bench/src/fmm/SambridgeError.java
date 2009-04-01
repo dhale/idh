@@ -77,8 +77,8 @@ public class SambridgeError {
   private static final float YBAD = 0.44822684f;
   private static final float XGOOD = 0.56f;
   private static final float YGOOD = 0.41f;
-  private static final float XNODE = XGOOD;
-  private static final float YNODE = YGOOD;
+  private static final float XNODE = XBAD;
+  private static final float YNODE = YBAD;
   private static final float XMIN = 0.41f;
   private static final float XMAX = 0.61f;
   private static final float YMIN = 0.32f;
@@ -212,7 +212,7 @@ public class SambridgeError {
     int nx = sx.getCount();
     int ny = sy.getCount();
     float[][] zi = new float[ny][nx];
-    TriMesh mesh = makeMesh(x,y,z,sx,sy,false,false);
+    TriMesh mesh = makeMesh(x,y,z,sx,sy,true,false);
     TriMesh.NodePropertyMap zmap = mesh.getNodePropertyMap("z");
     float znull = 0.5f*(Array.min(z)+Array.max(z));
     for (int iy=0; iy<ny; ++iy) {
@@ -398,8 +398,8 @@ public class SambridgeError {
     plotMesh(x,y,z,sx,sy,true,false,true,true,"Voronoi polygons","vp");
     float[][] z1 = interpolate(1,x,y,z,sx,sy);
     float[][] z2 = interpolate(2,x,y,z,sx,sy);
-    //plot3d(x,y,z,sx,sy,z1);
-    //plot3d(x,y,z,sx,sy,z2);
+    plot3d(x,y,z,sx,sy,z1);
+    plot3d(x,y,z,sx,sy,z2);
   }
 
   private static void showRoundingError() {
