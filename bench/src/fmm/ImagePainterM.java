@@ -62,6 +62,7 @@ public class ImagePainterM {
     _tensorsView = new PointsView(x1,x2);
     _tensorsView.setOrientation(PointsView.Orientation.X1DOWN_X2RIGHT);
     _tensorsView.setLineColor(Color.YELLOW);
+    _tensorsView.setLineWidth(2.0f);
 
     // Color map.
     _colorMap = _paintView.getColorMap();
