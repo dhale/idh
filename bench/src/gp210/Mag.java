@@ -1,6 +1,7 @@
 package gp210;
 
 import java.awt.*;
+import java.awt.image.*;
 import java.io.*;
 import java.util.*;
 import javax.swing.SwingUtilities;
@@ -107,8 +108,8 @@ public class Mag {
     float ymax = Array.max(y);
     double fx = xmin;
     double fy = ymin;
-    double dx = 0.5;
-    //double dx = 0.2;
+    //double dx = 0.5;
+    double dx = 0.2;
     //double dx = 0.1;
     //double dx = 0.05; // makes discrete Sibson really slow!
     double dy = dx;
@@ -119,6 +120,21 @@ public class Mag {
     Sampling sx = new Sampling(nx,dx,fx);
     Sampling sy = new Sampling(ny,dy,fy);
     return new Sampling[]{sx,sy};
+  }
+
+  private static float[][] interpolateSample(
+    float[] x, float[] y, float[] z, Sampling sx, Sampling sy)
+  {
+    int n = x.length;
+    int nx = sx.getCount();
+    int ny = sy.getCount();
+    float[][] zi = Array.fillfloat(-1.0f,nx,ny);
+    for (int i=0; i<n; ++i) {
+      int ix = sx.indexOfNearest(x[i]);
+      int iy = sy.indexOfNearest(y[i]);
+      zi[iy][ix] = z[i];
+    }
+    return zi;
   }
 
   private static float[][] interpolateSimple(
@@ -195,7 +211,19 @@ public class Mag {
       if (mesh.addNode(node))
         zmap.put(node,new Float(z[i]));
     }
-    float znull = 0.0f; // values assigned to points outside convex hull
+    float[] xs = {Array.min(x),Array.max(x)};
+    float[] ys = {Array.min(y),Array.max(y)};
+    for (int is=0; is<2; ++is) {
+      for (int js=0; js<2; ++js) {
+        float xi = xs[is];
+        float yi = ys[js];
+        TriMesh.Node near = mesh.findNodeNearest(xi,yi);
+        TriMesh.Node node = new TriMesh.Node(xi,yi);
+        if (mesh.addNode(node))
+          zmap.put(node,(Float)zmap.get(near));
+      }
+    }
+    float znull = -1.0f; // values assigned to points outside convex hull
     for (int iy=0; iy<ny; ++iy) {
       float yi = (float)sy.getValue(iy);
       for (int ix=0; ix<nx; ++ix) {
@@ -212,20 +240,48 @@ public class Mag {
     String title, String png) 
   {
     SimplePlot sp = new SimplePlot();
-    sp.setSize(1065,645);
+    //sp.setSize(1065,645);
+    sp.setSize(1057,630);
+    sp.setFontSize(36);
     sp.setTitle(title);
-    sp.setHLabel("x (m)");
-    sp.setVLabel("y (m)");
+    sp.setHLabel("Easting (m)");
+    sp.setVLabel("Northing (m)");
     sp.addColorBar();
     sp.getPlotPanel().setColorBarWidthMinimum(100);
-    PixelsView iv = sp.addPixels(sx,sy,sz);
-    iv.setInterpolation(PixelsView.Interpolation.LINEAR);
-    iv.setColorModel(ColorMap.JET);
+    sp.setHLimits(sx.getFirst(),sx.getLast());
+    sp.setVLimits(sy.getFirst(),sy.getLast());
+    if (sz!=null) {
+      PixelsView iv = sp.addPixels(sx,sy,sz);
+      iv.setInterpolation(PixelsView.Interpolation.NEAREST);
+      iv.setColorModel(makeColorModel());
+      iv.setClips(-1.0f,125f);
+    }
+    if (x!=null && y!=null) {
+      PointsView dv = sp.addPoints(x,y);
+      dv.setLineStyle(PointsView.Line.NONE);
+      dv.setMarkStyle(PointsView.Mark.FILLED_CIRCLE);
+      dv.setMarkSize(2.0f);
+    }
     sp.paintToPng(300,6,png+".png");
-    PointsView dv = sp.addPoints(x,y);
-    dv.setLineStyle(PointsView.Line.NONE);
-    dv.setMarkStyle(PointsView.Mark.FILLED_CIRCLE);
-    dv.setMarkSize(2.0f);
+  }
+
+  private static IndexColorModel makeColorModel() {
+    IndexColorModel icm = ColorMap.JET;
+    int n = 256;
+    byte[] r = new byte[n];
+    byte[] g = new byte[n];
+    byte[] b = new byte[n];
+    byte[] a = new byte[n];
+    icm.getReds(r);
+    icm.getGreens(g);
+    icm.getBlues(b);
+    icm.getAlphas(a);
+    r[0] = (byte)255;
+    g[0] = (byte)255;
+    b[0] = (byte)255;
+    a[0] = (byte)0;
+    icm = new IndexColorModel(8,n,r,g,b,a);
+    return icm;
   }
 
   private static void plot3d(
@@ -287,6 +343,16 @@ public class Mag {
     return tg;
   }
 
+  private static float[][] mask(float maskValue, float[][] m, float[][] x) {
+    int n1 = x[0].length;
+    int n2 = x.length;
+    float[][] y = new float[n2][n1];
+    for (int i2=0; i2<n2; ++i2) 
+      for (int i1=0; i1<n1; ++i1) 
+        y[i2][i1] = (m[i2][i1]==maskValue)?maskValue:x[i2][i1];
+    return y;
+  }
+
   private static void interpolate() {
     float[][] data = readData();
     float[] x = data[0], y = data[1], z = data[2], g = data[3];
@@ -294,26 +360,31 @@ public class Mag {
     Sampling[] s = makeSamplings(x,y);
     Sampling sx = s[0], sy = s[1];
 
+    float[][] z0 = interpolateSample(x,y,z,sx,sy);
     //float[][] z1 = interpolateSimple(x,y,z,sx,sy);
     float[][] z2 = interpolateSibson(x,y,z,sx,sy);
+    //z1 = mask(-1.0f,z2,z1);
     //float[][] z3 = interpolateNearest(x,y,z,sx,sy);
-    float[][] z4 = interpolateDiscreteSibson(x,y,z,sx,sy);
-    //plot(x,y,z,sx,sy,z1,"Simple elevation (cm)","elev1");
-    plot(x,y,z,sx,sy,z2,"Sibson elevation (cm)","elev2");
-    //plot(x,y,z,sx,sy,z3,"Nearest elevation (cm)","elev3");
-    plot(x,y,z,sx,sy,z4,"Discrete Sibson elevation (cm)","elev4");
+    //float[][] z4 = interpolateDiscreteSibson(x,y,z,sx,sy);
+    //plot(null,y,z,sx,sy,z0,"Elevation (cm)","elevm");
+    //plot(null,y,z,sx,sy,z1,"Elevation (cm)","elevs");
+    //plot(null,y,z,sx,sy,z2,"Natural neighbor elevation (cm)","elev2a");
+    //plot(x,y,z,sx,sy,z2,"Elevation (cm)","elevi");
+    //plot(null,y,z,sx,sy,z2,"Elevation (cm)","elevmi");
+    //plot(x,y,z,sx,sy,z3,"Nearest neighbor elevation (cm)","elev3");
+    //plot(null,y,z,sx,sy,z4,"Discrete Sibson elevation (cm)","elev4");
 
     //float[][] g1 = interpolateSimple(x,y,g,sx,sy);
-    float[][] g2 = interpolateSibson(x,y,g,sx,sy);
+    //float[][] g2 = interpolateSibson(x,y,g,sx,sy);
     //float[][] g3 = interpolateNearest(x,y,g,sx,sy);
     //float[][] g4 = interpolateDiscreteSibson(x,y,g,sx,sy);
     //plot(x,y,g,sx,sy,g1,"Simple magnetic gradient","grad1");
-    plot(x,y,g,sx,sy,g2,"Sibson magnetic gradient","grad2");
+    //plot(x,y,g,sx,sy,g2,"Sibson magnetic gradient","grad2");
     //plot(x,y,g,sx,sy,g3,"Nearest magnetic gradient","grad3");
     //plot(x,y,g,sx,sy,g4,"Discrete Sibson magnetic gradient","grad4");
 
     //plot3d(x,y,z,sx,sy,z1);
-    //plot3d(x,y,z,sx,sy,z2);
+    plot3d(x,y,z,sx,sy,z2);
   }
 
   public static void main(String[] args) {

@@ -202,6 +202,64 @@ public class Data {
     return zi;
   }
 
+  private static float[][] interpolateBiLaplace(
+    float[] x, float[] y, float[] z, Sampling sx, Sampling sy)
+  {
+    int nx = sx.getCount();
+    int ny = sy.getCount();
+    int nxm = nx-1;
+    int nym = ny-1;
+    boolean[][] k = new boolean[ny][nx];
+    float[][] q = new float[ny][nx];
+    int n = x.length;
+    for (int i=0; i<n; ++i) {
+      int ix = sx.indexOfNearest(x[i]);
+      int iy = sy.indexOfNearest(y[i]);
+      k[iy][ix] = true;
+      q[iy][ix] = z[i];
+    }
+    float a =  8.0f/20.0f;
+    float b = -2.0f/20.0f;
+    float c = -1.0f/20.0f;
+    float zmax = Array.max(z);
+    float zmin = Array.min(z);
+    float dpeps = 0.000001f*(zmax-zmin);
+    float dseps = dpeps*dpeps;
+    float dsmax = Float.MAX_VALUE;
+    int maxiter = 100000;
+    System.out.println("BiLaplace: maxiter="+maxiter+" dseps="+dseps);
+    for (int niter=0; niter<maxiter && dsmax>dseps; ++niter) {
+      if (niter%100==0)
+        System.out.println("BiLaplace: niter="+niter+" dsmax="+dsmax);
+      dsmax = 0.0f;
+      for (int iy=0; iy<ny; ++iy) {
+        int iym = (iy==0  )?iy:iy-1;
+        int iyp = (iy==nym)?iy:iy+1;
+        int iymm = (iym==0  )?iym:iym-1;
+        int iypp = (iyp==nym)?iyp:iyp+1;
+        for (int ix=0; ix<nx; ++ix) {
+          int ixm = (ix==0  )?ix:ix-1;
+          int ixp = (ix==nxm)?ix:ix+1;
+          int ixmm = (ixm==0  )?ixm:ixm-1;
+          int ixpp = (ixp==nxm)?ixp:ixp+1;
+          if (!k[iy][ix]) {
+            float aq = a*(q[iy ][ixm]+q[iy ][ixp]+q[iym][ix ]+q[iyp][ix ]);
+            float bq = b*(q[iym][ixm]+q[iym][ixp]+q[iyp][ixm]+q[iyp][ixp]);
+            float cq = c*(q[iy][ixmm]+q[iy][ixpp]+q[iymm][ix]+q[iypp][ix]);
+            float qn = aq+bq+cq;
+            float qc = q[iy][ix];
+            float dq = qn-qc;
+            float ds = dq*dq;
+            if (ds>dsmax) 
+              dsmax = ds;
+            q[iy][ix] = qn;
+          }
+        }
+      }
+    }
+    return q;
+  }
+
   private static void plotMesh(
     float[] x, float[] y, float[] z,
     Sampling sx, Sampling sy, 
@@ -335,19 +393,23 @@ public class Data {
     //float[][] z1 = interpolateSimple(x,y,z,sx,sy);
     //float[][] z2 = interpolatePlanar(x,y,z,sx,sy);
     //float[][] z3 = interpolateNearest(x,y,z,sx,sy);
-    float[][] z4 = interpolateNatural(x,y,z,sx,sy);
+    //float[][] z4 = interpolateNatural(x,y,z,sx,sy);
+    float[][] z5 = interpolateBiLaplace(x,y,z,sx,sy);
     //plot(x,y,z,sx,sy,z1,"Distance weighted","dw");
     //plot(x,y,z,sx,sy,z2,"Planar triangles","pt");
     //plot(x,y,z,sx,sy,z3,"Nearest neighbor","ne");
-    plot(x,y,z,sx,sy,z4,"Natural neighbor","na");
+    //plot(x,y,z,sx,sy,z4,"Natural neighbor","na");
+    plot(x,y,z,sx,sy,z5,"Biharmonic","bh");
     //plot3d(x,y,z,sx,sy,z1);
     //plot3d(x,y,z,sx,sy,z2);
     //plot3d(x,y,z,sx,sy,z3);
     //plot3d(x,y,z,sx,sy,z4);
+    plot3d(x,y,z,sx,sy,z5);
   }
 
   //public static final String DATA_NAME = "data1";
-  public static final String DATA_NAME = "data2";
+  //public static final String DATA_NAME = "data2";
+  public static final String DATA_NAME = "data3";
   public static final int PLOT_HEIGHT = 785;
   public static final int PLOT_WIDTH = 875;
   public static final int PLOT_MESH_WIDTH = PLOT_WIDTH-132;

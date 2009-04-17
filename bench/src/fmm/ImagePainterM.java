@@ -28,16 +28,23 @@ import static edu.mines.jtk.util.MathPlus.*;
  */
 public class ImagePainterM {
 
-  public ImagePainterM(int width, int height, float[][] image) {
+  public ImagePainterM(int width, int height, 
+    float alpha, float beta, float gamma,
+    float[][] image)
+  {
     _n1 = image[0].length;
     _n2 = image.length;
     _image = image;
+    _alpha = alpha;
+    _beta = beta;
+    _gamma = gamma;
     _pt = new PaintTensors(SIGMA,1.0f,1.0f,1.0f,_image);
+    _pt = new PaintTensors(SIGMA,alpha,beta,gamma,_image);
     _painting = new PaintingM(_n1,_n2,_pt);
     _painting.setDefaultValue(0.0f);
 
-    int fontSize = 24;
-    int widthColorBar = 80;
+    int fontSize = 36;
+    int widthColorBar = 110;
 
     // Plot panel.
     PlotPanel.Orientation ppo = PlotPanel.Orientation.X1DOWN_X2RIGHT;
@@ -97,6 +104,7 @@ public class ImagePainterM {
   private static float SIGMA = 3.0f;
 
   private int _n1,_n2;
+  private float _alpha,_beta,_gamma;
   private float[][] _image;
   private float _valueMin,_valueMax;
   private PaintingM _painting;
@@ -127,7 +135,7 @@ public class ImagePainterM {
     r[0] = (byte)255;
     g[0] = (byte)255;
     b[0] = (byte)255;
-    a[0] = 0;
+    a[0] = (alpha==1.0f)?(byte)255:(byte)0;
     icm = new IndexColorModel(8,n,r,g,b,a);
     _paintView.setColorModel(icm);
   }
@@ -331,34 +339,18 @@ public class ImagePainterM {
           updatePaintTensors(0.0f,0.0f,0.0f);
         }
       });
-    JMenuItem linearItem = new JRadioButtonMenuItem(
-      new AbstractAction("Linear") {
+    JMenuItem anisotropicItem = new JRadioButtonMenuItem(
+      new AbstractAction("Anisotropic") {
         public void actionPerformed(ActionEvent e) {
-          updatePaintTensors(0.0f,100.0f,1.0f);
-        }
-      });
-    JMenuItem layersItem = new JRadioButtonMenuItem(
-      new AbstractAction("Layers") {
-        public void actionPerformed(ActionEvent e) {
-          updatePaintTensors(1.0f,1.0f,1.0f);
-        }
-      });
-    JMenuItem interfacesItem = new JRadioButtonMenuItem(
-      new AbstractAction("Interfaces") {
-        public void actionPerformed(ActionEvent e) {
-          updatePaintTensors(0.0f,1.0f,1.0f);
+          updatePaintTensors(_alpha,_beta,_gamma);
         }
       });
     structureMenu.add(isotropicItem);
-    structureMenu.add(linearItem);
-    structureMenu.add(layersItem);
-    structureMenu.add(interfacesItem);
+    structureMenu.add(anisotropicItem);
     ButtonGroup structureGroup = new ButtonGroup();
     structureGroup.add(isotropicItem);
-    structureGroup.add(linearItem);
-    structureGroup.add(layersItem);
-    structureGroup.add(interfacesItem);
-    layersItem.setSelected(true);
+    structureGroup.add(anisotropicItem);
+    anisotropicItem.setSelected(true);
     JMenuBar menuBar = new JMenuBar();
     menuBar.add(fileMenu);
     menuBar.add(modeMenu);
@@ -627,24 +619,30 @@ public class ImagePainterM {
   }
 
   private static void testImagePainterA() {
-    int width = 1330;
-    int height = 860;
+    int width = 924;
+    int height = 575;
     int n1 = 251;
     int n2 = 357;
+    float alpha = 1.0f;
+    float beta = 1.0f;
+    float gamma = 1.0f;
     float[][] image = readImage(n1,n2,"/data/seis/tp/tp73.dat");
     image = gain(image);
-    ImagePainterM ip = new ImagePainterM(width,height,image);
+    ImagePainterM ip = new ImagePainterM(width,height,alpha,beta,gamma,image);
     ip.setValueRange(0.0,1.0);
   }
 
   private static void testImagePainterB() {
-    int width = 1000;
-    int height = 874;
+    int width = 925;
+    int height = 799;
     int n1 = 500;
     int n2 = 500;
+    float alpha = 2.0f;
+    float beta = 1.0f;
+    float gamma = 0.0f;
     float[][] image = readImage(n1,n2,"/data/seis/atw/atwj1s.dat");
     image = gain(image);
-    ImagePainterM ip = new ImagePainterM(width,height,image);
+    ImagePainterM ip = new ImagePainterM(width,height,alpha,beta,gamma,image);
     ip.setValueRange(0.0,1.0);
   }
 
