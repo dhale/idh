@@ -46,8 +46,7 @@ def setTpd(): # Teapot Dome slice vertical
   halfWidth1 = 1*halfWidth
   halfWidth2 = 4*halfWidth
   sigmaTensor = 8.0
-  plotWidth = 1035
-  plotHeight = 670
+  plotWidth,plotHeight = 1035,670
 
 def setAtw(): # Atwater channels slice horizontal
   global n1,n2,fileName,plotPref,dataDir,fScale
@@ -64,8 +63,8 @@ def setAtw(): # Atwater channels slice horizontal
   halfWidth1 = 1*halfWidth
   halfWidth2 = 1*halfWidth
   sigmaTensor = 12.0
-  plotWidth = 1035
-  plotHeight = 900
+  #plotWidth,plotHeight = 1035,900
+  plotWidth,plotHeight =  780,670
 
 def setPlotWidthHeight():
   global plotWidth,plotHeight
@@ -92,12 +91,12 @@ def main(args):
 
 def goAll():
   goImage()
-  #goTensors()
-  #goSmoothGV()
-  #goSmoothHV()
+  goTensors()
+  goSmoothGV()
+  goSmoothHV()
   goSmoothGSV()
   goSemblanceV()
-  #goSemblanceClassic()
+  goSemblanceClassic()
 
 def goImage():
   f = readImage(n1,n2,fileName)
@@ -119,7 +118,7 @@ def goTensors():
   frame(p,"fv")
 
 def goSmoothGV():
-  hw = 5
+  hw = 20
   f = readImage(n1,n2,fileName)
   t = computeTensors(sigmaTensor,f)
   #f = makeRandom(n1,n2)
@@ -133,7 +132,7 @@ def goSmoothGV():
     frame(p,"gv"+smstr(sm)+str(hw))
 
 def goSmoothGSV():
-  hw = 10
+  hw = 20
   hw1 = halfWidth1
   hw2 = halfWidth2
   sm = smLaplacian
