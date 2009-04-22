@@ -77,8 +77,8 @@ def setAtw(): # Atwater channels slice horizontal
   sigmaTensor = 12.0
   plotWidth = 1040
   plotHeight = 610
-  plotWidth2 = 1035
-  plotHeight2 = 900
+  plotWidth2 = 780
+  plotHeight2 = 670
 
 def setPlotWidthHeight():
   global plotWidth,plotHeight
@@ -100,8 +100,8 @@ prism = ColorMap.PRISM
 # functions
 
 def main(args):
-  #setAtw(); goAll()
-  setTpd(); goAll()
+  setAtw(); goAll()
+  #setTpd(); goAll()
   return
 
 def goAll():
@@ -110,13 +110,14 @@ def goAll():
   #goSemblanceVW()
   #goSemblanceW()
   #goSemblanceClassic()
-  goPlot()
+  goSmoothGSW()
+  #goPlot()
   #goPlot2()
 
 def goPlot2():
   global plotWidth,plotHeight
-  plotWidth = 1035
-  plotHeight = 900
+  plotWidth = plotWidth2
+  plotHeight = plotHeight2
   for name in ["svwl2_2","swl2_2"]:
     s = readImage(n1,n2,n3,name)
     s = slice1(40,s)
@@ -163,6 +164,31 @@ def goSemblanceW():
     writeImage(s,name)
     print "s min =",Array.min(s),"max =",Array.max(s)
     plot3([f,s])
+
+def goSmoothGSW():
+  hw = 20
+  hw1 = halfWidth1
+  hw2 = halfWidth2
+  sm = smLaplacian
+  sname = "sw"+smstr(sm)+str(hw1)+"_"+str(hw2)
+  gname = "g"+sname
+  t = readTensors()
+  f = readImage(n1,n2,n3,"f",fScale)
+  s = readImage(n1,n2,n3,sname,1.0)
+  eu = Array.copy(s)
+  ev = Array.copy(s)
+  ew = Array.copy(s)
+  t.getEigenvalues(eu,ev,ew)
+  e1 = Array.div(Array.sub(ev,ew),eu)
+  s = Array.mul(s,e1)
+  #s = Array.mul(s,s)
+  t.setEigenvalues(0.0,0.0,1.0)
+  lsf = LocalSmoothingFilter()
+  c = hw*(hw+1)/6.0
+  g = Array.copy(f)
+  lsf.apply(t,c,s,f,g)
+  writeImage(s,gname)
+  plot3([f,g])
 
 def goSemblanceClassic():
   pmax = 10.0
