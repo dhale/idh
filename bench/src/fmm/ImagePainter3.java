@@ -348,7 +348,7 @@ public class ImagePainter3 {
     int n1 = 251;
     int n2 = 161;
     int n3 = 357;
-    float[][][] image = readImage(n1,n2,n3,"/data/seis/tp/tp3s.dat");
+    float[][][] image = readImage(n1,n2,n3,"/data/seis/tp/tp3f.dat");
     float[][][] paint = Array.fillfloat(0.0f,n1,n2,n3);
     image = Array.add(image,Array.mul(0.001f,Array.randfloat(n1,n2,n3)));
     EigenTensors3 tensors = readTensors("/data/seis/tp/et3s211.dat");

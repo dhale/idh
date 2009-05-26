@@ -110,9 +110,9 @@ def goAll():
   #goSemblanceVW()
   #goSemblanceW()
   #goSemblanceClassic()
-  goSmoothGSW()
+  #goSmoothGSW()
   #goPlot()
-  #goPlot2()
+  goPlot2()
 
 def goPlot2():
   global plotWidth,plotHeight
@@ -296,15 +296,15 @@ def plotp3(k1,k2,k3,f,cmin,cmax,png=None):
 def panel():
   p = PlotPanel(1,1,
     PlotPanel.Orientation.X1DOWN_X2RIGHT,
-    PlotPanel.AxesPlacement.LEFT_TOP)
+    PlotPanel.AxesPlacement.NONE)
   p.addColorBar()
   p.setColorBarWidthMinimum(plotWidthColorBar)
-  p.setHInterval(100)
-  p.setVInterval(100)
+  #p.setHInterval(100)
+  #p.setVInterval(100)
   #p.setHLabel(hlabel)
   #p.setVLabel(vlabel)
-  p.setHLabel(" ")
-  p.setVLabel(" ")
+  #p.setHLabel(" ")
+  #p.setVLabel(" ")
   return p
 
 def frame(panel,png=None):

@@ -385,6 +385,16 @@ public class DiscreteTest {
     return q;
   }
 
+  private static float[][] sinsin(int n1, int n2) {
+    float[][] f = new float[n2][n1];
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        f[i2][i1] = (float)(0.5+0.25*sin(PI*i1/n1)*sin(PI*i2/n2));
+      }
+    }
+    return f;
+  }
+
   private static float[][] smooth(double sigma, float[][] x) {
     float[][] y = Array.copy(x);
     RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(sigma);
@@ -557,10 +567,10 @@ public class DiscreteTest {
     TestFrame frame = new TestFrame(world);
     OrbitView view = frame.getOrbitView();
     view.setScale(2.0f);
-    //view.setElevation(30.0f); // good for sinsin points
-    //view.setAzimuth(-70.0f);
-    view.setElevation(40.714287f); // good for random points
-    view.setAzimuth(-130.72289f);
+    view.setElevation(30.0f); // good for sinsin points
+    view.setAzimuth(-70.0f);
+    //view.setElevation(40.714287f); // good for random points
+    //view.setAzimuth(-130.72289f);
     //view.setElevation(30.0f); // good for impulse and circle points
     //view.setAzimuth(18.0f);
     view.setWorldSphere(new BoundingSphere(0.5,0.5,-0.5,1.0));
@@ -583,19 +593,21 @@ public class DiscreteTest {
     float[][][] dp = getDistanceNearest(f,g1,g2,x1,x2,n1,n2);
     float[][] d = dp[0];
     float[][] p = dp[1];
+    float[][] qf = (mode==0)?sinsin(n1,n2):Array.zerofloat(n1,n2);
     //float[][] q0 = interpolateApproxSibson(d,p);
-    float[][] q1 = interpolateDiscrSibson(d,p);
+    //float[][] q1 = interpolateDiscrSibson(d,p);
     float[][] q2 = interpolateExactSibson(d,p);
     float[][] q3 = interpolateSmooth(d,p);
-    float[][] q4 = interpolateLaplace(d,p);
-    float[][] q5 = interpolateBiLaplace(d,p);
-    plot3d(s,s1,s2,p);
+    //float[][] q4 = interpolateLaplace(d,p);
+    //float[][] q5 = interpolateBiLaplace(d,p);
+    //plot3d(s,s1,s2,p);
+    plot3d(s,s1,s2,qf);
     //plot3d(s,s1,s2,q0);
-    plot3d(s,s1,s2,q1);
+    //plot3d(s,s1,s2,q1);
     plot3d(s,s1,s2,q2);
     plot3d(s,s1,s2,q3);
-    plot3d(s,s1,s2,q4);
-    plot3d(s,s1,s2,q5);
+    //plot3d(s,s1,s2,q4);
+    //plot3d(s,s1,s2,q5);
     /*
     adjustSamples(n1,n2,s);
     plotSamples(s);
@@ -627,8 +639,8 @@ public class DiscreteTest {
     SwingUtilities.invokeLater(new Runnable() {
       public void run() {
         //testInterpolation1();
-        testRandom();
-        //testSinSin();
+        //testRandom();
+        testSinSin();
         //testLinear();
         //testImpulse();
         //testCircle();

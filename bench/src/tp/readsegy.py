@@ -14,47 +14,54 @@ from edu.mines.jtk.sgl.test import *
 
 import tp.Convert as Convert
 
-dataDir = "/data/seis/tp/"
+dataDir = "/data/seis/tp/Transform/"
 
 # floating point format code should be in bytes 3225-6
 # 1 for IBM floating point, 5 for IEEE floating point
 nhead=3200 # number of bytes in EBCDIC header
 nbhed=400 # number of bytes in binary header
 nthed=240 # number of bytes in trace header
-n1i=1501 # number of time samples (1st dimension)
-d1i=0.002 # time sampling interval
+#n1i=1501 # number of time samples (1st dimension)
+n1i=2762 # number of depth samples (1st dimension)
+d1i=0.002 # time/depth sampling interval
 f1i=0.000 # time of first sample
 n2i=188 # number of traces in 2nd (inline) dimension
-d2i=0.033
+#n2i=187 # number of traces in 2nd (inline) dimension
+d2i=0.033528 # 110 ft = 33.52800 m
 f2i=0.000
 n3i=345 # number of traces in 3rd (crossline) dimension
-d3i=0.033
+d3i=0.033528 # 110 ft = 33.52800 m
 f3i=0.000
 
-# Rotation and resampling of (x2,x3) coordinates
-# Rotation center (in km) and angle (in radians)
-# x2Old = x2c + x2New*cos(phi) + x3New*sin(phi)
-# x3Old = x3c - x2New*sin(phi) + x3New*cos(phi)
+# Rotation and resampling of (x2,x3) coordinates.
+# Rotation center (in km) and angle (in radians).
+# Here, (x2s,x3s) are seismic survey coordinates
+# and (x2r,x3r) are resampled coordinates.
+# x2s = x2r + x2r*cos(phi) + x3r*sin(phi)
+# x3s = x3r - x2r*sin(phi) + x3r*cos(phi)
 x3c,x2c,phi = 0.935,4.192,-0.485364 # (-27.8093 degrees)
-n1=1501; d1=0.002; f1=0.000
-n2=161;  d2=0.025; f2=0.000
-n3=357;  d3=0.025; f3=0.000
+#n1=401; d1=0.002; f1=0.500; j1i = 250 # time resampling
+n1=401; d1=0.002; f1=0.770; j1i = 385; k1i = 2 # depth resampling
+n2=161; d2=0.025; f2=0.000
+n3=357; d3=0.025; f3=0.000
 
 def main(args):
   #testFormat()
   #readFormat()
+  #printTraceHeader()
   #readSegy()
-  #ais = ArrayInputStream(dataDir+"tp3.dat")
+  #readSegyTransform()
+  #ais = ArrayInputStream(dataDir+"tp3zAll.dat")
   #y = Array.zerofloat(n1i,n2i,n3i)
   #ais.readFloats(y)
   #ais.close()
   #plot3d(y)
   #resample()
-  #ais = ArrayInputStream(dataDir+"tp3r.dat")
-  #y = Array.zerofloat(n1,n2,n3)
-  #ais.readFloats(y)
-  #ais.close()
-  #plot3d(y)
+  ais = ArrayInputStream(dataDir+"tp3z.dat")
+  y = Array.zerofloat(n1,n2,n3)
+  ais.readFloats(y)
+  ais.close()
+  plot3d(y)
   return
 
 def resample():
@@ -76,20 +83,20 @@ def resample():
   sy = SimpleFloat3(y)
   si = SincInterpolator()
   si.setUniformSampling(n2i,d2i,f2i,n3i,d3i,f3i)
-  ais = ArrayInputStream(dataDir+"tp3.dat")
+  ais = ArrayInputStream(dataDir+"tp3zAll.dat")
   ais.readFloats(x)
   ais.close()
   print "x min/max =",Array.min(x),Array.max(x)
   for i1 in range(n1):
     if i1%100==0: print "i1 =",i1
-    sx.get23(n2i,n3i,i1,0,0,x23)
+    sx.get23(n2i,n3i,i1*k1i+j1i,0,0,x23)
     print "x23 min/max =",Array.min(x23),Array.max(x23)
     si.setUniformSamples(x23)
     for i3 in range(n3):
       for i2 in range(n2):
         y23[i3][i2] = si.interpolate(x2i[i3][i2],x3i[i3][i2])
     sy.set23(n2,n3,i1,0,0,y23)
-  aos = ArrayOutputStream(dataDir+"tp3r.dat")
+  aos = ArrayOutputStream(dataDir+"tp3z.dat")
   aos.writeFloats(y)
   aos.close()
   plot3d(y)
@@ -122,14 +129,46 @@ def plot3d(x):
   frame = TestFrame(world)
   frame.setVisible(True)
 
+# For Transform's depth image,
+# first trace (  0,  0) at 789048,938850
+#  last trace (186,344) at 808604,977165
+def printTraceHeader():
+  fileName = "tp3zAll.sgy"
+  #printTraceHeaderShorts("tp3zAll.sgy")
+  printTraceHeaderInts("tp3zAll.sgy")
+def printTraceHeaderShorts(fileName):
+  infile = dataDir+fileName
+  ais = ArrayInputStream(infile)
+  ais.skipBytes(nhead+nbhed)
+  h = Array.zeroshort(nthed/2)
+  ais.readShorts(h)
+  Array.dump(h)
+  ais.close()
+def printTraceHeaderInts(fileName):
+  infile = dataDir+fileName
+  ais = ArrayInputStream(infile)
+  ais.skipBytes(nhead+nbhed)
+  i = Array.zeroint(nthed/4)
+  for i3 in range(n3i):
+    for i2 in range(n2i):
+      ais.readInts(i)
+      print "i2 =",i2," i3 =",i3," x =",i[45]," y =",i[46]
+      ais.skipBytes(4*n1i)
+  #Array.dump(i)
+  ais.close()
+
 def readFormat():
-  infile = dataDir+"filt_mig.sgy"
+  infile = dataDir+"tp3zAll.sgy"
   ais = ArrayInputStream(infile)
   ais.skipBytes(nhead)
 # floating point format code should be in bytes 3225-6
 # 1 for IBM floating point, 5 for IEEE floating point
   h = Array.zeroshort(nbhed)
   ais.readShorts(h)
+  print "current sampling interval in usec =",h[8]
+  print "original sampling interval in usec =",h[9]
+  print "number of samples per trace =",h[10]
+  print "original number of samples per trace =",h[11]
   print "format =",h[12]
   Array.dump(h)
   ais.close()
@@ -138,7 +177,7 @@ def testFormat():
   xi = Array.zeroint(n1i)
   x1 = Array.zerofloat(n1i)
   x2 = Array.zerofloat(n1i)
-  infile = dataDir+"filt_mig.sgy"
+  infile = dataDir+"tp3zAll.sgy"
   ais = ArrayInputStream(infile)
   ais.skipBytes(nhead+nbhed)
   ais.skipBytes(n3i/2*n2i*(nthed+4*n1i))
@@ -155,8 +194,8 @@ def testFormat():
   #Array.dump(x2)
 
 def readSegy():
-  infile = dataDir+"filt_mig.sgy"
-  outfile = dataDir+"tp3.dat"
+  infile = dataDir+"tp3zAll.sgy"
+  outfile = dataDir+"tp3zAll.dat"
   ais = ArrayInputStream(infile)
   aos = ArrayOutputStream(outfile)
   ais.skipBytes(nhead+nbhed)
@@ -171,6 +210,32 @@ def readSegy():
     #Array.dump(y)
     #print "y min =",Array.min(y)," max =",Array.max(y)
     aos.writeFloats(y)
+  ais.close()
+  aos.close()
+
+# readSegy for Transform's depth images, which are missing the first
+# trace in each line. This version puts back the missing first trace 
+# in each line, by duplicating the first trace read for each line.
+def readSegyTransform():
+  infile = dataDir+"tp3zAll.sgy"
+  outfile = dataDir+"tp3zAll.dat"
+  ais = ArrayInputStream(infile)
+  aos = ArrayOutputStream(outfile)
+  ais.skipBytes(nhead+nbhed)
+  x = Array.zeroint(n1i)
+  y = Array.zerofloat(n1i)
+  i = 0
+  for i3 in range(n3i):
+    for i2 in range(1,n2i):
+      if i%1000==0:
+        print "i =",i
+      i += 1
+      ais.skipBytes(nthed)
+      ais.readInts(x)
+      Convert.ibmToFloat(x,y)
+      if i2==1:
+        aos.writeFloats(y) # for missing first trace
+      aos.writeFloats(y)
   ais.close()
   aos.close()
 

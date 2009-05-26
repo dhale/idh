@@ -20,13 +20,8 @@ False = 0
 
 dataDir = "/data/seis/tp/"
 
-# Rotated and resampled data.
-#n1=1501; d1=0.002; f1=0.000
-#n2=161;  d2=0.025; f2=0.000
-#n3=357;  d3=0.025; f3=0.000
-
-# After subset and subsampling in time.
-n1=251; d1=0.004; f1=0.500
+# Resampled subset.
+n1=401; d1=0.002; f1=0.500
 n2=161; d2=0.025; f2=0.000
 n3=357; d3=0.025; f3=0.000
 

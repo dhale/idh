@@ -90,13 +90,13 @@ def main(args):
   return
 
 def goAll():
-  goImage()
-  goTensors()
-  goSmoothGV()
+  #goImage()
+  #goTensors()
+  #goSmoothGV()
   goSmoothHV()
-  goSmoothGSV()
-  goSemblanceV()
-  goSemblanceClassic()
+  #goSmoothGSV()
+  #goSemblanceV()
+  #goSemblanceClassic()
 
 def goImage():
   f = readImage(n1,n2,fileName)
@@ -174,12 +174,12 @@ def goSmoothHV():
   f = Array.mul(100,f)
   for sm in [smLaplacian]:
     lsf = LocalSemblanceFilter(sm,hw,sm,hw)
-    g = lsf.smooth1(d2V,t,f)
+    g = lsf.smooth2(d2V,t,f)
     p = panel()
     pf = p.addPixels(g)
     #pf.setClips(-fClip,fClip)
     pf.setClips(-5.0,5.0)
-    frame(p,"hv"+smstr(sm)+str(hw))
+    frame(p,"h2v"+smstr(sm)+str(hw))
     if n1>400:
       p = panel()
       p.setLimits(320,320,499,499)
