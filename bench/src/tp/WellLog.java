@@ -5,6 +5,7 @@ import java.util.*;
 import java.util.regex.*;
 import static java.lang.Math.*;
 
+import edu.mines.jtk.io.*;
 import edu.mines.jtk.util.*;
 
 /**
@@ -15,25 +16,265 @@ import edu.mines.jtk.util.*;
  */
 public class WellLog {
 
-  // This value should be much lower than the elevation of any Kelling bushing.
-  // Some LAS files have missing or invalid elevations.
+  public long id; // unique 12-digit API well number
+  public double xe,yn,ze; // easting, northing, elevation
+  public int n; // number of samples
+  public float[] z,v,d,g,p; // depth, velocity, density, gamma, porosity
+  public float[] x1,x2,x3; // resampled coordinates of well-bore (km)
+
+  // This value should be much lower than any reasonable elevation.
+  // For Teapot Dome, elevations are approximately 5000 ft.
+  // We ignore LAS files that have missing or invalid elevations.
   public static final float MIN_ELEVATION = 100.0f;
 
   // This value represents missing values in all well curve data.
   public static final float NULL_VALUE = -999.2500f;
 
-  public String id; // unique 10-character API well number
-  public double xe,yn,ze; // easting, northing, elev of Kelling bushing (ft)
-  public int n; // number of samples
-  public float[] z,v,d,g,p; // depth, velocity, density, gamma, porosity
-  public float[] x1,x2,x3; // resampled coordinates of well-bore (km)
+  /**
+   * A collection of well log data.
+   */
+  public static class Data {
+
+    /**
+     * Constructs empty well log data.
+     */
+    public Data() {
+    }
+
+    /**
+     * Constructs well log data from specified files.
+     * @param wlDirName directory containing LAS files.
+     * @param whFileName file containing well header data.
+     * @param dsFileName file containing directional survey data.
+     */
+    public Data(String wlDirName, String whFileName, String dsFileName) {
+      WellHeader.Data whdata = null;
+      if (whFileName!=null)
+        whdata = new WellHeader.Data(whFileName);
+      DirectionalSurvey.Data dsdata = null;
+      if (dsFileName!=null)
+        dsdata = new DirectionalSurvey.Data(dsFileName);
+      File wlDir = new File(wlDirName);
+      ArrayList<Long> wldup = new ArrayList<Long>();
+      load(wlDir,whdata,dsdata,this,wldup);
+      System.out.println("WellLog.Data: after initial loading, ...");
+      System.out.println("  number of logs = "+size());
+      System.out.println("  number of duplicate ids = "+wldup.size());
+      for (long id:wldup)
+        _data.remove(id);
+      System.out.println("WellLog.Data: after removing duplicates, ...");
+      System.out.println("  number of logs = "+size());
+    }
+
+    /**
+     * Writes these well log data to a binary file.
+     * @param fileName the file name.
+     */
+    public void writeBinary(String fileName) {
+      try {
+        ArrayOutputStream aos = new ArrayOutputStream(fileName);
+        aos.writeInt(size());
+        for (WellLog log:getAll()) {
+          aos.writeLong(log.id);
+          aos.writeDouble(log.xe);
+          aos.writeDouble(log.yn);
+          aos.writeDouble(log.ze);
+          aos.writeInt(log.n);
+          int vdgp = 0;
+          if (log.v!=null) vdgp |= 1;
+          if (log.d!=null) vdgp |= 2;
+          if (log.g!=null) vdgp |= 4;
+          if (log.p!=null) vdgp |= 8;
+          aos.writeInt(vdgp);
+          aos.writeFloats(log.z);
+          if (log.v!=null) aos.writeFloats(log.v);
+          if (log.d!=null) aos.writeFloats(log.d);
+          if (log.g!=null) aos.writeFloats(log.g);
+          if (log.p!=null) aos.writeFloats(log.p);
+          aos.writeFloats(log.x1);
+          aos.writeFloats(log.x2);
+          aos.writeFloats(log.x3);
+        }
+        aos.close();
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
+    
+    /**
+     * Reads well log data from a binary file.
+     * @param fileName the file name.
+     */
+    public void readBinary(String fileName) {
+      try {
+        ArrayInputStream ais = new ArrayInputStream(fileName);
+        int nlog = ais.readInt();
+        for (int ilog=0; ilog<nlog; ++ilog) {
+          WellLog log = new WellLog();
+          log.id = ais.readLong();
+          log.xe = ais.readDouble();
+          log.yn = ais.readDouble();
+          log.ze = ais.readDouble();
+          log.n = ais.readInt();
+          int vdgp = ais.readInt();
+          int n = log.n;
+          log.z = new float[n];
+          log.v = ((vdgp&1)!=0)?new float[n]:null;
+          log.d = ((vdgp&2)!=0)?new float[n]:null;
+          log.g = ((vdgp&4)!=0)?new float[n]:null;
+          log.p = ((vdgp&8)!=0)?new float[n]:null;
+          ais.readFloats(log.z);
+          if (log.v!=null) ais.readFloats(log.v);
+          if (log.d!=null) ais.readFloats(log.d);
+          if (log.g!=null) ais.readFloats(log.g);
+          if (log.p!=null) ais.readFloats(log.p);
+          log.x1 = new float[n];
+          log.x2 = new float[n];
+          log.x3 = new float[n];
+          ais.readFloats(log.x1);
+          ais.readFloats(log.x2);
+          ais.readFloats(log.x3);
+          add(log);
+        }
+        ais.close();
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+    }
+
+    /**
+     * Adds the specified well log.
+     * @param log the well log.
+     */
+    public void add(WellLog log) {
+      _data.put(log.id,log);
+    }
+
+    /**
+     * Returns the number of well logs.
+     * @return the number of well logs.
+     */
+    public int size() {
+      return _data.size();
+    }
+
+    /**
+     * Gets the well log for the specified well id.
+     * @param id the well id.
+     * @return the well log; null, if none.
+     */
+    public WellLog get(long id) {
+      return _data.get(id);
+    }
+
+    /**
+     * Gets all well logs.
+     * @return list of logs.
+     */
+    public List<WellLog> getAll() {
+      return new ArrayList<WellLog>(_data.values());
+    }
+
+    /**
+     * Gets well logs with velocities.
+     * @return list of logs.
+     */
+    public List<WellLog> getVelocityLogs() {
+      return getLogsWith('v');
+    }
+
+    /**
+     * Gets well logs with densities.
+     * @return list of logs.
+     */
+    public List<WellLog> getDensityLogs() {
+      return getLogsWith('d');
+    }
+
+    /**
+     * Gets well logs with gamma ray counts.
+     * @return list of logs.
+     */
+    public List<WellLog> getGammaLogs() {
+      return getLogsWith('g');
+    }
+
+    /**
+     * Gets well logs with porosities.
+     * @return list of logs.
+     */
+    public List<WellLog> getPorosityLogs() {
+      return getLogsWith('p');
+    }
+
+    /**
+     * Prints summary information for these well log data.
+     */
+    public void printInfo() {
+      int nv = 0;
+      int nd = 0;
+      int ng = 0;
+      int np = 0;
+      for (WellLog log:getAll()) {
+        //System.out.println("id="+log.id+" n="+log.n);
+        if (log.v!=null) ++nv;
+        if (log.d!=null) ++nd;
+        if (log.g!=null) ++ng;
+        if (log.p!=null) ++np;
+      }
+      System.out.println("number of logs = "+_data.size());
+      System.out.println("number of velocity logs   = "+nv);
+      System.out.println("number of density logs    = "+nd);
+      System.out.println("number of gamma ray logs  = "+ng);
+      System.out.println("number of porosity logs   = "+np);
+    }
+
+    private Map<Long,WellLog> _data = new HashMap<Long,WellLog>();
+    private static void load(
+      File wlDir, WellHeader.Data whdata, DirectionalSurvey.Data dsdata,
+      WellLog.Data wldata, ArrayList<Long> wldup)
+    {
+      Check.argument(wlDir.isDirectory(),wlDir+" is a directory");
+      for (File file:wlDir.listFiles()) {
+        if (file.isDirectory()) {
+          load(file,whdata,dsdata,wldata,wldup);
+        } else if (file.isFile()) {
+          WellLog log = WellLog.load(file,whdata,dsdata);
+          if (log!=null) {
+            if (wldata.get(log.id)!=null) {
+              wldup.add(log.id);
+            } else {
+              wldata.add(log);
+            }
+          }
+        }
+      }
+    }
+    private List<WellLog> getLogsWith(char curve) {
+      List<WellLog> list = new ArrayList<WellLog>();
+      for (WellLog log:_data.values()) {
+        switch (curve) {
+          case 'v': if (log.v!=null) list.add(log); break;
+          case 'd': if (log.d!=null) list.add(log); break;
+          case 'g': if (log.g!=null) list.add(log); break;
+          case 'p': if (log.p!=null) list.add(log); break;
+          default:
+        }
+      }
+      return list;
+    }
+  }
 
   /**
-   * Loads a well log from the specified LAS file.
-   * @param file the LAS file
-   * @return the well log; null, if the file format is not valid.
+   * Loads one well log from the specified LAS file, if possible.
+   * @param file the LAS file.
+   * @param whdata well header data; null, if none.
+   * @param dsdata directional survey data; null, if none.
+   * @return the well log; null, if the file format is not understood.
    */
-  public static WellLog load(File file) {
+  public static WellLog load(
+    File file, WellHeader.Data whdata, DirectionalSurvey.Data dsdata) 
+  {
 
     // Ignore files that are not LAS files.
     String fileName = file.getPath();
@@ -58,20 +299,39 @@ public class WellLog {
     
     // Get first ten digits of the well API number; ignore file if not valid.
     value = getValue(wdata,"API .");
-    if (value==null || value.length()<10 || !value.startsWith("49025"))
+    if (value==null)
       return null;
-    for (int i=10; i<value.length(); ++i)
-      if (value.charAt(i)!='0')
-        return null;
-    String id = value.substring(0,10);
+    long id = idFromString(value);
+    if (id<0)
+      return null;
 
-    // Get the elevation of the Kelling bushing in ft.
-    // Assume small elevations are not valid.
-    value = getValue(pdata,"EKB .F");
+    // Get the log-measured-from elevation in ft.
+    value = getValue(pdata,"LMF .");
+    if (value==null)
+      return null;
+    if (value.equals("KB")) {
+      value = getValue(pdata,"EKB .F");
+    } else if (value.equals("PD")) {
+      value = getValue(pdata,"EPD .F");
+    } else if (value.equals("DF")) {
+      value = getValue(pdata,"EDF .F");
+    } else if (value.equals("GL")) {
+      value = getValue(pdata,"EGL .F");
+    } else {
+      return null;
+    }
     if (value==null)
       return null;
     float ze = Float.parseFloat(value);
-    if (ze<MIN_ELEVATION)
+    if (ze<MIN_ELEVATION) // check for wildly erroneous elevations
+      return null;
+
+    // Must have well header with map coordinates of well and the well
+    // header elevation must match that in LAS file to within 0.5 ft.
+    WellHeader wh = (whdata!=null)?whdata.get(id):null;
+    if (wh==null)
+      return null;
+    if (abs(ze-wh.ze)>0.5)
       return null;
 
     // Map well log curve names (API codes) to column indices. Currently 
@@ -111,7 +371,7 @@ public class WellLog {
     if (kz<0 || (kv<0 && kd<0 && kg<0 && kp<0))
       return null;
 
-    // Read the well curve data as floats.
+    // Read all well curve data as floats.
     FloatList zl = new FloatList();
     FloatList vl = new FloatList();
     FloatList dl = new FloatList();
@@ -124,6 +384,8 @@ public class WellLog {
       if (line.startsWith("~"))
         break;
       String[] values = line.split("\\s+");
+      if (values.length<1 || values[0].length()==0)
+        break;
       zl.add(Float.parseFloat(values[kz]));
       if (kv>0) vl.add(Float.parseFloat(values[kv]));
       if (kd>0) dl.add(Float.parseFloat(values[kd]));
@@ -136,15 +398,84 @@ public class WellLog {
     WellLog log = new WellLog();
     log.id = id;
     log.ze = ze;
+    log.xe = wh.xe;
+    log.yn = wh.yn;
+    //log.ze = wh.ze;
     log.n = n;
     log.z = zl.trim();
     log.v = vl.trim();
     log.d = dl.trim();
     log.g = gl.trim();
     log.p = pl.trim();
-    log.setCoordinates(0.0,0.0);
-    System.out.println("id="+id+" ze="+ze+" n="+n);
+
+    // Set resampled (x1,x2,x3) coordinates.
+    log.setCoordinates(id,dsdata);
+
     return log;
+  }
+
+  /**
+   * Returns an array of derivatives (1/0.0003048)*dx1/dz.
+   * The scale factor 0.0003048 (km/ft) compensates for the difference 
+   * in units for dz1 (km) and dz (ft). This derivative should never 
+   * exceed one, and for near-vertical wells it will be close to one.
+   * @return array of derivatives.
+   */
+  public float[] dx1dz() {
+    float s = 1.0f/0.0003048f;
+    float[] d = new float[n];
+    for (int i=1; i<n; ++i)
+      d[i] = s*(x1[i]-x1[i-1])/(z[i]-z[i-1]);
+    d[0] = d[1];
+    return d;
+  }
+
+  /**
+   * Returns a 12-digit well log id corresponding to the specified string.
+   * Any characters beyond the first 10 are ignored.
+   * @param s the string representing the well log id.
+   * @return the well log id; -1, if string is not valid.
+   */
+  public static long idFromString(String s) {
+    long id = -1;
+    Matcher m = _idPattern.matcher(s);
+    if (m.find()) {
+      s = m.group(1);
+      if (s.length()==10) {
+        s = s+"00";
+      } else if (s.length()==11) {
+        s = s+"0";
+      }
+      id =  Long.parseLong(s);
+      if (id%100!=0) // ignore sidetrack wells
+        id = -1;
+    }
+    return id;
+  }
+  private static Pattern _idPattern = Pattern.compile("^(49025\\d{5,7}).*");
+
+  /**
+   * Sets resampled (x1,x2,x3) coordinates for well bore.
+   * Assumes a vertical well unless a directional survey is available.
+   * @param id the well id.
+   * @param dsdata directional survey data.
+   */
+  private void setCoordinates(long id, DirectionalSurvey.Data dsdata) {
+    DirectionalSurvey ds = (dsdata!=null)?dsdata.get(id):null;
+    if (ds!=null) {
+      ds.setCoordinates(this);
+    } else {
+      x1 = new float[n];
+      x2 = new float[n];
+      x3 = new float[n];
+      for (int i=0; i<n; ++i) {
+        Coordinates.Map m = new Coordinates.Map(xe,yn,ze-z[i]);
+        Coordinates.Resampled r = new Coordinates.Resampled(m);
+        x1[i] = (float)r.x1;
+        x2[i] = (float)r.x2;
+        x3[i] = (float)r.x3;
+      }
+    }
   }
 
   /**
@@ -196,209 +527,5 @@ public class WellLog {
     Pattern p = Pattern.compile(" "+key+"\\s+?(\\S+):");
     Matcher m = p.matcher(data);
     return (m.find())?m.group(1):null;
-  }
-
-  // Set (x1,x2,x3) coordinates using directional survey data.
-  private static class Interpolator {
-    public Interpolator(
-      double xe, double yn, double ze, 
-      double[] z, double[] t, double[] p) 
-    {
-      int n = z.length;
-
-      // Sort directional data by increasing measured depth.
-      int[] j = Array.rampint(0,1,n);
-      Array.quickIndexSort(z,j);
-      z = sort(z,j);
-      t = sort(t,j);
-      p = sort(p,j);
-
-      // If smallest depth not zero, then insert data for depth zero.
-      // Assume that both inclination and azimuth are zero at depth zero.
-      if (z[0]!=0.0) {
-        double[] ztemp = new double[n+1]; 
-        double[] ttemp = new double[n+1]; 
-        double[] ptemp = new double[n+1]; 
-        System.arraycopy(z,0,ztemp,1,n);
-        System.arraycopy(t,0,ttemp,1,n);
-        System.arraycopy(p,0,ptemp,1,n);
-        z = ztemp;
-        t = ttemp;
-        p = ptemp;
-        ++n;
-      }
-      _n = n;
-
-      // Parameters at measured depths required for interpolation.
-      _a = new double[n];
-      _zm = new double[n];
-      _xp = new double[n];
-      _yp = new double[n];
-      _zp = new double[n];
-      _xt = new double[n];
-      _yt = new double[n];
-      _zt = new double[n];
-      _xp[0] = xe;
-      _yp[0] = yn;
-      _zp[0] = ze;
-      for (int i=0,im1=0; i<n; ++i,im1=i-1) {
-        double t1 = toRadians(t[im1]);
-        double t2 = toRadians(t[i]);
-        double p1 = toRadians(p[im1]);
-        double p2 = toRadians(p[i]);
-        double ct1 = cos(t1);
-        double ct2 = cos(t2);
-        double cp1 = cos(p1);
-        double cp2 = cos(p2);
-        double st1 = sin(t1);
-        double st2 = sin(t2);
-        double sp1 = sin(p1);
-        double sp2 = sin(p2);
-        double sdt = sin(0.5*(t2-t1));
-        double sdp = sin(0.5*(p2-p1));
-        double a = 2.0*asin(sqrt(sdt*sdt+st1*st2*sdp*sdp));
-        double scale = 0.5*shapeFactor(a)*(z[i]-z[im1]);
-        _a[i] = a;
-        _zm[i] = z[i];
-        _xt[i] = st2*sp2;
-        _yt[i] = st2*cp2;
-        _zt[i] = ct2;
-        if (i==0) {
-          _xp[i] = xe;
-          _yp[i] = yn;
-          _zp[i] = ze;
-        } else {
-          _xp[i] = _xp[im1]+scale*(_xt[i-1]+_xt[i]);
-          _yp[i] = _yp[im1]+scale*(_yt[i-1]+_yt[i]);
-          _zp[i] = _zp[im1]-scale*(_zt[i-1]+_zt[i]);
-        }
-      }
-    }
-    private int _n; // number of points with directional data
-    private double[] _zm; // measured depths for all directional data
-    private double[] _xp,_yp,_zp; // coordinates of points along wellbore
-    private double[] _xt,_yt,_zt; // unit tangent vectors for all points
-    private double[] _a; // angles of arc
-                         // a[1] is for interval between zm[0] and zm[1]
-                         // a[2] is for interval between zm[1] and zm[2]
-                         // ...
-    private static double shapeFactor(double a) {
-      if (a<0.02) {
-        double aa = a*a;
-        return 1.0+aa/12.0*(1.0+aa/10.0*(1.0+aa/168.0*(1+31.0*aa/18.0)));
-      } else {
-        return tan(0.5*a)/(0.5*a);
-      }
-    }
-    private static double[] sort(double[] x, int[] j) {
-      int n = x.length;
-      double[] y = new double[n];
-      for (int i=0; i<n; ++i)
-        y[i] = x[j[i]];
-      return y;
-    }
-    public void interpolate(double zm, double[] x1x2x3) {
-      /*
-      int n = _n;
-
-      // Find interval of measured depth.
-      int i = Array.binarySearch(_zm,zm);
-      if (i<0) i = -(i+1);
-
-      // Coordinates of point corresponding to specified measured depth.
-      double xp,yp,zp;
-
-      // If extrapolating, ...
-      if (i==0) {
-        xp = _xp[0];
-        yp = _yp[0];
-        zp = _zp[0];
-      } else if (i==n) {
-        double dz = zm-_zm[n-1];
-        xp = _xp[n-1]+dz*_xt[n-1];
-        yp = _yp[n-1]+dz*_yt[n-1];
-        zp = _zp[n-1]+dz*_zt[n-1];
-      } 
-
-      // Otherwise, if interpolating, ...
-      else {
-        int im1 = i-1;
-        double zm1 = _zm[im1];
-        double zm2 = _zm[i];
-        double a12 = _a[im1];
-        double a = a12*(zm-zm1)/(zm2-zm1); 
-        if (a<0.02) {
-        } else {
-          double s1 = sin(a12-a);
-          double s2 = sin(a);
-          double s12 = sin(a12);
-          xp1 = _xp[im1];
-          yp1 = _yp[im1];
-          zp1 = _zp[im1];
-          xt1 = _xt[im1];
-          yt1 = _yt[im1];
-          zt1 = _zt[im1];
-          xt2 = _xt[i];
-          yt2 = _yt[i];
-          zt2 = _zt[i];
-          xt = (s1*xt1+s2*xt2)/s12;
-          yt = (s1*yt1+s2*yt2)/s12;
-          zt = (s1*zt1+s2*zt2)/s12;
-          scale = 0.5*shapeFactor(a)*(zm-zm1);
-          xp = xp1+scale*(xt1+xt);
-          yp = yp1+scale*(yt1+yt);
-          zp = zp1-scale*(zt1+zt);
-        }
-      }
-      */
-    }
-  }
-  public void setCoordinates(
-    double xe, double yn, double[] z, double[] t, double[] p)
-  {
-    this.xe = xe;
-    this.yn = yn;
-    if (z[0]!=0.0) {
-      int n = z.length;
-      double[] zt = new double[n+1]; 
-      double[] tt = new double[n+1]; 
-      double[] pt = new double[n+1]; 
-      System.arraycopy(z,0,zt,1,n);
-      System.arraycopy(t,0,tt,1,n);
-      System.arraycopy(p,0,pt,1,n);
-    }
-  }
-  public void setCoordinates(double xe, double yn) {
-    this.xe = xe;
-    this.yn = yn;
-    x1 = new float[n];
-    x2 = new float[n];
-    x3 = new float[n];
-    for (int i=0; i<n; ++i) {
-      Coordinates.Map m = new Coordinates.Map(xe,yn,ze-z[i]);
-      Coordinates.Resampled r = new Coordinates.Resampled(m);
-      x1[i] = (float)r.x1;
-      x2[i] = (float)r.x2;
-      x3[i] = (float)r.x3;
-    }
-  }
-  private static class FloatList {
-    public int n;
-    public float[] a = new float[1024];
-    public void add(float f) {
-      if (n==a.length) {
-        float[] t = new float[2*n];
-        System.arraycopy(a,0,t,0,n);
-        a = t;
-      }
-      a[n++] = f;
-    }
-    public float[] trim() {
-      if (n==0)
-        return null;
-      float[] t = new float[n];
-      System.arraycopy(a,0,t,0,n);
-      return t;
-    }
   }
 }
