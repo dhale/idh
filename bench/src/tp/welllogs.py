@@ -25,6 +25,12 @@ whFile = "/data/seis/tp/WellLogs/WellHeaders.txt"
 dsFile = "/data/seis/tp/WellLogs/DirectionalSurveys.txt"
 wlFile = "/data/seis/tp/resamp/tp3logs.dat"
 
+# Names for a few test wells
+wellNames = {
+  4902510993:"33-X-23",
+  4902510925:"56-TpX-3",
+  4902510902:"62-TpX-11"}
+
 def main(args):
   #loadWellLogs()
   #loadDirectionalSurveys()
@@ -44,15 +50,8 @@ def loadDirectionalSurveys():
   dsdata = DirectionalSurvey.Data(dsFile)
   dsdata.printInfo()
 
-# A few test wells.
-names = {
-  4902510993:"33-X-23",
-  4902510925:"56-TpX-3",
-  4902510902:"62-TpX-11"}
-
 def viewCoordinates():
-  wldata = WellLog.Data()
-  wldata.readBinary(wlFile)
+  wldata = WellLog.Data.readBinary(wlFile)
   wldata.printInfo()
   spz1 = SimplePlot()
   sp23 = SimplePlot()

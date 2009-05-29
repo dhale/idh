@@ -20,6 +20,10 @@ import static java.lang.Math.*;
  */
 public class Coordinates {
 
+  // Seismic datum elevation measured in ft. Zero time or depth in seismic 
+  // or resampled coordinates corresponds to this elevation in map coordinates.
+  public static final double DATUM_FT = 5500.0;
+
   // Conversion ft <=> km.
   static final double KM_PER_FT = 0.0003048;
   static final double FT_PER_KM = 1.0/KM_PER_FT;
@@ -30,10 +34,6 @@ public class Coordinates {
   static final double XLR_FT=809502.0, YLR_FT=939334.0; // (i2,i3) = (n2-1,0)
   static final double XUR_FT=808604.0, YUR_FT=977163.0; // (i2,i3) = (n2-1,n3-1)
   static final double XUL_FT=788039.0, YUL_FT=976675.0; // (i2,i3) = (0,n3-1)
-
-  // Seismic datum elevation measured in ft. Zero time or depth in seismic 
-  // or resampled coordinates corresponds to this elevation in map coordinates.
-  static final double DATUM_FT = 5500.0;
 
   // Rotation angle of seismic rectangle. This is the angle between
   // the seismic x2 (inline) axis and the map xe (easting) axis,

@@ -5,6 +5,7 @@ import java.util.*;
 import java.util.regex.*;
 import static java.lang.Math.*;
 
+import edu.mines.jtk.dsp.*;
 import edu.mines.jtk.io.*;
 import edu.mines.jtk.util.*;
 
@@ -105,7 +106,8 @@ public class WellLog {
      * Reads well log data from a binary file.
      * @param fileName the file name.
      */
-    public void readBinary(String fileName) {
+    public static Data readBinary(String fileName) {
+      Data data = new Data();
       try {
         ArrayInputStream ais = new ArrayInputStream(fileName);
         int nlog = ais.readInt();
@@ -134,9 +136,10 @@ public class WellLog {
           ais.readFloats(log.x1);
           ais.readFloats(log.x2);
           ais.readFloats(log.x3);
-          add(log);
+          data.add(log);
         }
         ais.close();
+        return data;
       } catch (IOException e) {
         throw new RuntimeException(e);
       }
@@ -176,35 +179,86 @@ public class WellLog {
     }
 
     /**
-     * Gets well logs with velocities.
+     * Gets well logs with the specified curve.
+     * @param curve the well log curve.
      * @return list of logs.
      */
-    public List<WellLog> getVelocityLogs() {
-      return getLogsWith('v');
+    public List<WellLog> getLogsWith(String curve) {
+      List<WellLog> list = new ArrayList<WellLog>();
+      for (WellLog log:_data.values()) {
+        if (log.getCurve(curve)!=null)
+          list.add(log);
+      }
+      return list;
     }
 
     /**
-     * Gets well logs with densities.
-     * @return list of logs.
+     * Rasterizes all logs that have the specified curve.
+     * This method assumes that all well log curves are sampled
+     * more finely than the returned raster image. Sample values
+     * in the image will be set to the average of all curve
+     * values that are nearest to that image sample. Image samples
+     * that are nearest to no curve values are set to the specified
+     * null value.
+     * in the raster image
+     * @param curve the well log curve to rasterize.
+     * @param fnull default raster image sample value.
+     * @param s1 sampling in 1st dimension of raster image.
+     * @param s2 sampling in 2nd dimension of raster image.
+     * @param s3 sampling in 3rd dimension of raster image.
+     * @return the sampled raster image.
      */
-    public List<WellLog> getDensityLogs() {
-      return getLogsWith('d');
-    }
-
-    /**
-     * Gets well logs with gamma ray counts.
-     * @return list of logs.
-     */
-    public List<WellLog> getGammaLogs() {
-      return getLogsWith('g');
-    }
-
-    /**
-     * Gets well logs with porosities.
-     * @return list of logs.
-     */
-    public List<WellLog> getPorosityLogs() {
-      return getLogsWith('p');
+    public float[][][] rasterizeLogsWith(
+      String curve, float fnull, 
+      Sampling s1, Sampling s2, Sampling s3) 
+    {
+      int n1 = s1.getCount();
+      int n2 = s2.getCount();
+      int n3 = s3.getCount();
+      double fx1 = s1.getFirst();
+      double fx2 = s2.getFirst();
+      double fx3 = s3.getFirst();
+      double lx1 = s1.getLast();
+      double lx2 = s2.getLast();
+      double lx3 = s3.getLast();
+      double sx1 = 1.0/s1.getDelta();
+      double sx2 = 1.0/s2.getDelta();
+      double sx3 = 1.0/s3.getDelta();
+      float[][][] image = new float[n3][n2][n1];
+      float[][][] count = new float[n3][n2][n1];
+      for (WellLog log:getAll()) {
+        float[] c = log.getCurve(curve);
+        if (c!=null) {
+          int n = log.n;
+          float[] x1 = log.x1;
+          float[] x2 = log.x2;
+          float[] x3 = log.x3;
+          for (int i=0; i<n; ++i) {
+            if (c[i]!=NULL_VALUE) {
+              double x1i = x1[i]; if (x1i<fx1 || lx1<x1i) continue;
+              double x2i = x2[i]; if (x2i<fx2 || lx2<x2i) continue;
+              double x3i = x3[i]; if (x3i<fx3 || lx3<x3i) continue;
+              int i1 = (int)((x1i-fx1)*sx1+0.5);
+              int i2 = (int)((x2i-fx2)*sx2+0.5);
+              int i3 = (int)((x3i-fx3)*sx3+0.5);
+              image[i3][i2][i1] += c[i];
+              count[i3][i2][i1] += 1.0f;
+            }
+          }
+        }
+      }
+      for (int i3=0; i3<n3; ++i3) {
+        for (int i2=0; i2<n2; ++i2) {
+          for (int i1=0; i1<n1; ++i1) {
+            if (count[i3][i2][i1]>0.0f) {
+              image[i3][i2][i1] /= count[i3][i2][i1];
+            } else {
+              image[i3][i2][i1] = fnull;
+            }
+          }
+        }
+      }
+      return image;
     }
 
     /**
@@ -216,7 +270,6 @@ public class WellLog {
       int ng = 0;
       int np = 0;
       for (WellLog log:getAll()) {
-        //System.out.println("id="+log.id+" n="+log.n);
         if (log.v!=null) ++nv;
         if (log.d!=null) ++nd;
         if (log.g!=null) ++ng;
@@ -249,19 +302,6 @@ public class WellLog {
           }
         }
       }
-    }
-    private List<WellLog> getLogsWith(char curve) {
-      List<WellLog> list = new ArrayList<WellLog>();
-      for (WellLog log:_data.values()) {
-        switch (curve) {
-          case 'v': if (log.v!=null) list.add(log); break;
-          case 'd': if (log.d!=null) list.add(log); break;
-          case 'g': if (log.g!=null) list.add(log); break;
-          case 'p': if (log.p!=null) list.add(log); break;
-          default:
-        }
-      }
-      return list;
     }
   }
 
@@ -415,6 +455,19 @@ public class WellLog {
   }
 
   /**
+   * Gets the well log curve with the specified name.
+   * @param curve the curve name; e.g., "velocity".
+   * @return array of curve values; null, if none.
+   */
+  public float[] getCurve(String curve) {
+    if (curve.startsWith("v")) return v;
+    if (curve.startsWith("d")) return d;
+    if (curve.startsWith("g")) return g;
+    if (curve.startsWith("p")) return p;
+    return null;
+  }
+
+  /**
    * Returns an array of derivatives (1/0.0003048)*dx1/dz.
    * The scale factor 0.0003048 (km/ft) compensates for the difference 
    * in units for dz1 (km) and dz (ft). This derivative should never 
@@ -432,7 +485,8 @@ public class WellLog {
 
   /**
    * Returns a 12-digit well log id corresponding to the specified string.
-   * Any characters beyond the first 10 are ignored.
+   * Any characters after the first 10 must be '0'. That is, this method
+   * does not accept well log id strings for sidetrack wells.
    * @param s the string representing the well log id.
    * @return the well log id; -1, if string is not valid.
    */
