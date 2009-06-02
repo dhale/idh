@@ -261,6 +261,54 @@ public class WellLog {
       return image;
     }
 
+    public void printCounts(float[][][] image, float fnull) {
+      int n1 = image[0][0].length;
+      int n2 = image[0].length;
+      int n3 = image.length;
+      int n3max = 0; 
+      int i3max = -1;
+      for (int i3=0; i3<n3; ++i3) {
+        int ns = 0;
+        for (int i2=0; i2<n2; ++i2) {
+          for (int i1=0; i1<n1; ++i1) {
+            if (image[i3][i2][i1]!=fnull)
+              ++ns;
+          }
+        }
+        System.out.println("i3="+i3+" ns="+ns);
+        if (ns>n3max) { n3max = ns; i3max = i3; }
+      }
+      System.out.println("i3max="+i3max+" n3max="+n3max);
+      int n2max = 0; 
+      int i2max = -1;
+      for (int i2=0; i2<n2; ++i2) {
+        int ns = 0;
+        for (int i3=0; i3<n3; ++i3) {
+          for (int i1=0; i1<n1; ++i1) {
+            if (image[i3][i2][i1]!=fnull)
+              ++ns;
+          }
+        }
+        System.out.println("i2="+i2+" ns="+ns);
+        if (ns>n2max) { n2max = ns; i2max = i2; }
+      }
+      System.out.println("i2max="+i2max+" n2max="+n2max);
+      int n1max = 0; 
+      int i1max = -1;
+      for (int i1=0; i1<n1; ++i1) {
+        int ns = 0;
+        for (int i3=0; i3<n3; ++i3) {
+          for (int i2=0; i2<n2; ++i2) {
+            if (image[i3][i2][i1]!=fnull)
+              ++ns;
+          }
+        }
+        System.out.println("i1="+i1+" ns="+ns);
+        if (ns>n1max) { n1max = ns; i1max = i1; }
+      }
+      System.out.println("i1max="+i1max+" n1max="+n1max);
+    }
+
     /**
      * Prints summary information for these well log data.
      */

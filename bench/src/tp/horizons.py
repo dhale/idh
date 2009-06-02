@@ -18,7 +18,10 @@ from tp import *
 
 def main(args):
   #convertHorizons()
-  plotCurves("gamma",1.0)
+  #plotCurves("gamma",1.0)
+  #plotCurves("velocity",40.0)
+  #plotCurves("density",1.0)
+  plotCurves("porosity",0.0)
   #plotAll()
 
 # Data directories.
@@ -66,8 +69,10 @@ def plotCurves(curve,fnull):
   world = World()
   wdata = readWellLogData()
   image = wdata.rasterizeLogsWith(curve,fnull,s1,s2,s3)
+  wdata.printCounts(image,fnull)
   printStats(image)
-  ipg = ImagePanelGroup(s1,s2,s3,image)
+  #ipg = ImagePanelGroup(s1,s2,s3,image)
+  ipg = ImagePanelGroup(Sampling(n1),Sampling(n2),Sampling(n3),image)
   ipg.setColorModel(ColorMap.JET)
   world.addChild(ipg)
   #addHorizonGroups(world,horizonNames)
