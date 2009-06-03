@@ -90,7 +90,6 @@ sinr = sin(phir)
 
 # Resampling of x2 and x3 after translation and rotation.
 # Spatial sampling intervals become 25 m instead of 33 m.
-# Also subsample time.
 n1=401; d1=0.002; f1=0.500
 n2=161; d2=0.025; f2=0.000
 n3=357; d3=0.025; f3=0.000

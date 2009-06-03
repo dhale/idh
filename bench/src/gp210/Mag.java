@@ -234,6 +234,45 @@ public class Mag {
     return zi;
   }
 
+  private static float[][] interpolateSibson1(
+    float[] x, float[] y, float[] z, Sampling sx, Sampling sy)
+  {
+    int n = x.length;
+    int nx = sx.getCount();
+    int ny = sy.getCount();
+    float[][] zi = new float[ny][nx];
+    TriMesh mesh = new TriMesh();
+    TriMesh.NodePropertyMap zmap = mesh.getNodePropertyMap("z");
+    for (int i=0; i<n; ++i) {
+      TriMesh.Node node = new TriMesh.Node(x[i],y[i]);
+      if (mesh.addNode(node))
+        zmap.put(node,new Float(z[i]));
+    }
+    float[] xs = {Array.min(x),Array.max(x)};
+    float[] ys = {Array.min(y),Array.max(y)};
+    for (int is=0; is<2; ++is) {
+      for (int js=0; js<2; ++js) {
+        float xi = xs[is];
+        float yi = ys[js];
+        TriMesh.Node near = mesh.findNodeNearest(xi,yi);
+        TriMesh.Node node = new TriMesh.Node(xi,yi);
+        if (mesh.addNode(node))
+          zmap.put(node,(Float)zmap.get(near));
+      }
+    }
+    TriMesh.NodePropertyMap zgmap = mesh.getNodePropertyMap("zg");
+    mesh.estimateGradients(zmap,zgmap);
+    float znull = -1.0f; // values assigned to points outside convex hull
+    for (int iy=0; iy<ny; ++iy) {
+      float yi = (float)sy.getValue(iy);
+      for (int ix=0; ix<nx; ++ix) {
+        float xi = (float)sx.getValue(ix);
+        zi[iy][ix] = mesh.interpolateSibson1(xi,yi,zgmap,znull);
+      }
+    }
+    return zi;
+  }
+
   private static void plot(
     float[] x, float[] y, float[] z,
     Sampling sx, Sampling sy, float[][] sz,
