@@ -88,7 +88,7 @@ def convert():
     for i2 in range(j2,n2):
       ais.skipBytes(nthed)
       ais.readInts(x)
-      Convert.ibmToFloat(x,y)
+      IbmIeee.ibmToFloat(x,y)
       if i2==1 and missingTrace:
         aos.writeFloats(y) # duplicate first trace, if missing
         n += 1
@@ -145,8 +145,8 @@ def testFormat():
   ais.skipBytes(nthed)
   ais.readInts(xi)
   ais.close()
-  Convert.ibmToFloat(xi,x1)
-  Convert.ieeeToFloat(xi,x2)
+  IbmIeee.ibmToFloat(xi,x1)
+  IbmIeee.ieeeToFloat(xi,x2)
   sp = SimplePlot.asPoints(x1); sp.setTitle("Assuming IBM format")
   sp = SimplePlot.asPoints(x2); sp.setTitle("Assuming IEEE format")
 

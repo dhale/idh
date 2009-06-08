@@ -18,21 +18,12 @@ from tp import *
 
 #############################################################################
 def main(args):
-  setGlobals("t") # "t" for time horizons, "z" for depth horizons
-  #makeHorizons()
-  viewHorizons()
+  #setGlobals("t"); makeHorizons() # make binary files for time horizons
+  #setGlobals("z"); makeHorizons() # make binary files for depth horizons
+  setGlobals("t"); viewHorizons() # view time horizons
+  #setGlobals("z"); viewHorizons() # view depth horizons
 
-# Horizon names, ordered by increasing depth.
-horizonNames = [
-  "KF2F2WC",
-  "FallRiverDKOT",
-  "CrowMountainCRMT", # cleanest, with well-defined faults?
-  "TensleepASand",
-  "TensleepBbaseC1Dolo",
-  "BasementPC"
-]
-
-# Horizon name->color mapping.
+# Horizon names with colors, ordered by increasing time/depth.
 horizonColors = {
   "KF2F2WC":Color.RED,
   "FallRiverDKOT":Color.GREEN,
@@ -41,6 +32,7 @@ horizonColors = {
   "TensleepBbaseC1Dolo":Color.MAGENTA,
   "BasementPC":Color.YELLOW
 }
+horizonNames = horizonColors.keys()
 
 what = ""
 tssHorizonDir = ""
