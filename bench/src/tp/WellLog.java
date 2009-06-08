@@ -20,8 +20,9 @@ public class WellLog {
   public long id; // unique 12-digit API well number
   public double xe,yn,ze; // easting, northing, elevation
   public int n; // number of samples
-  public float[] z,v,d,g,p; // depth, velocity, density, gamma, porosity
-  public float[] x1,x2,x3; // resampled coordinates of well-bore (km)
+  public float[] z; // measured depth (along wellbore)
+  public float[] v,d,g,p; // velocity, density, gamma, porosity; may be null
+  public float[] x1,x2,x3; // CSM resampled coordinates of well-bore (km)
 
   // This value should be much lower than any reasonable elevation.
   // For Teapot Dome, elevations are approximately 5000 ft.
@@ -572,10 +573,10 @@ public class WellLog {
       x3 = new float[n];
       for (int i=0; i<n; ++i) {
         Coordinates.Map m = new Coordinates.Map(xe,yn,ze-z[i]);
-        Coordinates.Resampled r = new Coordinates.Resampled(m);
-        x1[i] = (float)r.x1;
-        x2[i] = (float)r.x2;
-        x3[i] = (float)r.x3;
+        Coordinates.Csm c = new Coordinates.Csm(m);
+        x1[i] = (float)c.x1;
+        x2[i] = (float)c.x2;
+        x3[i] = (float)c.x3;
       }
     }
   }

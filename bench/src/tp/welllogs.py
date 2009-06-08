@@ -4,7 +4,6 @@ from math import *
 from java.awt import *
 from java.io import *
 from java.lang import *
-from java.nio import *
 from javax.swing import *
 
 from edu.mines.jtk.awt import *
@@ -18,40 +17,63 @@ from edu.mines.jtk.sgl.test import *
 from tp import *
 
 # Directories and files for well logs, headers, directional surveys
-#wlDir = "/data/seis/tp/WellLogs/LAS_log_files/"
-wlDir = "/data/seis/tp/WellLogs/LAS_log_files/Deeper_LAS_files/"
-#wlDir = "/data/seis/tp/WellLogs/LAS_log_files/test/"
-whFile = "/data/seis/tp/WellLogs/WellHeaders.txt"
-dsFile = "/data/seis/tp/WellLogs/DirectionalSurveys.txt"
-wlFile = "/data/seis/tp/resamp/tp3logs.dat"
+tpDir = "/data/seis/tp/"
+doeWellLogsDir = tpDir+"doe/WellLogs/"
+csmWellLogsDir = tpDir+"csm/welllogs/"
+doeWellHeaders = doeWellLogsDir+"WellHeaders.txt"
+doeDirectionalSurveys = doeWellLogsDir+"DirectionalSurveys.txt"
+doeWellLogs = ""
+csmWellLogs = ""
 
-# Names for a few test wells
-wellNames = {
-  4902510993:"33-X-23",
-  4902510925:"56-TpX-3",
-  4902510902:"62-TpX-11"}
+# File for 3D seismic depth image to view with wells.
+csmSeismiczDir = tpDir+"csm/seismicz/"
+csmSeismic = csmSeismiczDir+"tpsz.dat"
+s1c = Sampling(2762,0.002,0.000)
+s2c = Sampling(161,0.025,0.000)
+s3c = Sampling(357,0.025,0.000)
 
 def main(args):
-  #loadWellLogs()
-  #loadDirectionalSurveys()
-  #loadWellHeaders()
-  viewCoordinates()
+  #makeBinaryWellLogs("test")
+  #makeBinaryWellLogs("shallow")
+  #makeBinaryWellLogs("deep")
+  #makeBinaryWellLogs("all")
+  #viewWellCoordinates("deep")
+  #viewWellsWithSeismic("deep","velocity")
+  viewWellsWithSeismic("deep","gamma")
 
-def loadWellLogs():
-  wldata = WellLog.Data(wlDir,whFile,dsFile)
+def setGlobals(what):
+  global csmWellLogs,doeWellLogs
+  if what=="all":
+    doeWellLogs = doeWellLogsDir+"LAS_log_files/"
+    csmWellLogs = csmWellLogsDir+"tpwall.dat"
+  elif what=="deep":
+    doeWellLogs = doeWellLogsDir+"LAS_log_files/Deeper_LAS_files/"
+    csmWellLogs = csmWellLogsDir+"tpwdeep.dat"
+  elif what=="shallow":
+    doeWellLogs = doeWellLogsDir+"LAS_log_files/Shallow_LAS_files/"
+    csmWellLogs = csmWellLogsDir+"tpwshallow.dat"
+  elif what=="test":
+    doeWellLogs = doeWellLogsDir+"LAS_log_files/test/"
+    csmWellLogs = csmWellLogsDir+"tpwtest.dat"
+
+def makeBinaryWellLogs(what):
+  wldata = WellLog.Data(doeWellLogs,doeWellHeaders,doeDirectionalSurveys)
   wldata.printInfo()
-  wldata.writeBinary(wlFile)
+  wldata.writeBinary(csmWellLogs)
 
-def loadWellHeaders():
-  whdata = WellHeader.Data(whFile)
+def dumpWellHeaders(what):
+  setGlobals(what)
+  whdata = WellHeader.Data(doeWellHeaders)
   whdata.printInfo()
 
-def loadDirectionalSurveys():
-  dsdata = DirectionalSurvey.Data(dsFile)
+def dumpDirectionalSurveys(what):
+  setGlobals(what)
+  dsdata = DirectionalSurvey.Data(doeDirectionalSurveys)
   dsdata.printInfo()
 
-def viewCoordinates():
-  wldata = WellLog.Data.readBinary(wlFile)
+def viewWellCoordinates(what):
+  setGlobals(what)
+  wldata = WellLog.Data.readBinary(csmWellLogs)
   wldata.printInfo()
   spz1 = SimplePlot()
   sp23 = SimplePlot()
@@ -69,16 +91,40 @@ def viewCoordinates():
   tv = PointsView(x2list,x3list)
   sp23.add(tv)
 
-def dx1(log):
-  return Array.max(log.x1)-Array.min(log.x1)
+def viewWellsWithSeismic(what,curve):
+  setGlobals(what)
+  wdata = WellLog.Data.readBinary(csmWellLogs)
+  n1c,n2c,n3c = s1c.count,s2c.count,s3c.count
+  ais = ArrayInputStream(csmSeismic)
+  x = Array.zerofloat(n1c,n2c,n3c)
+  ais.readFloats(x)
+  ais.close()
+  print "x min =",Array.min(x)," max =",Array.max(x)
+  ipg = ImagePanelGroup(s1c,s2c,s3c,x)
+  world = World()
+  world.addChild(ipg)
+  addWellGroups(world,wdata,curve)
+  frame = TestFrame(world)
+  frame.setVisible(True)
 
-def dx2(log):
-  return Array.max(log.x2)-Array.min(log.x2)
-  #return log.x2[0]-log.x2[log.n-1]
+def addWellGroups(world,wdata,curve):
+  for log in wdata.getLogsWith(curve):
+    pg = makePointGroup(log)
+    world.addChild(pg)
 
-def dx3(log):
-  return Array.max(log.x3)-Array.min(log.x3)
-  #return log.x3[0]-log.x3[log.n-1]
+def makePointGroup(log):
+  n = log.n
+  xyz = Array.zerofloat(3*n)
+  Array.copy(n,0,1,log.x3,0,3,xyz)
+  Array.copy(n,0,1,log.x2,1,3,xyz)
+  Array.copy(n,0,1,log.x1,2,3,xyz)
+  states = StateSet()
+  cs = ColorState()
+  cs.setColor(Color.YELLOW)
+  states.add(cs)
+  pg = PointGroup(xyz)
+  pg.setStates(states)
+  return pg
 
 #############################################################################
 class RunMain(Runnable):

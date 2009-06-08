@@ -49,7 +49,7 @@ public class Horizon {
    * @param fileName the file name.
    * @return the horizon.
    */
-  public static Horizon readText(String fileName) {
+  public static Horizon readText(String fileName, boolean time) {
     double zdatum = Coordinates.DATUM_FT;
     double nullValue = -999.99;
     int m = 500, n = 500; // (m,n) = (inline,xline) dimensions
@@ -75,11 +75,19 @@ public class Horizon {
         assert grid[i][j]<0:"no duplicate samples";
         if (xe==nullValue || yn==nullValue || zd==nullValue)
           continue;
-        Coordinates.Map xyz = new Coordinates.Map(xe,yn,zdatum-zd);
-        Coordinates.Resampled r = new Coordinates.Resampled(xyz);
-        x1List.add((float)r.x1);
-        x2List.add((float)r.x2);
-        x3List.add((float)r.x3);
+        if (time) {
+          Coordinates.Map map = new Coordinates.Map(xe,yn);
+          Coordinates.Csm csm = new Coordinates.Csm(map);
+          x1List.add((float)zd);
+          x2List.add((float)csm.x2);
+          x3List.add((float)csm.x3);
+        } else {
+          Coordinates.Map map = new Coordinates.Map(xe,yn,zdatum-zd);
+          Coordinates.Csm csm = new Coordinates.Csm(map);
+          x1List.add((float)csm.x1);
+          x2List.add((float)csm.x2);
+          x3List.add((float)csm.x3);
+        }
         grid[i][j] = ns++;
       }
       br.close();

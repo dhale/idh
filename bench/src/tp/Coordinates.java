@@ -8,12 +8,12 @@ import static java.lang.Math.*;
  * xe is easting, yn is northing, and ze is elevation, all measured in ft.
  * In some files depths zd are specified instead of elevations ze.
  * 
- * This class defines two additional coordinate systems, one for seismic
- * survey coordinates (x1,x2,x3) = (depth,inline,crossline) and another
- * that is a resampled (translated and rotated) version of those seismic
- * coordinates. The resampled coordinate system enables many of the dead
- * traces in the seismic survey to be ignored while maintaining regular
- * sampling of the 3D seismic image.
+ * This class defines two additional coordinate systems, one for DOE's
+ * seismic coordinates (x1,x2,x3) = (time/depth,inline,crossline) and
+ * another for CSM's resampled (translated and rotated) seismic coordinates. 
+ * The CSM resampled coordinate system enables many of the dead traces in 
+ * the DOE seismic survey to be excluded while maintaining regular sampling 
+ * of the 3D seismic image.
  * 
  * @author Dave Hale, Colorado School of Mines
  * @version 2009.05.19
@@ -35,24 +35,24 @@ public class Coordinates {
   static final double XUR_FT=808604.0, YUR_FT=977163.0; // (i2,i3) = (n2-1,n3-1)
   static final double XUL_FT=788039.0, YUL_FT=976675.0; // (i2,i3) = (0,n3-1)
 
-  // Rotation angle of seismic rectangle. This is the angle between
-  // the seismic x2 (inline) axis and the map xe (easting) axis,
+  // Rotation angle of DOE seismic rectangle. This is the angle between
+  // the DOE seismic x2 (inline) axis and the map xe (easting) axis,
   // measured CCW in the map (xe,yn) coordinate system.
-  static final double PHIS = atan2(YLR_FT-YLL_FT,XLR_FT-XLL_FT);
-  static final double COSS = cos(PHIS);
-  static final double SINS = sin(PHIS);
+  static final double PHID = atan2(YLR_FT-YLL_FT,XLR_FT-XLL_FT);
+  static final double COSD = cos(PHID);
+  static final double SIND = sin(PHID);
 
-  // Resampled (x1,x2,x3) coordinates to trim off most dead traces.
+  // CSM resampled (x2,x3) coordinates to exclude most dead traces.
   // This is a translation and rotation. The rotation center (in km) 
-  // and angle (in radians) were determined visually. Seismic coordinates 
-  // (x2s,x3s) and resampled coordinates (x2r,x3r) are measured in km and
+  // and angle (in radians) were determined visually. DOE coordinates 
+  // (x2d,x3d) and CSM coordinates (x2c,x3c) are measured in km and
   // related by:
-  //   x2s = X2CR + x2r*cos(PHIR) + x3r*sin(PHIR)
-  //   x3s = X3CR - x2r*sin(PHIR) + x3r*cos(PHIR)
-  static final double X2CR = 4.192, X3CR = 0.935; // in km
-  static final double PHIR = -0.485364; // in radians; equals -27.8093 degrees
-  static final double COSR = cos(PHIR);
-  static final double SINR = sin(PHIR);
+  //   x2d = X2DC + x2c*cos(PHIC) + x3c*sin(PHIC)
+  //   x3d = X3DC - x2c*sin(PHIC) + x3c*cos(PHIC)
+  static final double X2DC = 4.192, X3DC = 0.935; // in km
+  static final double PHIC = -0.485364; // in radians; equals -27.8093 degrees
+  static final double COSC = cos(PHIC);
+  static final double SINC = sin(PHIC);
 
   // Map coordinates xe (easting), yn (northing), and ze (elevation) in ft.
   public static class Map {
@@ -65,105 +65,84 @@ public class Coordinates {
       this.yn = yn;
       this.ze = ze;
     }
-    public Map(Seismic s) {
-      double x1 = s.x1;
-      double x2 = s.x2;
-      double x3 = s.x3;
+    public Map(Doe doe) {
+      double x1 = doe.x1;
+      double x2 = doe.x2;
+      double x3 = doe.x3;
       x1 *= FT_PER_KM;
       x2 *= FT_PER_KM;
       x3 *= FT_PER_KM;
-      xe = COSS*x2-SINS*x3;
-      yn = SINS*x2+COSS*x3;
+      xe = COSD*x2-SIND*x3;
+      yn = SIND*x2+COSD*x3;
       ze = -x1;
       xe += XLL_FT;
       yn += YLL_FT;
       ze += DATUM_FT;
     }
-    public Map(Resampled r) {
-      this(new Seismic(r));
+    public Map(Csm csm) {
+      this(new Doe(csm));
     }
   }
 
-  // Seismic coordinates x1 (depth), x2 (inline) and x3 (crossline) in km.
-  public static class Seismic {
+  /**
+   * DOE coordinates x1 (time/depth), x2 (inline) and x3 (crossline) in km.
+   */
+  public static class Doe {
     public double x1,x2,x3;
-    public Seismic(double x2, double x3) {
+    public Doe(double x2, double x3) {
       this(0.0,x2,x3);
     }
-    public Seismic(double x1, double x2, double x3) {
+    public Doe(double x1, double x2, double x3) {
       this.x1 = x1;
       this.x2 = x2;
       this.x3 = x3;
     }
-    public Seismic(Map map) {
+    public Doe(Map map) {
       double xe = map.xe;
       double yn = map.yn;
       double ze = map.ze;
       xe -= XLL_FT;
       yn -= YLL_FT;
       x1 = DATUM_FT-ze;
-      x2 =  COSS*xe+SINS*yn;
-      x3 = -SINS*xe+COSS*yn;
+      x2 =  COSD*xe+SIND*yn;
+      x3 = -SIND*xe+COSD*yn;
       x1 *= KM_PER_FT;
       x2 *= KM_PER_FT;
       x3 *= KM_PER_FT;
     }
-    public Seismic(Resampled r) {
-      double x1r = r.x1;
-      double x2r = r.x2;
-      double x3r = r.x3;
-      x1 = x1r;
-      x2 = X2CR+COSR*x2r+SINR*x3r;
-      x3 = X3CR-SINR*x2r+COSR*x3r;
+    public Doe(Csm csm) {
+      double x1c = csm.x1;
+      double x2c = csm.x2;
+      double x3c = csm.x3;
+      x1 = x1c;
+      x2 = X2DC+COSC*x2c+SINC*x3c;
+      x3 = X3DC-SINC*x2c+COSC*x3c;
     }
   }
 
-  // Resampled coordinates x1 (depth), x2 (inline) and x3 (crossline) in km.
-  public static class Resampled {
+  /**
+   * CSM coordinates x1 (time/depth), x2 (inline) and x3 (crossline) in km.
+   */
+  public static class Csm {
     public double x1,x2,x3;
-    public Resampled(double x2, double x3) {
+    public Csm(double x2, double x3) {
       this(0.0,x2,x3);
     }
-    public Resampled(double x1, double x2, double x3) {
+    public Csm(double x1, double x2, double x3) {
       this.x1 = x1;
       this.x2 = x2;
       this.x3 = x3;
     }
-    public Resampled(Seismic s) {
-      double x1s = s.x1;
-      double x2s = s.x2-X2CR;
-      double x3s = s.x3-X3CR;
-      x1 = x1s;
-      x2 = COSR*x2s-SINR*x3s;
-      x3 = SINR*x2s+COSR*x3s;
+    public Csm(Doe doe) {
+      double x1d = doe.x1;
+      double x2d = doe.x2-X2DC;
+      double x3d = doe.x3-X3DC;
+      x1 = x1d;
+      x2 = COSC*x2d-SINC*x3d;
+      x3 = SINC*x2d+COSC*x3d;
     }
-    public Resampled(Map m) {
-      this(new Seismic(m));
-    }
-  }
-
-  public static void fromMapToSeismic(
-    double[] xe, double yn[],
-    double[] x2, double x3[])
-  {
-    int n = xe.length;
-    for (int i=0; i<n; ++i) {
-      Seismic s = new Seismic(new Map(xe[i],yn[i]));
-      x2[i] = s.x2;
-      x3[i] = s.x3;
-    }
-  }
-
-  public static void fromMapToSeismic(
-    double[] xe, double yn[], double[] ze,
-    double[] x1, double[] x2, double x3[])
-  {
-    int n = xe.length;
-    for (int i=0; i<n; ++i) {
-      Seismic s = new Seismic(new Map(xe[i],yn[i],ze[i]));
-      x1[i] = s.x1;
-      x2[i] = s.x2;
-      x3[i] = s.x3;
+    public Csm(Map map) {
+      this(new Doe(map));
     }
   }
 }

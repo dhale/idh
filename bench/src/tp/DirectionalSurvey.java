@@ -134,10 +134,10 @@ public class DirectionalSurvey {
     log.x2 = new float[n];
     log.x3 = new float[n];
     for (int i=0; i<n; ++i) {
-      Coordinates.Resampled r = locater.locate(log.z[i]);
-      log.x1[i] = (float)r.x1;
-      log.x2[i] = (float)r.x2;
-      log.x3[i] = (float)r.x3;
+      Coordinates.Csm csm = locater.locate(log.z[i]);
+      log.x1[i] = (float)csm.x1;
+      log.x2[i] = (float)csm.x2;
+      log.x3[i] = (float)csm.x3;
     }
   }
 
@@ -224,7 +224,7 @@ public class DirectionalSurvey {
         }
       }
     }
-    public Coordinates.Resampled locate(double zmi) {
+    public Coordinates.Csm locate(double zmi) {
       int n = _n;
 
       // Find interval of measured depth.
@@ -275,7 +275,7 @@ public class DirectionalSurvey {
       }
 
       // From map coordinates (xp,yp,zp) to resampled coordinates (x1,x2,x3).
-      return new Coordinates.Resampled(new Coordinates.Map(xp,yp,zp));
+      return new Coordinates.Csm(new Coordinates.Map(xp,yp,zp));
     }
     private int _n; // number of points with directional data
     private double[] _zm; // measured depths for all directional data

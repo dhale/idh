@@ -16,173 +16,124 @@ from edu.mines.jtk.sgl.test import *
 
 from tp import *
 
+#############################################################################
 def main(args):
-  #convertHorizons()
-  #plotCurves("gamma",1.0)
-  #plotCurves("velocity",40.0)
-  plotCurves("density",1.0)
-  #plotCurves("porosity",0.0)
-  #plotAll()
+  setGlobals("t") # "t" for time horizons, "z" for depth horizons
+  #makeHorizons()
+  viewHorizons()
 
-# Data directories.
-resampDir = "/data/seis/tp/resamp/"
-horizonsDir = resampDir+"horizons/"
-horizonsTextDir = "/data/seis/tp/Transform/horizons/"
-
-# Important files.
-imageFile = resampDir+"tp3z.dat"
-wdataFile = resampDir+"tp3logs.dat"
-
-# Coordinate sampling.
-n1=401; d1=0.004; f1=0.200; s1 = Sampling(n1,d1,f1)
-n2=161; d2=0.025; f2=0.000; s2 = Sampling(n2,d2,f2)
-n3=357; d3=0.025; f3=0.000; s3 = Sampling(n3,d3,f3)
-
-# Horizon names.
-"""
+# Horizon names, ordered by increasing depth.
 horizonNames = [
   "KF2F2WC",
-  "CrowMountainCRMT",
   "FallRiverDKOT",
+  "CrowMountainCRMT", # cleanest, with well-defined faults?
   "TensleepASand",
-  "TensleepBbaseC1Dolo"
-  "BasementPC",
-]
-"""
-horizonNames = [
-  "CrowMountainCRMT",
+  "TensleepBbaseC1Dolo",
+  "BasementPC"
 ]
 
-def zHorizonFile(name):
-  return horizonsDir+"tp3z"+name+".dat"
+# Horizon name->color mapping.
+horizonColors = {
+  "KF2F2WC":Color.RED,
+  "FallRiverDKOT":Color.GREEN,
+  "CrowMountainCRMT":Color.BLUE,
+  "TensleepASand":Color.CYAN,
+  "TensleepBbaseC1Dolo":Color.MAGENTA,
+  "BasementPC":Color.YELLOW
+}
 
-def zHorizonRead(name):
-  return Horizon.readBinary(zHorizonFile(name))
+what = ""
+tssHorizonDir = ""
+csmHorizonDir = ""
+csmSeismicImage = ""
+s1,s2,s3 = None,None,None
+time,depth = True,False
+def setGlobals(w):
+  global what,tssHorizonDir,csmHorizonDir,csmSeismicImage
+  global s1,s2,s3,time,depth
+  what = w
+  tpDir = "/data/seis/tp/"
+  tssHorizonDir = tpDir+"tss/horizons/"
+  s2 = Sampling(161,0.025,0.000)
+  s3 = Sampling(357,0.025,0.000)
+  if what=="t":
+    csmHorizonDir = tpDir+"csm/horizont/"
+    csmSeismicImage = tpDir+"csm/seismict/tpst.dat"
+    s1 = Sampling(1501,0.002,0.000)
+    time = True; depth = False
+  else:
+    csmHorizonDir = tpDir+"csm/horizonz/"
+    csmSeismicImage = tpDir+"csm/seismicz/tpsz.dat"
+    s1 = Sampling(2762,0.002,0.000)
+    time = False; depth = True
 
-def convertHorizons():
+def makeHorizons():
   for name in horizonNames:
-    h = Horizon.readText(horizonsTextDir+"z"+name+".txt")
+    h = Horizon.readText(tssHorizonDir+what+name+".txt",time)
     print name," ns =",h.ns," nt=",h.nt
-    h.writeBinary(zHorizonFile(name))
+    h.writeBinary(horizonFile(name))
 
-def plotCurves(curve,fnull):
+def viewHorizons():
+  x = readImage(csmSeismicImage)
+  ipg = ImagePanelGroup(s1,s2,s3,x)
   world = World()
-  wdata = readWellLogData()
-  #image = wdata.rasterizeLogsWith(curve,fnull,s1,s2,s3)
-  #wdata.printCounts(image,fnull)
-  #printStats(image)
-  #ipg = ImagePanelGroup(s1,s2,s3,image)
-  #ipg = ImagePanelGroup(Sampling(n1),Sampling(n2),Sampling(n3),image)
-  #ipg.setColorModel(ColorMap.JET)
-  #world.addChild(ipg)
-  image = readImage(imageFile)
-  printStats(image)
-  ipg = ImagePanelGroup(s1,s2,s3,image)
   world.addChild(ipg)
-  addHorizonGroups(world,horizonNames)
-  addWellGroups(world,wdata,curve)
-  makeFrame(world)
+  addHorizonGroups(world)
+  frame = makeFrame(world)
 
-def plotAll():
-  world = World()
-  wdata = readWellLogData()
-  image = readImage(imageFile)
-  printStats(image)
-  ipg = ImagePanelGroup(s1,s2,s3,image)
-  world.addChild(ipg)
-  addHorizonGroups(world,horizonNames)
-  addWellGroups(world,wdata,"velocity")
-  makeFrame(world)
+def horizonFile(name):
+  return csmHorizonDir+"tph"+what+name+".dat"
 
-def addHorizonGroups(world,horizonNames):
+def horizonRead(name):
+  return Horizon.readBinary(horizonFile(name))
+
+def addHorizonGroups(world):
   for hname in horizonNames:
-    h = zHorizonRead(hname)
-    tg = makeTriangleGroup(h)
+    h = horizonRead(hname)
+    c = horizonColors[hname]
+    tg = makeTriangleGroup(h,c)
     world.addChild(tg)
-
-def addWellGroups(world,wdata,curve):
-  for log in wdata.getLogsWith(curve):
-    pg = makePointGroup(log)
-    world.addChild(pg)
 
 def makeFrame(world):
   frame = TestFrame(world)
-  view = frame.getOrbitView()
-  view.setAxesScale(1.0,1.0,3.0)
-  view.setScale(2.0)
-  view.setAzimuth(10.0)
+  #view = frame.getOrbitView()
+  #view.setAxesScale(1.0,1.0,3.0)
+  #view.setScale(2.0)
+  #view.setAzimuth(10.0)
   frame.setSize(1200,900)
   frame.setVisible(True)
   return frame
 
-def readWellLogData():
-  return WellLog.Data.readBinary(wdataFile)
-
-def readImage(fileName):
+def readImage(filename):
+  n1,n2,n3 = s1.count,s2.count,s3.count
   x = Array.zerofloat(n1,n2,n3)
-  ais = ArrayInputStream(fileName)
+  ais = ArrayInputStream(filename)
   ais.readFloats(x)
   ais.close()
   return x
 
-def printStats(image):
-  print "image min =",Array.min(image)," max =",Array.max(image)
-
-def makeTriangleGroup(horizon):
+def makeTriangleGroup(horizon,color):
   ijk = horizon.getIABC()
   xyz = horizon.getX321()
   tg = TriangleGroup(ijk,xyz)
-  tg.setStates(horizonStates)
+  hs = makeHorizonStates(color)
+  tg.setStates(hs)
   return tg;
-def makeHorizonStates():
-  states = StateSet()
-  cs = ColorState()
-  cs.setColor(Color.CYAN)
-  states.add(cs)
-  lms = LightModelState()
-  lms.setTwoSide(True)
-  states.add(lms)
-  ms = MaterialState()
-  ms.setColorMaterial(GL_AMBIENT_AND_DIFFUSE)
-  ms.setSpecular(Color.WHITE)
-  ms.setShininess(100.0)
-  states.add(ms)
-  return states
-horizonStates = makeHorizonStates()
 
-def makePointGroup(log):
-  n = log.n
-  xyz = Array.zerofloat(3*n)
-  Array.copy(n,0,1,log.x3,0,3,xyz)
-  Array.copy(n,0,1,log.x2,1,3,xyz)
-  Array.copy(n,0,1,log.x1,2,3,xyz)
-  #pg = PointGroup(0.020,xyz)
-  pg = PointGroup(xyz)
-  pg.setStates(logStates)
-  return pg
-def makeLogStates():
-  states = StateSet()
+def makeHorizonStates(color):
+  hs = StateSet()
   cs = ColorState()
-  cs.setColor(Color.YELLOW)
-  states.add(cs)
-  """
+  cs.setColor(color)
+  hs.add(cs)
   lms = LightModelState()
   lms.setTwoSide(True)
-  states.add(lms)
+  hs.add(lms)
   ms = MaterialState()
   ms.setColorMaterial(GL_AMBIENT_AND_DIFFUSE)
   ms.setSpecular(Color.WHITE)
   ms.setShininess(100.0)
-  states.add(ms)
-  """
-  """
-  ls = LineState()
-  ls.setSmooth(True)
-  ls.setWidth(5)
-  states.add(ls)
-  """
-  return states
-logStates = makeLogStates()
+  hs.add(ms)
+  return hs
 
 #############################################################################
 class RunMain(Runnable):

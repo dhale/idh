@@ -37,12 +37,12 @@ f3i=0.000
 # Rotation center (in km) and angle (in radians).
 # Here, (x2s,x3s) are seismic survey coordinates
 # and (x2r,x3r) are resampled coordinates.
-# x2s = x2r + x2r*cos(phi) + x3r*sin(phi)
-# x3s = x3r - x2r*sin(phi) + x3r*cos(phi)
+# x2s = x2c + x2r*cos(phi) + x3r*sin(phi)
+# x3s = x3c - x2r*sin(phi) + x3r*cos(phi)
 x3c,x2c,phi = 0.935,4.192,-0.485364 # (-27.8093 degrees)
-#n1=401; d1=0.002; f1=0.500; j1i = 250 # time resampling
-#n1=401; d1=0.002; f1=0.770; j1i = 385; k1i = 2 # depth resampling
-n1=401; d1=0.002; f1=0.200; j1i = 100; k1i = 2 # depth resampling
+#n1=401; d1=0.004; f1=0.500; j1i = 250 # time resampling
+#n1=401; d1=0.004; f1=0.770; j1i = 385; k1i = 2 # depth resampling
+n1=401; d1=0.004; f1=0.200; j1i = 100; k1i = 2 # depth resampling
 n2=161; d2=0.025; f2=0.000
 n3=357; d3=0.025; f3=0.000
 
