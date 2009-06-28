@@ -34,12 +34,16 @@ s3c = Sampling(357,0.025,0.000)
 
 def main(args):
   #makeBinaryWellLogs("test")
-  #makeBinaryWellLogs("shallow")
   #makeBinaryWellLogs("deep")
+  #makeBinaryWellLogs("shallow")
   #makeBinaryWellLogs("all")
   #viewWellCoordinates("deep")
+  viewWellCurves("deep","velocity")
+  #viewWellCurves("deep","density")
+  #viewWellCurves("deep","gamma")
+  #viewWellCurves("deep","porosity")
   #viewWellsWithSeismic("deep","velocity")
-  viewWellsWithSeismic("deep","gamma")
+  #viewWellsWithSeismic("deep","gamma")
 
 def setGlobals(what):
   global csmWellLogs,doeWellLogs
@@ -57,6 +61,7 @@ def setGlobals(what):
     csmWellLogs = csmWellLogsDir+"tpwtest.dat"
 
 def makeBinaryWellLogs(what):
+  setGlobals(what)
   wldata = WellLog.Data(doeWellLogs,doeWellHeaders,doeDirectionalSurveys)
   wldata.printInfo()
   wldata.writeBinary(csmWellLogs)
@@ -90,6 +95,45 @@ def viewWellCoordinates(what):
   spz1.add(tv)
   tv = PointsView(x2list,x3list)
   sp23.add(tv)
+
+def viewWellCurves(what,curve):
+  setGlobals(what)
+  wldata = WellLog.Data.readBinary(csmWellLogs)
+  zlist,clist = [],[]
+  for log in wldata.getLogsWith(curve):
+    if curve=="velocity":
+      z,c = getNonNullValues(log.x1,log.v)
+    elif curve=="density":
+      z,c = getNonNullValues(log.x1,log.d)
+    elif curve=="gamma":
+      z,c = getNonNullValues(log.x1,log.g)
+    elif curve=="porosity":
+      z,c = getNonNullValues(log.x1,log.p)
+    zlist.append(z)
+    clist.append(c)
+  sp = SimplePlot()
+  sp.setHLabel("Depth (km)")
+  if curve=="velocity":
+    sp.setVLabel("Velocity (km/s)")
+  elif curve=="density":
+    sp.setVLabel("Density (kg/m3)")
+  elif curve=="gamma":
+    sp.setVLabel("Gamma Ray")
+  elif curve=="porosity":
+    sp.setVLabel("Porosity")
+  tv = PointsView(zlist,clist)
+  sp.add(tv)
+
+def getNonNullValues(z,c):
+  zlist = FloatList()
+  clist = FloatList()
+  cnull = -999.2500
+  n = len(z)
+  for i in range(n):
+    if c[i]!=cnull:
+      zlist.add(z[i])
+      clist.add(c[i])
+  return zlist.trim(),clist.trim()
 
 def viewWellsWithSeismic(what,curve):
   setGlobals(what)

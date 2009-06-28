@@ -497,6 +497,20 @@ public class WellLog {
     log.g = gl.trim();
     log.p = pl.trim();
 
+    // Convert velocity and density to SI units.
+    siVelocity(log.v);
+    siDensity(log.d);
+
+    // Clean up logs (or set to null, if too dirty).
+    log.v = cleanVelocity(log.v);
+    log.d = cleanDensity(log.d);
+    log.g = cleanGamma(log.g);
+    log.p = cleanPorosity(log.p);
+
+    // If no valid curves, no log.
+    if (log.v==null && log.d==null && log.g==null && log.p==null)
+      return null;
+
     // Set resampled (x1,x2,x3) coordinates.
     log.setCoordinates(id,dsdata);
 
@@ -630,5 +644,65 @@ public class WellLog {
     Pattern p = Pattern.compile(" "+key+"\\s+?(\\S+):");
     Matcher m = p.matcher(data);
     return (m.find())?m.group(1):null;
+  }
+
+  private static void siVelocity(float[] v) {
+    if (v==null) return;
+    int n = v.length;
+    float sv = 304.8f; // from ft/us to km/s
+    for (int i=0; i<n; ++i)
+      if (v[i]!=NULL_VALUE) v[i] = sv/v[i]; // divide, since log is us/ft!
+  }
+
+  private static void siDensity(float[] d) {
+    if (d==null) return;
+    int n = d.length;
+    float sd = 1000.0f; // from g/cc to kg/m3
+    for (int i=0; i<n; ++i)
+      if (d[i]!=NULL_VALUE) d[i] = sd*d[i];
+  }
+
+  private static float[] cleanVelocity(float[] v) {
+    if (v==null) return null;
+    int n = v.length;
+    for (int i=0; i<n; ++i)
+      if (v[i]!=NULL_VALUE && !validVelocity(v[i])) return null;
+    return v;
+  }
+  private static boolean validVelocity(float v) {
+    return 0.20f<v && v<20.0f;
+  }
+
+  private static float[] cleanDensity(float[] d) {
+    if (d==null) return null;
+    int n = d.length;
+    for (int i=0; i<n; ++i)
+      if (d[i]!=NULL_VALUE && !validDensity(d[i])) return null;
+    return d;
+  }
+  private static boolean validDensity(float d) {
+    return 500.0f<d && d<10000.0f;
+  }
+
+  private static float[] cleanGamma(float[] g) {
+    if (g==null) return null;
+    int n = g.length;
+    for (int i=0; i<n; ++i)
+      if (g[i]!=NULL_VALUE && !validGamma(g[i])) return null;
+    return g;
+  }
+  private static boolean validGamma(float g) {
+    return 0.0f<g && g<300.0f;
+  }
+
+  private static float[] cleanPorosity(float[] p) {
+    if (p==null) return null;
+    int n = p.length;
+    for (int i=0; i<n; ++i)
+      if (p[i]!=NULL_VALUE && !validPorosity(p[i])) return null;
+    return p;
+  }
+  private static boolean validPorosity(float p) {
+    return 0.0f<p && p<0.8f;
   }
 }

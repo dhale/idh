@@ -9,6 +9,7 @@ import static java.lang.Math.*;
 
 import edu.mines.jtk.awt.*;
 import edu.mines.jtk.dsp.*;
+import edu.mines.jtk.interp.*;
 import edu.mines.jtk.mesh.*;
 import edu.mines.jtk.mosaic.*;
 import edu.mines.jtk.sgl.*;
@@ -198,6 +199,15 @@ public class Mag {
   }
 
   private static float[][] interpolateSibson(
+    float[] x, float[] y, float[] z, Sampling sx, Sampling sy)
+  {
+    SibsonInterpolator2 si = new SibsonInterpolator2(z,x,y);
+    si.setBounds(sx,sy);
+    si.setNullValue(-1.0f);
+    return si.interpolate(sx,sy);
+  }
+
+  private static float[][] xinterpolateSibson(
     float[] x, float[] y, float[] z, Sampling sx, Sampling sy)
   {
     int n = x.length;
@@ -399,7 +409,7 @@ public class Mag {
     Sampling[] s = makeSamplings(x,y);
     Sampling sx = s[0], sy = s[1];
 
-    float[][] z0 = interpolateSample(x,y,z,sx,sy);
+    //float[][] z0 = interpolateSample(x,y,z,sx,sy);
     //float[][] z1 = interpolateSimple(x,y,z,sx,sy);
     float[][] z2 = interpolateSibson(x,y,z,sx,sy);
     //z1 = mask(-1.0f,z2,z1);
