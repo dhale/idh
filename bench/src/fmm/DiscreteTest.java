@@ -11,14 +11,11 @@ import static edu.mines.jtk.util.MathPlus.*;
 
 // for testing
 import java.awt.*;
-import java.awt.image.*;
-import java.io.*;
 import java.util.*;
-import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 import edu.mines.jtk.awt.*;
 import edu.mines.jtk.dsp.*;
-import edu.mines.jtk.io.*;
+import edu.mines.jtk.interp.*;
 import edu.mines.jtk.mesh.*;
 import edu.mines.jtk.mosaic.*;
 import static edu.mines.jtk.ogl.Gl.*;
@@ -40,7 +37,7 @@ public class DiscreteTest {
     float[] p = new float[n1];
     for (int i1=0; i1<n1; ++i1) {
       float xi = (float)i1;
-      int ki = Array.binarySearch(x,xi);
+      int ki = ArrayMath.binarySearch(x,xi);
       if (ki<0) ki = -1-ki;
       if (ki>=nx) ki = nx-1;
       float di = abs(x[ki]-xi);
@@ -61,11 +58,11 @@ public class DiscreteTest {
     float c, float[] s, float[] x, float[] y) 
   {
     int n1 = x.length;
-    float csmax = c*Array.max(s);
+    float csmax = c* ArrayMath.max(s);
     int niter = 1+4*(int)csmax;
     trace("niter="+niter);
-    float[] z = Array.copy(x);
-    float[] w = Array.copy(x);
+    float[] z = ArrayMath.copy(x);
+    float[] w = ArrayMath.copy(x);
     c *= -0.5f/(float)niter;
     for (int jiter=0; jiter<niter; ++jiter) {
       float gi,csi;
@@ -77,15 +74,15 @@ public class DiscreteTest {
         w[i1  ] += gi;
       }
       float[] t = w; w = z; z = t;
-      Array.copy(z,w);
+      ArrayMath.copy(z,w);
     }
-    Array.copy(z,y);
+    ArrayMath.copy(z,y);
   }
 
   private static float[] interpolateGaussian(float[] d, float[] p) {
     int n1 = d.length;
     float[] q = new float[n1];
-    float[] s = Array.pow(d,2.0f);
+    float[] s = ArrayMath.pow(d,2.0f);
     smoothGaussian(0.5f,s,p,q);
     return q;
   }
@@ -93,7 +90,7 @@ public class DiscreteTest {
   private static float[] interpolateSmooth(float[] d, float[] p) {
     int n1 = d.length;
     float[] q = new float[n1];
-    float[] s = Array.pow(d,2.0f);
+    float[] s = ArrayMath.pow(d,2.0f);
     SimplePlot.asPoints(s);
     LocalSmoothingFilter lsf = new LocalSmoothingFilter();
     lsf.apply(0.5f,s,p,q);
@@ -109,8 +106,8 @@ public class DiscreteTest {
     float[][] dp = getDistanceNearest(x,f,n1);
     float[] d = dp[0];
     float[] p = dp[1];
-    //d = Array.fillfloat(10.0f,n1);
-    //p = Array.zerofloat(n1);
+    //d = ArrayMath.fillfloat(10.0f,n1);
+    //p = ArrayMath.zerofloat(n1);
     for (int i=0; i<x.length; ++i)
       p[(int)x[i]] = f[i];
     //float[] q = interpolateGaussian(d,p);
@@ -222,8 +219,8 @@ public class DiscreteTest {
     int n2 = d.length;
     int n1m = n1-1;
     int n2m = n2-1;
-    float[][] q = Array.copy(p);
-    float dmax = Array.max(d);
+    float[][] q = ArrayMath.copy(p);
+    float dmax = ArrayMath.max(d);
     int niter = 1+(int)(dmax*dmax);
     trace("interpolateLaplace: niter="+niter);
     for (int jiter=0; jiter<niter; ++jiter) {
@@ -255,10 +252,10 @@ public class DiscreteTest {
     float a =  8.0f/20.0f;
     float b = -2.0f/20.0f;
     float c = -1.0f/20.0f;
-    float[][] q = Array.copy(p);
-    float dmax = Array.max(d);
-    float pmax = Array.max(p);
-    float pmin = Array.min(p);
+    float[][] q = ArrayMath.copy(p);
+    float dmax = ArrayMath.max(d);
+    float pmax = ArrayMath.max(p);
+    float pmin = ArrayMath.min(p);
     float dpeps = 0.000001f*(pmax-pmin);
     float dseps = dpeps*dpeps;
     float dsmax = Float.MAX_VALUE;
@@ -353,36 +350,27 @@ public class DiscreteTest {
   private static float[][] interpolateExactSibson(float[][] d, float[][] p) {
     int n1 = d[0].length;
     int n2 = d.length;
-    TriMesh tm = new TriMesh();
-    TriMesh.NodePropertyMap map = tm.getNodePropertyMap("f");
-    for (int i2=0; i2<n2; ++i2) {
+    int n = 0;
+    for (int i2=0; i2<n2; ++i2)
+      for (int i1=0; i1<n1; ++i1)
+        if (d[i2][i1]==0.0f) ++n;
+    float[] f = new float[n];
+    float[] x1 = new float[n];
+    float[] x2 = new float[n];
+    for (int i2=0,i=0; i2<n2; ++i2) {
       for (int i1=0; i1<n1; ++i1) {
         if (d[i2][i1]==0.0f) {
-          TriMesh.Node node = new TriMesh.Node(i1,i2);
-          tm.addNode(node);
-          map.put(node,new Float(p[i2][i1]));
+          f[i] = p[i2][i1];
+          x1[i] = i1;
+          x2[i] = i2;
         }
       }
     }
-    float extra = n1+n2;
-    for (int i2=0; i2<n2; i2+=n2-1) {
-      for (int i1=0; i1<n1; i1+=n1-1) {
-        float x1 = (i1==0)?-extra:(float)(n1-1)+extra;
-        float x2 = (i2==0)?-extra:(float)(n2-1)+extra;
-        TriMesh.Node near = tm.findNodeNearest(x1,x2);
-        TriMesh.Node node = new TriMesh.Node(x1,x2);
-        tm.addNode(node);
-        map.put(node,map.get(near));
-      }
-    }
-    float fnull = 0.0f;
-    float[][] q = new float[n2][n1];
-    for (int i2=0; i2<n2; ++i2) {
-      for (int i1=0; i1<n1; ++i1) {
-        q[i2][i1] = tm.interpolateSibson(i1,i2,map,fnull);
-      }
-    }
-    return q;
+    SibsonInterpolator2 si = new SibsonInterpolator2(f,x1,x2);
+    Sampling s1 = new Sampling(n1);
+    Sampling s2 = new Sampling(n2);
+    si.setBounds(s1,s2);
+    return si.interpolate(s1,s2);
   }
 
   private static float[][] sinsin(int n1, int n2) {
@@ -396,7 +384,7 @@ public class DiscreteTest {
   }
 
   private static float[][] smooth(double sigma, float[][] x) {
-    float[][] y = Array.copy(x);
+    float[][] y = ArrayMath.copy(x);
     RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(sigma);
     rgf.apply00(x,y);
     return y;
@@ -405,7 +393,7 @@ public class DiscreteTest {
   private static void shift(float[][] s) {
     int n1 = s[0].length;
     int n2 = s.length;
-    float[][] t = Array.copy(s);
+    float[][] t = ArrayMath.copy(s);
     for (int i2=n2-1; i2>0; --i2) {
       for (int i1=n1-1; i1>0; --i1) {
         s[i2][i1] = 0.25f*(s[i2][i1]+s[i2-1][i1]+s[i2][i1-1]+s[i2-1][i1-1]);
@@ -414,8 +402,8 @@ public class DiscreteTest {
   }
 
   private static float[][] interpolateSmooth(float[][] d, float[][] p) {
-    float[][] q = Array.copy(p);
-    float[][] s = Array.mul(d,d);
+    float[][] q = ArrayMath.copy(p);
+    float[][] s = ArrayMath.mul(d,d);
     shift(s);
     float c = 0.500f;
     Tensors2 t2 = new IdentityTensors2();
@@ -455,9 +443,9 @@ public class DiscreteTest {
     float[] x1 = s[3];
     float[] x2 = s[4];
     float[] x3 = s[0];
-    Array.mul(1.0f/(float)(n1-1),x1,x1);
-    Array.mul(1.0f/(float)(n2-1),x2,x2);
-    Array.mul(100.0f,x3,x3);
+    ArrayMath.mul(1.0f/(float)(n1-1),x1,x1);
+    ArrayMath.mul(1.0f/(float)(n2-1),x2,x2);
+    ArrayMath.mul(100.0f,x3,x3);
   }
 
   private static void plotSamples(float[][] s) {
@@ -538,7 +526,7 @@ public class DiscreteTest {
   private static TriangleGroup makeTriangleGroup(
     Sampling s1, Sampling s2, float[][] f) 
   {
-    f = Array.neg(f);
+    f = ArrayMath.neg(f);
     TriangleGroup tg = new TriangleGroup(true,s2,s1,f);
     StateSet states = new StateSet();
     ColorState cs = new ColorState();
@@ -593,7 +581,7 @@ public class DiscreteTest {
     float[][][] dp = getDistanceNearest(f,g1,g2,x1,x2,n1,n2);
     float[][] d = dp[0];
     float[][] p = dp[1];
-    float[][] qf = (mode==0)?sinsin(n1,n2):Array.zerofloat(n1,n2);
+    float[][] qf = (mode==0)?sinsin(n1,n2): ArrayMath.zerofloat(n1,n2);
     //float[][] q0 = interpolateApproxSibson(d,p);
     //float[][] q1 = interpolateDiscrSibson(d,p);
     float[][] q2 = interpolateExactSibson(d,p);

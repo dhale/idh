@@ -107,7 +107,7 @@ public class TimeMarker2 {
     shuffle(k1,k2);
     int nk = k1.length;
 
-    // Array for the eikonal solution times.
+    // ArrayMath for the eikonal solution times.
     float[][] t = new float[_n2][_n1];
 
     // Active list of samples used to compute times.
@@ -665,7 +665,7 @@ public class TimeMarker2 {
     plot(toFloat(i));
   }
   private static void plot(float[][] f) {
-    trace("plot f min="+Array.min(f)+" max="+Array.max(f));
+    trace("plot f min="+ ArrayMath.min(f)+" max="+ ArrayMath.max(f));
     edu.mines.jtk.mosaic.SimplePlot sp =
       new edu.mines.jtk.mosaic.SimplePlot(
         edu.mines.jtk.mosaic.SimplePlot.Origin.UPPER_LEFT);

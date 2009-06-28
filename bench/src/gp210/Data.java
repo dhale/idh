@@ -4,10 +4,10 @@ import java.awt.*;
 import java.io.*;
 import java.util.*;
 import javax.swing.SwingUtilities;
-import static java.lang.Math.*;
 
 import edu.mines.jtk.awt.*;
 import edu.mines.jtk.dsp.*;
+import edu.mines.jtk.interp.*;
 import edu.mines.jtk.mesh.*;
 import edu.mines.jtk.mosaic.*;
 import edu.mines.jtk.sgl.*;
@@ -48,10 +48,10 @@ public class Data {
   }
 
   private static Sampling[] makeSamplings(float[] x, float[] y) {
-    float xmin = Array.min(x);
-    float xmax = Array.max(x);
-    float ymin = Array.min(y);
-    float ymax = Array.max(y);
+    float xmin = ArrayMath.min(x);
+    float xmax = ArrayMath.max(x);
+    float ymin = ArrayMath.min(y);
+    float ymax = ArrayMath.max(y);
     int nx = 401;
     int ny = 401;
     double fx = 0.000;
@@ -133,7 +133,7 @@ public class Data {
     TriMesh.Tri triLast = null;
     float xa = 0.0f, ya = 0.0f, za = 0.0f, ax = 0.0f, ay = 0.0f;
     float xb,yb,zb,xc,yc,zc;
-    float znull = 0.5f*(Array.min(z)+Array.max(z));
+    float znull = 0.5f*(ArrayMath.min(z)+ ArrayMath.max(z));
     for (int iy=0; iy<ny; ++iy) {
       float yi = (float)sy.getValue(iy);
       for (int ix=0; ix<nx; ++ix) {
@@ -186,20 +186,9 @@ public class Data {
   private static float[][] interpolateNatural(
     float[] x, float[] y, float[] z, Sampling sx, Sampling sy)
   {
-    int nx = sx.getCount();
-    int ny = sy.getCount();
-    float[][] zi = new float[ny][nx];
-    TriMesh mesh = makeMesh(x,y,z,sx,sy,true);
-    TriMesh.NodePropertyMap zmap = mesh.getNodePropertyMap("z");
-    float znull = 0.5f*(Array.min(z)+Array.max(z));
-    for (int iy=0; iy<ny; ++iy) {
-      float yi = (float)sy.getValue(iy);
-      for (int ix=0; ix<nx; ++ix) {
-        float xi = (float)sx.getValue(ix);
-        zi[iy][ix] = mesh.interpolateSibson(xi,yi,zmap,znull);
-      }
-    }
-    return zi;
+    SibsonInterpolator2 si = new SibsonInterpolator2(z,x,y);
+    si.setBounds(sx,sy);
+    return si.interpolate(sx,sy);
   }
 
   private static float[][] interpolateBiLaplace(
@@ -221,8 +210,8 @@ public class Data {
     float a =  8.0f/20.0f;
     float b = -2.0f/20.0f;
     float c = -1.0f/20.0f;
-    float zmax = Array.max(z);
-    float zmin = Array.min(z);
+    float zmax = ArrayMath.max(z);
+    float zmin = ArrayMath.min(z);
     float dpeps = 0.000001f*(zmax-zmin);
     float dseps = dpeps*dpeps;
     float dsmax = Float.MAX_VALUE;
@@ -323,8 +312,8 @@ public class Data {
     float[] x, float[] y, float[] z,
     Sampling sx, Sampling sy, float[][] sz)
   {
-    sz = Array.mul(0.01f,sz);
-    z = Array.mul(0.01f,z);
+    sz = ArrayMath.mul(0.01f,sz);
+    z = ArrayMath.mul(0.01f,z);
     PointGroup pg = makePointGroup(x,y,z);
     TriangleGroup tg = makeTriangleGroup(sx,sy,sz);
     World world = new World();
@@ -340,9 +329,9 @@ public class Data {
   private static PointGroup makePointGroup(float[] x, float[] y, float[] z) {
     int n = x.length;
     float[] xyz = new float[3*n];
-    Array.copy(n,0,1,x,0,3,xyz);
-    Array.copy(n,0,1,y,1,3,xyz);
-    Array.copy(n,0,1,z,2,3,xyz);
+    ArrayMath.copy(n,0,1,x,0,3,xyz);
+    ArrayMath.copy(n,0,1,y,1,3,xyz);
+    ArrayMath.copy(n,0,1,z,2,3,xyz);
     float size = 0.01f;
     PointGroup pg = new PointGroup(size,xyz);
     StateSet states = new StateSet();
@@ -363,7 +352,7 @@ public class Data {
   private static TriangleGroup makeTriangleGroup(
     Sampling sx, Sampling sy, float[][] sz) 
   {
-    sz = Array.transpose(sz);
+    sz = ArrayMath.transpose(sz);
     TriangleGroup tg = new TriangleGroup(true,sx,sy,sz);
     StateSet states = new StateSet();
     ColorState cs = new ColorState();

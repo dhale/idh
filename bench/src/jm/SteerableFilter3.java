@@ -2,7 +2,6 @@ package jm;
 
 import static java.lang.Math.*;
 import java.awt.*;
-import java.io.*;
 import java.util.*;
 import javax.swing.SwingUtilities;
 import edu.mines.jtk.awt.*;
@@ -574,7 +573,7 @@ public class SteerableFilter3 {
   private static void testCriticalAbc() {
     Random r = new Random();
     int ntest = 7;
-    double[][] ftests = Array.sub(Array.randdouble(6,ntest),0.5);
+    double[][] ftests = ArrayMath.sub(ArrayMath.randdouble(6,ntest),0.5);
     /*
     ftests[0] = new double[]{1.0,0.0,0.0,0.0,0.0,0.0};
     ftests[1] = new double[]{0.0,1.0,0.0,0.0,0.0,0.0};

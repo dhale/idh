@@ -40,7 +40,7 @@ public class LocalSmoothingFilter {
 
   public void applyKill(float[] es, float[] x, float[] y) {
     applyPass(es,x,y);
-    Array.sub(x,y,y);
+    ArrayMath.sub(x,y,y);
   }
 
   /**
@@ -88,7 +88,7 @@ public class LocalSmoothingFilter {
     float[][] x, float[][] y) 
   {
     applyPass(ds,es,v1,x,y);
-    Array.sub(x,y,y);
+    ArrayMath.sub(x,y,y);
   }
 
   /**
@@ -321,7 +321,7 @@ public class LocalSmoothingFilter {
     si.setUniformSampling(n1,1.0f,0.0f);
     float[] t1 = new float[n1];
     float[] y1 = new float[n1];
-    float[] u1 = Array.rampfloat(0.0f,1.0f,n1);
+    float[] u1 = ArrayMath.rampfloat(0.0f,1.0f,n1);
 
     // Sub-diagonal of SPD tridiagonal matrix A in array e.
     float[][] e = new float[n2][n1];

@@ -9,6 +9,7 @@ from edu.mines.jtk.dsp import *
 from edu.mines.jtk.io import *
 from edu.mines.jtk.mosaic import *
 from edu.mines.jtk.util import *
+from edu.mines.jtk.util.ArrayMath import *
 
 from lcc import *
 
@@ -42,12 +43,12 @@ def goBurg():
 
 def doImage():
   x = readImage()
-  #x = Array.transpose(x)
+  #x = transpose(x)
   plot(x,10.0,"x")
   return x
 
 def doForwardInverse14(x,order,sigma):
-  y = Array.zerofloat(n1,n2)
+  y = zerofloat(n1,n2)
   lbf = LocalBurgFilter(sigma)
   cq1 = lbf.findQ1(order,x)
   lbf.applyQ1Forward(cq1,x,y)
@@ -55,19 +56,19 @@ def doForwardInverse14(x,order,sigma):
   lbf.applyQ4Forward(cq4,y,y)
   print "yrms =",rms(y)
   plot(y,2.0,"y")
-  z = Array.zerofloat(n1,n2)
+  z = zerofloat(n1,n2)
   lbf.applyQ4Inverse(cq4,y,z)
   lbf.applyQ1Inverse(cq1,z,z)
   #plot(z,10.0,"z")
-  print "max |z-x|:",Array.max(Array.abs(Array.sub(z,x)))
-  r = Array.sub(Array.randfloat(n1,n2),0.5)
-  s = Array.zerofloat(n1,n2)
+  print "max |z-x|:",max(abs(sub(z,x)))
+  r = sub(randfloat(n1,n2),0.5)
+  s = zerofloat(n1,n2)
   lbf.applyQ4Inverse(cq4,r,s)
   lbf.applyQ1Inverse(cq1,s,s)
   plot(s,0.0,"s");
 
 def doForwardInverse41(x,order,sigma):
-  y = Array.zerofloat(n1,n2)
+  y = zerofloat(n1,n2)
   lbf = LocalBurgFilter(sigma)
   cq4 = lbf.findQ4(order,x)
   lbf.applyQ4Forward(cq4,x,y)
@@ -75,13 +76,13 @@ def doForwardInverse41(x,order,sigma):
   lbf.applyQ1Forward(cq1,y,y)
   print "yrms =",rms(y)
   plot(y,2.0,"y")
-  z = Array.zerofloat(n1,n2)
+  z = zerofloat(n1,n2)
   lbf.applyQ1Inverse(cq1,y,z)
   lbf.applyQ4Inverse(cq4,z,z)
   #plot(z,10.0,"z")
-  print "max |z-x|:",Array.max(Array.abs(Array.sub(z,x)))
-  r = Array.sub(Array.randfloat(n1,n2),0.5)
-  s = Array.zerofloat(n1,n2)
+  print "max |z-x|:",max(abs(sub(z,x)))
+  r = sub(randfloat(n1,n2),0.5)
+  s = zerofloat(n1,n2)
   lbf.applyQ1Inverse(cq1,r,s)
   lbf.applyQ4Inverse(cq4,s,s)
   plot(s,0.0,"s");
@@ -90,12 +91,12 @@ def rms(x):
   n1 = len(x[0])
   n2 = len(x)
   s = 1.0/(n1*n2)
-  return sqrt(s*Array.sum(Array.mul(x,x)))
+  return sqrt(s*sum(mul(x,x)))
 
 def plotc(c):
   m = order
-  c1 = Array.zerofloat(n1,n2)
-  c2 = Array.zerofloat(n1,n2)
+  c1 = zerofloat(n1,n2)
+  c2 = zerofloat(n1,n2)
   for k in range(m):
     for i2 in range(n2):
       for i1 in range(n1):
@@ -107,7 +108,7 @@ def plotc(c):
 def readImage():
   fileName = dataDir+"/seis/vg/junks.dat"
   ais = ArrayInputStream(fileName,ByteOrder.LITTLE_ENDIAN)
-  f = Array.zerofloat(n1,n2)
+  f = zerofloat(n1,n2)
   ais.readFloats(f)
   ais.close()
   return f
@@ -115,9 +116,9 @@ def readImage():
 def flip2(f):
   n1 = len(f[0])
   n2 = len(f)
-  g = Array.zerofloat(n1,n2)
+  g = zerofloat(n1,n2)
   for i2 in range(n2):
-    Array.copy(f[n2-1-i2],g[i2])
+    copy(f[n2-1-i2],g[i2])
   return g
 
 #############################################################################

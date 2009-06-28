@@ -7,9 +7,10 @@ from edu.mines.jtk.awt import *
 from edu.mines.jtk.dsp import *
 from edu.mines.jtk.io import *
 from edu.mines.jtk.mosaic import *
-from edu.mines.jtk.util import *
 from edu.mines.jtk.sgl import *
 from edu.mines.jtk.sgl.test import *
+from edu.mines.jtk.util import *
+from edu.mines.jtk.util.ArrayMath import *
 
 True = 1
 False = 0
@@ -35,27 +36,27 @@ pngdir = "png/"
 ##############################################################################
 
 def readAndScaleVolume(file,scale):
-  a = Array.zerofloat(n1,n2,n3)
+  a = zerofloat(n1,n2,n3)
   af = ArrayFile(datadir+file,"r")
   af.readFloats(a)
   af.close()
-  Array.mul(scale,a,a)
+  mul(scale,a,a)
   return a
 
 def readAndScaleSlices(file,scale,i1,i2,i3):
-  f12 = Array.zerofloat(n1,n2)
-  f13 = Array.zerofloat(n1,n3)
-  f23 = Array.zerofloat(n2,n3)
-  a = Array.zerofloat(n1)
+  f12 = zerofloat(n1,n2)
+  f13 = zerofloat(n1,n3)
+  f23 = zerofloat(n2,n3)
+  a = zerofloat(n1)
   af = ArrayFile(datadir+file,"r")
   for j3 in range(n3):
     for j2 in range(n2):
       af.readFloats(a)
       f23[j3][j2] = scale*a[i1]
       if j3==i3:
-        Array.mul(scale,a,f12[j2])
+        mul(scale,a,f12[j2])
       if j2==i2:
-        Array.mul(scale,a,f13[j3])
+        mul(scale,a,f13[j3])
   af.close()
   return f12,f13,f23
 
@@ -83,9 +84,9 @@ def frame(panel,png):
 
 def plot3d(k1,k2,k3,file,scale,clip,cmod=ColorMap.GRAY,png=None):
   f12,f13,f23 = readAndScaleSlices(file,scale,k1,k2,k3)
-  print "plot3d: f12 min =",Array.min(f12),"  max =",Array.max(f12)
-  print "plot3d: f13 min =",Array.min(f13),"  max =",Array.max(f13)
-  print "plot3d: f23 min =",Array.min(f23),"  max =",Array.max(f23)
+  print "plot3d: f12 min =",min(f12),"  max =",max(f12)
+  print "plot3d: f13 min =",min(f13),"  max =",max(f13)
+  print "plot3d: f23 min =",min(f23),"  max =",max(f23)
   panel = PlotPanel(2,2,
     PlotPanel.Orientation.X1DOWN_X2RIGHT,
     PlotPanel.AxesPlacement.LEFT_BOTTOM)
@@ -129,7 +130,7 @@ def plot3d(k1,k2,k3,file,scale,clip,cmod=ColorMap.GRAY,png=None):
 # PlotPanelPixels3 needs a parameter for aspect ratio.
 def plot3dNew(k1,k2,k3,file,scale,clip,cmod=ColorMap.GRAY,png=None):
   f = readAndScaleVolume(file,scale)
-  print "plot3d: f min =",Array.min(f),"  max =",Array.max(f)
+  print "plot3d: f min =",min(f),"  max =",max(f)
   panel = PlotPanelPixels3(
     PlotPanelPixels3.Orientation.X1DOWN,
     PlotPanelPixels3.AxesPlacement.LEFT_BOTTOM,

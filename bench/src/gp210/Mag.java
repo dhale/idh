@@ -103,10 +103,10 @@ public class Mag {
   }
 
   private static Sampling[] makeSamplings(float[] x, float[] y) {
-    float xmin = Array.min(x);
-    float xmax = Array.max(x);
-    float ymin = Array.min(y);
-    float ymax = Array.max(y);
+    float xmin = ArrayMath.min(x);
+    float xmax = ArrayMath.max(x);
+    float ymin = ArrayMath.min(y);
+    float ymax = ArrayMath.max(y);
     double fx = xmin;
     double fy = ymin;
     //double dx = 0.5;
@@ -129,7 +129,7 @@ public class Mag {
     int n = x.length;
     int nx = sx.getCount();
     int ny = sy.getCount();
-    float[][] zi = Array.fillfloat(-1.0f,nx,ny);
+    float[][] zi = ArrayMath.fillfloat(-1.0f,nx,ny);
     for (int i=0; i<n; ++i) {
       int ix = sx.indexOfNearest(x[i]);
       int iy = sy.indexOfNearest(y[i]);
@@ -207,80 +207,14 @@ public class Mag {
     return si.interpolate(sx,sy);
   }
 
-  private static float[][] xinterpolateSibson(
-    float[] x, float[] y, float[] z, Sampling sx, Sampling sy)
-  {
-    int n = x.length;
-    int nx = sx.getCount();
-    int ny = sy.getCount();
-    float[][] zi = new float[ny][nx];
-    TriMesh mesh = new TriMesh();
-    TriMesh.NodePropertyMap zmap = mesh.getNodePropertyMap("z");
-    for (int i=0; i<n; ++i) {
-      TriMesh.Node node = new TriMesh.Node(x[i],y[i]);
-      if (mesh.addNode(node))
-        zmap.put(node,new Float(z[i]));
-    }
-    float[] xs = {Array.min(x),Array.max(x)};
-    float[] ys = {Array.min(y),Array.max(y)};
-    for (int is=0; is<2; ++is) {
-      for (int js=0; js<2; ++js) {
-        float xi = xs[is];
-        float yi = ys[js];
-        TriMesh.Node near = mesh.findNodeNearest(xi,yi);
-        TriMesh.Node node = new TriMesh.Node(xi,yi);
-        if (mesh.addNode(node))
-          zmap.put(node,(Float)zmap.get(near));
-      }
-    }
-    float znull = -1.0f; // values assigned to points outside convex hull
-    for (int iy=0; iy<ny; ++iy) {
-      float yi = (float)sy.getValue(iy);
-      for (int ix=0; ix<nx; ++ix) {
-        float xi = (float)sx.getValue(ix);
-        zi[iy][ix] = mesh.interpolateSibson(xi,yi,zmap,znull);
-      }
-    }
-    return zi;
-  }
-
   private static float[][] interpolateSibson1(
     float[] x, float[] y, float[] z, Sampling sx, Sampling sy)
   {
-    int n = x.length;
-    int nx = sx.getCount();
-    int ny = sy.getCount();
-    float[][] zi = new float[ny][nx];
-    TriMesh mesh = new TriMesh();
-    TriMesh.NodePropertyMap zmap = mesh.getNodePropertyMap("z");
-    for (int i=0; i<n; ++i) {
-      TriMesh.Node node = new TriMesh.Node(x[i],y[i]);
-      if (mesh.addNode(node))
-        zmap.put(node,new Float(z[i]));
-    }
-    float[] xs = {Array.min(x),Array.max(x)};
-    float[] ys = {Array.min(y),Array.max(y)};
-    for (int is=0; is<2; ++is) {
-      for (int js=0; js<2; ++js) {
-        float xi = xs[is];
-        float yi = ys[js];
-        TriMesh.Node near = mesh.findNodeNearest(xi,yi);
-        TriMesh.Node node = new TriMesh.Node(xi,yi);
-        if (mesh.addNode(node))
-          zmap.put(node,(Float)zmap.get(near));
-      }
-    }
-    TriMesh.NodePropertyMap zgmap = mesh.getNodePropertyMap("zg");
-    mesh.estimateGradients(zmap,zgmap);
-    float znull = -1.0f; // values assigned to points outside convex hull
-    for (int iy=0; iy<ny; ++iy) {
-      float yi = (float)sy.getValue(iy);
-      for (int ix=0; ix<nx; ++ix) {
-        float xi = (float)sx.getValue(ix);
-        zi[iy][ix] = mesh.interpolateSibson1(xi,yi,zgmap,znull);
-      }
-    }
-    return zi;
+    SibsonInterpolator2 si = new SibsonInterpolator2(z,x,y);
+    si.setBounds(sx,sy);
+    si.setNullValue(-1.0f);
+    si.setGradientPower(1.0f);
+    return si.interpolate(sx,sy);
   }
 
   private static void plot(
@@ -351,9 +285,9 @@ public class Mag {
   private static PointGroup makePointGroup(float[] x, float[] y, float[] z) {
     int n = x.length;
     float[] xyz = new float[3*n];
-    Array.copy(n,0,1,x,0,3,xyz);
-    Array.copy(n,0,1,y,1,3,xyz);
-    Array.copy(n,0,1,z,2,3,xyz);
+    ArrayMath.copy(n,0,1,x,0,3,xyz);
+    ArrayMath.copy(n,0,1,y,1,3,xyz);
+    ArrayMath.copy(n,0,1,z,2,3,xyz);
     float size = 0.2f;
     PointGroup pg = new PointGroup(size,xyz);
     StateSet states = new StateSet();
@@ -374,7 +308,7 @@ public class Mag {
   private static TriangleGroup makeTriangleGroup(
     Sampling sx, Sampling sy, float[][] sz) 
   {
-    sz = Array.transpose(sz);
+    sz = ArrayMath.transpose(sz);
     TriangleGroup tg = new TriangleGroup(true,sx,sy,sz);
     StateSet states = new StateSet();
     ColorState cs = new ColorState();
@@ -405,7 +339,7 @@ public class Mag {
   private static void interpolate() {
     float[][] data = readData();
     float[] x = data[0], y = data[1], z = data[2], g = data[3];
-    Array.mul(100.0f,z,z);
+    ArrayMath.mul(100.0f,z,z);
     Sampling[] s = makeSamplings(x,y);
     Sampling sx = s[0], sy = s[1];
 

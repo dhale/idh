@@ -1,6 +1,5 @@
 package jss;
 
-import edu.mines.jtk.mosaic.*;
 import edu.mines.jtk.util.*;
 
 /**
@@ -18,7 +17,7 @@ public class Shifts {
   {
     int nx = ux.length;
     int nz = ux[0].length;
-    float[][] phi = Array.zerofloat(nz,nx);
+    float[][] phi = ArrayMath.zerofloat(nz,nx);
     for (int ix=0; ix<nx; ++ix) {
       for (int iz=1; iz<nz; ++iz) {
         phi[ix][iz] = phi[ix][iz-1]+dz*uza[ix][iz];

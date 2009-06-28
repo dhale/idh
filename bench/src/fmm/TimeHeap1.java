@@ -7,6 +7,7 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 package fmm;
 
 import edu.mines.jtk.util.Check;
+import edu.mines.jtk.util.ArrayMath;
 
 /**
  * A min- or max-heap of times sampled in a 1D array. 
@@ -281,8 +282,8 @@ public class TimeHeap1 {
   private static void testHeap(TimeHeap1 heap) {
     int n1 = heap.getN1();
     int n = n1;
-    float[] s = edu.mines.jtk.util.Array.randfloat(n);
-    float[] t = edu.mines.jtk.util.Array.copy(s);
+    float[] s = ArrayMath.randfloat(n);
+    float[] t = ArrayMath.copy(s);
     for (int i1=0; i1<n1; ++i1) {
       float ti = t[i1];
       heap.insert(i1,ti);
@@ -295,9 +296,9 @@ public class TimeHeap1 {
     }
     assert !heap.isEmpty();
     assert heap.size()==n;
-    edu.mines.jtk.util.Array.quickSort(s); // increasing order
+    ArrayMath.quickSort(s); // increasing order
     if (heap.getType()==TimeHeap1.Type.MAX)
-      s = edu.mines.jtk.util.Array.reverse(s); // decreasing order
+      s = ArrayMath.reverse(s); // decreasing order
     for (int i=0; i<n; ++i) {
       Entry e = heap.remove();
       float ti = e.t;

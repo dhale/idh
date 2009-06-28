@@ -7,19 +7,9 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 package fmm;
 
 import edu.mines.jtk.util.*;
-import static edu.mines.jtk.util.MathPlus.*;
 
 // for testing
-import java.awt.*;
-import java.awt.image.*;
-import java.io.*;
-import java.util.*;
-import javax.swing.JFrame;
-import javax.swing.SwingUtilities;
-import edu.mines.jtk.awt.*;
 import edu.mines.jtk.dsp.*;
-import edu.mines.jtk.io.*;
-import edu.mines.jtk.mosaic.*;
 
 /**
  * A 2D array of painted values, where most values are painted automatically.
@@ -153,7 +143,7 @@ public class PaintingM {
 
     // Prepare for local smoothing filter.
     float c = 0.25f;
-    float[][] s = Array.mul(_times,_times);
+    float[][] s = ArrayMath.mul(_times,_times);
     float[][] v = new float[_n2][_n1];
     LocalSmoothingFilter lsf = new LocalSmoothingFilter(0.01,1000);
 

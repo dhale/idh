@@ -13,8 +13,6 @@ import static edu.mines.jtk.util.MathPlus.*;
 import java.awt.*;
 import java.awt.image.*;
 import java.io.*;
-import java.util.*;
-import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 import edu.mines.jtk.awt.*;
 import edu.mines.jtk.dsp.*;
@@ -161,7 +159,7 @@ public class Painting2 {
     _k1[i2][i1] = i1;
     _k2[i2][i1] = i2;
     _tk[i2][i1] = INFINITY;
-    _vk[i2][i1] = Array.copy(v);
+    _vk[i2][i1] = ArrayMath.copy(v);
   }
 
   /**
@@ -229,13 +227,13 @@ public class Painting2 {
         float[] vk = _vk[i2][i1];
         if (vk==null)
           return;
-        _vk[i2][i1] = Array.copy(vk);
+        _vk[i2][i1] = ArrayMath.copy(vk);
       }
     }
 
     // Prepare for local smoothing filter.
     float c = 0.25f;
-    float[][] s = Array.mul(_tk,_tk);
+    float[][] s = ArrayMath.mul(_tk,_tk);
     float[][] v = new float[_n2][_n1];
     float[][] w = new float[_n2][_n1];
     LocalSmoothingFilter lsf = new LocalSmoothingFilter(0.01,1000);
@@ -248,9 +246,9 @@ public class Painting2 {
         }
       }
       lsf.apply(_pt,c,s,v,w);
-      trace("s min="+Array.min(s)+" max="+Array.max(s));
-      trace("v min="+Array.min(v)+" max="+Array.max(v));
-      trace("w min="+Array.min(w)+" max="+Array.max(w));
+      trace("s min="+ ArrayMath.min(s)+" max="+ ArrayMath.max(s));
+      trace("v min="+ ArrayMath.min(v)+" max="+ ArrayMath.max(v));
+      trace("w min="+ ArrayMath.min(w)+" max="+ ArrayMath.max(w));
       for (int i2=0; i2<_n2; ++i2) {
         for (int i1=0; i1<_n1; ++i1) {
           if (_type[i2][i1]!=FIXED) {
@@ -441,9 +439,9 @@ public class Painting2 {
       float[][] sv = new float[n2][n1];
       LocalOrientFilter lof = new LocalOrientFilter(sigma);
       lof.apply(x,null,u1,u2,null,null,su,sv,null);
-      float[][] sc = Array.sub(1.0f,coherence(sigma,x));
-      su = Array.mul(su,sc);
-      sv = Array.mul(sv,sc);
+      float[][] sc = ArrayMath.sub(1.0f,coherence(sigma,x));
+      su = ArrayMath.mul(su,sc);
+      sv = ArrayMath.mul(sv,sc);
       plot(su);
       for (int i2=0; i2<n2; ++i2) {
         for (int i1=0; i1<n1; ++i1) {

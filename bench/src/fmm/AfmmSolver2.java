@@ -7,8 +7,7 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 package fmm;
 
 import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.*;
+
 import edu.mines.jtk.dsp.*;
 import edu.mines.jtk.util.*;
 import static edu.mines.jtk.util.MathPlus.*;
@@ -214,7 +213,7 @@ public class AfmmSolver2 {
     _n1 = n1;
     _n2 = n2;
     _tensors = tensors;
-    _t = (t!=null)?t:Array.fillfloat(INFINITY,n1,n2);
+    _t = (t!=null)?t: ArrayMath.fillfloat(INFINITY,n1,n2);
     _s = new Sample[n2][n1];
     for (int i2=0; i2<n2; ++i2) {
       for (int i1=0; i1<n1; ++i1) {

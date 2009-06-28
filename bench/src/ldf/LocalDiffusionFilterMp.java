@@ -15,7 +15,6 @@ import static edu.mines.jtk.util.MathPlus.*;
 
 // FOR EXPERIMENTS ONLY!
 import edu.mines.jtk.awt.*;
-import edu.mines.jtk.mosaic.*;
 import edu.mines.jtk.sgl.*;
 import edu.mines.jtk.sgl.test.*;
 
@@ -87,7 +86,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     float[][] t = new float[n2][n1];
     _dlf.applyLinear(null,v1,x,t);
     _ff2.applyInverse(_sigma,ds,v1,t,y);
-    Array.sub(x,y,y);
+    ArrayMath.sub(x,y,y);
   }
 
   protected void solveLinear(
@@ -100,7 +99,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     float[][][] t = new float[n3][n2][n1];
     _dlf.applyLinear(null,iw,x,t);
     _ff3.applyInverse(false,_sigma,is,iw,t,y);
-    Array.sub(x,y,y);
+    ArrayMath.sub(x,y,y);
   }
 
   protected void solvePlanar(
@@ -138,7 +137,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     float[][][] t = new float[n3][n2][n1];
     _dlf.applyPlanar(null,iu,y,t);
     _ff3.applyInverse(true,_sigma,is,iu,t,y);
-    Array.sub(x,y,y);
+    ArrayMath.sub(x,y,y);
   }
 
   ///////////////////////////////////////////////////////////////////////////
@@ -259,7 +258,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
           float theta = _ftheta+itheta*_dtheta;
           float v1 = sin(theta);
           float v2 = cos(theta);
-          Array.mul(scale,t,r);
+          ArrayMath.mul(scale,t,r);
           _dlf.applyLinear(1.0f,v1,v2,t,r);
           cf.factorWilsonBurg(100,0.000001f,r);
           _atable[isigma][itheta] = cf.getA();
@@ -412,7 +411,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
         float scale = 2.0f/(sigma*sigma);
         for (int ivec=0; ivec<_nvec; ++ivec) {
           trace("isigma="+isigma+" ivec="+ivec);
-          Array.mul(scale,t,r);
+          ArrayMath.mul(scale,t,r);
           float[] w = _uss.getPoint(1+ivec); // {wx,wy,wz}
           float w1 = w[2]; // w1 = wz
           float w2 = w[1]; // w2 = wy
@@ -503,7 +502,7 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
         float[] asv = as[ia];
         if (wa<wb && wc<wb) asv = as[ib];
         if (wb<wc && wa<wc) asv = as[ic];
-        Array.copy(asv,a);
+        ArrayMath.copy(asv,a);
         /*
         float[][] a0 = _at[is  ];
         float[][] a1 = _at[is+1];
@@ -627,9 +626,9 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
       t[10][10][10] = 1.0f;
       cf.apply(t,t2);
       cf.applyTranspose(t2,t);
-      float[][][] s = Array.copy(3,3,3,9,9,9,t);
-      Array.dump(r);
-      Array.dump(s);
+      float[][][] s = ArrayMath.copy(3,3,3,9,9,9,t);
+      ArrayMath.dump(r);
+      ArrayMath.dump(s);
     }
   }
 
@@ -698,17 +697,17 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     // Denominator z = (eps*I+A'A)x.
     float sigma = 16.0f;
     float eps = 2.0f/(sigma*sigma);
-    Array.mul(eps,x,z);
+    ArrayMath.mul(eps,x,z);
     applyDiffusionFilter27(d11,d12,d13,d22,d23,d33,x,z);
 
     // Print eps*I+A'A.
-    float[][][] r = Array.copy(3,3,3,k-1,k-1,k-1,z);
-    Array.dump(r);
+    float[][][] r = ArrayMath.copy(3,3,3,k-1,k-1,k-1,z);
+    ArrayMath.dump(r);
 
     // Plot ratio Ay/Az which equals the desired amplitude spectrum.
     float[][][] ay = amplitude(y);
     float[][][] az = amplitude(z);
-    plot3d(Array.sub(1.0f,Array.div(ay,az)));
+    plot3d(ArrayMath.sub(1.0f, ArrayMath.div(ay,az)));
 
     // Minimum-phase causal filter.
     int[][] lags = (linear)?makeLagsLinear27():makeLagsPlanar27();
@@ -728,11 +727,11 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
 
     // Plot amplitude spectrum.
     az = amplitude(z);
-    plot3d(Array.sub(1.0f,Array.div(ay,az)));
+    plot3d(ArrayMath.sub(1.0f, ArrayMath.div(ay,az)));
 
     // Print approximation to eps*I+A'A implied by causal filter.
-    r = Array.copy(7,7,7,k-3,k-3,k-3,z);
-    Array.dump(r);
+    r = ArrayMath.copy(7,7,7,k-3,k-3,k-3,z);
+    ArrayMath.dump(r);
   }
 
   // Another test harness for experimenting with minimum-phase factors. 
@@ -783,20 +782,20 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     d13 = v1*v3; // = 0
     d23 = v2*v3; // = 0
     applyDiffusionFilter9(d11,d12,d22,x[k],y1[k]);
-    Array.mul(eps,x,za1);
+    ArrayMath.mul(eps,x,za1);
     applyDiffusionFilter9(d11,d12,d22,x[k],za1[k]);
     int[][] lags = makeLagsLinear9();
     int[] lag1,lag2,lag3;
     lag1 = lags[0];
     lag2 = lags[1];
     CausalFilter cf = new CausalFilter(lag1,lag2);
-    float[][] r1 = Array.copy(3,3,k-1,k-1,za1[k]);
-    Array.dump(r1);
+    float[][] r1 = ArrayMath.copy(3,3,k-1,k-1,za1[k]);
+    ArrayMath.dump(r1);
     cf.factorWilsonBurg(100,0.000001f,r1);
     cf.apply(x[k],zb1[k]);
     cf.applyTranspose(zb1[k],zb1[k]);
-    float[][][] a1 = Array.sub(1.0f,Array.div(amplitude(y1),amplitude(za1)));
-    float[][][] b1 = Array.sub(1.0f,Array.div(amplitude(y1),amplitude(zb1)));
+    float[][][] a1 = ArrayMath.sub(1.0f, ArrayMath.div(amplitude(y1),amplitude(za1)));
+    float[][][] b1 = ArrayMath.sub(1.0f, ArrayMath.div(amplitude(y1),amplitude(zb1)));
 
     // 2nd (w) linear filter.
     d11 = w1*w1;
@@ -806,26 +805,26 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     d13 = w1*w3;
     d23 = w2*w3;
     applyDiffusionFilter27(d11,d12,d13,d22,d23,d33,x,y2);
-    Array.mul(eps,x,za2);
+    ArrayMath.mul(eps,x,za2);
     applyDiffusionFilter27(d11,d12,d13,d22,d23,d33,x,za2);
     lags = makeLagsLinear27();
     lag1 = lags[0];
     lag2 = lags[1];
     lag3 = lags[2];
     cf = new CausalFilter(lag1,lag2,lag3);
-    Array.mul(eps,x,zb2);
+    ArrayMath.mul(eps,x,zb2);
     applyDiffusionFilter27(d11,d12,d13,d22,d23,d33,x,zb2);
-    float[][][] r2 = Array.copy(3,3,3,k-1,k-1,k-1,zb2);
-    Array.dump(r2);
+    float[][][] r2 = ArrayMath.copy(3,3,3,k-1,k-1,k-1,zb2);
+    ArrayMath.dump(r2);
     cf.factorWilsonBurg(100,0.000001f,r2);
     cf.apply(x,zb2);
     cf.applyTranspose(zb2,zb2);
-    float[][][] a2 = Array.sub(1.0f,Array.div(amplitude(y2),amplitude(za2)));
-    float[][][] b2 = Array.sub(1.0f,Array.div(amplitude(y2),amplitude(zb2)));
+    float[][][] a2 = ArrayMath.sub(1.0f, ArrayMath.div(amplitude(y2),amplitude(za2)));
+    float[][][] b2 = ArrayMath.sub(1.0f, ArrayMath.div(amplitude(y2),amplitude(zb2)));
 
     // Amplitude spectra.
-    float[][][] aa = Array.mul(a1,a2);
-    float[][][] bb = Array.mul(b1,b2);
+    float[][][] aa = ArrayMath.mul(a1,a2);
+    float[][][] bb = ArrayMath.mul(b1,b2);
     plot3d(aa);
     plot3d(bb);
     //plot3d(amplitude(za1));
@@ -1078,34 +1077,34 @@ public class LocalDiffusionFilterMp extends LocalDiffusionFilter {
     n1 = FftComplex.nfftSmall(n1);
     n2 = FftComplex.nfftSmall(n2);
     n3 = FftComplex.nfftSmall(n3);
-    float[][][] xr = Array.copy(n1,n2,n3,x);
-    float[][][] xi = Array.zerofloat(n1,n2,n3);
-    float[][][] cx = Array.cmplx(xr,xi);
+    float[][][] xr = ArrayMath.copy(n1,n2,n3,x);
+    float[][][] xi = ArrayMath.zerofloat(n1,n2,n3);
+    float[][][] cx = ArrayMath.cmplx(xr,xi);
     FftComplex fft1 = new FftComplex(n1);
     FftComplex fft2 = new FftComplex(n2);
     FftComplex fft3 = new FftComplex(n3);
     fft1.complexToComplex1(1,n2,n3,cx,cx);
     fft2.complexToComplex2(1,n1,n3,cx,cx);
     fft3.complexToComplex3(1,n1,n2,cx,cx);
-    float[][][] ax = Array.cabs(cx);
-    float[][][] a = Array.zerofloat(n1,n2,n3);
+    float[][][] ax = ArrayMath.cabs(cx);
+    float[][][] a = ArrayMath.zerofloat(n1,n2,n3);
     int j1 = n1/2;
     int j2 = n2/2;
     int j3 = n3/2;
-    Array.copy(n1-j1,n2-j2,n3-j3,0,0,0,ax,j1,j2,j3,a);
-    Array.copy(j1,n2-j2,n3-j3,n1-j1,0,0,ax,0,j2,j3,a);
-    Array.copy(n1-j1,j2,n3-j3,0,n2-j2,0,ax,j1,0,j3,a);
-    Array.copy(n1-j1,n2-j2,j3,0,0,n3-j3,ax,j1,j2,0,a);
-    Array.copy(j1,j2,n3-j3,n1-j1,n2-j2,0,ax,0,0,j3,a);
-    Array.copy(n1-j1,j2,j3,0,n2-j2,n3-j3,ax,j1,0,0,a);
-    Array.copy(j1,n2-j2,j3,n1-j1,0,n3-j3,ax,0,j2,0,a);
-    Array.copy(j1,j2,j3,n1-j1,n2-j2,n3-j3,ax,0,0,0,a);
+    ArrayMath.copy(n1-j1,n2-j2,n3-j3,0,0,0,ax,j1,j2,j3,a);
+    ArrayMath.copy(j1,n2-j2,n3-j3,n1-j1,0,0,ax,0,j2,j3,a);
+    ArrayMath.copy(n1-j1,j2,n3-j3,0,n2-j2,0,ax,j1,0,j3,a);
+    ArrayMath.copy(n1-j1,n2-j2,j3,0,0,n3-j3,ax,j1,j2,0,a);
+    ArrayMath.copy(j1,j2,n3-j3,n1-j1,n2-j2,0,ax,0,0,j3,a);
+    ArrayMath.copy(n1-j1,j2,j3,0,n2-j2,n3-j3,ax,j1,0,0,a);
+    ArrayMath.copy(j1,n2-j2,j3,n1-j1,0,n3-j3,ax,0,j2,0,a);
+    ArrayMath.copy(j1,j2,j3,n1-j1,n2-j2,n3-j3,ax,0,0,0,a);
     return a;
   }
 
   // Plots a 3-D array.
   public static void plot3d(float[][][] x) {
-    System.out.println("x min="+Array.min(x)+" max="+Array.max(x));
+    System.out.println("x min="+ ArrayMath.min(x)+" max="+ ArrayMath.max(x));
     ImagePanelGroup ipg = new ImagePanelGroup(x);
     ipg.setClips(0.0f,1.0f);
     ipg.setColorModel(ColorMap.JET);

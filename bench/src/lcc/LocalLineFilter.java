@@ -6,12 +6,7 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package lcc;
 
-import java.util.*;
-
-import edu.mines.jtk.dsp.*;
-import edu.mines.jtk.la.*;
 import edu.mines.jtk.util.*;
-import static edu.mines.jtk.util.MathPlus.*;
 
 /**
  * Local line filtering of images.
@@ -295,9 +290,9 @@ public class LocalLineFilter {
     float[][][] r = new float[n3][n2][n1]; // r
     float[][][] s = new float[n3][n2][n1]; // d
     float[][][] t = new float[n3][n2][n1]; // q
-    Array.zero(y);
-    Array.copy(x,r);
-    Array.copy(r,s);
+    ArrayMath.zero(y);
+    ArrayMath.copy(x,r);
+    ArrayMath.copy(r,s);
     float rr = dot(r,r);
     float stop = rr*CG_SMALL;
     trace("stop="+stop);
@@ -334,9 +329,9 @@ public class LocalLineFilter {
     float[][][] r = new float[n3][n2][n1]; // r
     float[][][] s = new float[n3][n2][n1]; // d
     float[][][] t = new float[n3][n2][n1]; // q
-    Array.zero(y);
-    Array.copy(x,r);
-    Array.copy(r,s);
+    ArrayMath.zero(y);
+    ArrayMath.copy(x,r);
+    ArrayMath.copy(r,s);
     float rr = dot(r,r);
     float stop = rr*CG_SMALL;
     trace("stop="+stop);

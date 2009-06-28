@@ -10,6 +10,7 @@ from edu.mines.jtk.dsp import *
 from edu.mines.jtk.io import *
 from edu.mines.jtk.mosaic import *
 from edu.mines.jtk.util import *
+from edu.mines.jtk.util.ArrayMath import *
 
 from ldf import *
 
@@ -69,21 +70,21 @@ def samplings(index):
   return Sampling(n1,d1,f1),Sampling(n2,d2,f2)
 
 def gpow(p,f):
-  return Array.mul(Array.sgn(f),Array.pow(Array.abs(f),p))
+  return mul(sgn(f),pow(abs(f),p))
 
 def tpow(p,s,f):
   nt,dt,ft = s.count,s.delta,s.first
   nx = len(f)
-  g = Array.copy(f)
+  g = copy(f)
   for ix in range(nx):
-    Array.mul(g[ix],Array.pow(Array.rampfloat(ft,dt,nt),p),g[ix])
+    mul(g[ix],pow(rampfloat(ft,dt,nt),p),g[ix])
   return g
 
 def readData(index):
   s1,s2 = samplings(index)
   n1,n2 = s1.count,s2.count
   ais = ArrayInputStream(fileName(index),ByteOrder.BIG_ENDIAN)
-  f = Array.zerofloat(n1,n2)
+  f = zerofloat(n1,n2)
   ais.readFloats(f)
   ais.close()
   return s1,s2,f

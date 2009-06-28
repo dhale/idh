@@ -7,9 +7,10 @@ from javax.swing import *
 from edu.mines.jtk.dsp import *
 from edu.mines.jtk.io import *
 from edu.mines.jtk.mosaic import *
-from edu.mines.jtk.util import *
 from edu.mines.jtk.sgl import *
 from edu.mines.jtk.sgl.test import *
+from edu.mines.jtk.util import *
+from edu.mines.jtk.util.ArrayMath import *
 
 import joe.Convert as Convert
 
@@ -45,11 +46,11 @@ def main(args):
 
 def plot12(i3):
   ais = ArrayInputStream(dataDir+"win34.dat")
-  x = Array.zerofloat(n1,n2)
+  x = zerofloat(n1,n2)
   ais.skipBytes(4*n1*n2*i3)
   ais.readFloats(x)
   ais.close()
-  print "x min =",Array.min(x)," max =",Array.max(x)
+  print "x min =",min(x)," max =",max(x)
   sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
   pv = sp.addPixels(x)
   #pv.setPercentiles(1.0,99.0)
@@ -57,7 +58,7 @@ def plot12(i3):
   pv.setInterpolation(PixelsView.Interpolation.LINEAR)
 
 def plot3d(x):
-  print "x min =",Array.min(x)," max =",Array.max(x)
+  print "x min =",min(x)," max =",max(x)
   s1 = Sampling(n1,d1,f1)
   s2 = Sampling(n2,d2,f2)
   s3 = Sampling(n3,d3,f3)
@@ -75,7 +76,7 @@ def readFormat():
   ais.skipBytes(nhead)
 # floating point format code should be in bytes 3225-6
 # 1 for IBM floating point, 5 for IEEE floating point
-  h = Array.zeroshort(nbhed)
+  h = zeroshort(nbhed)
   ais.readShorts(h)
   print "format =",h[12]
   ais.close()
@@ -85,17 +86,17 @@ def testFormat():
   ais = ArrayInputStream(infile)
   ais.skipBytes(nhead+nbhed)
   ais.skipBytes(nthed)
-  xi = Array.zeroint(n1i)
+  xi = zeroint(n1i)
   ais.readInts(xi)
   ais.close()
-  x1 = Array.zerofloat(n1i)
-  x2 = Array.zerofloat(n1i)
+  x1 = zerofloat(n1i)
+  x2 = zerofloat(n1i)
   Convert.ibmToFloat(xi,x1)
   Convert.ieeeToFloat(xi,x2)
   SimplePlot.asPoints(x1)
   SimplePlot.asPoints(x2)
-  #Array.dump(x1)
-  #Array.dump(x2)
+  #dump(x1)
+  #dump(x2)
 
 def readSegy():
   infile = dataDir+"QuinSy_migPh0time.sgy"
@@ -103,23 +104,23 @@ def readSegy():
   ais = ArrayInputStream(infile)
   aos = ArrayOutputStream(outfile)
   ais.skipBytes(nhead+nbhed)
-  x = Array.zerofloat(n1i)
-  y = Array.zerofloat(n1)
+  x = zerofloat(n1i)
+  y = zerofloat(n1)
   for i in range(n2i*n3i):
     if i%1000==0:
       print "i =",i
     ais.skipBytes(nthed)
     ais.readFloats(x)
-    Array.copy(n1,k1,x,0,y)
-    #Array.dump(y)
-    #print "y min =",Array.min(y)," max =",Array.max(y)
+    copy(n1,k1,x,0,y)
+    #dump(y)
+    #print "y min =",min(y)," max =",max(y)
     aos.writeFloats(y)
   ais.close()
   aos.close()
 
 def readImage():
   ais = ArrayInputStream(dataDir+"win34.dat")
-  x = Array.zerofloat(n1,n2,n3)
+  x = zerofloat(n1,n2,n3)
   ais.readFloats(x)
   ais.close()
   return x

@@ -95,9 +95,9 @@ public class IvusFrame extends JFrame {
       //ArrayFile af = 
       //  new ArrayFile(DATA_DIR+"FC_patient/FC_2000_2999.imgs","r");
       af.seek(175+kz*nx*ny);
-      byte[][][] b = Array.zerobyte(nx,ny,nz);
+      byte[][][] b = ArrayMath.zerobyte(nx,ny,nz);
       af.readBytes(b);
-      float[][][] f = Array.zerofloat(nz,ny,nx);
+      float[][][] f = ArrayMath.zerofloat(nz,ny,nx);
       for (int ix=0; ix<nx; ++ix) {
         for (int iy=0; iy<ny; ++iy) {
           for (int iz=0; iz<nz; ++iz) {

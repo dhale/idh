@@ -14,6 +14,7 @@ from edu.mines.jtk.dsp import *
 from edu.mines.jtk.io import *
 from edu.mines.jtk.mosaic import *
 from edu.mines.jtk.util import *
+from edu.mines.jtk.util.ArrayMath import *
 
 from fmm import *
 
@@ -87,27 +88,27 @@ def testSeismic():
 # other functions
 
 def readFloats(n1,n2,fileName):
-  x = Array.zerofloat(n1,n2)
+  x = zerofloat(n1,n2)
   ais = ArrayInputStream(fileName)
   ais.readFloats(x)
   ais.close()
   return x
 
 def gpow(x,gamma):
-  return Array.mul(Array.sgn(x),Array.pow(Array.abs(x),gamma))
+  return mul(sgn(x),pow(abs(x),gamma))
 
 def coherence(x,sigma):
   n1,n2 = len(x[0]),len(x)
   lof1 = LocalOrientFilter(sigma*2)
   lof2 = LocalOrientFilter(sigma*8)
-  u11 = Array.zerofloat(n1,n2)
-  u21 = Array.zerofloat(n1,n2)
-  su1 = Array.zerofloat(n1,n2)
-  sv1 = Array.zerofloat(n1,n2)
-  u12 = Array.zerofloat(n1,n2)
-  u22 = Array.zerofloat(n1,n2)
-  su2 = Array.zerofloat(n1,n2)
-  sv2 = Array.zerofloat(n1,n2)
+  u11 = zerofloat(n1,n2)
+  u21 = zerofloat(n1,n2)
+  su1 = zerofloat(n1,n2)
+  sv1 = zerofloat(n1,n2)
+  u12 = zerofloat(n1,n2)
+  u22 = zerofloat(n1,n2)
+  su2 = zerofloat(n1,n2)
+  sv2 = zerofloat(n1,n2)
   lof1.apply(x,None,u11,u21,None,None,su1,sv1,None)
   lof2.apply(x,None,u12,u22,None,None,su2,sv2,None)
   c = u11;
@@ -149,19 +150,19 @@ class SeismicTensors2(EigenTensors2):
   def __init__(self,x,alpha,sigma):
     EigenTensors2.__init__(self,len(x[0]),len(x))
     n1,n2 = len(x[0]),len(x)
-    u1 = Array.zerofloat(n1,n2)
-    u2 = Array.zerofloat(n1,n2)
-    su = Array.zerofloat(n1,n2)
-    sv = Array.zerofloat(n1,n2)
+    u1 = zerofloat(n1,n2)
+    u2 = zerofloat(n1,n2)
+    su = zerofloat(n1,n2)
+    sv = zerofloat(n1,n2)
     lof = LocalOrientFilter(sigma)
     lof.apply(x,None,u1,u2,None,None,su,sv,None)
     #c = coherence(x,sigma)
-    #c = Array.pow(c,8.0)
-    #c = Array.div(1.0,Array.sub(1.0,c))
-    #c = Array.div(1.0,Array.pow(Array.sub(1.0,c),0.25))
-    c = Array.fillfloat(1.0,n1,n2)
+    #c = pow(c,8.0)
+    #c = div(1.0,sub(1.0,c))
+    #c = div(1.0,pow(sub(1.0,c),0.25))
+    c = fillfloat(1.0,n1,n2)
     #plot(c,0,0,jet)
-    smax = Array.max(su)
+    smax = max(su)
     scale = (alpha*alpha-1.0)/smax
     for i2 in range(n2):
       for i1 in range(n1):
@@ -201,7 +202,7 @@ class SineTensors2(EigenTensors2):
     b2 = 3.0*2.0*pi/(n2-1) # 3 cycles horizontally
     a1 = ampmax
     a2 = atan(dipmax*pi/180.0)/b2
-    f = Array.zerofloat(n1,n2)
+    f = zerofloat(n1,n2)
     for i2 in range(n2):
       for i1 in range(n1):
         s2 = a2*sin(b2*i2)
@@ -227,7 +228,7 @@ class TsaiTensors2(EigenTensors2):
     d2 = 2.0/(n2-1)
     f1 = -1.0
     f2 = -1.0
-    f = Array.zerofloat(n1,n2)
+    f = zerofloat(n1,n2)
     for i2 in range(n2):
       x2 = f2+i2*d2
       for i1 in range(n1):

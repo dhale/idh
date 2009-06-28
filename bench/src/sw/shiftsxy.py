@@ -9,6 +9,7 @@ from edu.mines.jtk.dsp import *
 from edu.mines.jtk.io import *
 from edu.mines.jtk.mosaic import *
 from edu.mines.jtk.util import *
+from edu.mines.jtk.util.ArrayMath import *
 
 True = 1
 False = 0
@@ -35,7 +36,7 @@ datadir = "/data/seis/sw/sub24/"
 def makev0():
   global v0
   # v0(t) = 3.5 + (t-2.4)*0.5 (a simple linear function)
-  # v0 = Array.rampfloat(3.5,0.5*dt,n1)
+  # v0 = rampfloat(3.5,0.5*dt,n1)
   # v0 = v0(t) = z'(t), for (z,t) in (m,ms) from checkshot survey
   # depths in ft from checkshot survey
   zl= [0.00,  3168.00,  3568.00,  4018.00,  4418.00,
@@ -56,16 +57,16 @@ def makev0():
     4051.25,  4113.00,  4157.80,  4216.40,  4264.00,
     4310.00]
   nt = len(tl)
-  z = Array.zerofloat(nt)
-  t = Array.zerofloat(nt)
-  Array.copy(zl,z)
-  Array.copy(tl,t)
-  z = Array.mul(0.001*0.3048,z) # depths in km
-  t = Array.mul(0.001,t) # two-way times in s
-  #Array.dump(z)
-  #Array.dump(t)
+  z = zerofloat(nt)
+  t = zerofloat(nt)
+  copy(zl,z)
+  copy(tl,t)
+  z = mul(0.001*0.3048,z) # depths in km
+  t = mul(0.001,t) # two-way times in s
+  #dump(z)
+  #dump(t)
   ci = CubicInterpolator(CubicInterpolator.Method.LINEAR,nt,t,z)
-  v0 = Array.zerofloat(n1)
+  v0 = zerofloat(n1)
   for i1 in range(n1):
     t1 = (f1+i1*d1)
     v0[i1] = 2.0*ci.interpolate1(t1)
@@ -81,7 +82,7 @@ def plotv0():
 # Read/write
 
 def readFloats3(file):
-  f = Array.zerofloat(n1,n2,n3)
+  f = zerofloat(n1,n2,n3)
   af = ArrayFile(datadir+file,"r")
   af.readFloats(f)
   af.close()
@@ -99,36 +100,36 @@ def writeFloats3(file,f):
 def computeDdxdt():
   print " computeDdxdt:",
   deltax = readFloats3("u3s3.dat")
-  Array.mul(dx,deltax,deltax) # delta x in samples
+  mul(dx,deltax,deltax) # delta x in samples
   ddxdt = shifts.dddt(deltax); # delta x in m
   writeFloats3("c3s3.dat",ddxdt)
-  print "min =",Array.min(ddxdt)," max =",Array.max(ddxdt)
+  print "min =",min(ddxdt)," max =",max(ddxdt)
 
 def estimateDdxdt():
   print "estimateDdxdt:",
   deltat = readFloats3("u1s3.dat") # delta t in samples
-  Array.mul(dt,deltat,deltat) # delta t in s
+  mul(dt,deltat,deltat) # delta t in s
   ddxdt = shifts.ddxdt(r,v0,deltat)
   writeFloats3("e3s3.dat",ddxdt)
-  print "min =",Array.min(ddxdt)," max =",Array.max(ddxdt)
+  print "min =",min(ddxdt)," max =",max(ddxdt)
 
 def estimateDeltaX():
   print "estimateDeltaX:",
   deltat = readFloats3("u1s3.dat") # delta t in samples
-  Array.mul(dt,deltat,deltat) # delta t in s
+  mul(dt,deltat,deltat) # delta t in s
   deltax = shifts.getDeltaX(r,v0,deltat) # delta x in km
-  Array.mul(1.0/dx,deltax,deltax) # delta x in samples
+  mul(1.0/dx,deltax,deltax) # delta x in samples
   writeFloats3("e3s3.dat",deltax)
-  print "min =",Array.min(deltax)," max =",Array.max(deltax)
+  print "min =",min(deltax)," max =",max(deltax)
 
 def estimateDeltaY():
   print "estimateDeltaY:",
   deltat = readFloats3("u1s3.dat") # delta t in samples
-  Array.mul(dt,deltat,deltat) # delta t in s
+  mul(dt,deltat,deltat) # delta t in s
   deltay = shifts.getDeltaY(r,v0,deltat) # delta y in km
-  Array.mul(1.0/dy,deltay,deltay) # delta y in samples
+  mul(1.0/dy,deltay,deltay) # delta y in samples
   writeFloats3("e2s3.dat",deltay)
-  print "min =",Array.min(deltay)," max =",Array.max(deltay)
+  print "min =",min(deltay)," max =",max(deltay)
 
 def main(args):
   makev0()

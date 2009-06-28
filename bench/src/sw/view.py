@@ -7,9 +7,10 @@ from edu.mines.jtk.awt import *
 from edu.mines.jtk.dsp import *
 from edu.mines.jtk.io import *
 from edu.mines.jtk.mosaic import *
-from edu.mines.jtk.util import *
 from edu.mines.jtk.sgl import *
 from edu.mines.jtk.sgl.test import *
+from edu.mines.jtk.util import *
+from edu.mines.jtk.util.ArrayMath import *
 
 True = 1
 False = 0
@@ -39,7 +40,7 @@ pngdir = None
 # Read/write
 
 def readFloats3(file):
-  f = Array.zerofloat(n1,n2,n3)
+  f = zerofloat(n1,n2,n3)
   af = ArrayFile(datadir+file,"r")
   af.readFloats(f)
   af.close()
@@ -58,17 +59,17 @@ def readFloats23(file,i1):
   return slice23(f,i1)
 
 def slice12(f,i3):
-  f12 = Array.copy(f[i3])
+  f12 = copy(f[i3])
   return f12
 
 def slice13(f,i2):
-  f13 = Array.zerofloat(n1,n3)
+  f13 = zerofloat(n1,n3)
   for i3 in range(n3):
-    Array.copy(n1,f[i3][i2],f13[i3])
+    copy(n1,f[i3][i2],f13[i3])
   return f13
 
 def slice23(f,i1):
-  f23 = Array.zerofloat(n2,n3)
+  f23 = zerofloat(n2,n3)
   for i3 in range(n3):
     for i2 in range(n2):
       f23[i3][i2] = f[i3][i2][i1];
@@ -76,9 +77,9 @@ def slice23(f,i1):
 
 def readAndScaleSlices(file,scale,i1,i2,i3):
   f = readFloats3(file)
-  f12 = Array.mul(scale,slice12(f,i3))
-  f13 = Array.mul(scale,slice12(f,i2))
-  f23 = Array.mul(scale,slice12(f,i1))
+  f12 = mul(scale,slice12(f,i3))
+  f13 = mul(scale,slice12(f,i2))
+  f23 = mul(scale,slice12(f,i1))
   return f12,f13,f23
 
 ##############################################################################
@@ -102,9 +103,9 @@ def frame(panel,png):
 
 def plot3d(k1,k2,k3,file,scale,clip,cmod=ColorMap.GRAY,png=None):
   f12,f13,f23 = readAndScaleSlices(file,scale,k1,k2,k3)
-  print "plot3d: f12 min =",Array.min(f12),"  max =",Array.max(f12)
-  print "plot3d: f13 min =",Array.min(f13),"  max =",Array.max(f13)
-  print "plot3d: f23 min =",Array.min(f23),"  max =",Array.max(f23)
+  print "plot3d: f12 min =",min(f12),"  max =",max(f12)
+  print "plot3d: f13 min =",min(f13),"  max =",max(f13)
+  print "plot3d: f23 min =",min(f23),"  max =",max(f23)
   panel = PlotPanel(2,2,
     PlotPanel.Orientation.X1DOWN_X2RIGHT,
     PlotPanel.AxesPlacement.LEFT_BOTTOM)

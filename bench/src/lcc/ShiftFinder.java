@@ -200,11 +200,11 @@ public class ShiftFinder {
     _si.setUniformSampling(n1,1.0,0.0);
     _si.setUniformSamples(ha);
     _si.interpolate(n1,xu1,hb);
-      Array.copy(hb,h);
+      ArrayMath.copy(hb,h);
     if (_interpolateDisplacements) {
       _si.setUniformSamples(u1a);
       _si.interpolate(n1,xu1,u1b);
-      Array.copy(u1b,u1);
+      ArrayMath.copy(u1b,u1);
     }
   }
 
@@ -239,8 +239,8 @@ public class ShiftFinder {
         _si.setUniformSamples(u2a);
         _si.interpolate(n1,xu1,u2b);
       } else {
-        Array.copy(u1a,u1b);
-        Array.copy(u2a,u2b);
+        ArrayMath.copy(u1a,u1b);
+        ArrayMath.copy(u2a,u2b);
       }
       for (int i1=0; i1<n1; ++i1) {
         h[i2][i1] = hb[i1];
@@ -285,8 +285,8 @@ public class ShiftFinder {
         _si.setUniformSamples(u2a);
         _si.interpolate(n2,xu2,u2b);
       } else {
-        Array.copy(u1a,u1b);
-        Array.copy(u2a,u2b);
+        ArrayMath.copy(u1a,u1b);
+        ArrayMath.copy(u2a,u2b);
       }
       for (int i2=0; i2<n2; ++i2) {
         h[i2][i1] = hb[i2];
@@ -337,9 +337,9 @@ public class ShiftFinder {
           _si.setUniformSamples(u3a);
           _si.interpolate(n1,xu1,u3b);
         } else {
-          Array.copy(u1a,u1b);
-          Array.copy(u2a,u2b);
-          Array.copy(u3a,u3b);
+          ArrayMath.copy(u1a,u1b);
+          ArrayMath.copy(u2a,u2b);
+          ArrayMath.copy(u3a,u3b);
         }
         for (int i1=0; i1<n1; ++i1) {
           h[i3][i2][i1] = hb[i1];
@@ -397,9 +397,9 @@ public class ShiftFinder {
           _si.setUniformSamples(u3a);
           _si.interpolate(n2,xu2,u3b);
         } else {
-          Array.copy(u1a,u1b);
-          Array.copy(u2a,u2b);
-          Array.copy(u3a,u3b);
+          ArrayMath.copy(u1a,u1b);
+          ArrayMath.copy(u2a,u2b);
+          ArrayMath.copy(u3a,u3b);
         }
         for (int i2=0; i2<n2; ++i2) {
           h[i3][i2][i1] = hb[i2];
@@ -457,9 +457,9 @@ public class ShiftFinder {
           _si.setUniformSamples(u3a);
           _si.interpolate(n3,xu3,u3b);
         } else {
-          Array.copy(u1a,u1b);
-          Array.copy(u2a,u2b);
-          Array.copy(u3a,u3b);
+          ArrayMath.copy(u1a,u1b);
+          ArrayMath.copy(u2a,u2b);
+          ArrayMath.copy(u3a,u3b);
         }
         for (int i3=0; i3<n3; ++i3) {
           h[i3][i2][i1] = hb[i3];
@@ -538,7 +538,7 @@ public class ShiftFinder {
       rgf.apply0X(s,t);
       rgf.applyX0(t,g);
     } else {
-      Array.copy(s,g);
+      ArrayMath.copy(s,g);
     }
   }
 
@@ -640,7 +640,7 @@ public class ShiftFinder {
       rgf.applyX0X(t,s);
       rgf.applyXX0(s,g);
     } else {
-      Array.copy(s,g);
+      ArrayMath.copy(s,g);
     }
   }
 
@@ -658,12 +658,12 @@ public class ShiftFinder {
     int n1 = f.length;
 
     // Default shifts are zero.
-    Array.zero(u);
+    ArrayMath.zero(u);
 
     // Arrays to contain cross-correlations for three consecutive lags.
     float[][] c = new float[3][n1];
 
-    // Array for current correlation maximum values.
+    // ArrayMath for current correlation maximum values.
     float[] cmax = new float[n1];
 
     // Correlate for min lag.
@@ -723,12 +723,12 @@ public class ShiftFinder {
     int n2 = f.length;
 
     // Default shifts are zero.
-    Array.zero(u);
+    ArrayMath.zero(u);
 
     // Arrays to contain cross-correlations for three consecutive lags.
     float[][][] c = new float[3][n2][n1];
 
-    // Array for current correlation maximum values.
+    // ArrayMath for current correlation maximum values.
     float[][] cmax = new float[n2][n1];
 
     // Correlate for min lag.
@@ -796,12 +796,12 @@ public class ShiftFinder {
     int n3 = f.length;
 
     // Default shifts are zero.
-    Array.zero(u);
+    ArrayMath.zero(u);
 
     // Arrays to contain cross-correlations for three consecutive lags.
     float[][][][] c = new float[3][n3][n2][n1];
 
-    // Array for current correlation maximum values.
+    // ArrayMath for current correlation maximum values.
     float[][][] cmax = new float[n3][n2][n1];
 
     // Correlate for min lag.
@@ -930,7 +930,7 @@ public class ShiftFinder {
       rgf.apply0X(s,t);
       rgf.applyX0(t,g);
     } else {
-      Array.copy(s,g);
+      ArrayMath.copy(s,g);
     }
   }
 
@@ -1021,7 +1021,7 @@ public class ShiftFinder {
       rgf.applyX0X(t,s);
       rgf.applyXX0(s,g);
     } else {
-      Array.copy(s,g);
+      ArrayMath.copy(s,g);
     }
   }
 }

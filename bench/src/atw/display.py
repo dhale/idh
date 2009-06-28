@@ -11,6 +11,7 @@ from edu.mines.jtk.mosaic import *
 from edu.mines.jtk.util import *
 from edu.mines.jtk.sgl import *
 from edu.mines.jtk.sgl.test import *
+from edu.mines.jtk.util.ArrayMath import *
 
 dataDir = "/data/seis/atw/"
 
@@ -37,7 +38,7 @@ def doSlice1():
 
 def readImage(fileName):
   ais = ArrayInputStream(dataDir+fileName)
-  x = Array.zerofloat(n1,n2,n3)
+  x = zerofloat(n1,n2,n3)
   ais.readFloats(x)
   ais.close()
   return x
@@ -48,7 +49,7 @@ def writeImage(x,fileName):
   aos.close()
 
 def slice1(k1,x):
-  s = Array.zerofloat(n2,n3)
+  s = zerofloat(n2,n3)
   for i3 in range(n3):
     for i2 in range(n2):
       s[i3][i2] = x[i3][i2][k1]
@@ -56,7 +57,7 @@ def slice1(k1,x):
   return s
 
 def plot3d(x):
-  print "x min =",Array.min(x)," max =",Array.max(x)
+  print "x min =",min(x)," max =",max(x)
   n1,n2,n3 = len(x[0][0]),len(x[0]),len(x)
   s1,s2,s3 = Sampling(n1),Sampling(n2),Sampling(n3)
   #s1,s2,s3 = Sampling(n1,d1,f1),Sampling(n2,d2,f2),Sampling(n3,d3,f3)

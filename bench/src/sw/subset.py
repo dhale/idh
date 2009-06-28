@@ -7,6 +7,7 @@ import sys
 from java.lang import *
 from edu.mines.jtk.io import *
 from edu.mines.jtk.util import *
+from edu.mines.jtk.util.ArrayMath import *
 
 n1a = 1501 # = 6.0 s (number of time samples in original volume)
 n1s = 601  # = 2.4 s (number of time samples in subset)
@@ -27,12 +28,12 @@ def subset(file):
   print "subset:",afile,"to",sfile
   afa = ArrayFile(afile,"r")
   afs = ArrayFile(sfile,"rw")
-  fa = Array.zerofloat(n1a)
-  fs = Array.zerofloat(n1s)
+  fa = zerofloat(n1a)
+  fs = zerofloat(n1s)
   for i3 in range(n3):
     for i2 in range(n2):
       afa.readFloats(fa)
-      Array.copy(n1s,j1s,fa,0,fs)
+      copy(n1s,j1s,fa,0,fs)
       afs.writeFloats(fs)
   afa.close()
   afs.close()

@@ -25,17 +25,17 @@ public class LsfDemo {
     // Small array dimensions for testing.
     int n1 = 101, n2 = 103, n3 = 105;
 
-    // Array g[n3][n2][n1] of random values.
+    // ArrayMath g[n3][n2][n1] of random values.
     float[][][] g = makeRandom(n1,n2,n3);
-    System.out.println("g min="+Array.min(g)+" max="+Array.max(g));
+    System.out.println("g min="+ ArrayMath.min(g)+" max="+ ArrayMath.max(g));
 
-    // Array s1[n3][n2][n1] of displacements in 1st dimension.
+    // ArrayMath s1[n3][n2][n1] of displacements in 1st dimension.
     float[][][] s1 = makeShifts(n1,n2,n3);
-    System.out.println("s1 min="+Array.min(s1)+" max="+Array.max(s1));
+    System.out.println("s1 min="+ ArrayMath.min(s1)+" max="+ ArrayMath.max(s1));
 
     // Warp g[n3][n2][n1] to get f[n3][n2][n1].
     float[][][] f = warp1(s1,g);
-    System.out.println("f min="+Array.min(f)+" max="+Array.max(f));
+    System.out.println("f min="+ ArrayMath.min(f)+" max="+ ArrayMath.max(f));
 
     // Construct a local shift finder.
     float sigma = 4.0f;
@@ -48,24 +48,24 @@ public class LsfDemo {
 
     // Iterative search for shifts in all dimensions.
     float[][][] du = new float[n3][n2][n1];
-    float[][][] h = Array.copy(g);
+    float[][][] h = ArrayMath.copy(g);
     int min1 = -2, max1 =  2;
     int min2 = -2, max2 =  2;
     int min3 = -2, max3 =  2;
     for (int iter=0; iter<2; ++iter) {
       lsf.find1(min1,max1,f,h,du);
-      System.out.println("1: du min="+Array.min(du)+" max="+Array.max(du));
+      System.out.println("1: du min="+ ArrayMath.min(du)+" max="+ ArrayMath.max(du));
       lsf.shift1(du,u1,u2,u3,h);
       lsf.find2(min2,max2,f,h,du);
-      System.out.println("2: du min="+Array.min(du)+" max="+Array.max(du));
+      System.out.println("2: du min="+ ArrayMath.min(du)+" max="+ ArrayMath.max(du));
       lsf.shift2(du,u1,u2,u3,h);
       lsf.find3(min3,max3,f,h,du);
-      System.out.println("3: du min="+Array.min(du)+" max="+Array.max(du));
+      System.out.println("3: du min="+ ArrayMath.min(du)+" max="+ ArrayMath.max(du));
       lsf.shift3(du,u1,u2,u3,h);
     }
-    System.out.println("u1 min="+Array.min(u1)+" max="+Array.max(u1));
-    System.out.println("u2 min="+Array.min(u2)+" max="+Array.max(u2));
-    System.out.println("u3 min="+Array.min(u3)+" max="+Array.max(u3));
+    System.out.println("u1 min="+ ArrayMath.min(u1)+" max="+ ArrayMath.max(u1));
+    System.out.println("u2 min="+ ArrayMath.min(u2)+" max="+ ArrayMath.max(u2));
+    System.out.println("u3 min="+ ArrayMath.min(u3)+" max="+ ArrayMath.max(u3));
 
     // Plots.
     plot("g = random image",g);
@@ -82,7 +82,7 @@ public class LsfDemo {
     writeFile("junkg.dat",g);
     float[][][] f2 = readFile("junkf.dat",n1,n2,n3);
     float[][][] g2 = readFile("junkg.dat",n1,n2,n3);
-    System.out.println("max |f - f2| ="+Array.max(Array.abs(Array.sub(f,f2))));
+    System.out.println("max |f - f2| ="+ArrayMath.max(ArrayMath.abs(ArrayMath.sub(f,f2))));
     */
   }
 
@@ -100,7 +100,7 @@ public class LsfDemo {
 
   // Returns a 3D array r[n3][n2][n1] of Gaussian-filtered random values.
   private static float[][][] makeRandom(int n1, int n2, int n3) {
-    float[][][] r = Array.mul(5.0f,Array.sub(0.5f,Array.randfloat(n1,n2,n3)));
+    float[][][] r = ArrayMath.mul(5.0f, ArrayMath.sub(0.5f, ArrayMath.randfloat(n1,n2,n3)));
     float sigma = 1.0f;
     RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(sigma);
     rgf.apply000(r,r);
@@ -113,7 +113,7 @@ public class LsfDemo {
     float a1 = 0.100f;
     float a2 = 0.100f;
     float a3 = 0.100f;
-    float[][][] s = Array.sin(Array.rampfloat(a0,a1,a2,a3,n1,n2,n3));
+    float[][][] s = ArrayMath.sin(ArrayMath.rampfloat(a0,a1,a2,a3,n1,n2,n3));
     return s;
   }
 
@@ -121,9 +121,9 @@ public class LsfDemo {
   // parentheses implies sinc interpolation in the 1st dimension.
   private static float[][][] warp1(float[][][] s1, float[][][] g) {
     int n1 = g[0][0].length, n2 = g[0].length, n3 = g.length;
-    float[][][] x1 = Array.rampfloat(0.0f,1.0f,0.0f,0.0f,n1,n2,n3);
-    x1 = Array.add(x1,s1);
-    float[][][] f = Array.zerofloat(n1,n2,n3);
+    float[][][] x1 = ArrayMath.rampfloat(0.0f,1.0f,0.0f,0.0f,n1,n2,n3);
+    x1 = ArrayMath.add(x1,s1);
+    float[][][] f = ArrayMath.zerofloat(n1,n2,n3);
     SincInterpolator si = new SincInterpolator();
     for (int i3=0; i3<n3; ++i3) {
       for (int i2=0; i2<n2; ++i2) {

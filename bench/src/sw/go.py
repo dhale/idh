@@ -9,6 +9,7 @@ from edu.mines.jtk.dsp import *
 from edu.mines.jtk.io import *
 from edu.mines.jtk.mosaic import *
 from edu.mines.jtk.util import *
+from edu.mines.jtk.util.ArrayMath import *
 
 True = 1
 False = 0
@@ -34,7 +35,7 @@ datadir = "/data/seis/sw/old/"
 # Read/write
 
 def readFloats3(file):
-  f = Array.zerofloat(n1,n2,n3)
+  f = zerofloat(n1,n2,n3)
   af = ArrayFile(datadir+file,"r")
   af.readFloats(f)
   af.close()
@@ -47,7 +48,7 @@ def writeFloats3(file,f):
   return f
 
 def readBytes3(file):
-  b = Array.zerobyte(n1,n2,n3)
+  b = zerobyte(n1,n2,n3)
   af = ArrayFile(datadir+file,"r")
   af.readBytes(b)
   af.close()
@@ -71,17 +72,17 @@ def readFloats23(file,i1):
   return slice23(f,i1)
 
 def slice12(f,i3):
-  f12 = Array.copy(f[i3])
+  f12 = copy(f[i3])
   return f12
 
 def slice13(f,i2):
-  f13 = Array.zerofloat(n1,n3)
+  f13 = zerofloat(n1,n3)
   for i3 in range(n3):
-    Array.copy(n1,f[i3][i2],f13[i3])
+    copy(n1,f[i3][i2],f13[i3])
   return f13
 
 def slice23(f,i1):
-  f23 = Array.zerofloat(n2,n3)
+  f23 = zerofloat(n2,n3)
   for i3 in range(n3):
     for i2 in range(n2):
       f23[i3][i2] = f[i3][i2][i1];
@@ -107,12 +108,12 @@ def frame(panel,png):
   return frame
 
 def plot3d(k1,k2,k3,file,scale,clip,cmod=ColorMap.GRAY,png=None):
-  f12 = Array.mul(scale,readFloats12(file,k3))
-  f13 = Array.mul(scale,readFloats13(file,k2))
-  f23 = Array.mul(scale,readFloats23(file,k1))
-  print "plot3d: f12 min =",Array.min(f12),"  max =",Array.max(f12)
-  print "plot3d: f13 min =",Array.min(f13),"  max =",Array.max(f13)
-  print "plot3d: f23 min =",Array.min(f23),"  max =",Array.max(f23)
+  f12 = mul(scale,readFloats12(file,k3))
+  f13 = mul(scale,readFloats13(file,k2))
+  f23 = mul(scale,readFloats23(file,k1))
+  print "plot3d: f12 min =",min(f12),"  max =",max(f12)
+  print "plot3d: f13 min =",min(f13),"  max =",max(f13)
+  print "plot3d: f23 min =",min(f23),"  max =",max(f23)
   panel = PlotPanel(2,2,
     PlotPanel.Orientation.X1DOWN_X2RIGHT,
     PlotPanel.AxesPlacement.LEFT_BOTTOM)
@@ -155,7 +156,7 @@ def plot3d(k1,k2,k3,file,scale,clip,cmod=ColorMap.GRAY,png=None):
 def window(k1,k2,f):
   n1 = len(f[0])
   n2 = len(f)
-  g = Array.zerofloat(n1,n2)
+  g = zerofloat(n1,n2)
   s = -0.5/(12*12)
   for i2 in range(0,n2):
     x2 = i2-k2
@@ -165,12 +166,12 @@ def window(k1,k2,f):
   return g
 
 def wplot3d(k1,k2,k3,file,scale,clip,cmod=ColorMap.GRAY,png=None):
-  f12 = Array.mul(scale,readFloats12(file,k3))
-  f13 = Array.mul(scale,readFloats13(file,k2))
-  f23 = Array.mul(scale,readFloats23(file,k1))
-  print "plot3d: f12 min =",Array.min(f12),"  max =",Array.max(f12)
-  print "plot3d: f13 min =",Array.min(f13),"  max =",Array.max(f13)
-  print "plot3d: f23 min =",Array.min(f23),"  max =",Array.max(f23)
+  f12 = mul(scale,readFloats12(file,k3))
+  f13 = mul(scale,readFloats13(file,k2))
+  f23 = mul(scale,readFloats23(file,k1))
+  print "plot3d: f12 min =",min(f12),"  max =",max(f12)
+  print "plot3d: f13 min =",min(f13),"  max =",max(f13)
+  print "plot3d: f23 min =",min(f23),"  max =",max(f23)
   n1 = len(f12[0])
   n2 = len(f12)
   n3 = len(f13)
@@ -186,9 +187,9 @@ def wplot3d(k1,k2,k3,file,scale,clip,cmod=ColorMap.GRAY,png=None):
   s1 = Sampling(n1,d1,f1+j1*d1)
   s2 = Sampling(n2,d2,f2+j2*d2)
   s3 = Sampling(n3,d3,f3+j3*d3)
-  f12 = Array.copy(n1,n2,j1,j2,f12)
-  f13 = Array.copy(n1,n3,j1,j3,f13)
-  f23 = Array.copy(n2,n3,j2,j3,f23)
+  f12 = copy(n1,n2,j1,j2,f12)
+  f13 = copy(n1,n3,j1,j3,f13)
+  f23 = copy(n2,n3,j2,j3,f23)
   f12 = window(k1,k2,f12)
   f13 = window(k1,k3,f13)
   f23 = window(k2,k3,f23)
@@ -262,7 +263,7 @@ def plot3dAll():
   #plot3d(k1,k2,k3,"u3s1.dat",1000*d3,6.5,flag,"swu3s1.png")
 
 def plotSeis12(f,clip=0,png=None):
-  print "plotSeis: min =",Array.min(f),"  max =",Array.max(f)
+  print "plotSeis: min =",min(f),"  max =",max(f)
   panel = PlotPanel(PlotPanel.Orientation.X1DOWN_X2RIGHT)
   panel.setColorBarWidthMinimum(colorBarWidthMinimum)
   panel.setHLabel("inline (km)")
@@ -274,7 +275,7 @@ def plotSeis12(f,clip=0,png=None):
   return frame(panel,png)
 
 def plotSeis13(f,clip=0,png=None):
-  print "plotSeis: min =",Array.min(f),"  max =",Array.max(f)
+  print "plotSeis: min =",min(f),"  max =",max(f)
   panel = PlotPanel(PlotPanel.Orientation.X1DOWN_X2RIGHT)
   panel.setColorBarWidthMinimum(colorBarWidthMinimum)
   panel.setHLabel("crossline (km)")
@@ -286,19 +287,19 @@ def plotSeis13(f,clip=0,png=None):
   return frame(panel,png)
 
 def plotSeis23(f,clip=0,png=None):
-  print "plotSeis: min =",Array.min(f),"  max =",Array.max(f)
+  print "plotSeis: min =",min(f),"  max =",max(f)
   panel = PlotPanel(PlotPanel.Orientation.X1DOWN_X2RIGHT)
   panel.setColorBarWidthMinimum(colorBarWidthMinimum)
   panel.setHLabel("inline (km)")
   panel.setVLabel("crossline (km)")
   cb = panel.addColorBar()
-  pv = panel.addPixels(s3,s2,Array.transpose(f))
+  pv = panel.addPixels(s3,s2,transpose(f))
   if clip!=0:
     pv.setClips(-clip,clip)
   return frame(panel,png)
 
 def plotLags12(f,clip=0,png=None):
-  print "plotLags: min =",Array.min(f),"  max =",Array.max(f)
+  print "plotLags: min =",min(f),"  max =",max(f)
   panel = PlotPanel(PlotPanel.Orientation.X1DOWN_X2RIGHT)
   panel.setColorBarWidthMinimum(colorBarWidthMinimum)
   panel.setHLabel("inline (km)")
@@ -311,7 +312,7 @@ def plotLags12(f,clip=0,png=None):
   return frame(panel,png)
 
 def plotLags13(f,clip=0,png=None):
-  print "plotLags: min =",Array.min(f),"  max =",Array.max(f)
+  print "plotLags: min =",min(f),"  max =",max(f)
   panel = PlotPanel(PlotPanel.Orientation.X1DOWN_X2RIGHT)
   panel.setColorBarWidthMinimum(colorBarWidthMinimum)
   panel.setHLabel("crossline (km)")
@@ -324,13 +325,13 @@ def plotLags13(f,clip=0,png=None):
   return frame(panel,png)
 
 def plotLags23(f,clip=0,png=None):
-  print "plotLags: min =",Array.min(f),"  max =",Array.max(f)
+  print "plotLags: min =",min(f),"  max =",max(f)
   panel = PlotPanel(PlotPanel.Orientation.X1DOWN_X2RIGHT)
   panel.setColorBarWidthMinimum(colorBarWidthMinimum)
   panel.setHLabel("inline (km)")
   panel.setVLabel("crossline (km)")
   cb = panel.addColorBar()
-  pv = panel.addPixels(s3,s2,Array.transpose(f))
+  pv = panel.addPixels(s3,s2,transpose(f))
   if clip!=0:
     pv.setClips(-clip,clip)
   pv.setColorModel(ColorMap.RED_WHITE_BLUE);
@@ -363,24 +364,24 @@ def plotU23(i1):
 def plotS12(i3):
   f = readFloats12("sw02a.dat",i3)
   g = readFloats12("sw04a.dat",i3)
-  f = Array.mul(0.0002,f)
-  g = Array.mul(0.0002,g)
+  f = mul(0.0002,f)
+  g = mul(0.0002,g)
   plotSeis12(f)
   plotSeis12(g)
 
 def plotS13(i2):
   f = readFloats13("sw02a.dat",i2)
   g = readFloats13("sw04a.dat",i2)
-  f = Array.mul(0.0002,f)
-  g = Array.mul(0.0002,g)
+  f = mul(0.0002,f)
+  g = mul(0.0002,g)
   plotSeis13(f)
   plotSeis13(g)
 
 def plotS23(i1):
   f = readFloats23("sw02a.dat",i1)
   g = readFloats23("sw04a.dat",i1)
-  f = Array.mul(0.0002,f)
-  g = Array.mul(0.0002,g)
+  f = mul(0.0002,f)
+  g = mul(0.0002,g)
   plotSeis23(f)
   plotSeis23(g)
 
@@ -390,30 +391,30 @@ def plotS23(i1):
 def findMaxLags2(lcf,f,g,min1,max1,min2,max2):
   n1 = len(f[0])
   n2 = len(f)
-  l1 = Array.zerobyte(n1,n2)
-  l2 = Array.zerobyte(n1,n2)
+  l1 = zerobyte(n1,n2)
+  l2 = zerobyte(n1,n2)
   lcf.findMaxLags(f,g,min1,max1,min2,max2,l1,l2)
   return l1,l2
 
 def refineLags2(lcf,f,g,l1,l2):
   n1 = len(f[0])
   n2 = len(f)
-  u1 = Array.zerofloat(n1,n2)
-  u2 = Array.zerofloat(n1,n2)
+  u1 = zerofloat(n1,n2)
+  u2 = zerofloat(n1,n2)
   lcf.refineLags(f,g,l1,l2,u1,u2)
   return u1,u2
 
 def findMaxLags3(lcf,f,g,min1,max1,min2,max2,min3,max3):
-  l1 = Array.zerobyte(n1,n2,n3)
-  l2 = Array.zerobyte(n1,n2,n3)
-  l3 = Array.zerobyte(n1,n2,n3)
+  l1 = zerobyte(n1,n2,n3)
+  l2 = zerobyte(n1,n2,n3)
+  l3 = zerobyte(n1,n2,n3)
   lcf.findMaxLags(f,g,min1,max1,min2,max2,min3,max3,l1,l2,l3)
   return l1,l2,l3
 
 def refineLags3(lcf,f,g,l1,l2,l3):
-  u1 = Array.zerofloat(n1,n2,n3)
-  u2 = Array.zerofloat(n1,n2,n3)
-  u3 = Array.zerofloat(n1,n2,n3)
+  u1 = zerofloat(n1,n2,n3)
+  u2 = zerofloat(n1,n2,n3)
+  u3 = zerofloat(n1,n2,n3)
   lcf.refineLags(f,g,l1,l2,l3,u1,u2,u3)
   return u1,u2,u3
 
@@ -447,10 +448,10 @@ def refine3():
 def test2():
   f = readFloats13("sw02a.dat",288)
   g = readFloats13("sw04a.dat",288)
-  f = Array.mul(0.002,f)
-  g = Array.mul(0.002,g)
-  f = Array.sub(f,lpf55g(8,f))
-  g = Array.sub(g,lpf55g(8,g))
+  f = mul(0.002,f)
+  g = mul(0.002,g)
+  f = sub(f,lpf55g(8,f))
+  g = sub(g,lpf55g(8,g))
   plotSeis13(f)
   plotSeis13(g)
   lcf = LocalCorrelationFilter(8,8)
@@ -479,7 +480,7 @@ def findAndRefine1():
   min2,max2 =  0,0
   min3,max3 =  0,0
   l1,l2,l3 = findMaxLags3(lcf,f,g,min1,max1,min2,max2,min3,max3)
-  u1 = Array.zerofloat(n1,n2,n3)
+  u1 = zerofloat(n1,n2,n3)
   lcf.refineLags1(f,g,l1,u1)
   writeFloats3("u1.dat",u1)
 
@@ -491,50 +492,50 @@ def findAndRefine13():
   min2,max2 =  0,0
   min3,max3 =  -1,1
   l1,l2,l3 = findMaxLags3(lcf,f,g,min1,max1,min2,max2,min3,max3)
-  u3 = Array.zerofloat(n1,n2,n3)
+  u3 = zerofloat(n1,n2,n3)
   lcf.refineLags3(f,g,l3,u3)
   writeFloats3("u3.dat",u3)
 
 def subtract():
   f = readFloats3("sw02a.dat")
   g = readFloats3("sw04a.dat")
-  r = Array.sub(g,f)
+  r = sub(g,f)
   writeFloats3("rxx.dat",r);
   g = readFloats3("sw04a1.dat")
-  r = Array.sub(g,f)
+  r = sub(g,f)
   writeFloats3("r1x.dat",r);
   g = readFloats3("sw04a13.dat")
-  r = Array.sub(g,f)
+  r = sub(g,f)
   writeFloats3("r13.dat",r);
 
 def correct1():
   si = SincInterpolator()
   f = readFloats3("sw04a.dat")
   u = readFloats3("u1.dat")
-  g = Array.zerofloat(n1,n2,n3)
-  s = Array.rampfloat(0.0,1.0,n1)
-  t = Array.zerofloat(n1)
+  g = zerofloat(n1,n2,n3)
+  s = rampfloat(0.0,1.0,n1)
+  t = zerofloat(n1)
   si.setUniformSampling(n1,1.0,0.0)
   for i3 in range(n3):
     for i2 in range(n2):
-      Array.add(s,u[i3][i2],t)
+      add(s,u[i3][i2],t)
       si.setUniformSamples(f[i3][i2])
       si.interpolate(n1,t,g[i3][i2])
   writeFloats3("sw04a1.dat",g)
   f = readFloats3("sw02a.dat")
-  r = Array.sub(g,f)
+  r = sub(g,f)
   writeFloats3("r1x.dat",r);
 
 def correct3():
   si = SincInterpolator()
   f = readFloats3("sw04a.dat")
   u = readFloats3("u3.dat")
-  g = Array.zerofloat(n1,n2,n3)
-  s = Array.rampfloat(0.0,1.0,n3)
-  t = Array.zerofloat(n3)
-  f3 = Array.zerofloat(n3)
-  g3 = Array.zerofloat(n3)
-  u3 = Array.zerofloat(n3)
+  g = zerofloat(n1,n2,n3)
+  s = rampfloat(0.0,1.0,n3)
+  t = zerofloat(n3)
+  f3 = zerofloat(n3)
+  g3 = zerofloat(n3)
+  u3 = zerofloat(n3)
   si.setUniformSampling(n3,1.0,0.0)
   for i2 in range(n2):
     print "correct3: i2 =",i2
@@ -542,7 +543,7 @@ def correct3():
       for i3 in range(n3):
         f3[i3] = f[i3][i2][i1]
         u3[i3] = u[i3][i2][i1]
-      Array.add(s,u3,t)
+      add(s,u3,t)
       si.setUniformSamples(f3)
       si.interpolate(n3,t,g3)
       for i3 in range(n3):
@@ -566,14 +567,14 @@ def plotU1U3(i2):
   rxxs = slice13(rxx,i2)
   r1xs = slice13(r1x,i2)
   r13s = slice13(r13,i2)
-  fs = Array.mul(0.001,fs)
-  gs = Array.mul(0.001,gs)
-  g1s = Array.mul(0.001,g1s)
-  u1s = Array.mul(4.0,u1s)
-  u3s = Array.mul(25.0,u3s)
-  rxxs = Array.mul(0.001,rxxs)
-  r1xs = Array.mul(0.001,r1xs)
-  r13s = Array.mul(0.001,r13s)
+  fs = mul(0.001,fs)
+  gs = mul(0.001,gs)
+  g1s = mul(0.001,g1s)
+  u1s = mul(4.0,u1s)
+  u3s = mul(25.0,u3s)
+  rxxs = mul(0.001,rxxs)
+  r1xs = mul(0.001,r1xs)
+  r13s = mul(0.001,r13s)
   suffix = str(i2)+".png"
   plotSeis13(fs,5,"sf"+suffix)
   plotSeis13(gs,5,"sg"+suffix)
@@ -595,11 +596,11 @@ def plotU123(i2):
   u1s = slice13(u1,i2)
   u2s = slice13(u2,i2)
   u3s = slice13(u3,i2)
-  fs = Array.mul(0.001,fs)
-  gs = Array.mul(0.001,gs)
-  u1s = Array.mul(4.0,u1s)
-  u2s = Array.mul(25.0,u2s)
-  u3s = Array.mul(25.0,u3s)
+  fs = mul(0.001,fs)
+  gs = mul(0.001,gs)
+  u1s = mul(4.0,u1s)
+  u2s = mul(25.0,u2s)
+  u3s = mul(25.0,u3s)
   suffix = str(i2)+".png"
   plotSeis13(fs,5,"f"+suffix)
   plotSeis13(gs,5,"g"+suffix)
@@ -624,12 +625,12 @@ def findShifts():
   n2 = len(f[0])
   n3 = len(f)
   sf = ShiftFinder(12,12,12)
-  u1 = Array.zerofloat(n1,n2,n3)
-  u2 = Array.zerofloat(n1,n2,n3)
-  u3 = Array.zerofloat(n1,n2,n3)
-  du = Array.zerofloat(n1,n2,n3)
-  ga = Array.copy(g)
-  gb = Array.copy(g)
+  u1 = zerofloat(n1,n2,n3)
+  u2 = zerofloat(n1,n2,n3)
+  u3 = zerofloat(n1,n2,n3)
+  du = zerofloat(n1,n2,n3)
+  ga = copy(g)
+  gb = copy(g)
   for i in range(2):
     print "shift1"
     sf.find1(lmin,lmax,f,ga,du)
@@ -657,70 +658,70 @@ def plotSlices():
   sf1 = slice23(sf,k1)
   sf2 = slice13(sf,k2)
   sf = None
-  plotSeis23(Array.mul(0.003,sf1),11,"sf1.png")
-  plotSeis13(Array.mul(0.003,sf2),11,"sf2.png")
+  plotSeis23(mul(0.003,sf1),11,"sf1.png")
+  plotSeis13(mul(0.003,sf2),11,"sf2.png")
   sg = readFloats3("sw04a.dat")
   sg1 = slice23(sg,k1)
   sg2 = slice13(sg,k2)
   sg = None
-  plotSeis23(Array.mul(0.003,sg1),11,"sg1.png")
-  plotSeis13(Array.mul(0.003,sg2),11,"sg2.png")
+  plotSeis23(mul(0.003,sg1),11,"sg1.png")
+  plotSeis13(mul(0.003,sg2),11,"sg2.png")
 
   wf = readFloats3("w02.dat")
   wf1 = slice23(wf,k1)
   wf2 = slice13(wf,k2)
   wf = None
-  plotSeis23(Array.mul(0.003,wf1),1.1,"wf1.png")
-  plotSeis13(Array.mul(0.003,wf2),1.1,"wf2.png")
+  plotSeis23(mul(0.003,wf1),1.1,"wf1.png")
+  plotSeis13(mul(0.003,wf2),1.1,"wf2.png")
   wg = readFloats3("w04.dat")
   wg1 = slice23(wg,k1)
   wg2 = slice13(wg,k2)
   wg = None
-  plotSeis23(Array.mul(0.003,wg1),1.1,"wg1.png")
-  plotSeis13(Array.mul(0.003,wg2),1.1,"wg2.png")
+  plotSeis23(mul(0.003,wg1),1.1,"wg1.png")
+  plotSeis13(mul(0.003,wg2),1.1,"wg2.png")
   """
 
   u1s0 = readFloats3("u1s0.dat")
   u1s01 = slice23(u1s0,k1)
   u1s02 = slice13(u1s0,k2)
   u1s0 = None
-  #plotLags23(Array.mul(4,u1s01),4.5,"u1s01.png")
-  plotLags13(Array.mul(4,u1s02),4.5,"u1s02.png")
+  #plotLags23(mul(4,u1s01),4.5,"u1s01.png")
+  plotLags13(mul(4,u1s02),4.5,"u1s02.png")
 
   u2s0 = readFloats3("u2s0.dat")
   u2s01 = slice23(u2s0,k1)
   u2s02 = slice13(u2s0,k2)
   u2s0 = None
-  #plotLags23(Array.mul(25,u2s01),8.5,"u2s01.png")
-  plotLags13(Array.mul(25,u2s02),8.5,"u2s02.png")
+  #plotLags23(mul(25,u2s01),8.5,"u2s01.png")
+  plotLags13(mul(25,u2s02),8.5,"u2s02.png")
 
   u3s0 = readFloats3("u3s0.dat")
   u3s01 = slice23(u3s0,k1)
   u3s02 = slice13(u3s0,k2)
   u3s0 = None
-  #plotLags23(Array.mul(25,u3s01),8.5,"u3s01.png")
-  plotLags13(Array.mul(25,u3s02),8.5,"u3s02.png")
+  #plotLags23(mul(25,u3s01),8.5,"u3s01.png")
+  plotLags13(mul(25,u3s02),8.5,"u3s02.png")
 
   u1s1 = readFloats3("u1s1.dat")
   u1s11 = slice23(u1s1,k1)
   u1s12 = slice13(u1s1,k2)
   u1s1 = None
-  #plotLags23(Array.mul(4,u1s11),4.5,"u1s11.png")
-  plotLags13(Array.mul(4,u1s12),4.5,"u1s12.png")
+  #plotLags23(mul(4,u1s11),4.5,"u1s11.png")
+  plotLags13(mul(4,u1s12),4.5,"u1s12.png")
 
   u2s1 = readFloats3("u2s1.dat")
   u2s11 = slice23(u2s1,k1)
   u2s12 = slice13(u2s1,k2)
   u2s1 = None
-  #plotLags23(Array.mul(25,u2s11),8.5,"u2s11.png")
-  plotLags13(Array.mul(25,u2s12),8.5,"u2s12.png")
+  #plotLags23(mul(25,u2s11),8.5,"u2s11.png")
+  plotLags13(mul(25,u2s12),8.5,"u2s12.png")
 
   u3s1 = readFloats3("u3s1.dat")
   u3s11 = slice23(u3s1,k1)
   u3s12 = slice13(u3s1,k2)
   u3s1 = None
-  #plotLags23(Array.mul(25,u3s11),8.5,"u3s11.png")
-  plotLags13(Array.mul(25,u3s12),8.5,"u3s12.png")
+  #plotLags23(mul(25,u3s11),8.5,"u3s11.png")
+  plotLags13(mul(25,u3s12),8.5,"u3s12.png")
 
 """
 bench$ jy src/sw/go.py
@@ -741,12 +742,12 @@ def deltaShifts():
     si = "u"+str(i)
     us0 = readFloats3(si+"s0.dat")
     us1 = readFloats3(si+"s1.dat")
-    us0 = Array.copy(m1,m2,m3,j1,j2,j3,us0)
-    us1 = Array.copy(m1,m2,m3,j1,j2,j3,us1)
-    usd = Array.sub(us1,us0)
-    print si+" 0: min =",Array.min(us0),"max =",Array.max(us0)
-    print si+" 1: min =",Array.min(us1),"max =",Array.max(us1)
-    print si+" d: min =",Array.min(usd),"max =",Array.max(usd)
+    us0 = copy(m1,m2,m3,j1,j2,j3,us0)
+    us1 = copy(m1,m2,m3,j1,j2,j3,us1)
+    usd = sub(us1,us0)
+    print si+" 0: min =",min(us0),"max =",max(us0)
+    print si+" 1: min =",min(us1),"max =",max(us1)
+    print si+" d: min =",min(usd),"max =",max(usd)
 
 def main(args):
   #plot3dAll()

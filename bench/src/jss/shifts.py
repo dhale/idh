@@ -9,6 +9,7 @@ from edu.mines.jtk.dsp import *
 from edu.mines.jtk.io import *
 from edu.mines.jtk.mosaic import *
 from edu.mines.jtk.util import *
+from edu.mines.jtk.util.ArrayMath import *
 
 from jss import *
 
@@ -74,8 +75,8 @@ def doImages():
   return f,g
 
 def doScale(f,g):
-  fs = Array.mul(scales[index],f)
-  gs = Array.mul(scales[index],g)
+  fs = mul(scales[index],f)
+  gs = mul(scales[index],g)
   return fs,gs
 
 def doWhiten(f,g):
@@ -86,27 +87,27 @@ def doWhiten(f,g):
   return fw,gw
 
 def measureShifts(f,g):
-  u1 = Array.zerofloat(n1,n2)
-  u2 = Array.zerofloat(n1,n2)
-  du = Array.zerofloat(n1,n2)
-  h = Array.copy(g)
+  u1 = zerofloat(n1,n2)
+  u2 = zerofloat(n1,n2)
+  du = zerofloat(n1,n2)
+  h = copy(g)
   sf = LocalShiftFinder(lcfSigma1,lcfSigma2)
   for iter in range(3):
     sf.find1(lmin,lmax,f,h,du)
     sf.shift1(du,u1,u2,h)
     sf.find2(lmin,lmax,f,h,du)
     sf.shift2(du,u1,u2,h)
-  u1 = Array.mul(1000.0*d1,u1)
-  u2 = Array.mul(1000.0*d2,u2)
+  u1 = mul(1000.0*d1,u1)
+  u2 = mul(1000.0*d2,u2)
   plotu(u2,uclip,"uxa")
   plotu(u1,uclip,"uza")
   return u2,u1
 
 def measureShiftsV(f,g):
-  u1 = Array.zerofloat(n1,n2)
+  u1 = zerofloat(n1,n2)
   sf = LocalShiftFinder(lcfSigma1,lcfSigma2)
   sf.find1(lmin,lmax,f,g,u1)
-  u1 = Array.mul(1000.0*d1,u1)
+  u1 = mul(1000.0*d1,u1)
   plotu(u1,uclip,"uza1")
   return u1
 
@@ -114,10 +115,10 @@ def deriveShifts(uxa,uza):
   dz,dx = 1000.0*d1,1000.0*d2 # convert d1 and d2 to m
   nz,nx = n1,n2
   r = 5.0
-  uxv = Array.zerofloat(nz,nx)
-  uzv = Array.zerofloat(nz,nx)
-  ux = Array.zerofloat(nz,nx)
-  uz = Array.zerofloat(nz,nx)
+  uxv = zerofloat(nz,nx)
+  uzv = zerofloat(nz,nx)
+  ux = zerofloat(nz,nx)
+  uz = zerofloat(nz,nx)
   Shifts.shifts(r,dx,dz,uxa,uza,uxv,uzv,ux,uz)
   plotu(uxv,uclip,"uxv")
   plotu(uzv,uclip,"uzv")
@@ -128,7 +129,7 @@ def deriveShifts(uxa,uza):
 def readImage(fileName):
   fileName = dataDir+fileName+".dat"
   ais = ArrayInputStream(fileName)
-  f = Array.zerofloat(n1,n2)
+  f = zerofloat(n1,n2)
   ais.readFloats(f)
   ais.close()
   return f
@@ -140,7 +141,7 @@ def writeImage(f,fileName):
   aos.close()
 
 def whiten(f):
-  fw = Array.zerofloat(n1,n2)
+  fw = zerofloat(n1,n2)
   sf = LocalShiftFinder(lcfWhiten)
   sf.whiten(1.0,f,fw)
   return fw
@@ -149,8 +150,8 @@ def doScales():
   f0 = readImage("s0f")
   f1 = readImage("s1f")
   f2 = readImage("s2f")
-  a01 = Array.sum(Array.mul(f0,f1))/Array.sum(Array.mul(f1,f1))
-  a02 = Array.sum(Array.mul(f0,f2))/Array.sum(Array.mul(f2,f2))
+  a01 = sum(mul(f0,f1))/sum(mul(f1,f1))
+  a02 = sum(mul(f0,f2))/sum(mul(f2,f2))
   print "a01 =",a01," a02 =",a02
 
 #############################################################################

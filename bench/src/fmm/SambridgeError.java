@@ -210,7 +210,7 @@ public class SambridgeError {
     SibsonInterpolator2.Method m = (method==1) ?
       SibsonInterpolator2.Method.HALE_LIANG :
       SibsonInterpolator2.Method.WATSON_SAMBRIDGE;
-    SibsonInterpolator2 si = new SibsonInterpolator2(m,x,y,z);
+    SibsonInterpolator2 si = new SibsonInterpolator2(m,z,x,y);
     si.setBounds(sx,sy);
     return si.interpolate(sx,sy);
   }
@@ -255,8 +255,8 @@ public class SambridgeError {
     float[] x, float[] y, float[] z,
     Sampling sx, Sampling sy, float[][] sz)
   {
-    z = Array.mul(0.01f,z);
-    sz = Array.mul(0.01f,sz);
+    z = ArrayMath.mul(0.01f,z);
+    sz = ArrayMath.mul(0.01f,sz);
     TriMesh mesh = makeMesh(x,y,z,sx,sy,false,false);
     PointGroup pg = makePointGroup(x,y,z);
     TriangleGroup tg = makeTriangleGroup(mesh,sx,sy,sz);
@@ -281,9 +281,9 @@ public class SambridgeError {
   private static PointGroup makePointGroup(float[] x, float[] y, float[] z) {
     int n = x.length;
     float[] xyz = new float[3*n];
-    Array.copy(n,0,1,x,0,3,xyz);
-    Array.copy(n,0,1,y,1,3,xyz);
-    Array.copy(n,0,1,z,2,3,xyz);
+    ArrayMath.copy(n,0,1,x,0,3,xyz);
+    ArrayMath.copy(n,0,1,y,1,3,xyz);
+    ArrayMath.copy(n,0,1,z,2,3,xyz);
     float size = 0.003f;
     PointGroup pg = new PointGroup(size,xyz);
     StateSet states = new StateSet();
@@ -304,7 +304,7 @@ public class SambridgeError {
   private static TriangleGroup makeTriangleGroup(
     TriMesh mesh, Sampling sx, Sampling sy, float[][] sz) 
   {
-    sz = Array.transpose(sz);
+    sz = ArrayMath.transpose(sz);
     TriangleGroup tg = new TriangleGroup(true,makeVertices(mesh,sx,sy,sz));
     StateSet states = new StateSet();
     ColorState cs = new ColorState();
@@ -361,7 +361,7 @@ public class SambridgeError {
         */
       }
     }
-    return Array.copy(3*3*ntri,xyz);
+    return ArrayMath.copy(3*3*ntri,xyz);
   }
   private static boolean inHull(float x, float y, TriMesh mesh) {
     TriMesh.PointLocation pl = mesh.locatePoint(x,y);

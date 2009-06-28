@@ -11,6 +11,7 @@ from edu.mines.jtk.dsp import *
 from edu.mines.jtk.io import *
 from edu.mines.jtk.mosaic import *
 from edu.mines.jtk.util import *
+from edu.mines.jtk.util.ArrayMath import *
 
 from lss import *
 
@@ -48,7 +49,7 @@ def goSmoothingFilters():
   plotSpectra(a1s,"a1s")
 
 def makeImpulse(n1):
-  f = Array.zerofloat(n1)
+  f = zerofloat(n1)
   f[n1/2] = 1.0
   return f
 
@@ -57,10 +58,10 @@ def spectrum(h1):
   nfft = FftReal.nfftSmall(n1*100)
   fft = FftReal(nfft)
   npad = nfft+2
-  hpad = Array.zerofloat(npad)
-  Array.copy(h1,hpad)
+  hpad = zerofloat(npad)
+  copy(h1,hpad)
   fft.realToComplex(-1,hpad,hpad)
-  a1  = Array.cabs(hpad)
+  a1  = cabs(hpad)
   return a1
  
 #############################################################################

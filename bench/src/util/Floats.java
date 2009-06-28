@@ -33,7 +33,7 @@ public class Floats {
           afi.seek(offset);
           if (k1o>1) {
             afi.readFloats(fi);
-            Array.copy(n1o,0,k1o,fi,0,1,fo);
+            ArrayMath.copy(n1o,0,k1o,fi,0,1,fo);
           } else {
             afi.readFloats(fo);
           }

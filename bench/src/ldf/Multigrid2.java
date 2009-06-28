@@ -6,7 +6,6 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package ldf;
 
-import edu.mines.jtk.dsp.*;
 import edu.mines.jtk.la.*;
 import edu.mines.jtk.util.*;
 import static edu.mines.jtk.util.MathPlus.*;
@@ -88,7 +87,7 @@ public class Multigrid2 {
     _ncycle = ncycle;
     _nafter = nafter;
 
-    // Array of operators, for the specified grid and coarser grids.
+    // ArrayMath of operators, for the specified grid and coarser grids.
     _a33s = new A33[_nlevel];
     _a33s[_nlevel-1] = a33;
     for (int ilevel=_nlevel-2; ilevel>=0; --ilevel) {
@@ -116,7 +115,7 @@ public class Multigrid2 {
    * @param x array[n2][n1] for the solution.
    */
   public float normResidual(float[][] b, float[][] x) {
-    float[][] c = Array.copy(x);
+    float[][] c = ArrayMath.copy(x);
     apply(_a33s[_nlevel-1],x,c);
     return normError(b,c);
   }
@@ -179,9 +178,9 @@ public class Multigrid2 {
       int j2 = (i2+1)%3;
       if (_i[j2]!=i2) {
         if (0<=i2 && i2<_n2) {
-          Array.copy(_n1,0,_a[i2],1,_b[j2]);
+          ArrayMath.copy(_n1,0,_a[i2],1,_b[j2]);
         } else {
-          Array.zero(_b[j2]);
+          ArrayMath.zero(_b[j2]);
         }
         _i[j2] = i2;
       }
@@ -294,7 +293,7 @@ public class Multigrid2 {
       // Apply operator and compute residual.
       float[][] r = new float[n2][n1];
       apply(a33,x,r);
-      Array.sub(b,r,r);
+      ArrayMath.sub(b,r,r);
 
       // Downsample the residual.
       int m1 = (n1+1)/2;
@@ -626,7 +625,7 @@ public class Multigrid2 {
   }
   private static void tracePixels(float[][] x) {
     if (TRACE) {
-      trace("tracePixels: min="+Array.min(x)+" max="+Array.max(x));
+      trace("tracePixels: min="+ ArrayMath.min(x)+" max="+ ArrayMath.max(x));
       edu.mines.jtk.mosaic.SimplePlot.asPixels(x);
       /*
       edu.mines.jtk.mosaic.SimplePlot sp =
@@ -656,10 +655,10 @@ public class Multigrid2 {
     System.out.println("testDownUpSampling: n="+n);
     int nx = n;
     int ny = (nx+1)/2;
-    float[] x = Array.randfloat(nx);
-    float[] y = Array.randfloat(ny);
-    float[] ax = Array.zerofloat(ny);
-    float[] ay = Array.zerofloat(nx);
+    float[] x = ArrayMath.randfloat(nx);
+    float[] y = ArrayMath.randfloat(ny);
+    float[] ax = ArrayMath.zerofloat(ny);
+    float[] ay = ArrayMath.zerofloat(nx);
     downsample(3.1f,x,ax);
     upsample(3.1f,y,ay);
     double xay = 0.0;
@@ -678,10 +677,10 @@ public class Multigrid2 {
     int n1y = (n1x+1)/2;
     int n2x = n2;
     int n2y = (n2x+1)/2;
-    float[][] x = Array.randfloat(n1x,n2x);
-    float[][] y = Array.randfloat(n1y,n2y);
-    float[][] ax = Array.zerofloat(n1y,n2y);
-    float[][] ay = Array.zerofloat(n1x,n2x);
+    float[][] x = ArrayMath.randfloat(n1x,n2x);
+    float[][] y = ArrayMath.randfloat(n1y,n2y);
+    float[][] ax = ArrayMath.zerofloat(n1y,n2y);
+    float[][] ay = ArrayMath.zerofloat(n1x,n2x);
     downsample(2.3f,x,ax);
     upsample(2.3f,y,ay);
     double xay = 0.0;
@@ -706,7 +705,7 @@ public class Multigrid2 {
     float[][] y = new float[n2][n1]; // exact solution
     //loadBriggs(a,y,b);
     loadSimple(a,y,b);
-    trace("y: min="+Array.min(y)+" max="+Array.max(y));
+    trace("y: min="+ ArrayMath.min(y)+" max="+ ArrayMath.max(y));
     tracePixels(y);
 
     A33 a33 = new Multigrid2.SimpleA33(a);

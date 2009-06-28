@@ -238,7 +238,7 @@ public class LocalSpd9Filter {
     int i1,i2;
 
     // Solve L*z = b.
-    Array.zero(x);
+    ArrayMath.zero(x);
     for (i2=0; i2<n2m; ++i2) {
       float[] bi2p0 = b[i2  ];
       float[] xi2p0 = x[i2  ];
@@ -394,9 +394,9 @@ public class LocalSpd9Filter {
     return l;
   }
   private static float[][][] attemptIC0(float[][][] a, float bias) {
-    float[][][] l = Array.copy(a);
+    float[][][] l = ArrayMath.copy(a);
     if (bias>0.0f)
-      Array.mul(1.0f+bias,l[0],l[0]);
+      ArrayMath.mul(1.0f+bias,l[0],l[0]);
     float[][] l00 = l[0], l0p = l[1], lpm = l[2], lp0 = l[3], lpp = l[4];
     float[][] d00 = l00; // will contain inverse of diagonal matrix D
 
@@ -473,17 +473,17 @@ public class LocalSpd9Filter {
   private static void testFactor() {
     int n1 = 5;
     int n2 = 7;
-    //float[][] x = Array.zerofloat(n1,n2);
+    //float[][] x = ArrayMath.zerofloat(n1,n2);
     //x[0][0] = x[n2-1][0] = x[0][n1-1] = x[n2-1][n1-1] = 1.0f;
     //x[2][2] = 1.0f;
-    float[][] x = Array.randfloat(n1,n2);
-    float[][] y = Array.randfloat(n1,n2);
-    float[][] z = Array.randfloat(n1,n2);
-    float[][] w = Array.randfloat(n1,n2);
+    float[][] x = ArrayMath.randfloat(n1,n2);
+    float[][] y = ArrayMath.randfloat(n1,n2);
+    float[][] z = ArrayMath.randfloat(n1,n2);
+    float[][] w = ArrayMath.randfloat(n1,n2);
     float theta = FLT_PI*2.0f/8.0f;
-    float[][] d0 = Array.fillfloat(1.0f,n1,n2);
-    float[][] d1 = Array.fillfloat(1.0f,n1,n2);
-    float[][] v1 = Array.fillfloat(sin(theta),n1,n2);
+    float[][] d0 = ArrayMath.fillfloat(1.0f,n1,n2);
+    float[][] d1 = ArrayMath.fillfloat(1.0f,n1,n2);
+    float[][] v1 = ArrayMath.fillfloat(sin(theta),n1,n2);
     LocalDiffusionTensors2 ldt = 
       new LocalDiffusionTensors2(0.0,1.0,d0,d1,v1);
     LocalDiffusionKernel ldk = new LocalDiffusionKernel();
@@ -504,43 +504,43 @@ public class LocalSpd9Filter {
     lsf.applyApproximateInverse(z,w);
     float[][] ldl = factorIC0(lsf,0.0f);
     float[][] v = factorMul(ldl,x);
-    float[][] ez = Array.sub(z,v);
-    System.out.println("ez: error="+Array.sum(Array.abs(ez)));
-    Array.dump(z);
-    Array.dump(v);
-    Array.dump(ez);
+    float[][] ez = ArrayMath.sub(z,v);
+    System.out.println("ez: error="+ ArrayMath.sum(ArrayMath.abs(ez)));
+    ArrayMath.dump(z);
+    ArrayMath.dump(v);
+    ArrayMath.dump(ez);
     /*
-    Array.dump(x);
-    Array.dump(y);
-    Array.dump(z);
-    Array.dump(w);
-    Array.dump(Array.sub(w,x));
+    ArrayMath.dump(x);
+    ArrayMath.dump(y);
+    ArrayMath.dump(z);
+    ArrayMath.dump(w);
+    ArrayMath.dump(ArrayMath.sub(w,x));
     */
   }
 
   private static void testMatrix() {
     int n1 = 4;
     int n2 = 4;
-    float[][] d0 = Array.fillfloat(1.0f,n1,n2);
-    float[][] d1 = Array.fillfloat(1.0f,n1,n2);
-    float[][] v1 = Array.fillfloat(sqrt(0.5f),n1,n2);
+    float[][] d0 = ArrayMath.fillfloat(1.0f,n1,n2);
+    float[][] d1 = ArrayMath.fillfloat(1.0f,n1,n2);
+    float[][] v1 = ArrayMath.fillfloat(sqrt(0.5f),n1,n2);
     LocalDiffusionTensors2 ldt = 
       new LocalDiffusionTensors2(0.0,1.0,d0,d1,v1);
     LocalDiffusionKernel ldk = new LocalDiffusionKernel();
     float[][][] s = ldk.getCoefficients(ldt);
-    Array.add(0.1f,s[0],s[0]);
+    ArrayMath.add(0.1f,s[0],s[0]);
     LocalSpd9Filter lsf = new LocalSpd9Filter(s);
     float[][] a = lsf.getMatrix();
     //edu.mines.jtk.mosaic.SimplePlot.asPixels(a);
-    float[][] x = Array.randfloat(n1,n2);
-    float[][] y = Array.randfloat(n1,n2);
+    float[][] x = ArrayMath.randfloat(n1,n2);
+    float[][] y = ArrayMath.randfloat(n1,n2);
     lsf.apply(x,y);
     float[][] z = matrixMul(a,x);
-    float[][] e = Array.sub(z,y);
-    System.out.println("error="+Array.sum(Array.abs(e)));
-    Array.dump(y);
-    Array.dump(z);
-    Array.dump(e);
+    float[][] e = ArrayMath.sub(z,y);
+    System.out.println("error="+ ArrayMath.sum(ArrayMath.abs(e)));
+    ArrayMath.dump(y);
+    ArrayMath.dump(z);
+    ArrayMath.dump(e);
   }
   private static float[][] factorIC0(LocalSpd9Filter lsf, float bias) {
     float[][] a = lsf.getMatrix();

@@ -132,9 +132,9 @@ public class LocalSemblanceFilter {
     int n1 = f.length;
     float[] sn,sd;
     sn = smooth1(f);
-    sn = Array.mul(sn,sn);
+    sn = ArrayMath.mul(sn,sn);
     sn = smooth2(sn);
-    sd = Array.mul(f,f);
+    sd = ArrayMath.mul(f,f);
     sd = smooth1(sd);
     sd = smooth2(sd);
     for (int i1=0; i1<n1; ++i1) {
@@ -162,9 +162,9 @@ public class LocalSemblanceFilter {
     int n2 = f.length;
     float[][] sn,sd;
     sn = smooth1(d,t,f);
-    sn = Array.mul(sn,sn);
+    sn = ArrayMath.mul(sn,sn);
     sn = smooth2(d,t,sn);
-    sd = Array.mul(f,f);
+    sd = ArrayMath.mul(f,f);
     sd = smooth1(d,t,sd);
     sd = smooth2(d,t,sd);
     int count0 = 0;
@@ -207,9 +207,9 @@ public class LocalSemblanceFilter {
     int n3 = f.length;
     float[][][] sn,sd;
     sn = smooth1(d,t,f);
-    sn = Array.mul(sn,sn);
+    sn = ArrayMath.mul(sn,sn);
     sn = smooth2(d,t,sn);
-    sd = Array.mul(f,f);
+    sd = ArrayMath.mul(f,f);
     sd = smooth1(d,t,sd);
     sd = smooth2(d,t,sd);
     int count0 = 0;
@@ -508,17 +508,17 @@ public class LocalSemblanceFilter {
 
   private static class CopySmoother implements Smoother {
     public void apply(float[] f, float[] g) {
-      Array.copy(f,g);
+      ArrayMath.copy(f,g);
     }
     public void apply(
       Direction2 d, EigenTensors2 t, float[][] f, float[][] g) 
     {
-      Array.copy(f,g);
+      ArrayMath.copy(f,g);
     }
     public void apply(
       Direction3 d, EigenTensors3 t, float[][][] f, float[][][] g) 
     {
-      Array.copy(f,g);
+      ArrayMath.copy(f,g);
     }
   }
 
@@ -860,16 +860,16 @@ public class LocalSemblanceFilter {
       return Direction3.U;
   }
   private static float[] normalize(float[] w) {
-    return Array.mul(w,1.0f/Array.sum(w));
+    return ArrayMath.mul(w,1.0f/ ArrayMath.sum(w));
   }
   private static float[][] normalize(float[][] w) {
-    return Array.mul(w,1.0f/Array.sum(w));
+    return ArrayMath.mul(w,1.0f/ ArrayMath.sum(w));
   }
   private static float[][][] normalize(float[][][] w) {
-    return Array.mul(w,1.0f/Array.sum(w));
+    return ArrayMath.mul(w,1.0f/ ArrayMath.sum(w));
   }
   private static float[] makeBoxcar1(int halfWidth) {
-    return normalize(Array.fillfloat(1.0f,2*halfWidth+1));
+    return normalize(ArrayMath.fillfloat(1.0f,2*halfWidth+1));
   }
   private static float[][] makeBoxcar2(int halfWidth) {
     int m = halfWidth;

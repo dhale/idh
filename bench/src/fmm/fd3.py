@@ -20,6 +20,7 @@ from edu.mines.jtk.ogl.Gl import *
 from edu.mines.jtk.sgl import *
 from edu.mines.jtk.sgl.test import *
 from edu.mines.jtk.util import *
+from edu.mines.jtk.util.ArrayMath import *
 
 #############################################################################
 # global parameters
@@ -78,7 +79,7 @@ def makeTensorSemblance():
 
 def makePlanarSemblance():
   f = readImage(n1,n2,n3,fFile)
-  g = Array.zerofloat(n1,n2,n3)
+  g = zerofloat(n1,n2,n3)
   scale1 = 0.5*sigma1*sigma1
   scale2 = 0.5*sigma2*sigma2
   lsf1 = LocalSmoothingFilterX(scale1,small,niter)
@@ -87,39 +88,39 @@ def makePlanarSemblance():
   t.setEigenvalues(0.0,1.0,1.0)
   lsf2.apply(t,f,g)
   writeImage(g,gFile)
-  ff = Array.mul(f,f)
-  gg = Array.mul(g,g)
-  lsf2.apply(t,Array.copy(ff),ff)
+  ff = mul(f,f)
+  gg = mul(g,g)
+  lsf2.apply(t,copy(ff),ff)
   writeImage(ff,ffFile)
   writeImage(gg,ggFile)
-  sff = Array.zerofloat(n1,n2,n3)
-  sgg = Array.zerofloat(n1,n2,n3)
+  sff = zerofloat(n1,n2,n3)
+  sgg = zerofloat(n1,n2,n3)
   t.setEigenvalues(1.0,0.0,0.0)
   lsf1.apply(t,ff,sff)
   lsf1.apply(t,gg,sgg)
   writeImage(sff,sffFile)
   writeImage(sgg,sggFile)
-  ps = Array.div(sgg,sff)
-  ps = Array.clip(0.0,1.0,ps)
+  ps = div(sgg,sff)
+  ps = clip(0.0,1.0,ps)
   writeImage(ps,psFile)
 
 def makeHorizontalSemblance():
   f = readImage(n1,n2,n3,fFile)
-  g = Array.zerofloat(n1,n2,n3)
+  g = zerofloat(n1,n2,n3)
   rgf1 = RecursiveGaussianFilter(sigma1);
   rgf2 = RecursiveGaussianFilter(sigma2);
   rgf2.applyXX0(f,g);
   rgf2.applyX0X(g,g);
-  ff = Array.mul(f,f)
-  gg = Array.mul(g,g)
+  ff = mul(f,f)
+  gg = mul(g,g)
   rgf2.applyXX0(ff,ff)
   rgf2.applyX0X(ff,ff)
-  sff = Array.zerofloat(n1,n2,n3)
-  sgg = Array.zerofloat(n1,n2,n3)
+  sff = zerofloat(n1,n2,n3)
+  sgg = zerofloat(n1,n2,n3)
   rgf1.apply0XX(ff,sff)
   rgf1.apply0XX(gg,sgg)
-  hs = Array.div(sgg,sff)
-  hs = Array.clip(0.0,1.0,hs)
+  hs = div(sgg,sff)
+  hs = clip(0.0,1.0,hs)
   writeImage(hs,hsFile)
 
 def plotHorizontalSemblance():
@@ -146,11 +147,11 @@ def plotPlanarSemblanceLimits():
   f = readImage(n1,n2,n3,fFile)
   sff = readImage(n1,n2,n3,sffFile)
   sgg = readImage(n1,n2,n3,sggFile)
-  ps = Array.div(sgg,sff)
-  pslo = Array.clip(-0.01,0.01,ps)
-  pshi = Array.clip( 0.99,1.01,ps)
-  print "pslo min =",Array.min(pslo)," max =",Array.max(pslo)
-  print "pshi min =",Array.min(pshi)," max =",Array.max(pshi)
+  ps = div(sgg,sff)
+  pslo = clip(-0.01,0.01,ps)
+  pshi = clip( 0.99,1.01,ps)
+  print "pslo min =",min(pslo)," max =",max(pslo)
+  print "pshi min =",min(pshi)," max =",max(pshi)
   plot3s([f,pslo])
   plot3s([f,pshi])
 
@@ -178,7 +179,7 @@ def computeTensors(imageFile):
   return d
 
 def readImage(n1,n2,n3,fileName):
-  f = Array.zerofloat(n1,n2,n3)
+  f = zerofloat(n1,n2,n3)
   ais = ArrayInputStream(fileName)
   ais.readFloats(f)
   ais.close()
@@ -197,7 +198,7 @@ jet = ColorMap.JET
 prism = ColorMap.PRISM
 
 def plot3(f,clip=0.0):
-  f = Array.copy(f)
+  f = copy(f)
   world = World()
   ipg = ImagePanelGroup(f)
   if clip!=0.0:

@@ -10,6 +10,7 @@ from edu.mines.jtk.dsp import *
 from edu.mines.jtk.io import *
 from edu.mines.jtk.mosaic import *
 from edu.mines.jtk.util import *
+from edu.mines.jtk.util.ArrayMath import *
 
 from ldf import *
 
@@ -48,22 +49,22 @@ def goSmooth():
 def doSmooth(x,png):
   n1,n2 = len(x[0]),len(x)
   r = makeRandom(n1,n2)
-  s = Array.zerofloat(n1,n2)
-  y = Array.zerofloat(n1,n2)
+  s = zerofloat(n1,n2)
+  y = zerofloat(n1,n2)
   lof = LocalOrientFilter(8)
   t = lof.applyForTensors(x)
-  eu = Array.fillfloat(0.0,n1,n2)
-  ev = Array.fillfloat(1.0,n1,n2)
+  eu = fillfloat(0.0,n1,n2)
+  ev = fillfloat(1.0,n1,n2)
   #ev = makeBlock(n1,n2)
   #ev = makeNotch(n1,n2)
   #ev = makeCircle(n1,n2)
   t.setEigenvalues(eu,ev);
   scale = 0.5*sigma*sigma;
   lsf = LocalSmoothingFilterX(scale,small,niter)
-  Array.zero(x)
+  zero(x)
   x[(n2-1)/2][(n1-1)/2] = 1.0
   lsf.apply(t,x,y);
-  print "y min =",Array.min(y)," max =",Array.max(y)
+  print "y min =",min(y)," max =",max(y)
   lsf.apply(t,r,s);
   plot(s, 0.0,"s"+png)
   plot(x, 0.0,"x"+png)
@@ -79,7 +80,7 @@ def makeIdeal(angle):
   a = angle*pi/180.0
   v1 = sin(a)
   v2 = cos(a)
-  ai = Array.zerofloat(n1,n2)
+  ai = zerofloat(n1,n2)
   for i2 in range(n2):
     k2 = (i2-j2)*s2
     for i1 in range(n1):
@@ -94,10 +95,10 @@ def makeIdeal(angle):
 
 def makeRandom(n1,n2):
   r = Random(314159)
-  return smooth(Array.sub(Array.randfloat(r,n1,n2),0.5))
+  return smooth(sub(randfloat(r,n1,n2),0.5))
 
 def makeBlock(n1,n2):
-  ds = Array.fillfloat(0.0,n1,n2);
+  ds = fillfloat(0.0,n1,n2);
   for i2 in range(n2):
     for i1 in range(n1):
       #if i1>i2: ds[i2][i1] = 1.0
@@ -105,7 +106,7 @@ def makeBlock(n1,n2):
   return ds
 
 def makeCircle(n1,n2):
-  s = Array.fillfloat(0.0,n1,n2);
+  s = fillfloat(0.0,n1,n2);
   k1 = (n1-1)/2
   k2 = (n2-1)/2
   ds = (0.4*min(n1,n2))**2
@@ -117,7 +118,7 @@ def makeCircle(n1,n2):
   return s
 
 def makeNotch(n1,n2):
-  ds = Array.fillfloat(0.0,n1,n2);
+  ds = fillfloat(0.0,n1,n2);
   m2 = (n2-1)/2
   for i2 in range(n2):
     for i1 in range(n1):
@@ -127,7 +128,7 @@ def makeNotch(n1,n2):
 def readImage():
   fileName = dataDir+"/seis/vg/junks.dat"
   ais = ArrayInputStream(fileName,ByteOrder.LITTLE_ENDIAN)
-  f = Array.zerofloat(n1,n2)
+  f = zerofloat(n1,n2)
   ais.readFloats(f)
   ais.close()
   return f
@@ -136,7 +137,7 @@ def makeTargetImage():
   k = 0.3
   c1 = n1/2
   c2 = n2/2
-  f = Array.zerofloat(n1,n2)
+  f = zerofloat(n1,n2)
   for i2 in range(n2):
     d2 = i2-c2
     for i1 in range(n1):
@@ -149,20 +150,20 @@ def makePlaneImage(angle):
   k = 0.3
   c = k*cos(a)
   s = k*sin(a)
-  return Array.mul(10.0,Array.sin(Array.rampfloat(0.0,c,s,n1,n2)))
+  return mul(10.0,sin(rampfloat(0.0,c,s,n1,n2)))
 
 def smooth(x):
   n1,n2 = len(x[0]),len(x)
-  y = Array.zerofloat(n1,n2)
+  y = zerofloat(n1,n2)
   rgf = RecursiveGaussianFilter(1.0)
   rgf.apply00(x,y)
   return y
 
 def flip2(f):
   n1,n2 = len(x[0]),len(x)
-  g = Array.zerofloat(n1,n2)
+  g = zerofloat(n1,n2)
   for i2 in range(n2):
-    Array.copy(f[n2-1-i2],g[i2])
+    copy(f[n2-1-i2],g[i2])
   return g
 
 #############################################################################

@@ -7,9 +7,10 @@ from javax.swing import *
 from edu.mines.jtk.dsp import *
 from edu.mines.jtk.io import *
 from edu.mines.jtk.mosaic import *
-from edu.mines.jtk.util import *
 from edu.mines.jtk.sgl import *
 from edu.mines.jtk.sgl.test import *
+from edu.mines.jtk.util import *
+from edu.mines.jtk.util.ArrayMath import *
 
 import jss.Convert as Convert
 
@@ -74,7 +75,7 @@ def convert():
   return
 
 def plot(x):
-  xmin,xmax = Array.min(x),Array.max(x)
+  xmin,xmax = min(x),max(x)
   print "x min =",xmin," max =",xmax
   sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
   sp.setSize(756,791)
@@ -94,7 +95,7 @@ def readFormat():
   ais.skipBytes(nhead)
 # floating point format code should be in bytes 3225-6
 # 1 for IBM floating point, 5 for IEEE floating point
-  h = Array.zeroshort(nbhed)
+  h = zeroshort(nbhed)
   ais.readShorts(h)
   print "format =",h[12]
   ais.close()
@@ -104,17 +105,17 @@ def testFormat():
   ais = ArrayInputStream(infile)
   ais.skipBytes(nhead+nbhed)
   ais.skipBytes(nthed)
-  xi = Array.zeroint(n1)
+  xi = zeroint(n1)
   ais.readInts(xi)
   ais.close()
-  x1 = Array.zerofloat(n1)
-  x2 = Array.zerofloat(n1)
+  x1 = zerofloat(n1)
+  x2 = zerofloat(n1)
   Convert.ibmToFloat(xi,x1)
   Convert.ieeeToFloat(xi,x2)
   SimplePlot.asPoints(x1)
   SimplePlot.asPoints(x2)
-  #Array.dump(x1)
-  #Array.dump(x2)
+  #dump(x1)
+  #dump(x2)
 
 def convertSegy(infile,outfile):
   infile = dataDir+infile;
@@ -122,22 +123,22 @@ def convertSegy(infile,outfile):
   ais = ArrayInputStream(infile)
   aos = ArrayOutputStream(outfile)
   ais.skipBytes(nhead+nbhed)
-  xi = Array.zeroint(n1i)
-  x = Array.zerofloat(n1i)
-  y = Array.zerofloat(n1)
+  xi = zeroint(n1i)
+  x = zerofloat(n1i)
+  y = zerofloat(n1)
   ais.skipBytes(k2*(nthed+4*n1i))
   for i2 in range(n2):
     ais.skipBytes(nthed)
     ais.readInts(xi)
     Convert.ibmToFloat(xi,x)
-    Array.copy(n1,k1,x,0,y)
+    copy(n1,k1,x,0,y)
     aos.writeFloats(y)
   ais.close()
   aos.close()
 
 def readImage(file):
   ais = ArrayInputStream(dataDir+file)
-  x = Array.zerofloat(n1,n2)
+  x = zerofloat(n1,n2)
   ais.readFloats(x)
   ais.close()
   return x

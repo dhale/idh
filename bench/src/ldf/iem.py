@@ -11,6 +11,7 @@ from edu.mines.jtk.dsp import *
 from edu.mines.jtk.io import *
 from edu.mines.jtk.mosaic import *
 from edu.mines.jtk.util import *
+from edu.mines.jtk.util.ArrayMath import *
 
 from ldf import *
 
@@ -41,7 +42,7 @@ lof.setGradientSmoothing(1)
 def readImage():
   fileName = dataDir+"/seis/vg/junks.dat"
   ais = ArrayInputStream(fileName,ByteOrder.LITTLE_ENDIAN)
-  f = Array.zerofloat(n1,n2)
+  f = zerofloat(n1,n2)
   ais.readFloats(f)
   ais.close()
   return f
@@ -49,9 +50,9 @@ def readImage():
 def getV(x):
   n1 = len(x[0])
   n2 = len(x)
-  v1 = Array.zerofloat(n1,n2)
-  v2 = Array.zerofloat(n1,n2)
-  el = Array.zerofloat(n1,n2)
+  v1 = zerofloat(n1,n2)
+  v2 = zerofloat(n1,n2)
+  el = zerofloat(n1,n2)
   lof.apply(x,None,None,None,v1,v2,None,None,el)
   ds = el
   return v1,v2,ds
@@ -59,7 +60,7 @@ def getV(x):
 iem = None
 pvv = None
 vnull = 0.0
-v = Array.zerofloat(n1,n2)
+v = zerofloat(n1,n2)
 x = readImage()
 v1,v2,ds = getV(x)
 
@@ -97,7 +98,7 @@ def interp100():
 def interpolate(aniso):
   print "interpolate"
   lif = LocalInterpolationFilter(aniso,small,niter)
-  f = Array.zerobyte(n1,n2)
+  f = zerobyte(n1,n2)
   for i2 in range(n2):
     for i1 in range(n1):
       if v[i2][i1]!=vnull:

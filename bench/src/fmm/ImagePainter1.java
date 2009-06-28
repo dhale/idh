@@ -6,20 +6,11 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package fmm;
 
-import java.awt.*;
-import java.awt.event.*;
-import java.awt.image.*;
-import java.io.*;
-import java.util.*;
 import javax.swing.*;
-import javax.swing.event.*;
 
-import edu.mines.jtk.awt.*;
 import edu.mines.jtk.dsp.*;
-import edu.mines.jtk.io.*;
 import edu.mines.jtk.mosaic.*;
 import edu.mines.jtk.util.*;
-import static edu.mines.jtk.util.MathPlus.*;
 
 /**
  * 1D interpolation using fast marching methods.
@@ -29,7 +20,7 @@ import static edu.mines.jtk.util.MathPlus.*;
 public class ImagePainter1 {
 
   public ImagePainter1(float[] d) {
-    _d = Array.copy(d);
+    _d = ArrayMath.copy(d);
     _nv = 1;
     _n1 = d.length;
     _dv = new float[_nv];
@@ -135,7 +126,7 @@ public class ImagePainter1 {
     _type[i1] = FIXED;
     _k1[i1] = i1;
     _tk[i1] = INFINITY;
-    _vk[i1] = Array.copy(v);
+    _vk[i1] = ArrayMath.copy(v);
   }
 
   /**
@@ -245,7 +236,7 @@ public class ImagePainter1 {
       // have completed the computation of the interpolated values, those 
       // values will already be referenced by all extrapolated samples 
       // nearest to the interpolated sample.
-      float[] vk = Array.mul(wi,_vk[k1]);
+      float[] vk = ArrayMath.mul(wi,_vk[k1]);
       _vk[k1] = vk;
 
       // Mark all samples as far, set the type of the interpolated sample,
@@ -429,8 +420,8 @@ public class ImagePainter1 {
     SimplePlot sp = SimplePlot.asSequence(sx,f);
     double xmin = sx.getFirst();
     double xmax = sx.getLast();
-    double fmin = Array.min(f);
-    double fmax = Array.max(f);
+    double fmin = ArrayMath.min(f);
+    double fmax = ArrayMath.max(f);
     double xpad = 0.05*(xmax-xmin);
     double fpad = 0.05*(fmax-fmin);
     sp.setHLimits(xmin-xpad,xmax+xpad);
@@ -440,8 +431,8 @@ public class ImagePainter1 {
   private static void plotPoints(Sampling sx, float[] f, String file) {
     double xmin = sx.getFirst();
     double xmax = sx.getLast();
-    double fmin = Array.min(f);
-    double fmax = Array.max(f);
+    double fmin = ArrayMath.min(f);
+    double fmax = ArrayMath.max(f);
     double xpad = 0.05*(xmax-xmin);
     double fpad = 0.05*(fmax-fmin);
     SimplePlot sp = new SimplePlot();
@@ -477,7 +468,7 @@ public class ImagePainter1 {
         plotPoints(s1,ip.getValues(),null);
         ip.extrapolate();
         plotPoints(s1,ip.getValues(),"ip1fe");
-        plotPoints(s1,Array.mul(d1,ip.getTimes()),"ip1t");
+        plotPoints(s1, ArrayMath.mul(d1,ip.getTimes()),"ip1t");
         ip.interpolate();
         plotPoints(s1,ip.getValues(),"ip1fi");
       }

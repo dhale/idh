@@ -97,8 +97,8 @@ public class Warp1 {
   private float[] makeRandom(int n, double fl, double fh) {
 
     // Random sequence in [-1,1].
-    float[] f = Array.randfloat(new Random(314159),n);
-    f = Array.sub(Array.mul(2.0f,f),1.0f);
+    float[] f = ArrayMath.randfloat(new Random(314159),n);
+    f = ArrayMath.sub(ArrayMath.mul(2.0f,f),1.0f);
 
     // Lowpass filter.
     ButterworthFilter lp = new ButterworthFilter(0.01,0.01,0.02,0.99);

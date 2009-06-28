@@ -10,6 +10,7 @@ from edu.mines.jtk.dsp import *
 from edu.mines.jtk.io import *
 from edu.mines.jtk.mosaic import *
 from edu.mines.jtk.util import *
+from edu.mines.jtk.util.ArrayMath import *
 
 from lcc import *
 
@@ -25,9 +26,9 @@ def main(args):
 
 def testInverseForward():
   n = 315
-  x = Array.zerofloat(n)
-  y = Array.zerofloat(n)
-  z = Array.zerofloat(n)
+  x = zerofloat(n)
+  y = zerofloat(n)
+  z = zerofloat(n)
   x[n/2] = 1.0
   sigma1 = 4
   sigma2 = sqrt(sigma1*sigma1-2)
@@ -56,9 +57,9 @@ def makeFilter(sigma):
   b1 = -2.0*pow(r2,2.0/sigma)*cos(2.0*s2/sigma)
   b2 = pow(r2,4.0/sigma)
   lag1 = (0,1,2,3,4)
-  a = Array.zerofloat(5)
-  Array.copy((1.0,a1+b1,a2+a1*b1+b2,a1*b2+b1*a2,a2*b2),a)
-  a = Array.mul(1.0/Array.sum(a),a)
+  a = zerofloat(5)
+  copy((1.0,a1+b1,a2+a1*b1+b2,a1*b2+b1*a2,a2*b2),a)
+  a = mul(1.0/sum(a),a)
   return CausalFilter(lag1,a)
 
 #############################################################################

@@ -10,9 +10,10 @@ from edu.mines.jtk.awt import *
 from edu.mines.jtk.dsp import *
 from edu.mines.jtk.io import *
 from edu.mines.jtk.mosaic import *
-from edu.mines.jtk.util import *
 from edu.mines.jtk.sgl import *
 from edu.mines.jtk.sgl.test import *
+from edu.mines.jtk.util import *
+from edu.mines.jtk.util.ArrayMath import *
 
 from tp import *
 
@@ -140,10 +141,10 @@ def viewWellsWithSeismic(what,curve):
   wdata = WellLog.Data.readBinary(csmWellLogs)
   n1c,n2c,n3c = s1c.count,s2c.count,s3c.count
   ais = ArrayInputStream(csmSeismic)
-  x = Array.zerofloat(n1c,n2c,n3c)
+  x = zerofloat(n1c,n2c,n3c)
   ais.readFloats(x)
   ais.close()
-  print "x min =",Array.min(x)," max =",Array.max(x)
+  print "x min =",min(x)," max =",max(x)
   ipg = ImagePanelGroup(s1c,s2c,s3c,x)
   world = World()
   world.addChild(ipg)
@@ -158,10 +159,10 @@ def addWellGroups(world,wdata,curve):
 
 def makePointGroup(log):
   n = log.n
-  xyz = Array.zerofloat(3*n)
-  Array.copy(n,0,1,log.x3,0,3,xyz)
-  Array.copy(n,0,1,log.x2,1,3,xyz)
-  Array.copy(n,0,1,log.x1,2,3,xyz)
+  xyz = zerofloat(3*n)
+  copy(n,0,1,log.x3,0,3,xyz)
+  copy(n,0,1,log.x2,1,3,xyz)
+  copy(n,0,1,log.x1,2,3,xyz)
   states = StateSet()
   cs = ColorState()
   cs.setColor(Color.YELLOW)

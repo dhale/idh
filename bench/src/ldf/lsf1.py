@@ -10,6 +10,7 @@ from edu.mines.jtk.dsp import *
 from edu.mines.jtk.io import *
 from edu.mines.jtk.mosaic import *
 from edu.mines.jtk.util import *
+from edu.mines.jtk.util.ArrayMath import *
 
 from ldf import *
 
@@ -47,9 +48,9 @@ def goTestTranspose():
   n = 11
   x = makeRandom(n)
   y = makeRandom(n)
-  ds = Array.randfloat(n)
-  ax = Array.zerofloat(n)
-  ay = Array.zerofloat(n)
+  ds = randfloat(n)
+  ax = zerofloat(n)
+  ay = zerofloat(n)
   lsf = LocalSmoothingFilter1(sigma,n,ds)
   lsf.apply(y,ay)
   lsf.applyTranspose(x,ax)
@@ -65,8 +66,8 @@ def goTestSymmetric():
   n = 11
   x = makeRandom(n)
   y = makeRandom(n)
-  ax = Array.zerofloat(n)
-  ay = Array.zerofloat(n)
+  ax = zerofloat(n)
+  ay = zerofloat(n)
   lsf = LocalSmoothingFilter(sigma)
   lsf.applyPass(None,x,ax)
   lsf.applyPass(None,y,ay)
@@ -80,7 +81,7 @@ def goTestSymmetric():
 def goSmooth():
   #x = makeRandom(n1)
   x = makeImpulse(n1)
-  y = Array.zerofloat(n1)
+  y = zerofloat(n1)
   #ds = None
   ds = makeBlock(n1)
   #ds = makeStepUp(n1/2+1,n1)
@@ -93,9 +94,9 @@ def goSmooth():
 def goSmooth1():
   #x = makeRandom(n1)
   #x = makeImpulse(n1)
-  x = Array.zerofloat(n1)
+  x = zerofloat(n1)
   x[5] = x[n1-6] = x[n1/2] = 1.0
-  y = Array.zerofloat(n1)
+  y = zerofloat(n1)
   #ds = None
   ds = makeBlock(n1)
   #ds = makeStepUp(n1/2+1,n1)
@@ -107,32 +108,32 @@ def goSmooth1():
   SimplePlot.asSequence(y);
 
 def makeBlock(n1):
-  ds = Array.fillfloat(0.3,n1)
+  ds = fillfloat(0.3,n1)
   for i1 in range(1*n1/3,2*n1/3):
     ds[i1] = 1.0
   return ds
 
 def makeStepUp(k1,n1):
-  ds = Array.zerofloat(n1)
+  ds = zerofloat(n1)
   for i1 in range(k1,n1):
     ds[i1] = 1.0
   return ds
 
 def makeStepDown(k1,n1):
-  ds = Array.fillfloat(1.0,n1)
+  ds = fillfloat(1.0,n1)
   for i1 in range(k1,n1):
     ds[i1] = 0.0
   return ds
 
 def makeImpulse(n1):
-  x = Array.zerofloat(n1)
+  x = zerofloat(n1)
   x[n1/2] = 1.0
   return x
 
 def makeRandom(n1):
   #r = Random(314159)
-  #return Array.sub(Array.randfloat(r,n1),0.5)
-  return Array.sub(Array.randfloat(n1),0.5)
+  #return sub(randfloat(r,n1),0.5)
+  return sub(randfloat(n1),0.5)
 
 #############################################################################
 # Do everything on Swing thread.

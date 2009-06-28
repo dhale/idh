@@ -78,7 +78,7 @@ public class LocalInterpolationFilter {
     SincInterpolator si = SincInterpolator.fromErrorAndLength(0.01f,8);
     si.setExtrapolation(SincInterpolator.Extrapolation.ZERO);
     si.setUniformSampling(n1,1.0f,0.0f);
-    float[] u1 = Array.rampfloat(0.0f,1.0f,n1);
+    float[] u1 = ArrayMath.rampfloat(0.0f,1.0f,n1);
     float[] t1 = new float[n1];
     float[] x1 = new float[n1];
 
@@ -120,7 +120,7 @@ public class LocalInterpolationFilter {
   public void applyLinear(
     float[][] ds, float[][] es, float[][] v1, byte[][] f, float[][] x) 
   {
-    trace("x min="+Array.min(x)+" max="+Array.max(x));
+    trace("x min="+ ArrayMath.min(x)+" max="+ ArrayMath.max(x));
     int n1 = x[0].length;
     int n2 = x.length;
     float[][] t = new float[n2][n1];
@@ -130,7 +130,7 @@ public class LocalInterpolationFilter {
         t[i2][i1] = (f[i2][i1]!=0)?-x[i2][i1]:0.0f;
       }
     }
-    trace("t min="+Array.min(t)+" max="+Array.max(t));
+    trace("t min="+ ArrayMath.min(t)+" max="+ ArrayMath.max(t));
     _dlf.applyLinear(ds,es,v1,t,b);
     for (int i2=0; i2<n2; ++i2) {
       for (int i1=0; i1<n1; ++i1) {
@@ -138,7 +138,7 @@ public class LocalInterpolationFilter {
       }
     }
     t = null;
-    trace("b min="+Array.min(b)+" max="+Array.max(b));
+    trace("b min="+ ArrayMath.min(b)+" max="+ ArrayMath.max(b));
     solveLinear(ds,es,v1,f,b,x);
   }
 
@@ -479,7 +479,7 @@ public class LocalInterpolationFilter {
   }
 
   private static void scopy(float[][] x, float[][] y) {
-    Array.copy(x,y);
+    ArrayMath.copy(x,y);
   }
   private static void scopy(float[][][] x, float[][][] y) {
     if (PARALLEL) {
@@ -509,7 +509,7 @@ public class LocalInterpolationFilter {
   }
 
   private static void szero(float[][] x) {
-    Array.zero(x);
+    ArrayMath.zero(x);
   }
 
   // Returns the dot product x'y.
@@ -655,19 +655,19 @@ public class LocalInterpolationFilter {
     int n1 = 100;
     int n2 = 101;
     DirectionalLaplacianFilter dlf = new DirectionalLaplacianFilter(1.0);
-    float[][] ds = Array.randfloat(n1,n2);
-    float[][] es = Array.randfloat(n1,n2);
-    float[][] v1 = Array.randfloat(n1,n2);
-    byte[][] f = Array.zerobyte(n1,n2);
+    float[][] ds = ArrayMath.randfloat(n1,n2);
+    float[][] es = ArrayMath.randfloat(n1,n2);
+    float[][] v1 = ArrayMath.randfloat(n1,n2);
+    byte[][] f = ArrayMath.zerobyte(n1,n2);
     Operator2 a = new LinearOperator2(dlf,ds,es,v1,f);
     testSpd(n1,n2,a);
   }
 
   private static void testSpd(int n1, int n2, Operator2 a) {
-    float[][] x = Array.sub(Array.randfloat(n1,n2),0.5f);
-    float[][] y = Array.sub(Array.randfloat(n1,n2),0.5f);
-    float[][] ax = Array.zerofloat(n1,n2);
-    float[][] ay = Array.zerofloat(n1,n2);
+    float[][] x = ArrayMath.sub(ArrayMath.randfloat(n1,n2),0.5f);
+    float[][] y = ArrayMath.sub(ArrayMath.randfloat(n1,n2),0.5f);
+    float[][] ax = ArrayMath.zerofloat(n1,n2);
+    float[][] ay = ArrayMath.zerofloat(n1,n2);
     a.apply(x,ax);
     a.apply(y,ay);
     float xax = sdot(x,ax);

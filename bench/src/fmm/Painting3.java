@@ -7,22 +7,16 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 package fmm;
 
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.*;
 
 import edu.mines.jtk.util.*;
 import static edu.mines.jtk.util.MathPlus.*;
 
 // for testing
-import java.awt.*;
-import java.awt.image.*;
 import java.io.*;
-import java.util.*;
-import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
-import edu.mines.jtk.awt.*;
+
 import edu.mines.jtk.dsp.*;
 import edu.mines.jtk.io.*;
-import edu.mines.jtk.mosaic.*;
 
 /**
  * A 3D array of painted values, where most values are painted automatically.
@@ -204,7 +198,7 @@ public class Painting3 {
     _k1[i3][i2][i1] = i1;
     _k2[i3][i2][i1] = i2;
     _tk[i3][i2][i1] = TIME_INVALID;
-    _vk[i3][i2][i1] = Array.copy(v);
+    _vk[i3][i2][i1] = ArrayMath.copy(v);
   }
 
   /**
@@ -368,7 +362,7 @@ public class Painting3 {
       // In stage 2, interpolated values are not extrapolated, and must not
       // affect other interpolated values, so we store them in a separate
       // array of values to be merged later.
-      float[] vk = Array.copy(_vk[k3][k2][k1]);
+      float[] vk = ArrayMath.copy(_vk[k3][k2][k1]);
       if (stage1) {
         _vk[k3][k2][k1] = vk;
       } else {
@@ -1133,10 +1127,10 @@ public class Painting3 {
         int[] k2New = new int[2*k2List.length];
         int[] k3New = new int[2*k3List.length];
         float[] tkNew = new float[2*tkList.length];
-        Array.copy(n,k1List,k1New);
-        Array.copy(n,k2List,k2New);
-        Array.copy(n,k3List,k3New);
-        Array.copy(n,tkList,tkNew);
+        ArrayMath.copy(n,k1List,k1New);
+        ArrayMath.copy(n,k2List,k2New);
+        ArrayMath.copy(n,k3List,k3New);
+        ArrayMath.copy(n,tkList,tkNew);
         k1List = k1New;
         k2List = k2New;
         k3List = k3New;
@@ -1265,9 +1259,9 @@ public class Painting3 {
     s.start();
     p.extrapolate();
     s.stop();
-    float sum = Array.sum(p.getTimes());
+    float sum = ArrayMath.sum(p.getTimes());
     trace("done: time="+s.time()+" sum="+sum);
-    //Array.dump(p.getTimes());
+    //ArrayMath.dump(p.getTimes());
     //plot(p.getValues());
   }
 

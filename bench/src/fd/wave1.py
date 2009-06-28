@@ -8,6 +8,7 @@ from javax.swing import *
 from edu.mines.jtk.dsp import *
 from edu.mines.jtk.mosaic import *
 from edu.mines.jtk.util import *
+from edu.mines.jtk.util.ArrayMath import *
 
 from fd import *
 
@@ -55,8 +56,8 @@ def plot(w,png):
  
 def makeModel(dl,dr):
   nx = 801
-  d = Array.zerofloat(nx)
-  v = Array.zerofloat(nx)
+  d = zerofloat(nx)
+  v = zerofloat(nx)
   for ix in range(nx):
     v[ix] = 1.0
     if ix<3*nx/4:
@@ -88,14 +89,14 @@ def test1():
       Wave1.Method.PRODUCT2
     ]
     nmethod = len(methods)
-    f = Array.zerofloat(nx,nmethod,nt)
+    f = zerofloat(nx,nmethod,nt)
     for imethod in range(nmethod):
       wave1 = Wave1(methods[imethod],dt,dx,d,v)
       for it in range(nt):
         fi = wave1.step(mt)
-        ft = Array.copy(nx/2,fi)
-        Array.copy(fi,f[it][imethod])
-        fmax = Array.max(ft)
+        ft = copy(nx/2,fi)
+        copy(fi,f[it][imethod])
+        fmax = max(ft)
         #print "fmax =",fmax,"  fr =",fmax*rc,"  ft =",fmax*tc
     prefix = "wave1"+lmodel[imodel]
     if imodel==0:

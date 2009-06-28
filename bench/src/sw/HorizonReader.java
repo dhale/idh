@@ -39,10 +39,10 @@ public class HorizonReader {
     float[][][] tb = readTopBase();
     float[][] t = tb[0];
     float[][] b = tb[1];
-    float tmin = Array.min(t);
-    float tmax = Array.max(t);
-    float bmin = Array.min(b);
-    float bmax = Array.max(b);
+    float tmin = ArrayMath.min(t);
+    float tmax = ArrayMath.max(t);
+    float bmin = ArrayMath.min(b);
+    float bmax = ArrayMath.max(b);
     System.out.println("tmin="+tmin+" tmax="+tmax+" bmin="+bmin+" bmax="+bmax);
   }
 
@@ -110,12 +110,12 @@ public class HorizonReader {
         }
       }
     }
-    return Array.copy(n,xyz);
+    return ArrayMath.copy(n,xyz);
   }
 
   public static float[][][] readTopBase() {
     float[][][] tb = new float[2][NX][NY];
-    Array.fill(BOGUS,tb);
+    ArrayMath.fill(BOGUS,tb);
     Scanner s;
     try {
       s = new Scanner(new BufferedReader(new FileReader(FILENAME)));

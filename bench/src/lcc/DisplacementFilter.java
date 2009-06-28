@@ -55,21 +55,21 @@ public class DisplacementFilter {
     float[][] u1 = u[0];
     float[][] u2 = u[1];
     System.out.println("apply: u1 min/max=" +
-      Array.min(u1)+"/"+Array.max(u1));
+      ArrayMath.min(u1)+"/"+ArrayMath.max(u1));
     System.out.println("apply: u2 min/max=" +
-      Array.min(u2)+"/"+Array.max(u2));
+      ArrayMath.min(u2)+"/"+ArrayMath.max(u2));
     */
     lt.forward(tvect,vvect);
     /*
     System.out.println("apply: u1 min/max=" +
-      Array.min(u1)+"/"+Array.max(u1));
+      ArrayMath.min(u1)+"/"+ArrayMath.max(u1));
     System.out.println("apply: u2 min/max=" +
-      Array.min(u2)+"/"+Array.max(u2));
+      ArrayMath.min(u2)+"/"+ArrayMath.max(u2));
     */
     /*
     VectUtil.test(uvect);
     float[][][] v = ((ArrayVect3f)vvect).getData();
-    Array.rand(v);
+    ArrayMath.rand(v);
     int tp = VectUtil.getTransposePrecision(uvect,vvect,
       new LinearTransformWrapper(lt));
     System.out.println("tp="+tp);
@@ -152,9 +152,9 @@ public class DisplacementFilter {
       _df.applyInverse(v2,u2);
       /*
       System.out.println("VSmooth.forward: u1 min/max=" +
-        Array.min(u1)+"/"+Array.max(u1));
+        ArrayMath.min(u1)+"/"+ArrayMath.max(u1));
       System.out.println("VSmooth.forward: u2 min/max=" +
-        Array.min(u2)+"/"+Array.max(u2));
+        ArrayMath.min(u2)+"/"+ArrayMath.max(u2));
       */
     }
     public void addTranspose(VectConst data, Vect model) {
@@ -168,14 +168,14 @@ public class DisplacementFilter {
       int n2 = u1.length;
       float[][] vt = new float[n2][n1];
       _df.applyInverseTranspose(u1,vt);
-      Array.add(vt,v1,v1);
+      ArrayMath.add(vt,v1,v1);
       _df.applyInverseTranspose(u2,vt);
-      Array.add(vt,v2,v2);
+      ArrayMath.add(vt,v2,v2);
       /*
       System.out.println("VSmooth.addTranspose: v1 min/max=" +
-        Array.min(v1)+"/"+Array.max(v1));
+        ArrayMath.min(v1)+"/"+ArrayMath.max(v1));
       System.out.println("VSmooth.addTranspose: v2 min/max=" +
-        Array.min(v2)+"/"+Array.max(v2));
+        ArrayMath.min(v2)+"/"+ArrayMath.max(v2));
       */
     }
     public void inverseHessian(Vect model) {

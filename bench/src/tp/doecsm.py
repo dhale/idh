@@ -16,9 +16,10 @@ from javax.swing import *
 from edu.mines.jtk.dsp import *
 from edu.mines.jtk.io import *
 from edu.mines.jtk.mosaic import *
-from edu.mines.jtk.util import *
 from edu.mines.jtk.sgl import *
 from edu.mines.jtk.sgl.test import *
+from edu.mines.jtk.util import *
+from edu.mines.jtk.util.ArrayMath import *
 
 from tp import *
 
@@ -65,8 +66,8 @@ def resample():
   n1c,n2c,n3c = s1c.count,s2c.count,s3c.count
   d1c,d2c,d3c = s1c.delta,s2c.delta,s3c.delta
   f1c,f2c,f3c = s1c.first,s2c.first,s3c.first
-  x2d = Array.zerofloat(n2c,n3c) # DOE coordinates at
-  x3d = Array.zerofloat(n2c,n3c) # which to interpolate 
+  x2d = zerofloat(n2c,n3c) # DOE coordinates at
+  x3d = zerofloat(n2c,n3c) # which to interpolate
   for i3 in range(n3c):
     x3c = f3c+i3*d3c
     for i2 in range(n2c):
@@ -75,10 +76,10 @@ def resample():
       doe = Coordinates.Doe(csm)
       x2d[i3][i2] = doe.x2
       x3d[i3][i2] = doe.x3
-  x = Array.zerofloat(n1d,n2d,n3d) # input array
-  y = Array.zerofloat(n1c,n2c,n3c) # output array
-  x23 = Array.zerofloat(n2d,n3d) # 23 slice of input array
-  y23 = Array.zerofloat(n2c,n3c) # 23 slice of output array
+  x = zerofloat(n1d,n2d,n3d) # input array
+  y = zerofloat(n1c,n2c,n3c) # output array
+  x23 = zerofloat(n2d,n3d) # 23 slice of input array
+  y23 = zerofloat(n2c,n3c) # 23 slice of output array
   sx = SimpleFloat3(x)
   sy = SimpleFloat3(y)
   si = SincInterpolator()
@@ -101,10 +102,10 @@ def resample():
 def display():
   n1c,n2c,n3c = s1c.count,s2c.count,s3c.count
   ais = ArrayInputStream(csmFile)
-  x = Array.zerofloat(n1c,n2c,n3c)
+  x = zerofloat(n1c,n2c,n3c)
   ais.readFloats(x)
   ais.close()
-  print "x min =",Array.min(x)," max =",Array.max(x)
+  print "x min =",min(x)," max =",max(x)
   ipg = ImagePanelGroup(s1c,s2c,s3c,x)
   world = World()
   world.addChild(ipg)

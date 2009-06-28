@@ -157,8 +157,8 @@ public class DirectionalSurvey {
       // Sort directional data by increasing measured depth. This sort 
       // facilitates binary search for the measured depth interval that
       // contains a measured depth at which we compute well bore coordinates.
-      int[] j = Array.rampint(0,1,n);
-      Array.quickIndexSort(z,j);
+      int[] j = ArrayMath.rampint(0,1,n);
+      ArrayMath.quickIndexSort(z,j);
       z = sort(z,j);
       t = sort(t,j);
       p = sort(p,j);
@@ -228,7 +228,7 @@ public class DirectionalSurvey {
       int n = _n;
 
       // Find interval of measured depth.
-      int i = Array.binarySearch(_zm,zmi);
+      int i = ArrayMath.binarySearch(_zm,zmi);
       if (i<0) i = -(i+1);
 
       // Coordinates of point corresponding to specified measured depth.

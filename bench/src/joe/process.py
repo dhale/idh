@@ -10,9 +10,10 @@ from edu.mines.jtk.awt import *
 from edu.mines.jtk.dsp import *
 from edu.mines.jtk.io import *
 from edu.mines.jtk.mosaic import *
-from edu.mines.jtk.util import *
 from edu.mines.jtk.sgl import *
 from edu.mines.jtk.sgl.test import *
+from edu.mines.jtk.util import *
+from edu.mines.jtk.util.ArrayMath import *
 
 from ldf import *
 from joe import *
@@ -92,7 +93,7 @@ def old():
 
 def writeSlice23():
   x = readFloats23("x.dat",174)
-  print "x min/max =",Array.min(x),Array.max(x)
+  print "x min/max =",min(x),max(x)
   writeFile("x174.dat",x)
 
 """
@@ -135,7 +136,7 @@ def plotAll():
 def plotHistogram(el,ep,png=None):
   nl = 101
   np = 101
-  h = Array.zerofloat(nl,np)
+  h = zerofloat(nl,np)
   for i3 in range(n3):
     for i2 in range(n2):
       for i1 in range(n1):
@@ -164,12 +165,12 @@ def ldf():
   small = 0.001
   niter = 100
   ldf = LocalDiffusionFilterCg(sigma,small,niter)
-  y = Array.zerofloat(n1,n2,n3)
+  y = zerofloat(n1,n2,n3)
   ldf.applyPlanarKill(None,iu,x,y)
   writeFile("y.dat",y)
 
 def ewarp(e):
-  return Array.exp(Array.neg(Array.div(0.3,e)))
+  return exp(neg(div(0.3,e)))
 
 def llf():
   iw = readFileShorts("yiw.dat",n1,n2,n3)
@@ -181,7 +182,7 @@ def llf():
   ldf = LocalDiffusionFilterCg(sigma,small,niter)
   x = readFile("x.dat",n1,n2,n3)
   #y = readFile("y.dat",n1,n2,n3)
-  z = Array.zerofloat(n1,n2,n3)
+  z = zerofloat(n1,n2,n3)
   ldf.applyLinearPass(il,iw,x,z)
   #ldf.applyLinearPass(il,iw,y,z)
   writeFile("xz.dat",z)
@@ -193,10 +194,10 @@ def emask():
   el = readFile("yel.dat",n1,n2,n3)
   el = ewarp(el)
   xz = readFile("xz.dat",n1,n2,n3)
-  exz = Array.mul(el,xz) 
+  exz = mul(el,xz)
   writeFile("exz.dat",exz)
   #yz = readFile("yz.dat",n1,n2,n3)
-  #eyz = Array.mul(el,yz) 
+  #eyz = mul(el,yz)
   #writeFile("eyz.dat",eyz)
   #x = readFile("x.dat",n1,n2,n3)
   #y = readFile("y.dat",n1,n2,n3)
@@ -209,17 +210,17 @@ def window():
   #m1,m2,m3 = n1,400,n3
   j1,j2,j3 =   0,150,250
   m1,m2,m3 = 200,200,200
-  y = Array.copy(m1,m2,m3,j1,j2,j3,x)
+  y = copy(m1,m2,m3,j1,j2,j3,x)
   writeFile("x.dat",y)
 
 def xplanes():
   x = readFile("x.dat",n1,n2,n3)
   lof = LocalOrientFilter(6.0)
-  u1 = Array.zerofloat(n1,n2,n3)
-  u2 = Array.zerofloat(n1,n2,n3)
-  u3 = Array.zerofloat(n1,n2,n3)
-  ep = Array.zerofloat(n1,n2,n3)
-  el = Array.zerofloat(n1,n2,n3)
+  u1 = zerofloat(n1,n2,n3)
+  u2 = zerofloat(n1,n2,n3)
+  u3 = zerofloat(n1,n2,n3)
+  ep = zerofloat(n1,n2,n3)
+  el = zerofloat(n1,n2,n3)
   lof.apply(x,
     None,None,
     u1,u2,u3,
@@ -238,11 +239,11 @@ def xplanes():
 def yplanes():
   y = readFile("y.dat",n1,n2,n3)
   lof = LocalOrientFilter(6.0)
-  u1 = Array.zerofloat(n1,n2,n3)
-  u2 = Array.zerofloat(n1,n2,n3)
-  u3 = Array.zerofloat(n1,n2,n3)
-  ep = Array.zerofloat(n1,n2,n3)
-  el = Array.zerofloat(n1,n2,n3)
+  u1 = zerofloat(n1,n2,n3)
+  u2 = zerofloat(n1,n2,n3)
+  u3 = zerofloat(n1,n2,n3)
+  ep = zerofloat(n1,n2,n3)
+  el = zerofloat(n1,n2,n3)
   lof.apply(y,
     None,None,
     u1,u2,u3,
@@ -261,10 +262,10 @@ def yplanes():
 def ylines():
   x = readFile("y.dat",n1,n2,n3)
   lof = LocalOrientFilter(6.0)
-  w1 = Array.zerofloat(n1,n2,n3)
-  w2 = Array.zerofloat(n1,n2,n3)
-  w3 = Array.zerofloat(n1,n2,n3)
-  el = Array.zerofloat(n1,n2,n3)
+  w1 = zerofloat(n1,n2,n3)
+  w2 = zerofloat(n1,n2,n3)
+  w3 = zerofloat(n1,n2,n3)
+  el = zerofloat(n1,n2,n3)
   lof.apply(x,
     None,None,
     None,None,None,
@@ -281,11 +282,11 @@ def ylines():
 
 def plot12(i3):
   ais = ArrayInputStream(datadir+"win34.dat")
-  x = Array.zerofloat(n1,n2)
+  x = zerofloat(n1,n2)
   ais.skipBytes(4*n1*n2*i3)
   ais.readFloats(x)
   ais.close()
-  print "x min =",Array.min(x)," max =",Array.max(x)
+  print "x min =",min(x)," max =",max(x)
   sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
   pv = sp.addPixels(x)
   #pv.setPercentiles(1.0,99.0)
@@ -294,7 +295,7 @@ def plot12(i3):
 
 def plot23(file,i1,png):
   x = readFloats23(file,i1)
-  print "x min =",Array.min(x)," max =",Array.max(x)
+  print "x min =",min(x)," max =",max(x)
   orientation = PlotPanel.Orientation.X1DOWN_X2RIGHT
   axesPlacement = PlotPanel.AxesPlacement.NONE
   panel = PlotPanel(1,1,orientation,axesPlacement)
@@ -311,7 +312,7 @@ def plot23(file,i1,png):
 def plot3ds(xs,k=None):
   world = World()
   for x in xs:
-    print "x min =",Array.min(x)," max =",Array.max(x)
+    print "x min =",min(x)," max =",max(x)
     ipg = ImagePanelGroup(x)
     ipg.setPercentiles(1,99)
     #ipg.setPercentiles(0,100)
@@ -320,7 +321,7 @@ def plot3ds(xs,k=None):
   frame.setVisible(True)
 
 def plot3d(x,cmin=-0.01,cmax=0.01):
-  print "x min =",Array.min(x)," max =",Array.max(x)
+  print "x min =",min(x)," max =",max(x)
   s1 = Sampling(n1,d1,f1)
   s2 = Sampling(n2,d2,f2)
   s3 = Sampling(n3,d3,f3)
@@ -333,7 +334,7 @@ def plot3d(x,cmin=-0.01,cmax=0.01):
 
 def readFileShorts(file,n1,n2,n3):
   ais = ArrayInputStream(datadir+file)
-  x = Array.zeroshort(n1,n2,n3)
+  x = zeroshort(n1,n2,n3)
   ais.readShorts(x)
   ais.close()
   return x
@@ -345,7 +346,7 @@ def writeFileShorts(file,x):
 
 def readFile(file,n1,n2,n3):
   ais = ArrayInputStream(datadir+file)
-  x = Array.zerofloat(n1,n2,n3)
+  x = zerofloat(n1,n2,n3)
   ais.readFloats(x)
   ais.close()
   return x
@@ -368,17 +369,17 @@ def readFloats23(file,i1):
   return slice23(f,i1)
 
 def slice12(f,i3):
-  f12 = Array.copy(f[i3])
+  f12 = copy(f[i3])
   return f12
 
 def slice13(f,i2):
-  f13 = Array.zerofloat(n1,n3)
+  f13 = zerofloat(n1,n3)
   for i3 in range(n3):
-    Array.copy(n1,f[i3][i2],f13[i3])
+    copy(n1,f[i3][i2],f13[i3])
   return f13
 
 def slice23(f,i1):
-  f23 = Array.zerofloat(n2,n3)
+  f23 = zerofloat(n2,n3)
   for i3 in range(n3):
     for i2 in range(n2):
       f23[i3][i2] = f[i3][i2][i1];
@@ -396,7 +397,7 @@ def plot3dPli(k1,k2,k3,epfile,elfile,clips=None,png=None):
   axesPlacement = PlotPanelPixels3.AxesPlacement.LEFT_BOTTOM
   ep = readFile(epfile,n1,n2,n3)
   el = readFile(elfile,n1,n2,n3)
-  ei = Array.sub(1.0,Array.add(ep,el))
+  ei = sub(1.0,add(ep,el))
   e = makeFloat3(ep,el,ei)
   panel = PlotPanelPixels3(orientation,axesPlacement,s1,s2,s3,e)
   if clips==None:
@@ -447,9 +448,9 @@ def xplot3dPanels(k1,k2,k3,file,clip,cmod=ColorMap.GRAY,png=None):
   f12 = readFloats12(file,k3)
   f13 = readFloats13(file,k2)
   f23 = readFloats23(file,k1)
-  print "plot3dPanels: f12 min =",Array.min(f12),"  max =",Array.max(f12)
-  print "plot3dPanels: f13 min =",Array.min(f13),"  max =",Array.max(f13)
-  print "plot3dPanels: f23 min =",Array.min(f23),"  max =",Array.max(f23)
+  print "plot3dPanels: f12 min =",min(f12),"  max =",max(f12)
+  print "plot3dPanels: f13 min =",min(f13),"  max =",max(f13)
+  print "plot3dPanels: f23 min =",min(f23),"  max =",max(f23)
   panel = PlotPanel(2,2,
     PlotPanel.Orientation.X1DOWN_X2RIGHT,
     PlotPanel.AxesPlacement.LEFT_BOTTOM)

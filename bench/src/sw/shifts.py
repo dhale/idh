@@ -10,6 +10,7 @@ from edu.mines.jtk.dsp import *
 from edu.mines.jtk.io import *
 from edu.mines.jtk.mosaic import *
 from edu.mines.jtk.util import *
+from edu.mines.jtk.util.ArrayMath import *
 
 True = 1
 False = 0
@@ -37,7 +38,7 @@ datadir = "/datb/seis/sw/all/"
 # Read/write
 
 def readFloats3(file):
-  f = Array.zerofloat(n1,n2,n3)
+  f = zerofloat(n1,n2,n3)
   af = ArrayFile(datadir+file,"r")
   af.readFloats(f)
   af.close()
@@ -50,7 +51,7 @@ def writeFloats3(file,f):
   return f
 
 def readBytes3(file):
-  b = Array.zerobyte(n1,n2,n3)
+  b = zerobyte(n1,n2,n3)
   af = ArrayFile(datadir+file,"r")
   af.readBytes(b)
   af.close()
@@ -74,17 +75,17 @@ def readFloats23(file,i1):
   return slice23(f,i1)
 
 def slice12(f,i3):
-  f12 = Array.copy(f[i3])
+  f12 = copy(f[i3])
   return f12
 
 def slice13(f,i2):
-  f13 = Array.zerofloat(n1,n3)
+  f13 = zerofloat(n1,n3)
   for i3 in range(n3):
-    Array.copy(n1,f[i3][i2],f13[i3])
+    copy(n1,f[i3][i2],f13[i3])
   return f13
 
 def slice23(f,i1):
-  f23 = Array.zerofloat(n2,n3)
+  f23 = zerofloat(n2,n3)
   for i3 in range(n3):
     for i2 in range(n2):
       f23[i3][i2] = f[i3][i2][i1];
@@ -95,7 +96,7 @@ def copyFile(x,y):
   x = ArrayFile(x,"r")
   y = ArrayFile(y,"rw")
   n = 65536
-  b = Array.zerobyte(n)
+  b = zerobyte(n)
   size = x.length()
   while size>0:
     m = min(n,size)
@@ -109,7 +110,7 @@ def zeroFile(n1,n2,n3,x):
   print "zeroFile:",x
   x = ArrayFile(x,"rw")
   n = 65536
-  b = Array.zerobyte(n)
+  b = zerobyte(n)
   size = 4*n1*n2*n3
   while size>0:
     m = min(n,size)
@@ -126,15 +127,15 @@ class WhitenFilter(FileFloat3Chunks.Filter):
   def apply(self,i1,i2,i3,x,y):
     x,y = x[0],y[0]
     n1,n2,n3 = len(x[0][0]),len(x[0]),len(x)
-    xmin,xmax = Array.min(x),Array.max(x)
+    xmin,xmax = min(x),max(x)
     tiny = 1.0e-5*xmax
     print "WhitenFilter.apply"
     print "  min =",xmin," max =",xmax
     print "  i1 =",i1," i2 =",i2," i3 =",i3
     print "  n1 =",n1," n2 =",n2," n3 =",n3
-    r = Array.randfloat(n1,n2,n3)
-    Array.mul(tiny,r,r)
-    Array.add(r,x,x)
+    r = randfloat(n1,n2,n3)
+    mul(tiny,r,r)
+    add(r,x,x)
     r = None
     self.sf.whiten(x,y)
 
@@ -173,23 +174,23 @@ class ShiftFinderFilter(FileFloat3Chunks.Filter):
     print "  i1 =",i1," i2 =",i2," i3 =",i3
     print "  n1 =",n1," n2 =",n2," n3 =",n3
     f,g,u1,u2,u3 = x[0],x[1],x[2],x[3],x[4] # input and output arrays
-    print "  f min =",Array.min(f)," max =",Array.max(f)
-    print "  g min =",Array.min(g)," max =",Array.max(g)
+    print "  f min =",min(f)," max =",max(f)
+    print "  g min =",min(g)," max =",max(g)
     n1,n2,n3 = len(f[0][0]),len(f[0]),len(f)
-    du = Array.zerofloat(n1,n2,n3)
+    du = zerofloat(n1,n2,n3)
     print "  shift1"
     self.sf.find1(self.lmin,self.lmax,f,g,du)
-    print "    du min =",Array.min(du)," max =",Array.max(du)
+    print "    du min =",min(du)," max =",max(du)
     self.sf.shift1(du,u1,u2,u3,g)
     print "    complete"
     print "  shift3"
     self.sf.find3(self.lmin,self.lmax,f,g,du)
-    print "    du min =",Array.min(du)," max =",Array.max(du)
+    print "    du min =",min(du)," max =",max(du)
     self.sf.shift3(du,u1,u2,u3,g)
     print "    complete"
     print "  shift2"
     self.sf.find2(self.lmin,self.lmax,f,g,du)
-    print "    du min =",Array.min(du)," max =",Array.max(du)
+    print "    du min =",min(du)," max =",max(du)
     self.sf.shift2(du,u1,u2,u3,g)
     print "    complete"
  

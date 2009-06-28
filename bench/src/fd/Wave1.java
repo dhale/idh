@@ -283,10 +283,10 @@ public class Wave1 {
       Wave1 wave1 = new Wave1(methods[imethod],dt,dx,d,v);
       for (int it=0; it<nt; ++it) {
         float[] fi = wave1.step(mt);
-        float[] ft = Array.copy(nx/2,fi);
-        float fmax = Array.max(ft);
+        float[] ft = ArrayMath.copy(nx/2,fi);
+        float fmax = ArrayMath.max(ft);
         System.out.println("fmax="+fmax+" fr="+fmax*rc+" ft="+fmax*tc);
-        Array.copy(fi,f[it][imethod]);
+        ArrayMath.copy(fi,f[it][imethod]);
       }
     }
     for (int it=0; it<nt; ++it) {

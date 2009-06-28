@@ -11,6 +11,7 @@ from edu.mines.jtk.dsp import *
 from edu.mines.jtk.io import *
 from edu.mines.jtk.mosaic import *
 from edu.mines.jtk.util import *
+from edu.mines.jtk.util.ArrayMath import *
 
 from ldf import *
 
@@ -46,21 +47,21 @@ def main(args):
   return
 
 def frequencyResponseFd(rs,ldt):
-  x = Array.zerofloat(3,3)
+  x = zerofloat(3,3)
   x[1][1] = 1.0
-  y = Array.zerofloat(3,3)
+  y = zerofloat(3,3)
   ldk = LocalDiffusionKernel(rs)
   ldk.apply(ldt,x,y)
   return frequencyResponse(y)
 
 def frequencyResponseEx(ldt):
-  d = Array.zerofloat(3)
+  d = zerofloat(3)
   ldt.getTensor(0,0,d)
   d11,d12,d22 = d[0],d[1],d[2]
   nk1,nk2 = 315,315
   dk1,dk2 = 2*pi/nk1,2*pi/nk2
   fk1,fk2 = -pi+dk1/2,-pi+dk2/2
-  a = Array.zerofloat(nk1,nk2)
+  a = zerofloat(nk1,nk2)
   for ik2 in range(nk2):
     k2 = fk2+ik2*dk2
     for ik1 in range(nk1):
@@ -78,13 +79,13 @@ def errorSample(e):
     print "e =",ej
 
 def testAni(rs,v1):
-  v1 = Array.fillfloat(v1,3,3)
+  v1 = fillfloat(v1,3,3)
   ldt = LocalDiffusionTensors2(0.0,1.0,None,None,v1)
   fa = frequencyResponseFd(rs,ldt)
   fb = frequencyResponseEx(ldt)
   plotf(fa)
   #plotf(fb)
-  e = Array.sub(fb,fa)
+  e = sub(fb,fa)
   #plotf(e)
   errorSample(e)
 
@@ -127,11 +128,11 @@ def stencilOne(iso,rs,theta):
   s = (1-sqrt(1-4*rs))/2
   g1 = [[-s,s],[-r,r]]
   g2 = [[-s,-r],[s,r]]
-  g1g1 = Array.zerofloat(3,3)
-  g1g2 = Array.zerofloat(3,3)
-  g2g1 = Array.zerofloat(3,3)
-  g2g2 = Array.zerofloat(3,3)
-  h = Array.zerofloat(3,3)
+  g1g1 = zerofloat(3,3)
+  g1g2 = zerofloat(3,3)
+  g2g1 = zerofloat(3,3)
+  g2g2 = zerofloat(3,3)
+  h = zerofloat(3,3)
   Conv.xcor(2,2,0,0,g1,2,2,0,0,g1,3,3,-1,-1,g1g1)
   Conv.xcor(2,2,0,0,g1,2,2,0,0,g2,3,3,-1,-1,g1g2)
   Conv.xcor(2,2,0,0,g2,2,2,0,0,g1,3,3,-1,-1,g2g1)
@@ -139,7 +140,7 @@ def stencilOne(iso,rs,theta):
   for i2 in range(3):
     for i1 in range(3):
       h[i2][i1] = a*g1g1[i2][i1]+b*(g1g2[i2][i1]+g2g1[i2][i1])+c*g2g2[i2][i1]
-  Array.dump(Array.transpose(h))
+  dump(transpose(h))
   plotf(frequencyResponse(h),png)
 
 def stencilAvg(iso,rs,theta):
@@ -147,28 +148,28 @@ def stencilAvg(iso,rs,theta):
   png = "avg"+str(iso)+str(int(rs*12))+str(theta)
   theta *= pi/180.0
   n1,n2 = 3,3
-  x = Array.zerofloat(n1,n2)
-  y = Array.zerofloat(n1,n2);
+  x = zerofloat(n1,n2)
+  y = zerofloat(n1,n2);
   x[n2/2][n1/2] = 1.0
-  v1 = Array.fillfloat(sin(theta),n1,n2)
+  v1 = fillfloat(sin(theta),n1,n2)
   if iso:
     ldt = LocalDiffusionTensors2(1.0,0.0,None,None,v1)
   else:
     ldt = LocalDiffusionTensors2(0.0,1.0,None,None,v1)
   ldk = LocalDiffusionKernel(rs)
   ldk.apply(ldt,x,y)
-  Array.dump(Array.transpose(y))
+  dump(transpose(y))
   plotf(frequencyResponse(y),png)
 
 def gaussianResponse(nx,sigma,rs,ldt):
-  t = Array.zerofloat(3)
+  t = zerofloat(3)
   ldt.getTensor(0,0,t)
   a,b,c = t[0],t[1],t[2]
   dx = 8.0*sigma/(nx-1)
   fx = -(nx-1)/2.0*dx
-  f = Array.zerofloat(nx,nx)
-  g = Array.zerofloat(nx,nx)
-  h = Array.zerofloat(nx,nx)
+  f = zerofloat(nx,nx)
+  g = zerofloat(nx,nx)
+  h = zerofloat(nx,nx)
   oss = 1.0/(sigma*sigma)
   for i2 in range(nx):
     x2 = fx+i2*dx
@@ -182,15 +183,15 @@ def gaussianResponse(nx,sigma,rs,ldt):
       g[i2][i1] = a*g20+2.0*b*g11+c*g02
   ldk = LocalDiffusionKernel(rs)
   ldk.apply(ldt,f,h)
-  Array.mul(1.0/(dx*dx),h,h)
-  e = Array.sub(h,g)
+  mul(1.0/(dx*dx),h,h)
+  e = sub(h,g)
   for i2 in range(nx):
     for i1 in range(nx):
       if i1==0 or i1==nx-1 or i2==0 or i2==nx-1:
         e[i2][i1] = 0.0
-  #print "g min =",Array.min(g)," max =",Array.max(g)
-  #print "h min =",Array.min(h)," max =",Array.max(h)
-  #print "e abs =",Array.max(Array.abs(e))
+  #print "g min =",min(g)," max =",max(g)
+  #print "h min =",min(h)," max =",max(h)
+  #print "e abs =",max(abs(e))
   print "e rms =",rmsError(h,g)
   #plot(g,0,0,jet)
   #plot(h,0,0,jet)
@@ -205,7 +206,7 @@ def goGaussian():
   for rs in [rs0,rs1,rs3]:
     print "rs =",rs
     for theta in [0*pi/16,1*pi/16,2*pi/16,3*pi/16,4*pi/16]:
-      v1 = Array.fillfloat(sin(theta),nx,nx)
+      v1 = fillfloat(sin(theta),nx,nx)
       ldt = LocalDiffusionTensors2(0.0,1.0,None,None,v1)
       gaussianResponse(nx,sigma,rs,ldt)
 
@@ -222,22 +223,22 @@ def frequencyResponse(x):
   n1,n2 = 315,315
   n1 = FftComplex.nfftSmall(n1)
   n2 = FftComplex.nfftSmall(n2)
-  xr = Array.zerofloat(n1,n2)
-  xi = Array.zerofloat(n1,n2)
-  Array.copy(len(x[0]),len(x),x,xr)
-  cx = Array.cmplx(xr,xi)
+  xr = zerofloat(n1,n2)
+  xi = zerofloat(n1,n2)
+  copy(len(x[0]),len(x),x,xr)
+  cx = cmplx(xr,xi)
   fft1 = FftComplex(n1)
   fft2 = FftComplex(n2)
   fft1.complexToComplex1(1,n2,cx,cx)
   fft2.complexToComplex2(1,n1,cx,cx)
-  ax = Array.cabs(cx)
-  a = Array.zerofloat(n1,n2)
+  ax = cabs(cx)
+  a = zerofloat(n1,n2)
   j1 = n1/2
   j2 = n2/2
-  Array.copy(n1-j1,n2-j2,0,0,ax,j1,j2,a)
-  Array.copy(j1,j2,n1-j1,n2-j2,ax,0,0,a)
-  Array.copy(n1-j1,j2,0,n2-j2,ax,j1,0,a)
-  Array.copy(j1,n2-j2,n1-j1,0,ax,0,j2,a)
+  copy(n1-j1,n2-j2,0,0,ax,j1,j2,a)
+  copy(j1,j2,n1-j1,n2-j2,ax,0,0,a)
+  copy(n1-j1,j2,0,n2-j2,ax,j1,0,a)
+  copy(j1,n2-j2,n1-j1,0,ax,0,j2,a)
   return a
  
 #############################################################################

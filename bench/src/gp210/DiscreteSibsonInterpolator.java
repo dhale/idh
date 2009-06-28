@@ -4,11 +4,9 @@ import java.awt.*;
 import java.io.*;
 import java.util.*;
 import javax.swing.SwingUtilities;
-import static java.lang.Math.*;
 
 import edu.mines.jtk.awt.*;
 import edu.mines.jtk.dsp.*;
-import edu.mines.jtk.mesh.*;
 import edu.mines.jtk.mosaic.*;
 import edu.mines.jtk.sgl.*;
 import edu.mines.jtk.util.*;
@@ -91,7 +89,7 @@ public class DiscreteSibsonInterpolator {
         ds[k] = (float)(x1*x1+x2*x2);
       }
     }
-    Array.quickIndexSort(ds,kk); // <- the only significant external code!
+    ArrayMath.quickIndexSort(ds,kk); // <- the only significant external code!
     _k1 = new short[_n];
     _k2 = new short[_n];
     for (int k=0; k<_n; ++k) {
@@ -284,10 +282,10 @@ public class DiscreteSibsonInterpolator {
   }
 
   private static Sampling[] makeSamplings(float[] x, float[] y) {
-    float xmin = Array.min(x);
-    float xmax = Array.max(x);
-    float ymin = Array.min(y);
-    float ymax = Array.max(y);
+    float xmin = ArrayMath.min(x);
+    float xmax = ArrayMath.max(x);
+    float ymin = ArrayMath.min(y);
+    float ymax = ArrayMath.max(y);
     int nx = 315;
     int ny = 315;
     double fx = 0.0;
@@ -328,8 +326,8 @@ public class DiscreteSibsonInterpolator {
     float[] x, float[] y, float[] z,
     Sampling sx, Sampling sy, float[][] sz)
   {
-    sz = Array.mul(0.01f,sz);
-    z = Array.mul(0.01f,z);
+    sz = ArrayMath.mul(0.01f,sz);
+    z = ArrayMath.mul(0.01f,z);
     PointGroup pg = makePointGroup(x,y,z);
     TriangleGroup tg = makeTriangleGroup(sx,sy,sz);
     World world = new World();
@@ -345,9 +343,9 @@ public class DiscreteSibsonInterpolator {
   private static PointGroup makePointGroup(float[] x, float[] y, float[] z) {
     int n = x.length;
     float[] xyz = new float[3*n];
-    Array.copy(n,0,1,x,0,3,xyz);
-    Array.copy(n,0,1,y,1,3,xyz);
-    Array.copy(n,0,1,z,2,3,xyz);
+    ArrayMath.copy(n,0,1,x,0,3,xyz);
+    ArrayMath.copy(n,0,1,y,1,3,xyz);
+    ArrayMath.copy(n,0,1,z,2,3,xyz);
     float size = 0.01f;
     PointGroup pg = new PointGroup(size,xyz);
     StateSet states = new StateSet();
@@ -368,7 +366,7 @@ public class DiscreteSibsonInterpolator {
   private static TriangleGroup makeTriangleGroup(
     Sampling sx, Sampling sy, float[][] sz) 
   {
-    sz = Array.transpose(sz);
+    sz = ArrayMath.transpose(sz);
     TriangleGroup tg = new TriangleGroup(true,sx,sy,sz);
     StateSet states = new StateSet();
     ColorState cs = new ColorState();

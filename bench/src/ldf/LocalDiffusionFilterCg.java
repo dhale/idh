@@ -338,7 +338,7 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
   }
 
   private static void scopy(float[][] x, float[][] y) {
-    Array.copy(x,y);
+    ArrayMath.copy(x,y);
   }
   private static void scopy(float[][][] x, float[][][] y) {
     if (PARALLEL) {
@@ -510,8 +510,8 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
     int n1 = 100;
     int n2 = 101;
     DirectionalLaplacianFilter dlf = new DirectionalLaplacianFilter(1.0);
-    float[][] ds = Array.randfloat(n1,n2);
-    float[][] v1 = Array.randfloat(n1,n2);
+    float[][] ds = ArrayMath.randfloat(n1,n2);
+    float[][] v1 = ArrayMath.randfloat(n1,n2);
     Operator2 a = new LinearOperator2(dlf,ds,v1);
     Operator2 m = new LinearSsorOperator2(dlf,ds,v1);
     testSpd(n1,n2,a);
@@ -519,10 +519,10 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
   }
 
   private static void testSpd(int n1, int n2, Operator2 a) {
-    float[][] x = Array.sub(Array.randfloat(n1,n2),0.5f);
-    float[][] y = Array.sub(Array.randfloat(n1,n2),0.5f);
-    float[][] ax = Array.zerofloat(n1,n2);
-    float[][] ay = Array.zerofloat(n1,n2);
+    float[][] x = ArrayMath.sub(ArrayMath.randfloat(n1,n2),0.5f);
+    float[][] y = ArrayMath.sub(ArrayMath.randfloat(n1,n2),0.5f);
+    float[][] ax = ArrayMath.zerofloat(n1,n2);
+    float[][] ay = ArrayMath.zerofloat(n1,n2);
     a.apply(x,ax);
     a.apply(y,ay);
     float xax = sdot(x,ax);

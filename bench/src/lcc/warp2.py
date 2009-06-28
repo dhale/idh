@@ -9,6 +9,7 @@ from edu.mines.jtk.dsp import *
 from edu.mines.jtk.io import *
 from edu.mines.jtk.mosaic import *
 from edu.mines.jtk.util import *
+from edu.mines.jtk.util.ArrayMath import *
 
 from lcc import *
 
@@ -106,23 +107,23 @@ def doLcc(f,g,whiten,smooth,tail=""):
   m1 = 1+2*l1
   m2 = 1+2*l2
   lcf.setInputs(f,g)
-  c = Array.zerofloat(10*m1,10*m2)
-  t = Array.zerofloat(n1,n2)
+  c = zerofloat(10*m1,10*m2)
+  t = zerofloat(n1,n2)
   #k1 = ( 38, 98,113,150, 98,172)
   #k2 = (172,216,230,105,132,227)
   #nk = len(k1)
-  #ck = Array.zerofloat(m1,m2,nk)
+  #ck = zerofloat(m1,m2,nk)
   for lag2 in range(-l2,l2+1):
     for lag1 in range(-l1,l1+1):
       lcf.correlate(lag1,lag2,t)
       lcf.normalize(lag1,lag2,t)
-      #Array.copy(n1/m1,n2/m2,l1,l2,m1,m2,t,l1+lag1,l2+lag2,m1,m2,c)
-      Array.copy(10,10,20,20,2*m1,2*m2,t,l1+lag1,l2+lag2,m1,m2,c)
+      #copy(n1/m1,n2/m2,l1,l2,m1,m2,t,l1+lag1,l2+lag2,m1,m2,c)
+      copy(10,10,20,20,2*m1,2*m2,t,l1+lag1,l2+lag2,m1,m2,c)
       #for k in range(nk):
       #  ck[k][l2+lag2][l1+lag1] = t[k2[k]][k1[k]]
-  #c = Array.copy(10*m1,10*m2,m1,m2,c)
+  #c = copy(10*m1,10*m2,m1,m2,c)
   plotLccAllTiles(c,"lcca"+suffix+tail)
-  c = Array.copy(m1,m2,3*m1,3*m2,c)
+  c = copy(m1,m2,3*m1,3*m2,c)
   plotLccOneTile(c,"lcc1"+suffix+tail)
   #for k in range(nk):
   #  plot(ck[k],0.0,"lcc"+suffix+"_"+str(k1[k])+"_"+str(k2[k]))
@@ -137,11 +138,11 @@ def getExactU():
 def getQuadraticFitU(f,g,whiten,smooth):
   f,g,suffix = preprocess(f,g,whiten,smooth)
   lcf.setInputs(f,g)
-  l1 = Array.zerobyte(n1,n2)
-  l2 = Array.zerobyte(n1,n2)
+  l1 = zerobyte(n1,n2)
+  l2 = zerobyte(n1,n2)
   lcf.findMaxLags(lmin,lmax,lmin,lmax,l1,l2)
-  u1 = Array.zerofloat(n1,n2)
-  u2 = Array.zerofloat(n1,n2)
+  u1 = zerofloat(n1,n2)
+  u2 = zerofloat(n1,n2)
   lcf.refineLags(l1,l2,u1,u2)
   #plotu(u1,d1max)
   #plotu(u2,d2max)
@@ -149,10 +150,10 @@ def getQuadraticFitU(f,g,whiten,smooth):
 
 def getCyclicSearchU(f,g,whiten,smooth,interp=True):
   f,g,suffix = preprocess(f,g,whiten,smooth)
-  u1 = Array.zerofloat(n1,n2)
-  u2 = Array.zerofloat(n1,n2)
-  du = Array.zerofloat(n1,n2)
-  h = Array.copy(g)
+  u1 = zerofloat(n1,n2)
+  u2 = zerofloat(n1,n2)
+  du = zerofloat(n1,n2)
+  h = copy(g)
   sf = ShiftFinder(lcfSigma)
   sf.setInterpolateDisplacements(interp)
   for iter in range(4):
@@ -189,14 +190,14 @@ def goErrors():
   print "max error c/q",max1r,max2r
   """
   nbin = 10
-  nsum1 = Array.zeroint(nbin)
-  nsum2 = Array.zeroint(nbin)
-  rms1q,rms2q = Array.zerofloat(nbin),Array.zerofloat(nbin)
-  rms1c,rms2c = Array.zerofloat(nbin),Array.zerofloat(nbin)
-  sum1q,sum2q = Array.zerofloat(nbin),Array.zerofloat(nbin)
-  sum1c,sum2c = Array.zerofloat(nbin),Array.zerofloat(nbin)
-  max1q,max2q = Array.zerofloat(nbin),Array.zerofloat(nbin)
-  max1c,max2c = Array.zerofloat(nbin),Array.zerofloat(nbin)
+  nsum1 = zeroint(nbin)
+  nsum2 = zeroint(nbin)
+  rms1q,rms2q = zerofloat(nbin),zerofloat(nbin)
+  rms1c,rms2c = zerofloat(nbin),zerofloat(nbin)
+  sum1q,sum2q = zerofloat(nbin),zerofloat(nbin)
+  sum1c,sum2c = zerofloat(nbin),zerofloat(nbin)
+  max1q,max2q = zerofloat(nbin),zerofloat(nbin)
+  max1c,max2c = zerofloat(nbin),zerofloat(nbin)
   for i2 in range(n2):
     for i1 in range(n1):
       u1i = u1e[i2][i1]
@@ -223,18 +224,18 @@ def goErrors():
   for j1 in range(nbin):
     rms1q[j1] = Math.sqrt(sum1q[j1]/nsum1[j1])
     rms1c[j1] = Math.sqrt(sum1c[j1]/nsum1[j1])
-  rms1r = Array.div(rms1c,rms1q)
-  rms2r = Array.div(rms2c,rms2q)
-  max1r = Array.div(max1c,max1q)
-  max2r = Array.div(max2c,max2q)
-  print "counts"; Array.dump(nsum1); Array.dump(nsum2)
-  print "rms error q"; Array.dump(rms1q); Array.dump(rms2q)
-  print "rms error c"; Array.dump(rms1c); Array.dump(rms2c)
-  print "rms error c/q"; Array.dump(rms1r); Array.dump(rms2r)
-  print "max error q"; Array.dump(max1q); Array.dump(max2q)
-  print "max error c"; Array.dump(max1c); Array.dump(max2c)
-  print "max error c/q"; Array.dump(max1r); Array.dump(max2r)
-  fracs = Array.rampfloat(0.0,1.0/nbin,nbin)
+  rms1r = div(rms1c,rms1q)
+  rms2r = div(rms2c,rms2q)
+  max1r = div(max1c,max1q)
+  max2r = div(max2c,max2q)
+  print "counts"; dump(nsum1); dump(nsum2)
+  print "rms error q"; dump(rms1q); dump(rms2q)
+  print "rms error c"; dump(rms1c); dump(rms2c)
+  print "rms error c/q"; dump(rms1r); dump(rms2r)
+  print "max error q"; dump(max1q); dump(max2q)
+  print "max error c"; dump(max1c); dump(max2c)
+  print "max error c/q"; dump(max1r); dump(max2r)
+  fracs = rampfloat(0.0,1.0/nbin,nbin)
   sp = SimplePlot()
   sp.setSize(691,702)
   sp.setVLimits(0.0,0.16)
@@ -282,47 +283,47 @@ def goErrors():
   """
 
 def maxError(y,x):
-  return Array.max(Array.abs(Array.sub(y,x)))
+  return max(abs(sub(y,x)))
 
 def rmsError(y,x):
   n1,n2 = len(x[0]),len(x)
-  e = Array.sub(y,x)
-  return Math.sqrt(Array.sum(Array.mul(e,e))/(n1*n2))
+  e = sub(y,x)
+  return Math.sqrt(sum(mul(e,e))/(n1*n2))
 
 def doLagSearch(f,g,whiten,smooth):
-  fsave = Array.copy(f)
+  fsave = copy(f)
   f,g,suffix = preprocess(f,g,whiten,smooth)
   lcf.setInputs(f,g)
-  l1 = Array.zerobyte(n1,n2)
-  l2 = Array.zerobyte(n1,n2)
+  l1 = zerobyte(n1,n2)
+  l2 = zerobyte(n1,n2)
   lcf.findMaxLags(lmin,lmax,lmin,lmax,l1,l2)
-  u1 = Array.zerofloat(n1,n2)
-  u2 = Array.zerofloat(n1,n2)
+  u1 = zerofloat(n1,n2)
+  u2 = zerofloat(n1,n2)
   lcf.refineLags(l1,l2,u1,u2)
   plotu(u1,d1max,"u1"+suffix+"ls")
   plotu(u2,d2max,"u2"+suffix+"ls")
   return u1,u2
  
 def doSequentialShifts(f,g,whiten,smooth,interp=True):
-  fsave = Array.copy(f)
+  fsave = copy(f)
   f,g,suffix = preprocess(f,g,whiten,smooth)
-  u1 = Array.zerofloat(n1,n2)
-  u2 = Array.zerofloat(n1,n2)
-  du = Array.zerofloat(n1,n2)
-  h = Array.copy(g)
+  u1 = zerofloat(n1,n2)
+  u2 = zerofloat(n1,n2)
+  du = zerofloat(n1,n2)
+  h = copy(g)
   sf = ShiftFinder(lcfSigma)
   sf.setInterpolateDisplacements(interp)
   for iter in range(4):
     sf.find1(lmin,lmax,f,h,du)
-    print "1: du min =",Array.min(du),"max =",Array.max(du)
+    print "1: du min =",min(du),"max =",max(du)
     sf.shift1(du,u1,u2,h)
-    print "1: u1 min =",Array.min(u1),"max =",Array.max(u1)
+    print "1: u1 min =",min(u1),"max =",max(u1)
     doLcc(f,h,False,False,"_1"+str(iter))
     sf.find2(lmin,lmax,f,h,du)
-    print "2: du min =",Array.min(du),"max =",Array.max(du)
+    print "2: du min =",min(du),"max =",max(du)
     sf.shift2(du,u1,u2,h)
     doLcc(f,h,False,False,"_2"+str(iter))
-    print "2: u2 min =",Array.min(u2),"max =",Array.max(u2)
+    print "2: u2 min =",min(u2),"max =",max(u2)
     plotu(u1,d1max,"u1"+suffix+"ss"+str(iter))
     plotu(u2,d2max,"u2"+suffix+"ss"+str(iter))
   #plotu(u1,d1max,"u1"+suffix+"ss")
@@ -332,7 +333,7 @@ def doSequentialShifts(f,g,whiten,smooth,interp=True):
 def readImage():
   fileName = dataDir+"/seis/vg/junks.dat"
   ais = ArrayInputStream(fileName,ByteOrder.LITTLE_ENDIAN)
-  f = Array.zerofloat(n1,n2)
+  f = zerofloat(n1,n2)
   ais.readFloats(f)
   ais.close()
   return f
@@ -344,8 +345,8 @@ def preprocess(f,g,whiten,smooth):
   if not whiten:
     return f,g,""
   sf = ShiftFinder(lcfSigma)
-  fw = Array.copy(f)
-  gw = Array.copy(g)
+  fw = copy(f)
+  gw = copy(g)
   sigma = 0.0
   suffix = "w"
   if smooth:
@@ -388,16 +389,16 @@ def plotLccAllTiles(c,png=None):
   l1,l2 = lmax,lmax
   k1,k2 = 1+2*l1,1+2*l2
   m1,m2 = 1+n1/k1,1+n2/k2
-  x1 = Array.zerofloat(2,m2)
-  x2 = Array.zerofloat(2,m2)
+  x1 = zerofloat(2,m2)
+  x2 = zerofloat(2,m2)
   for i2 in range(m2):
     x1[i2][0] = -0.5
     x1[i2][1] = n1-0.5
     x2[i2][0] = i2*k2-0.5
     x2[i2][1] = x2[i2][0]
   p.addPoints(x1,x2).setLineWidth(1)
-  x1 = Array.zerofloat(2,m1)
-  x2 = Array.zerofloat(2,m1)
+  x1 = zerofloat(2,m1)
+  x2 = zerofloat(2,m1)
   for i1 in range(m1):
     x1[i1][0] = i1*k1-0.5
     x1[i1][1] = x1[i1][0]
@@ -445,7 +446,7 @@ def makev(u1,u2,clipv=0.0,lvec=0):
     lvec = min(n1,n2)/21-2
   lvec = 1+(lvec/2)*2
   if clipv==0.0:
-    clipv = max(Array.max(u1),Array.max(u2))
+    clipv = max(max(u1),max(u2))
   scale = lvec/clipv
   print "scale =",scale
   nv1 = n1/lvec
@@ -454,8 +455,8 @@ def makev(u1,u2,clipv=0.0,lvec=0):
   kv2 = int(float(n2-1)/float(nv2-1))
   jv1 = (n1-1-(nv1-1)*kv1)/2
   jv2 = (n2-1-(nv2-1)*kv2)/2
-  v1 = Array.zerofloat(2,nv1*nv2)
-  v2 = Array.zerofloat(2,nv1*nv2)
+  v1 = zerofloat(2,nv1*nv2)
+  v2 = zerofloat(2,nv1*nv2)
   iv = 0
   for iv2 in range(nv2):
     i2 = jv2+iv2*kv2

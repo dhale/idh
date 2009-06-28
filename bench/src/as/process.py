@@ -10,9 +10,10 @@ from org.python.util import PythonObjectInputStream
 from edu.mines.jtk.dsp import *
 from edu.mines.jtk.io import *
 from edu.mines.jtk.mosaic import *
-from edu.mines.jtk.util import *
 from edu.mines.jtk.sgl import *
 from edu.mines.jtk.sgl.test import *
+from edu.mines.jtk.util import *
+from edu.mines.jtk.util.ArrayMath import *
 
 dataDir = "/data/as/heart/"
 imageFile = dataDir+"image00.v"
@@ -54,7 +55,7 @@ def readImage(fileName):
   n2 = ais.readInt()
   n3 = ais.readInt()
   print "n1 =",n1," n2 =",n2," n3 =",n3
-  x = Array.zerofloat(n1,n2,n3)
+  x = zerofloat(n1,n2,n3)
   ais.readFloats(x)
   ais.close()
   return x
@@ -69,7 +70,7 @@ def writeImage(x,fileName):
 
 def makeLinearSemblance():
   f = readImage(fFile)
-  g = Array.zerofloat(n1,n2,n3)
+  g = zerofloat(n1,n2,n3)
   scale1 = 0.5*sigma1*sigma1
   scale2 = 0.5*sigma2*sigma2
   lsf = LocalSmoothingFilter(small,niter)
@@ -77,20 +78,20 @@ def makeLinearSemblance():
   t.setEigenvalues(0.0,0.0,1.0)
   lsf.apply(t,scale1,f,g)
   writeImage(g,gFile)
-  ff = Array.mul(f,f)
-  gg = Array.mul(g,g)
-  lsf.apply(t,scale1,Array.copy(ff),ff)
+  ff = mul(f,f)
+  gg = mul(g,g)
+  lsf.apply(t,scale1,copy(ff),ff)
   writeImage(ff,ffFile)
   writeImage(gg,ggFile)
-  sff = Array.zerofloat(n1,n2,n3)
-  sgg = Array.zerofloat(n1,n2,n3)
+  sff = zerofloat(n1,n2,n3)
+  sgg = zerofloat(n1,n2,n3)
   t.setEigenvalues(1.0,1.0,0.0)
   lsf.apply(t,scale2,ff,sff)
   lsf.apply(t,scale2,gg,sgg)
   writeImage(sff,sffFile)
   writeImage(sgg,sggFile)
-  ls = Array.div(sgg,sff)
-  ls = Array.clip(0.0,1.0,ls)
+  ls = div(sgg,sff)
+  ls = clip(0.0,1.0,ls)
   writeImage(ls,lsFile)
 
 def makeTensors():
@@ -117,7 +118,7 @@ def computeTensors(imageFile):
   return d
 
 def plot3d(x):
-  print "x min =",Array.min(x)," max =",Array.max(x)
+  print "x min =",min(x)," max =",max(x)
   n1,n2,n3 = len(x[0][0]),len(x[0]),len(x)
   s1,s2,s3 = Sampling(n1),Sampling(n2),Sampling(n3)
   ipg = ImagePanelGroup(s1,s2,s3,x)
@@ -134,14 +135,14 @@ def transpose13(x):
   n1 = len(x[0][0])
   n2 = len(x[0])
   n3 = len(x)
-  y = Array.zerofloat(n3,n2,n1)
-  xf = Array.flatten(x) # n1*n2*n3
-  xi = Array.reshape(n1,n2*n3,xf)
+  y = zerofloat(n3,n2,n1)
+  xf = flatten(x) # n1*n2*n3
+  xi = reshape(n1,n2*n3,xf)
   for i23 in range(n2*n3):
-    xi[i23] = Array.reverse(xi[i23])
-  xt = Array.transpose(xi) # n2*n3 * n1
+    xi[i23] = reverse(xi[i23])
+  xt = transpose(xi) # n2*n3 * n1
   for i1 in range(n1):
-    y[i1] = Array.transpose(Array.reshape(n2,n3,xt[i1]))
+    y[i1] = transpose(reshape(n2,n3,xt[i1]))
   return y
 
 #############################################################################

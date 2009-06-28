@@ -1,7 +1,6 @@
 package jm;
 
 import static java.lang.Math.*;
-import java.io.*;
 import java.util.*;
 import edu.mines.jtk.dsp.*;
 import edu.mines.jtk.mosaic.*;
@@ -166,7 +165,7 @@ public class SteerableFilter2 {
     double stheta = 0.1*PI/180.0;
     Random r = new Random();
     int ntest = 1;
-    double[][] f = Array.sub(Array.randdouble(3,ntest),0.5);
+    double[][] f = ArrayMath.sub(ArrayMath.randdouble(3,ntest),0.5);
     /*
     f[0] = new double[]{1.0,1.0,1.0};
     f[1] = new double[]{1.0,0.0,0.0};

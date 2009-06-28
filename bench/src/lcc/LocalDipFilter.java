@@ -9,7 +9,6 @@ package lcc;
 import java.util.*;
 
 import edu.mines.jtk.dsp.*;
-import edu.mines.jtk.la.*;
 import edu.mines.jtk.util.*;
 import static edu.mines.jtk.util.MathPlus.*;
 
@@ -292,7 +291,7 @@ public class LocalDipFilter {
   private void applyForwardNot(
     float[][] vw, float[][] v1, float[][] x, float[][] y) 
   {
-    Array.zero(y);
+    ArrayMath.zero(y);
     int n1 = x[0].length;
     int n2 = x.length;
     for (int i2=1; i2<n2; ++i2) {
@@ -336,7 +335,7 @@ public class LocalDipFilter {
   private void applyForwardNot(
     float sd, float sn, float[][] u2, float[][] x, float[][] y) 
   {
-    Array.zero(y);
+    ArrayMath.zero(y);
     float aone = 1.0f+sd;
     float aeps = sn;
     int n1 = x[0].length;
@@ -422,9 +421,9 @@ public class LocalDipFilter {
     float[][] r = new float[n2][n1]; // r
     float[][] s = new float[n2][n1]; // d
     float[][] t = new float[n2][n1]; // q
-    Array.zero(y);
-    Array.copy(x,r);
-    Array.copy(r,s);
+    ArrayMath.zero(y);
+    ArrayMath.copy(x,r);
+    ArrayMath.copy(r,s);
     float rr = dot(r,r);
     float stop = rr*CG_SMALL;
     trace("stop="+stop);
@@ -460,8 +459,8 @@ public class LocalDipFilter {
     float[][] s = new float[n2][n1]; // d
     float[][] t = new float[n2][n1]; // q
     float[][] w = new float[n2][n1]; // s
-    Array.zero(y);
-    Array.copy(x,r);
+    ArrayMath.zero(y);
+    ArrayMath.copy(x,r);
     ff.applyInverse(u2,r,s);
     float rr = dot(r,s);
     float stop = rr*CG_SMALL;
@@ -567,9 +566,9 @@ public class LocalDipFilter {
     float[][][] r = new float[n3][n2][n1]; // r
     float[][][] s = new float[n3][n2][n1]; // d
     float[][][] t = new float[n3][n2][n1]; // q
-    Array.zero(y);
-    Array.copy(x,r);
-    Array.copy(r,s);
+    ArrayMath.zero(y);
+    ArrayMath.copy(x,r);
+    ArrayMath.copy(r,s);
     float rr = dot(r,r);
     float stop = rr*CG_SMALL;
     trace("stop="+stop);
@@ -628,8 +627,8 @@ public class LocalDipFilter {
         float theta = FTHETA+itheta*DTHETA;
         for (int iwidth=0; iwidth<NWIDTH; ++iwidth) {
           float width = FWIDTH+iwidth*DWIDTH;
-          Array.fill(width,w);
-          Array.fill(-sin(theta),v);
+          ArrayMath.fill(width,w);
+          ArrayMath.fill(-sin(theta),v);
           ldf.applyForwardNot(w,v,t,r);
           cf.factorWilsonBurg(100,0.000001f,r);
           _atable[itheta][iwidth] = cf.getA();
@@ -719,12 +718,12 @@ public class LocalDipFilter {
       for (int itheta=0; itheta<NTHETA; ++itheta) {
         float theta = FTHETA+itheta*DTHETA;
         trace("theta = "+theta*180.0f/FLT_PI);
-        Array.fill(-sin(theta),u);
+        ArrayMath.fill(-sin(theta),u);
         ldf.applyForward(small.sd,small.sn,u,t,r);
-        //Array.dump(r);
+        //ArrayMath.dump(r);
         cf.factorWilsonBurg(100,0.000001f,r);
         _atable[itheta] = cf.getA();
-        Array.dump(cf.getA());
+        ArrayMath.dump(cf.getA());
       }
       _lcf = new LocalCausalFilter(lag1,lag2);
     }

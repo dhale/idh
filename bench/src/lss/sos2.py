@@ -11,6 +11,7 @@ from edu.mines.jtk.dsp import *
 from edu.mines.jtk.io import *
 from edu.mines.jtk.mosaic import *
 from edu.mines.jtk.util import *
+from edu.mines.jtk.util.ArrayMath import *
 
 from lss import *
 
@@ -140,12 +141,12 @@ def goSmoothGSV():
   t = computeTensors(sigmaTensor,f)
   lsf = LocalSemblanceFilter(sm,hw1,sm,hw2)
   s = lsf.semblance(d2V,t,f)
-  s = Array.mul(s,s)
-  s = Array.mul(s,s)
+  s = mul(s,s)
+  s = mul(s,s)
   t.setEigenvalues(0.0,1.0)
   lsf = LocalSmoothingFilter()
   c = hw*(hw+1)/6.0
-  g = Array.copy(f)
+  g = copy(f)
   lsf.apply(t,c,s,f,g)
   p = panel()
   pf = p.addPixels(g)
@@ -170,8 +171,8 @@ def goSmoothHV():
   f = readImage(n1,n2,fileName)
   t = computeTensors(sigmaTensor,f)
   f = makeImpulses(n1,n2,1+4*hw,1+4*hw)
-  #f = Array.mul(30*fClip,f)
-  f = Array.mul(100,f)
+  #f = mul(30*fClip,f)
+  f = mul(100,f)
   for sm in [smLaplacian]:
     lsf = LocalSemblanceFilter(sm,hw,sm,hw)
     g = lsf.smooth2(d2V,t,f)
@@ -200,7 +201,7 @@ def goSemblanceV():
     sm2 = sm1
     lsf = LocalSemblanceFilter(sm1,hw1,sm2,hw2)
     s = lsf.semblance(d2V,t,f)
-    print "s min =",Array.min(s),"max =",Array.max(s)
+    print "s min =",min(s),"max =",max(s)
     p = panel()
     ps = p.addPixels(s)
     ps.setClips(0.0,1.0)
@@ -236,7 +237,7 @@ def makeImpulses(n1,n2,k1,k2):
   m2 = n2/k2
   j1 = (n1-(m1-1)*k1)/2
   j2 = (n2-(m2-1)*k2)/2
-  f = Array.zerofloat(n1,n2)
+  f = zerofloat(n1,n2)
   for i2 in range(m2):
     for i1 in range(m1):
       f[j2+i2*k2][j1+i1*k1] = 1.0
@@ -251,13 +252,13 @@ def makeTensorVectors(t):
   m2 = n2/k2
   j1 = (n1-(m1-1)*k1)/2
   j2 = (n2-(m2-1)*k2)/2
-  xu1 = Array.zerofloat(2,m1*m2)
-  xu2 = Array.zerofloat(2,m1*m2)
-  xv1 = Array.zerofloat(2,m1*m2)
-  xv2 = Array.zerofloat(2,m1*m2)
-  e = Array.zerofloat(2)
-  u = Array.zerofloat(2)
-  v = Array.zerofloat(2)
+  xu1 = zerofloat(2,m1*m2)
+  xu2 = zerofloat(2,m1*m2)
+  xv1 = zerofloat(2,m1*m2)
+  xv2 = zerofloat(2,m1*m2)
+  e = zerofloat(2)
+  u = zerofloat(2)
+  v = zerofloat(2)
   for l2 in range(m2):
     for l1 in range(m1):
       ll = l1+l2*m1
@@ -283,25 +284,25 @@ def makeTensorVectors(t):
 def smooth(x):
   n1 = len(x[0])
   n2 = len(x)
-  t = Array.zerofloat(n1,n2)
-  y = Array.zerofloat(n1,n2)
+  t = zerofloat(n1,n2)
+  y = zerofloat(n1,n2)
   rgf = RecursiveGaussianFilter(1.0)
   rgf.apply0X(x,t)
   rgf.applyX0(t,y)
   return y
 
 def makeRandom(n1,n2):
-  f = Array.sub(Array.mul(2*fClip,Array.randfloat(n1,n2)),fClip)
-  f = Array.mul(2.0,f)
+  f = sub(mul(2*fClip,randfloat(n1,n2)),fClip)
+  f = mul(2.0,f)
   f = smooth(f)
   return f
 
 def readImage(n1,n2,fileName):
-  f = Array.zerofloat(n1,n2)
+  f = zerofloat(n1,n2)
   ais = ArrayInputStream(dataDir+fileName)
   ais.readFloats(f)
   ais.close()
-  return Array.mul(fScale,f)
+  return mul(fScale,f)
 
 def writeImage(f,fileName):
   aos = ArrayOutputStream(fileName)

@@ -16,6 +16,7 @@ from edu.mines.jtk.ogl.Gl import *
 from edu.mines.jtk.sgl import *
 from edu.mines.jtk.sgl.test import *
 from edu.mines.jtk.util import *
+from edu.mines.jtk.util.ArrayMath import *
 
 from fmm import *
 
@@ -37,7 +38,7 @@ def testSphere():
   #n1,n2,n3 = 101,111,121
   n1,n2,n3 = 61,61,61
   s1,s2,s3 = Sampling(n1),Sampling(n2),Sampling(n3)
-  f = Array.zerofloat(n1,n2,n3)
+  f = zerofloat(n1,n2,n3)
   x1 = (n1-1)/2.0
   x2 = (n2-1)/2.0
   x3 = (n3-1)/2.0
@@ -48,7 +49,7 @@ def testSphere():
       for i1 in range(n1):
         d1 = i1-x1;
         f[i3][i2][i1] = sqrt(d1*d1+d2*d2+d3*d3)
-  c = 0.5*Array.max(f)
+  c = 0.5*max(f)
   mc = MarchingCubes(s1,s2,s3,f)
   contour = mc.getContour(c)
   plot(s1,s2,s3,f,contour)

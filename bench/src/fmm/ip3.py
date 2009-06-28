@@ -18,6 +18,7 @@ from edu.mines.jtk.ogl.Gl import *
 from edu.mines.jtk.sgl import *
 from edu.mines.jtk.sgl.test import *
 from edu.mines.jtk.util import *
+from edu.mines.jtk.util.ArrayMath import *
 
 from fmm import *
 
@@ -63,13 +64,13 @@ def writeTensors(tensors,tensorsFile):
 def computeTensors(imageFile):
   alpha,beta,gamma = 2.0,1.0,1.0
   f = readImage(n1,n2,n3,imageFile)
-  u1 = Array.zerofloat(n1,n2,n3)
-  u2 = Array.zerofloat(n1,n2,n3)
-  w1 = Array.zerofloat(n1,n2,n3)
-  w2 = Array.zerofloat(n1,n2,n3)
-  su = Array.zerofloat(n1,n2,n3)
-  sv = Array.zerofloat(n1,n2,n3)
-  sw = Array.zerofloat(n1,n2,n3)
+  u1 = zerofloat(n1,n2,n3)
+  u2 = zerofloat(n1,n2,n3)
+  w1 = zerofloat(n1,n2,n3)
+  w2 = zerofloat(n1,n2,n3)
+  su = zerofloat(n1,n2,n3)
+  sv = zerofloat(n1,n2,n3)
+  sw = zerofloat(n1,n2,n3)
   lof = LocalOrientFilter(3.0)
   lof.apply(f,
     None,None,
@@ -78,32 +79,32 @@ def computeTensors(imageFile):
     w1,w2,None,
     su,sv,sw,
     None,None)
-  sumax = Array.max(su)
+  sumax = max(su)
   sbias = sumax*0.01
-  su = Array.add(su,sbias)
-  sv = Array.add(sv,sbias)
-  sw = Array.add(sw,sbias)
-  print "max su =",Array.max(su)," sv =",Array.max(sv)," sw =",Array.max(sw)
+  su = add(su,sbias)
+  sv = add(sv,sbias)
+  sw = add(sw,sbias)
+  print "max su =",max(su)," sv =",max(sv)," sw =",max(sw)
   #ps = readImage(n1,n2,n3,dataDir+"tp_ps.dat")
-  #print "ps min =",Array.min(ps)," max =",Array.max(ps)
-  #dc = Array.pow(Array.sub(1.01,ps),-gamma)
-  dc = Array.fillfloat(1.0,n1,n2,n3)
-  du = Array.mul(dc,Array.pow(su,-alpha))
-  dv = Array.mul(du,Array.pow(Array.div(sv,su),-beta))
-  dw = Array.mul(du,Array.pow(Array.div(sw,su),-beta))
-  print "min du =",Array.min(du)," dv =",Array.min(dv)," dw =",Array.min(dw)
-  print "max du =",Array.max(du)," dv =",Array.max(dv)," dw =",Array.max(dw)
-  ds = 1.0/Array.max(dw)
-  du = Array.mul(ds,du)
-  dv = Array.mul(ds,dv)
-  dw = Array.mul(ds,dw)
+  #print "ps min =",min(ps)," max =",max(ps)
+  #dc = pow(sub(1.01,ps),-gamma)
+  dc = fillfloat(1.0,n1,n2,n3)
+  du = mul(dc,pow(su,-alpha))
+  dv = mul(du,pow(div(sv,su),-beta))
+  dw = mul(du,pow(div(sw,su),-beta))
+  print "min du =",min(du)," dv =",min(dv)," dw =",min(dw)
+  print "max du =",max(du)," dv =",max(dv)," dw =",max(dw)
+  ds = 1.0/max(dw)
+  du = mul(ds,du)
+  dv = mul(ds,dv)
+  dw = mul(ds,dw)
   print "ds =",ds
-  print "min du =",Array.min(du)," dv =",Array.min(dv)," dw =",Array.min(dw)
-  print "max du =",Array.max(du)," dv =",Array.max(dv)," dw =",Array.max(dw)
+  print "min du =",min(du)," dv =",min(dv)," dw =",min(dw)
+  print "max du =",max(du)," dv =",max(dv)," dw =",max(dw)
   return EigenTensors3(u1,u2,w1,w2,du,dv,dw,True) 
 
 def readImage(n1,n2,n3,fileName):
-  f = Array.zerofloat(n1,n2,n3)
+  f = zerofloat(n1,n2,n3)
   ais = ArrayInputStream(fileName)
   ais.readFloats(f)
   ais.close()

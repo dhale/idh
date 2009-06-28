@@ -12,6 +12,7 @@ from edu.mines.jtk.dsp import *
 from edu.mines.jtk.io import *
 from edu.mines.jtk.mosaic import *
 from edu.mines.jtk.util import *
+from edu.mines.jtk.util.ArrayMath import *
 
 
 def main(args):
@@ -35,20 +36,20 @@ def doAtw():
 
 def readFloats(n1,n2,fileName):
   ais = ArrayInputStream(fileName)
-  x = Array.zerofloat(n1,n2)
+  x = zerofloat(n1,n2)
   ais.readFloats(x)
   ais.close()
   return x
 
 def makeBytes(f,cmin=0.0,cmax=0.0):
-  f = Array.transpose(f)
+  f = transpose(f)
   n1,n2 = len(f[0]),len(f)
   nx,ny = n1,n2
   n = n1*n2
-  b = Array.zerobyte(n)
+  b = zerobyte(n)
   if cmin==cmax:
-    cmin = Array.min(f)
-    cmax = Array.max(f)
+    cmin = min(f)
+    cmax = max(f)
   s = 255.0/(cmax-cmin)
   i = 0
   for i2 in range(n2):

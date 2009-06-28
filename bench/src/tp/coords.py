@@ -9,6 +9,7 @@ from edu.mines.jtk.dsp import *
 from edu.mines.jtk.io import *
 from edu.mines.jtk.mosaic import *
 from edu.mines.jtk.util import *
+from edu.mines.jtk.util.ArrayMath import *
 
 from tp import *
 
@@ -105,21 +106,21 @@ def makeSeismicSlice(i1):
   n2d,d2d,f2d = s2d.count,s2d.delta,s2d.first
   n3d,d3d,f3d = s3d.count,s3d.delta,s3d.first
   ais = ArrayInputStream(stFile)
-  x1 = Array.zerofloat(n1d)
-  x23 = Array.zerofloat(n2d,n3d)
+  x1 = zerofloat(n1d)
+  x23 = zerofloat(n2d,n3d)
   for i3 in range(n3d):
     for i2 in range(n2d):
       ais.readFloats(x1)
       x23[i3][i2] = x1[i1]
   ais.close()
-  xmin,xmax = Array.min(x23),Array.max(x23)
+  xmin,xmax = min(x23),max(x23)
   print "xmin =",xmin," xmax =",xmax
   f2m,e2m,d2m = 240.0,248.2,0.025 # chosen by eye to fill the
   f3m,e3m,d3m = 286.0,298.0,0.025 # map-coordinate rectangle 
   n2m = 1+int((e2m-f2m)/d2m+0.5)
   n3m = 1+int((e3m-f3m)/d3m+0.5)
   s2m,s3m = Sampling(n2m,d2m,f2m),Sampling(n3m,d3m,f3m)
-  y23 = Array.zerofloat(n2m,n3m)
+  y23 = zerofloat(n2m,n3m)
   si = SincInterpolator()
   si.setUniformSampling(n2d,d2d,f2d,n3d,d3d,f3d)
   si.setUniformSamples(x23)
@@ -136,7 +137,7 @@ def makeSeismicSlice(i1):
         y23[i3][i2] = xmax
       else:
         y23[i3][i2] = si.interpolate(x2d,x3d)
-  ymin,ymax = Array.min(y23),Array.max(y23)
+  ymin,ymax = min(y23),max(y23)
   print "ymin =",ymin," ymax =",ymax
   return s2m,s3m,y23
 

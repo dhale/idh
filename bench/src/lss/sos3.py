@@ -16,6 +16,7 @@ from edu.mines.jtk.ogl.Gl import *
 from edu.mines.jtk.sgl import *
 from edu.mines.jtk.sgl.test import *
 from edu.mines.jtk.util import *
+from edu.mines.jtk.util.ArrayMath import *
 
 from lss import *
 
@@ -148,7 +149,7 @@ def goSemblanceVW():
     s = lsf.semblance(d3VW,t,f)
     name = "svw"+smstr(sm1)+str(hw1)+"_"+str(hw2)
     writeImage(s,name)
-    print "s min =",Array.min(s),"max =",Array.max(s)
+    print "s min =",min(s),"max =",max(s)
     plot3([f,s])
 
 def goSemblanceW():
@@ -162,7 +163,7 @@ def goSemblanceW():
     s = lsf.semblance(d3W,t,f)
     name = "sw"+smstr(sm1)+str(hw1)+"_"+str(hw2)
     writeImage(s,name)
-    print "s min =",Array.min(s),"max =",Array.max(s)
+    print "s min =",min(s),"max =",max(s)
     plot3([f,s])
 
 def goSmoothGSW():
@@ -175,17 +176,17 @@ def goSmoothGSW():
   t = readTensors()
   f = readImage(n1,n2,n3,"f",fScale)
   s = readImage(n1,n2,n3,sname,1.0)
-  eu = Array.copy(s)
-  ev = Array.copy(s)
-  ew = Array.copy(s)
+  eu = copy(s)
+  ev = copy(s)
+  ew = copy(s)
   t.getEigenvalues(eu,ev,ew)
-  e1 = Array.div(Array.sub(ev,ew),eu)
-  s = Array.mul(s,e1)
-  #s = Array.mul(s,s)
+  e1 = div(sub(ev,ew),eu)
+  s = mul(s,e1)
+  #s = mul(s,s)
   t.setEigenvalues(0.0,0.0,1.0)
   lsf = LocalSmoothingFilter()
   c = hw*(hw+1)/6.0
-  g = Array.copy(f)
+  g = copy(f)
   lsf.apply(t,c,s,f,g)
   writeImage(s,gname)
   plot3([f,g])
@@ -199,7 +200,7 @@ def goSemblanceClassic():
   s = LocalSemblanceFilter.semblanceForSlopes(pmax,hw1,hw2,t,f)
   name = "ssc"+str(hw1)+"_"+str(hw2)
   writeImage(s,name)
-  print "s min =",Array.min(s),"max =",Array.max(s)
+  print "s min =",min(s),"max =",max(s)
   plot3([f,s])
 
 def goPlot():
@@ -214,7 +215,7 @@ def goPlot():
       plotp3(k1,k2,k3,s,0.0,1.0,name)
 
 def slice1(k1,f):
-  return Array.reshape(n2,n3,Array.flatten(Array.copy(1,n2,n3,40,0,0,f)))
+  return reshape(n2,n3,flatten(copy(1,n2,n3,40,0,0,f)))
 
 def computeTensors(sigma,f):
   f = readImage(n1,n2,n3,"f")
@@ -223,11 +224,11 @@ def computeTensors(sigma,f):
   return d
 
 def readImage(n1,n2,n3,fileName,scale=1.0):
-  f = Array.zerofloat(n1,n2,n3)
+  f = zerofloat(n1,n2,n3)
   ais = ArrayInputStream(dataDir+dataPref+fileName+".dat")
   ais.readFloats(f)
   ais.close()
-  return Array.mul(scale,f)
+  return mul(scale,f)
 
 def writeImage(f,fileName):
   aos = ArrayOutputStream(dataDir+dataPref+fileName+".dat")
@@ -273,7 +274,7 @@ def plot3(flist):
   frame.setVisible(True)
 
 def plotp3(k1,k2,k3,f,cmin,cmax,png=None):
-  print "plotp3: min =",Array.min(f)," max =",Array.max(f)
+  print "plotp3: min =",min(f)," max =",max(f)
   panel = PlotPanelPixels3(
     PlotPanelPixels3.Orientation.X1DOWN,
     PlotPanelPixels3.AxesPlacement.LEFT_BOTTOM,

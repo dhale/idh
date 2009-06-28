@@ -9,10 +9,11 @@ from edu.mines.jtk.awt import *
 from edu.mines.jtk.dsp import *
 from edu.mines.jtk.io import *
 from edu.mines.jtk.mosaic import *
-from edu.mines.jtk.util import *
 from edu.mines.jtk.ogl.Gl import *
 from edu.mines.jtk.sgl import *
 from edu.mines.jtk.sgl.test import *
+from edu.mines.jtk.util import *
+from edu.mines.jtk.util.ArrayMath import *
 
 from tp import *
 
@@ -98,7 +99,7 @@ def makeFrame(world):
 
 def readImage(filename):
   n1,n2,n3 = s1.count,s2.count,s3.count
-  x = Array.zerofloat(n1,n2,n3)
+  x = zerofloat(n1,n2,n3)
   ais = ArrayInputStream(filename)
   ais.readFloats(x)
   ais.close()

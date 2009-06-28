@@ -10,6 +10,7 @@ from edu.mines.jtk.dsp import *
 from edu.mines.jtk.io import *
 from edu.mines.jtk.mosaic import *
 from edu.mines.jtk.util import *
+from edu.mines.jtk.util.ArrayMath import *
 
 from ldf import *
 
@@ -51,13 +52,13 @@ def goTestTranspose():
   # Check x'(Ay) = (Ay)'x = y'A'x = y'(A'x)
   n = 11
   n1,n2 = n,n
-  ds = Array.randfloat(n1,n2)
-  es = Array.randfloat(n1,n2)
-  v1 = Array.sub(Array.randfloat(n1,n2),0.5)
-  x = Array.sub(Array.randfloat(n1,n2),0.5)
-  y = Array.sub(Array.randfloat(n1,n2),0.5)
-  ax = Array.zerofloat(n1,n2)
-  ay = Array.zerofloat(n1,n2)
+  ds = randfloat(n1,n2)
+  es = randfloat(n1,n2)
+  v1 = sub(randfloat(n1,n2),0.5)
+  x = sub(randfloat(n1,n2),0.5)
+  y = sub(randfloat(n1,n2),0.5)
+  ax = zerofloat(n1,n2)
+  ay = zerofloat(n1,n2)
   lsf = LocalSmoothingFilter(sigma)
   lsf.applyPassTranspose(ds,es,v1,x,ax)
   lsf.applyPass(ds,es,v1,y,ay)
@@ -70,7 +71,7 @@ def goTestTranspose():
   print "xay =",xay," yax =",yax
 
 def makeRandom(n1,n2):
-  return Array.sub(Array.randfloat(n1,n2),0.5)
+  return sub(randfloat(n1,n2),0.5)
 
 def makeIdeal(angle):
   n1 = 105
@@ -82,7 +83,7 @@ def makeIdeal(angle):
   a = angle*pi/180.0
   v1 = sin(a)
   v2 = cos(a)
-  ai = Array.zerofloat(n1,n2)
+  ai = zerofloat(n1,n2)
   for i2 in range(n2):
     k2 = (i2-j2)*s2
     for i1 in range(n1):
@@ -101,16 +102,16 @@ def makeImpulse(angle):
   a = angle*pi/180.0
   c = cos(a)
   s = sin(a)
-  x = Array.zerofloat(n1,n2)
+  x = zerofloat(n1,n2)
   x[(n2-1)/2][(n1-1)/2] = 1.0
-  v1 = Array.fillfloat(s,n1,n2)
-  v2 = Array.fillfloat(c,n1,n2)
+  v1 = fillfloat(s,n1,n2)
+  v2 = fillfloat(c,n1,n2)
   return x,v1,v2
 
 def makeVectorsRadial(n1,n2):
   k1,k2 = n1/2,n2/2
-  v1 = Array.zerofloat(n1,n2)
-  v2 = Array.zerofloat(n1,n2)
+  v1 = zerofloat(n1,n2)
+  v2 = zerofloat(n1,n2)
   for i2 in range(n2):
     v2i = float(i2-k2)
     for i1 in range(n1):
@@ -124,8 +125,8 @@ def makeVectorsRadial(n1,n2):
 
 def makeVectors45(n1,n2):
   k1,k2 = n1/2,n2/2
-  v1 = Array.zerofloat(n1,n2)
-  v2 = Array.zerofloat(n1,n2)
+  v1 = zerofloat(n1,n2)
+  v2 = zerofloat(n1,n2)
   for i2 in range(n2):
     v2i = 0.1+float(i2-k2)
     v2i = v2i/abs(v2i)
@@ -141,7 +142,7 @@ def makeVectors45(n1,n2):
 
 def doImage():
   x = readImage()
-  #x = Array.transpose(x)
+  #x = transpose(x)
   #x = makePlaneImage(63.435)
   #x = makePlaneImage(30)
   #x = makeTargetImage()
@@ -151,7 +152,7 @@ def doImage():
 
 def goSmooth():
   x1 = readImage()
-  #x1 = Array.transpose(x1)
+  #x1 = transpose(x1)
   #x1 = makePlaneImage(70)
   #for x,s in [(x1,"_1"),(x2,"_2"),(x3,"_3")]:
   #for x,s in [(x1,"_1"),(x2,"_2")]:
@@ -162,12 +163,12 @@ def goSmooth():
 
 def doSmooth(x,png):
   n1,n2 = len(x[0]),len(x)
-  y = Array.zerofloat(n1,n2)
-  z = Array.zerofloat(n1,n2)
-  s = Array.zerofloat(n1,n2)
-  t = Array.zerofloat(n1,n2)
+  y = zerofloat(n1,n2)
+  z = zerofloat(n1,n2)
+  s = zerofloat(n1,n2)
+  t = zerofloat(n1,n2)
   #r = makeRandom(n1,n2)
-  r = Array.zerofloat(n1,n2)
+  r = zerofloat(n1,n2)
   for i2 in [n2/2]:
     for i1 in range(n1):
       r[i2][i1] = i1
@@ -184,14 +185,14 @@ def doSmooth(x,png):
   #ldf.applyLinearPass(ds,v1,x,z)
   lsf.applyPass(ds,es,v1,r,s)
   ldf.applyLinearPass(ds,v1,r,t)
-  #print "y min/max =",Array.min(y),Array.max(y)
+  #print "y min/max =",min(y),max(y)
   #plot(y,10.0,"y"+png)
   #plot(z,10.0,"z"+png)
   plot(s, 0.0,"s"+png)
   plot(t, 0.0,"t"+png)
 
 def makeBlock(n1,n2):
-  ds = Array.fillfloat(0.0,n1,n2);
+  ds = fillfloat(0.0,n1,n2);
   for i2 in range(n2):
     for i1 in range(n1):
       #if i1>i2: ds[i2][i1] = 1.0
@@ -200,12 +201,12 @@ def makeBlock(n1,n2):
 
 def makeRandom(n1,n2):
   r = Random(314159)
-  return Array.sub(Array.randfloat(r,n1,n2),0.5)
+  return sub(randfloat(r,n1,n2),0.5)
 
 def readImage():
   fileName = dataDir+"/seis/vg/junks.dat"
   ais = ArrayInputStream(fileName,ByteOrder.LITTLE_ENDIAN)
-  f = Array.zerofloat(n1,n2)
+  f = zerofloat(n1,n2)
   ais.readFloats(f)
   ais.close()
   return f
@@ -214,7 +215,7 @@ def makeTargetImage():
   k = 0.3
   c1 = n1/2
   c2 = n2/2
-  f = Array.zerofloat(n1,n2)
+  f = zerofloat(n1,n2)
   for i2 in range(n2):
     d2 = i2-c2
     for i1 in range(n1):
@@ -227,13 +228,13 @@ def makePlaneImage(angle):
   k = 0.3
   c = k*cos(a)
   s = k*sin(a)
-  return Array.mul(10.0,Array.sin(Array.rampfloat(0.0,c,s,n1,n2)))
+  return mul(10.0,sin(rampfloat(0.0,c,s,n1,n2)))
 
 def smooth(x):
   n1 = len(x[0])
   n2 = len(x)
-  t = Array.zerofloat(n1,n2)
-  y = Array.zerofloat(n1,n2)
+  t = zerofloat(n1,n2)
+  y = zerofloat(n1,n2)
   rgf = RecursiveGaussianFilter(1.0)
   rgf.apply0X(x,t)
   rgf.applyX0(t,y)
@@ -242,18 +243,18 @@ def smooth(x):
 def flip2(f):
   n1 = len(f[0])
   n2 = len(f)
-  g = Array.zerofloat(n1,n2)
+  g = zerofloat(n1,n2)
   for i2 in range(n2):
-    Array.copy(f[n2-1-i2],g[i2])
+    copy(f[n2-1-i2],g[i2])
   return g
 
 def getV(x):
   n1 = len(x[0])
   n2 = len(x)
-  v1 = Array.zerofloat(n1,n2)
-  v2 = Array.zerofloat(n1,n2)
+  v1 = zerofloat(n1,n2)
+  v2 = zerofloat(n1,n2)
   lof.applyForNormal(x,v2,v1)
-  Array.neg(v1,v1);
+  neg(v1,v1);
   return v1,v2
 
 #############################################################################

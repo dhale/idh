@@ -8,11 +8,8 @@ package fmm;
 
 import java.awt.*;
 import java.awt.event.*;
-import java.awt.image.*;
 import java.io.*;
-import java.util.*;
 import javax.swing.*;
-import javax.swing.event.*;
 
 import edu.mines.jtk.awt.*;
 import edu.mines.jtk.dsp.*;
@@ -349,8 +346,8 @@ public class ImagePainter3 {
     int n2 = 161;
     int n3 = 357;
     float[][][] image = readImage(n1,n2,n3,"/data/seis/tp/tp3f.dat");
-    float[][][] paint = Array.fillfloat(0.0f,n1,n2,n3);
-    image = Array.add(image,Array.mul(0.001f,Array.randfloat(n1,n2,n3)));
+    float[][][] paint = ArrayMath.fillfloat(0.0f,n1,n2,n3);
+    image = ArrayMath.add(image, ArrayMath.mul(0.001f, ArrayMath.randfloat(n1,n2,n3)));
     EigenTensors3 tensors = readTensors("/data/seis/tp/et3s211.dat");
     //EigenTensors3 tensors = readTensors("/data/seis/tp/tp_et211.dat");
     ImagePainter3 ip = new ImagePainter3(image,paint,tensors);

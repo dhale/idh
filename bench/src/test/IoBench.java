@@ -79,7 +79,7 @@ public class IoBench {
     trace("makeFile: begin");
     try {
       ArrayFile af = new ArrayFile(name,"rw");
-      float[] a = Array.randfloat(n1);
+      float[] a = ArrayMath.randfloat(n1);
       for (int i3=0; i3<n3; ++i3) {
         for (int i2=0; i2<n2; ++i2) {
           af.writeFloats(a);

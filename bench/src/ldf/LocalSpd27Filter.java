@@ -439,7 +439,7 @@ public class LocalSpd27Filter {
     float xi;
 
     // Solve L*z = b.
-    Array.zero(x);
+    ArrayMath.zero(x);
     for (i3=0,i3p=i3+1; i3<n3; ++i3,++i3p) {
       for (i2=0,i2m=i2-1,i2p=i2+1; i2<n2; ++i2,++i2m,++i2p) {
         if (0<=i2m && i2p<n2 && i3p<n3) {
@@ -716,25 +716,25 @@ public class LocalSpd27Filter {
     return l;
   }
   private static float[][][][] attemptIC0(float[][][][] a, float bias) {
-    float[][][] l000 = Array.copy(a[0]);
-    float[][][] l00p = Array.copy(a[1]);
-    float[][][] l0pm = Array.copy(a[2]);
-    float[][][] l0p0 = Array.copy(a[3]);
-    float[][][] l0pp = Array.copy(a[4]);
-    float[][][] lpmm = Array.copy(a[5]);
-    float[][][] lpm0 = Array.copy(a[6]);
-    float[][][] lpmp = Array.copy(a[7]);
-    float[][][] lp0m = Array.copy(a[8]);
-    float[][][] lp00 = Array.copy(a[9]);
-    float[][][] lp0p = Array.copy(a[10]);
-    float[][][] lppm = Array.copy(a[11]);
-    float[][][] lpp0 = Array.copy(a[12]);
-    float[][][] lppp = Array.copy(a[13]);
+    float[][][] l000 = ArrayMath.copy(a[0]);
+    float[][][] l00p = ArrayMath.copy(a[1]);
+    float[][][] l0pm = ArrayMath.copy(a[2]);
+    float[][][] l0p0 = ArrayMath.copy(a[3]);
+    float[][][] l0pp = ArrayMath.copy(a[4]);
+    float[][][] lpmm = ArrayMath.copy(a[5]);
+    float[][][] lpm0 = ArrayMath.copy(a[6]);
+    float[][][] lpmp = ArrayMath.copy(a[7]);
+    float[][][] lp0m = ArrayMath.copy(a[8]);
+    float[][][] lp00 = ArrayMath.copy(a[9]);
+    float[][][] lp0p = ArrayMath.copy(a[10]);
+    float[][][] lppm = ArrayMath.copy(a[11]);
+    float[][][] lpp0 = ArrayMath.copy(a[12]);
+    float[][][] lppp = ArrayMath.copy(a[13]);
     float[][][] d000 = l000; // will contain inverse of diagonal matrix D
     float[][][][] l = {l000,l00p,l0pm,l0p0,l0pp,
                        lpmm,lpm0,lpmp,lp0m,lp00,lp0p,lppm,lpp0,lppp};
     if (bias>0.0f)
-      Array.mul(1.0f+bias,l000,l000);
+      ArrayMath.mul(1.0f+bias,l000,l000);
 
     // Incomplete Cholesky decomposition, in-place.
     int n1 = a[0][0][0].length;
@@ -1138,30 +1138,30 @@ public class LocalSpd27Filter {
     LocalSpd27Filter lsf = new LocalSpd27Filter(s);
     //float[][] a = lsf.getMatrix();
     //edu.mines.jtk.mosaic.SimplePlot.asPixels(a);
-    float[][][] x = Array.randfloat(n1,n2,n3);
-    //x = Array.zerofloat(n1,n2,n3);
+    float[][][] x = ArrayMath.randfloat(n1,n2,n3);
+    //x = ArrayMath.zerofloat(n1,n2,n3);
     //x[n3/2][n2/2][n1/2] = 1.0f;
-    float[][][] y = Array.randfloat(n1,n2,n3);
-    float[][][] z = Array.randfloat(n1,n2,n3);
-    float[][][] w = Array.randfloat(n1,n2,n3);
+    float[][][] y = ArrayMath.randfloat(n1,n2,n3);
+    float[][][] z = ArrayMath.randfloat(n1,n2,n3);
+    float[][][] w = ArrayMath.randfloat(n1,n2,n3);
     lsf.apply(x,y);
     lsf.applyApproximate(x,z);
     lsf.applyApproximateInverse(z,w);
     float[][] ldl = factorIC0(lsf,0.0f);
     float[][][] v = factorMul(ldl,x);
-    float[][][] e = Array.sub(z,v);
-    System.out.println("factor error="+Array.sum(Array.abs(e)));
+    float[][][] e = ArrayMath.sub(z,v);
+    System.out.println("factor error="+ ArrayMath.sum(ArrayMath.abs(e)));
     System.out.println(
-      "factor inverse error="+Array.sum(Array.abs(Array.sub(w,x))));
-    //Array.dump(z);
-    //Array.dump(v);
-    //Array.dump(e);
-    //Array.dump(x);
-    //Array.dump(y);
-    //Array.dump(z);
-    //Array.dump(Array.sub(z,y));
-    //Array.dump(w);
-    //Array.dump(Array.sub(w,x));
+      "factor inverse error="+ ArrayMath.sum(ArrayMath.abs(ArrayMath.sub(w,x))));
+    //ArrayMath.dump(z);
+    //ArrayMath.dump(v);
+    //ArrayMath.dump(e);
+    //ArrayMath.dump(x);
+    //ArrayMath.dump(y);
+    //ArrayMath.dump(z);
+    //ArrayMath.dump(ArrayMath.sub(z,y));
+    //ArrayMath.dump(w);
+    //ArrayMath.dump(ArrayMath.sub(w,x));
   }
   private static float[][] factorIC0(LocalSpd27Filter lsf, float bias) {
     float[][] a = lsf.getMatrix();

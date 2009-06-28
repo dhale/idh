@@ -10,7 +10,6 @@ import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.*;
 import java.io.*;
-import java.util.*;
 import javax.swing.*;
 import javax.swing.event.*;
 
@@ -473,7 +472,7 @@ public class ImagePainterM {
         sm[i2][i1] = s[1];
       }
     }
-    sm = Array.copy(m1,m2,j1,j2,ns,ns,sm);
+    sm = ArrayMath.copy(m1,m2,j1,j2,ns,ns,sm);
     float smq = Quantiler.estimate(0.98f,sm);
     double r = 0.45*ns/sqrt(smq);
     float[][] x1 = new float[nm][nt];
@@ -553,16 +552,16 @@ public class ImagePainterM {
       float[][] sv = new float[n2][n1];
       LocalOrientFilter lof = new LocalOrientFilter(sigma);
       lof.apply(x,null,u1,u2,null,null,su,sv,null);
-      //trace("su min="+Array.min(su)+" max="+Array.max(su));
-      //trace("sv min="+Array.min(sv)+" max="+Array.max(sv));
-      float[][] dc = Array.pow(Array.sub(1.0f,coherence(sigma,x)),-gamma);
-      float[][] du = Array.mul(dc,Array.pow(su,-alpha));
-      float[][] dv = Array.mul(du,Array.pow(Array.div(sv,su),-beta));
-      float ds = 1.0f/Array.max(dv);
-      du = Array.mul(ds,du);
-      dv = Array.mul(ds,dv);
-      //trace("du min="+Array.min(du)+" max="+Array.max(du));
-      //trace("dv min="+Array.min(dv)+" max="+Array.max(dv));
+      //trace("su min="+ArrayMath.min(su)+" max="+ArrayMath.max(su));
+      //trace("sv min="+ArrayMath.min(sv)+" max="+ArrayMath.max(sv));
+      float[][] dc = ArrayMath.pow(ArrayMath.sub(1.0f,coherence(sigma,x)),-gamma);
+      float[][] du = ArrayMath.mul(dc, ArrayMath.pow(su,-alpha));
+      float[][] dv = ArrayMath.mul(du, ArrayMath.pow(ArrayMath.div(sv,su),-beta));
+      float ds = 1.0f/ ArrayMath.max(dv);
+      du = ArrayMath.mul(ds,du);
+      dv = ArrayMath.mul(ds,dv);
+      //trace("du min="+ArrayMath.min(du)+" max="+ArrayMath.max(du));
+      //trace("dv min="+ArrayMath.min(dv)+" max="+ArrayMath.max(dv));
       //SimplePlot.asPixels(du);
       //SimplePlot.asPixels(dv);
       for (int i2=0; i2<n2; ++i2) {

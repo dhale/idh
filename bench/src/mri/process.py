@@ -8,9 +8,10 @@ from javax.swing import *
 from edu.mines.jtk.dsp import *
 from edu.mines.jtk.io import *
 from edu.mines.jtk.mosaic import *
-from edu.mines.jtk.util import *
 from edu.mines.jtk.sgl import *
 from edu.mines.jtk.sgl.test import *
+from edu.mines.jtk.util import *
+from edu.mines.jtk.util.ArrayMath import *
 
 dataDir = "/data/mri/"
 def samplingHead():
@@ -46,13 +47,13 @@ def main(args):
 def readImage(sampling,ffile):
   sampling()
   ais = ArrayInputStream(dataDir+ffile)
-  f = Array.zerofloat(n1,n2,n3)
+  f = zerofloat(n1,n2,n3)
   ais.readFloats(f)
   ais.close()
   return f
 
 def plot3d(x):
-  print "x min =",Array.min(x)," max =",Array.max(x)
+  print "x min =",min(x)," max =",max(x)
   s1 = Sampling(n1,d1,f1)
   s2 = Sampling(n2,d2,f2)
   s3 = Sampling(n3,d3,f3)
@@ -77,10 +78,10 @@ def convertImages():
 def convertImage(sfile,ffile):
   bo = ByteOrder.LITTLE_ENDIAN
   ais = ArrayInputStream(dataDir+sfile,bo)
-  s = Array.zeroshort(n1,n2,n3)
+  s = zeroshort(n1,n2,n3)
   ais.readShorts(s)
   ais.close()
-  f = Array.zerofloat(n1,n2,n3)
+  f = zerofloat(n1,n2,n3)
   for i3 in range(n3):
     for i2 in range(n2):
       for i1 in range(n1):

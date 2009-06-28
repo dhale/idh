@@ -12,6 +12,7 @@ from edu.mines.jtk.mosaic import *
 from edu.mines.jtk.sgl import *
 from edu.mines.jtk.sgl.test import *
 from edu.mines.jtk.util import *
+from edu.mines.jtk.util.ArrayMath import *
 
 from ldf import *
 
@@ -39,19 +40,19 @@ def main(args):
   doDiff(x)
 
 def makeImpulse(n1,n2,n3):
-  x = Array.zerofloat(n1,n2,n3)
+  x = zerofloat(n1,n2,n3)
   x[(n3-1)/2][(n2-1)/2][(n1-1)/2] = 1.0
   return x
 
 def makeRandom(n1,n2,n3):
   r = Random(314159)
-  return Array.sub(Array.randfloat(r,n1,n2,n3),0.5)
+  return sub(randfloat(r,n1,n2,n3),0.5)
 
 def smooth(x):
   n1 = len(x[0][0])
   n2 = len(x[0])
   n3 = len(x)
-  y = Array.zerofloat(n1,n2,n3)
+  y = zerofloat(n1,n2,n3)
   rgf = RecursiveGaussianFilter(1.0)
   rgf.apply000(x,y)
   return y
@@ -65,12 +66,12 @@ def makeVectorsConstant(theta,phi,n1,n2,n3):
   v3 = sin(theta)*cos(phi)
   kv = uss.getIndex(v3,v2,v1)
   print "v1 =",v1," v2 =",v2," v3 =",v3," kv =",kv
-  return Array.fillshort(kv,n1,n2,n3);
+  return fillshort(kv,n1,n2,n3);
 
 def makeVectorsRadial(n1,n2,n3):
   k1,k2,k3 = n1/2,n2/2,n3/2
   uss = UnitSphereSampling(16)
-  iv = Array.zeroshort(n1,n2,n3)
+  iv = zeroshort(n1,n2,n3)
   for i3 in range(n3):
     v3 = float(i3-k3)
     for i2 in range(n2):
@@ -86,7 +87,7 @@ def doDiff(x):
   ds = None
   iv = makeVectorsRadial(n1,n2,n3)
   #iv = makeVectorsConstant(90,0,n1,n2,n3)
-  y = Array.copy(x)
+  y = copy(x)
   #LocalDiffusionFilterMp.setFiltersFile(ffile)
   #ldf = LocalDiffusionFilterMp(sigma)
   ldf = LocalDiffusionFilterCg(sigma,small,niter)
@@ -103,7 +104,7 @@ def doAmp(theta,phi):
   x = makeImpulse(n1,n2,n3)
   ds = None
   iv = makeVectorsConstant(theta,phi,n1,n2,n3)
-  h = Array.zerofloat(n1,n2,n3)
+  h = zerofloat(n1,n2,n3)
   #ldf.applyInlinePass(ds,iv,x,h)
   ldf.applyNormalPass(ds,iv,x,h)
   ah = frequencyResponse(h)
@@ -116,33 +117,33 @@ def frequencyResponse(x):
   n1 = FftComplex.nfftSmall(n1)
   n2 = FftComplex.nfftSmall(n2)
   n3 = FftComplex.nfftSmall(n3)
-  xr = Array.copy(n1,n2,n3,x)
-  xi = Array.zerofloat(n1,n2,n3)
-  cx = Array.cmplx(xr,xi)
+  xr = copy(n1,n2,n3,x)
+  xi = zerofloat(n1,n2,n3)
+  cx = cmplx(xr,xi)
   fft1 = FftComplex(n1)
   fft2 = FftComplex(n2)
   fft3 = FftComplex(n3)
   fft1.complexToComplex1(1,n2,n3,cx,cx)
   fft2.complexToComplex2(1,n1,n3,cx,cx)
   fft3.complexToComplex3(1,n1,n2,cx,cx)
-  ax = Array.cabs(cx)
-  a = Array.zerofloat(n1,n2,n3)
+  ax = cabs(cx)
+  a = zerofloat(n1,n2,n3)
   j1 = n1/2
   j2 = n2/2
   j3 = n3/2
-  Array.copy(n1-j1,n2-j2,n3-j3,0,0,0,ax,j1,j2,j3,a)
-  Array.copy(j1,n2-j2,n3-j3,n1-j1,0,0,ax,0,j2,j3,a)
-  Array.copy(n1-j1,j2,n3-j3,0,n2-j2,0,ax,j1,0,j3,a)
-  Array.copy(n1-j1,n2-j2,j3,0,0,n3-j3,ax,j1,j2,0,a)
-  Array.copy(j1,j2,n3-j3,n1-j1,n2-j2,0,ax,0,0,j3,a)
-  Array.copy(n1-j1,j2,j3,0,n2-j2,n3-j3,ax,j1,0,0,a)
-  Array.copy(j1,n2-j2,j3,n1-j1,0,n3-j3,ax,0,j2,0,a)
-  Array.copy(j1,j2,j3,n1-j1,n2-j2,n3-j3,ax,0,0,0,a)
+  copy(n1-j1,n2-j2,n3-j3,0,0,0,ax,j1,j2,j3,a)
+  copy(j1,n2-j2,n3-j3,n1-j1,0,0,ax,0,j2,j3,a)
+  copy(n1-j1,j2,n3-j3,0,n2-j2,0,ax,j1,0,j3,a)
+  copy(n1-j1,n2-j2,j3,0,0,n3-j3,ax,j1,j2,0,a)
+  copy(j1,j2,n3-j3,n1-j1,n2-j2,0,ax,0,0,j3,a)
+  copy(n1-j1,j2,j3,0,n2-j2,n3-j3,ax,j1,0,0,a)
+  copy(j1,n2-j2,j3,n1-j1,0,n3-j3,ax,0,j2,0,a)
+  copy(j1,j2,j3,n1-j1,n2-j2,n3-j3,ax,0,0,0,a)
   return a
 
 def combineFilters():
   n2 = 4*8*21*9
-  d2 = Array.zerofloat(n2/4)
+  d2 = zerofloat(n2/4)
   af2 = ArrayFile("filters2.dat","r")
   af2.readInt()
   af2.readInt()
@@ -150,7 +151,7 @@ def combineFilters():
   af2.readFloats(d2)
   af2.close()
   n3 = 4*56*481*9
-  d3 = Array.zerofloat(n3/4)
+  d3 = zerofloat(n3/4)
   af3 = ArrayFile("filters3.dat","r")
   af3.readInt()
   af3.readFloats(d3)
@@ -173,7 +174,7 @@ def makeFilters():
 # plot
 
 def plot3d(x):
-  print "x min =",Array.min(x)," max =",Array.max(x)
+  print "x min =",min(x)," max =",max(x)
   ipg = ImagePanelGroup(x)
   #ipg.setColorModel(ColorMap.JET)
   ipg.setColorModel(ColorMap.GRAY)

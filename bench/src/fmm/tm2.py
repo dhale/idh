@@ -14,6 +14,7 @@ from edu.mines.jtk.dsp import *
 from edu.mines.jtk.io import *
 from edu.mines.jtk.mosaic import *
 from edu.mines.jtk.util import *
+from edu.mines.jtk.util.ArrayMath import *
 
 from fmm import *
 
@@ -76,30 +77,30 @@ def testTsai():
   testMarker(n1,n2,i1,i2,tensors)
 
 def testMarker(n1,n2,i1,i2,tensors):
-  times = Array.fillfloat(Float.MAX_VALUE,n1,n2)
-  marks = Array.zeroint(n1,n2)
+  times = fillfloat(Float.MAX_VALUE,n1,n2)
+  marks = zeroint(n1,n2)
   for k in range(len(i1)):
     k1,k2 = i1[k],i2[k]
     times[k2][k1] = 0.0
     marks[k2][k1] = 1+k
   tm = TimeMarker2(n1,n2,tensors)
   tm.apply(times,marks)
-  print "times min =",Array.min(times),"max =",Array.max(times)
-  print "marks min =",Array.min(marks),"max =",Array.max(marks)
+  print "times min =",min(times),"max =",max(times)
+  print "marks min =",min(marks),"max =",max(marks)
   marks = floatsFromInts(marks)
   plot(times,0,0,prism)
   plot(marks,0,0,jet)
 
 def testSolver(n1,n2,i1,i2,tensors):
-  known = Array.zerobyte(n1,n2)
-  times = Array.zerofloat(n1,n2)
-  marks = Array.zeroint(n1,n2)
+  known = zerobyte(n1,n2)
+  times = zerofloat(n1,n2)
+  marks = zeroint(n1,n2)
   ts = TimeSolver2(n1,n2,tensors)
   for k in range(len(i1)):
     k1,k2 = i1[k],i2[k]
     ts.zeroAt(k1,k2)
   times = ts.getTimes()
-  print "times min =",Array.min(times),"max =",Array.max(times)
+  print "times min =",min(times),"max =",max(times)
   plot(times,0,0,prism)
 
 def randomSites(n,n1,n2):
@@ -123,7 +124,7 @@ def randomSites(n,n1,n2):
 def floatsFromInts(i):
   n1 = len(i[0])
   n2 = len(i)
-  f = Array.zerofloat(n1,n2)
+  f = zerofloat(n1,n2)
   for i2 in range(n2):
     for i1 in range(n1):
       f[i2][i1] = i[i2][i1]
@@ -163,7 +164,7 @@ class SineTensors2(EigenTensors2):
     b2 = 3.0*2.0*pi/(n2-1) # 3 cycles horizontally
     a1 = ampmax
     a2 = atan(dipmax*pi/180.0)/b2
-    f = Array.zerofloat(n1,n2)
+    f = zerofloat(n1,n2)
     for i2 in range(n2):
       for i1 in range(n1):
         s2 = a2*sin(b2*i2)
@@ -189,7 +190,7 @@ class TsaiTensors2(EigenTensors2):
     d2 = 2.0/(n2-1)
     f1 = -1.0
     f2 = -1.0
-    f = Array.zerofloat(n1,n2)
+    f = zerofloat(n1,n2)
     for i2 in range(n2):
       x2 = f2+i2*d2
       for i1 in range(n1):

@@ -17,6 +17,7 @@ from edu.mines.jtk.io import *
 from edu.mines.jtk.mesh import *
 from edu.mines.jtk.mosaic import *
 from edu.mines.jtk.util import *
+from edu.mines.jtk.util.ArrayMath import *
 
 from fmm import *
 
@@ -76,16 +77,16 @@ def doInterpolateTest():
   tsmall = 0.01
   fj = interpolateNaturalApproximate(mesh,s1,s2,tsmall)
   plotfab(fj,mesh,None,False,False,"fj")
-  fji = Array.sub(fj,fi)
-  print " fji max =",Array.max(Array.abs(fji))
+  fji = sub(fj,fi)
+  print " fji max =",max(abs(fji))
   plotfab(fji,mesh,None,False,False,"fji")
 
   # interpolate with approximate natural neighbors and plot
   tsmall = 10.0
   fk = interpolateNaturalApproximate(mesh,s1,s2,tsmall)
   plotfab(fk,mesh,None,False,False,"fk")
-  fki = Array.sub(fk,fi)
-  print " fki max =",Array.max(Array.abs(fki))
+  fki = sub(fk,fi)
+  print " fki max =",max(abs(fki))
   plotfab(fki,mesh,None,False,False,"fki")
 
 def doShowSibson(sampling):
@@ -101,8 +102,8 @@ def doShowSibson(sampling):
   mesha = makeTriMesh(x1,x2,sinusoid)
 
   # mesh B is mesh A with one extra sample
-  x1min,x1max = Array.min(x1),Array.max(x1);
-  x2min,x2max = Array.min(x2),Array.max(x2);
+  x1min,x1max = min(x1),max(x1);
+  x2min,x2max = min(x2),max(x2);
   #y1,y2 = 0.5*(x1max+x1min),0.5*(x2max+x2min)
   y1,y2 = 0.38*(x1max+x1min),0.52*(x2max+x2min)
   meshb = makeTriMesh(x1,x2,sinusoid)
@@ -181,8 +182,8 @@ def makeUniformSubsampling(s1,s2,ms):
   d1 = d1*float(n1-1)/float(m1-1)
   d2 = d2*float(n2-1)/float(m2-1)
   n1,n2 = m1,m2
-  x1 = Array.zerofloat(n1,n2)
-  x2 = Array.zerofloat(n1,n2)
+  x1 = zerofloat(n1,n2)
+  x2 = zerofloat(n1,n2)
   for i2 in range(n2):
     for i1 in range(n1):
       x1[i2][i1] = f1+i1*d1
@@ -208,8 +209,8 @@ def makeUniformSubsampling(s1,s2,ms):
 def makeTriMesh(x1,x2,function):
   mesh = TriMesh()
   fmap = mesh.getNodePropertyMap("f")
-  x1min,x1max = Array.min(x1),Array.max(x1)
-  x2min,x2max = Array.min(x2),Array.max(x2)
+  x1min,x1max = min(x1),max(x1)
+  x2min,x2max = min(x2),max(x2)
   x1min -= 0.15*(x1max-x1min)
   x1max += 0.15*(x1max-x1min)
   x2min -= 0.15*(x2max-x2min)
@@ -228,7 +229,7 @@ def makeTriMesh(x1,x2,function):
 
 def sampleFunction(function,s1,s2):
   n1,n2 = s1.count,s2.count 
-  fs = Array.zerofloat(n1,n2)
+  fs = zerofloat(n1,n2)
   for i2 in range(n2):
     x2 = s2.getValue(i2)
     for i1 in range(n1):
@@ -239,7 +240,7 @@ def sampleFunction(function,s1,s2):
 def interpolateNatural(mesh,s1,s2):
   fmap = mesh.getNodePropertyMap("f")
   n1,n2 = s1.count,s2.count 
-  fi = Array.zerofloat(n1,n2)
+  fi = zerofloat(n1,n2)
   for i2 in range(n2):
     x2 = s2.getValue(i2)
     for i1 in range(n1):
@@ -252,7 +253,7 @@ def interpolateNatural1(mesh,s1,s2):
   fgmap = mesh.getNodePropertyMap("fg")
   mesh.estimateGradients(fmap,fgmap);
   n1,n2 = s1.count,s2.count 
-  fi = Array.zerofloat(n1,n2)
+  fi = zerofloat(n1,n2)
   for i2 in range(n2):
     x2 = s2.getValue(i2)
     for i1 in range(n1):
@@ -263,7 +264,7 @@ def interpolateNatural1(mesh,s1,s2):
 def interpolateNearest(mesh,s1,s2):
   fmap = mesh.getNodePropertyMap("f")
   n1,n2 = s1.count,s2.count 
-  fi = Array.zerofloat(n1,n2)
+  fi = zerofloat(n1,n2)
   for i2 in range(n2):
     x2 = s2.getValue(i2)
     for i1 in range(n1):
@@ -276,7 +277,7 @@ def interpolateNaturalApproximate(mesh,s1,s2,tsmall):
   meshc = copyMesh(mesh)
   fmap = meshc.getNodePropertyMap("f")
   n1,n2 = s1.count,s2.count 
-  fi = Array.zerofloat(n1,n2)
+  fi = zerofloat(n1,n2)
   tmap = distanceMap(meshc,s1,s2)
   heap = TimeHeap2(TimeHeap2.Type.MAX,n1,n2)
   for i2 in range(n2):
@@ -315,7 +316,7 @@ def interpolateNaturalApproximate(mesh,s1,s2,tsmall):
 
 def distanceMap(mesh,s1,s2):
   n1,n2 = s1.count,s2.count 
-  d = Array.zerofloat(n1,n2)
+  d = zerofloat(n1,n2)
   for i2 in range(n2):
     x2 = s2.getValue(i2)
     for i1 in range(n1):

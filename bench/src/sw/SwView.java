@@ -110,11 +110,11 @@ public class SwView extends JFrame {
     SimpleFloat3 sf3;
     try {
       ArrayFile af = new ArrayFile(DATA_DIR+fileName,"r");
-      float[][][] f = Array.zerofloat(nz,ny,nx);
+      float[][][] f = ArrayMath.zerofloat(nz,ny,nx);
       if (bytes) {
-        byte[][][] b = Array.zerobyte(nz,ny,nx);
+        byte[][][] b = ArrayMath.zerobyte(nz,ny,nx);
         af.readBytes(b);
-        f = Array.tofloat(b);
+        f = ArrayMath.tofloat(b);
       } else {
         af.readFloats(f);
       }

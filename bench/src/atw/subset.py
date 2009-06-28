@@ -11,6 +11,7 @@ from edu.mines.jtk.mosaic import *
 from edu.mines.jtk.util import *
 from edu.mines.jtk.sgl import *
 from edu.mines.jtk.sgl.test import *
+from edu.mines.jtk.util.ArrayMath import *
 
 import atw.Convert as Convert
 
@@ -47,7 +48,7 @@ def main(args):
   #testFormat()
   #subset(i1s,i2s,i3s)
   ais = ArrayInputStream(dataDir+"atws.dat")
-  y = Array.zerofloat(n1,n2,n3)
+  y = zerofloat(n1,n2,n3)
   ais.readFloats(y)
   ais.close()
   plot3d(y)
@@ -56,7 +57,7 @@ def main(args):
 def subset(i1s,i2s,i3s):
   ais = ArrayInputStream(dataDir+"atw.dat")
   aos = ArrayOutputStream(dataDir+"atws.dat")
-  x = Array.zerofloat(n1)
+  x = zerofloat(n1)
   for i3 in range(i3s):
     ais.skipBytes(4*n1i*n2i)
   for i3 in range(n3):
@@ -72,11 +73,11 @@ def subset(i1s,i2s,i3s):
 
 def plot12(i3):
   ais = ArrayInputStream(dataDir+"atw.dat")
-  x = Array.zerofloat(n1,n2)
+  x = zerofloat(n1,n2)
   ais.skipBytes(4*n1*n2*i3)
   ais.readFloats(x)
   ais.close()
-  print "x min =",Array.min(x)," max =",Array.max(x)
+  print "x min =",min(x)," max =",max(x)
   sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
   pv = sp.addPixels(x)
   pv.setInterpolation(PixelsView.Interpolation.LINEAR)
@@ -84,7 +85,7 @@ def plot12(i3):
   pv.setClips(-3.5e4,3.5e4)
 
 def plot3d(x):
-  print "x min =",Array.min(x)," max =",Array.max(x)
+  print "x min =",min(x)," max =",max(x)
   n1,n2,n3 = len(x[0][0]),len(x[0]),len(x)
   #s1,s2,s3 = Sampling(n1),Sampling(n2),Sampling(n3)
   s1,s2,s3 = Sampling(n1,d1,f1),Sampling(n2,d2,f2),Sampling(n3,d3,f3)
@@ -97,9 +98,9 @@ def plot3d(x):
   frame.setVisible(True)
 
 def testFormat():
-  xi = Array.zeroint(n1i,n2i)
-  x1 = Array.zerofloat(n1i,n2i)
-  x2 = Array.zerofloat(n1i,n2i)
+  xi = zeroint(n1i,n2i)
+  x1 = zerofloat(n1i,n2i)
+  x2 = zerofloat(n1i,n2i)
   infile = dataDir+"atw.dat";
   ais = ArrayInputStream(infile)
   ais.readInts(xi)

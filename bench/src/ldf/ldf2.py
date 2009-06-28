@@ -10,6 +10,7 @@ from edu.mines.jtk.dsp import *
 from edu.mines.jtk.io import *
 from edu.mines.jtk.mosaic import *
 from edu.mines.jtk.util import *
+from edu.mines.jtk.util.ArrayMath import *
 
 from ldf import *
 
@@ -63,7 +64,7 @@ def makeIdeal(angle):
   a = angle*pi/180.0
   v1 = sin(a)
   v2 = cos(a)
-  ai = Array.zerofloat(n1,n2)
+  ai = zerofloat(n1,n2)
   for i2 in range(n2):
     k2 = (i2-j2)*s2
     for i1 in range(n1):
@@ -82,16 +83,16 @@ def makeImpulse(angle):
   a = angle*pi/180.0
   c = cos(a)
   s = sin(a)
-  x = Array.zerofloat(n1,n2)
+  x = zerofloat(n1,n2)
   x[(n2-1)/2][(n1-1)/2] = 1.0
-  v1 = Array.fillfloat(s,n1,n2)
-  v2 = Array.fillfloat(c,n1,n2)
+  v1 = fillfloat(s,n1,n2)
+  v2 = fillfloat(c,n1,n2)
   return x,v1,v2
 
 def makeVectorsRadial(n1,n2):
   k1,k2 = n1/2,n2/2
-  v1 = Array.zerofloat(n1,n2)
-  v2 = Array.zerofloat(n1,n2)
+  v1 = zerofloat(n1,n2)
+  v2 = zerofloat(n1,n2)
   for i2 in range(n2):
     v2i = float(i2-k2)
     for i1 in range(n1):
@@ -105,8 +106,8 @@ def makeVectorsRadial(n1,n2):
 
 def makeVectors45(n1,n2):
   k1,k2 = n1/2,n2/2
-  v1 = Array.zerofloat(n1,n2)
-  v2 = Array.zerofloat(n1,n2)
+  v1 = zerofloat(n1,n2)
+  v2 = zerofloat(n1,n2)
   for i2 in range(n2):
     v2i = 0.1+float(i2-k2)
     v2i = v2i/abs(v2i)
@@ -122,7 +123,7 @@ def makeVectors45(n1,n2):
 
 def doImage():
   x = readImage()
-  #x = Array.transpose(x)
+  #x = transpose(x)
   #x = makePlaneImage(63.435)
   #x = makePlaneImage(30)
   #x = makeTargetImage()
@@ -141,16 +142,16 @@ def bigger(x):
   m2 = len(x)
   n1 = 2*m1
   n2 = 2*m2
-  y = Array.zerofloat(n1,n2)
-  Array.copy(m1,m2,0,0,x, 0, 0,y)
-  Array.copy(m1,m2,0,0,x,m1, 0,y)
-  Array.copy(m1,m2,0,0,x, 0,m2,y)
-  Array.copy(m1,m2,0,0,x,m1,m2,y)
+  y = zerofloat(n1,n2)
+  copy(m1,m2,0,0,x, 0, 0,y)
+  copy(m1,m2,0,0,x,m1, 0,y)
+  copy(m1,m2,0,0,x, 0,m2,y)
+  copy(m1,m2,0,0,x,m1,m2,y)
   return y
 
 def goDiff():
   x1 = readImage()
-  x2 = Array.transpose(x1)
+  x2 = transpose(x1)
   x3 = makeTargetImage()
   #for x,s in [(x1,"_1"),(x2,"_2"),(x3,"_3")]:
   for x,s in [(x1,"_1")]:
@@ -160,13 +161,13 @@ def goDiff():
 
 def makeRandom(n1,n2):
   r = Random(314159)
-  return Array.sub(Array.randfloat(r,n1,n2),0.5)
+  return sub(randfloat(r,n1,n2),0.5)
 
 def doDiff(x,png):
   n1,n2 = len(x[0]),len(x)
-  y = Array.zerofloat(n1,n2)
-  z = Array.zerofloat(n1,n2)
-  s = Array.zerofloat(n1,n2)
+  y = zerofloat(n1,n2)
+  z = zerofloat(n1,n2)
+  s = zerofloat(n1,n2)
   r = makeRandom(n1,n2)
   r = smooth(r)
   #v1,v2 = getV(x)
@@ -186,7 +187,7 @@ def doDiff(x,png):
   plot(s, 0.0,"s"+png)
 
 def makeBlock(n1,n2):
-  ds = Array.fillfloat(0.0,n1,n2);
+  ds = fillfloat(0.0,n1,n2);
   for i2 in range(n2/5,4*n2/5):
     for i1 in range(n1/5,4*n1/5):
   #for i2 in range(n2/2,n2):
@@ -205,7 +206,7 @@ def doAmpLaplacianDiffusionFilter(rs,dip,png=None):
   ldf = LaplacianDiffusionFilter(rs)
   x,v1,v2 = makeImpulse(dip)
   ldt = LocalDiffusionTensors2(1.0,10.0,v1)
-  h = Array.copy(x)
+  h = copy(x)
   ldf.apply(ldt,x,h)
   ah = frequencyResponse(h)
   plotf(ah,png)
@@ -214,7 +215,7 @@ def doAmpDiff(dip,png=None):
   ldf = LocalDiffusionFilterCg(sigma,small,niter)
   #ldf = LocalDiffusionFilterMp(sigma)
   x,v1,v2 = makeImpulse(dip)
-  h = Array.copy(x)
+  h = copy(x)
   ldf.applyLinearPass(None,v1,x,h)
   ah = frequencyResponse(h)
   plotf(ah,png)
@@ -224,28 +225,28 @@ def frequencyResponse(x):
   n2 = len(x)
   n1 = FftComplex.nfftSmall(n1)
   n2 = FftComplex.nfftSmall(n2)
-  xr = Array.copy(n1,n2,x)
-  xi = Array.zerofloat(n1,n2)
-  cx = Array.cmplx(xr,xi)
+  xr = copy(n1,n2,x)
+  xi = zerofloat(n1,n2)
+  cx = cmplx(xr,xi)
   fft1 = FftComplex(n1)
   fft2 = FftComplex(n2)
   fft1.complexToComplex1(1,n2,cx,cx)
   fft2.complexToComplex2(1,n1,cx,cx)
-  ax = Array.cabs(cx)
-  a = Array.zerofloat(n1,n2)
+  ax = cabs(cx)
+  a = zerofloat(n1,n2)
   j1 = n1/2
   j2 = n2/2
-  Array.copy(n1-j1,n2-j2,0,0,ax,j1,j2,a)
-  Array.copy(j1,j2,n1-j1,n2-j2,ax,0,0,a)
-  Array.copy(n1-j1,j2,0,n2-j2,ax,j1,0,a)
-  Array.copy(j1,n2-j2,n1-j1,0,ax,0,j2,a)
+  copy(n1-j1,n2-j2,0,0,ax,j1,j2,a)
+  copy(j1,j2,n1-j1,n2-j2,ax,0,0,a)
+  copy(n1-j1,j2,0,n2-j2,ax,j1,0,a)
+  copy(j1,n2-j2,n1-j1,0,ax,0,j2,a)
   return a
 
 def smooth(x):
   n1 = len(x[0])
   n2 = len(x)
-  t = Array.zerofloat(n1,n2)
-  y = Array.zerofloat(n1,n2)
+  t = zerofloat(n1,n2)
+  y = zerofloat(n1,n2)
   rgf = RecursiveGaussianFilter(1.0)
   rgf.apply0X(x,t)
   rgf.applyX0(t,y)
@@ -261,7 +262,7 @@ def smooth(x):
 def readImage():
   fileName = dataDir+"/seis/vg/junks.dat"
   ais = ArrayInputStream(fileName,ByteOrder.LITTLE_ENDIAN)
-  f = Array.zerofloat(n1,n2)
+  f = zerofloat(n1,n2)
   ais.readFloats(f)
   ais.close()
   return f
@@ -270,7 +271,7 @@ def makeTargetImage():
   k = 0.3
   c1 = n1/2
   c2 = n2/2
-  f = Array.zerofloat(n1,n2)
+  f = zerofloat(n1,n2)
   for i2 in range(n2):
     d2 = i2-c2
     for i1 in range(n1):
@@ -283,23 +284,23 @@ def makePlaneImage(angle):
   k = 0.3
   c = k*cos(a)
   s = k*sin(a)
-  return Array.mul(10.0,Array.sin(Array.rampfloat(0.0,c,s,n1,n2)))
+  return mul(10.0,sin(rampfloat(0.0,c,s,n1,n2)))
 
 def flip2(f):
   n1 = len(f[0])
   n2 = len(f)
-  g = Array.zerofloat(n1,n2)
+  g = zerofloat(n1,n2)
   for i2 in range(n2):
-    Array.copy(f[n2-1-i2],g[i2])
+    copy(f[n2-1-i2],g[i2])
   return g
 
 def getV(x):
   n1 = len(x[0])
   n2 = len(x)
-  v1 = Array.zerofloat(n1,n2)
-  v2 = Array.zerofloat(n1,n2)
+  v1 = zerofloat(n1,n2)
+  v2 = zerofloat(n1,n2)
   lof.applyForNormal(x,v2,v1)
-  Array.neg(v1,v1);
+  neg(v1,v1);
   return v1,v2
 
 #############################################################################

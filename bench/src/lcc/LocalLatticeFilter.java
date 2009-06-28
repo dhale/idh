@@ -37,8 +37,8 @@ public class LocalLatticeFilter {
     float[][] rp0 = new float[n2][n1];
     float[][] r0p = new float[n2][n1];
     float[][] rxx = new float[n2][n1];
-    Array.copy(x,f);
-    Array.copy(x,b);
+    ArrayMath.copy(x,f);
+    ArrayMath.copy(x,b);
     for (int k=0; k<m; ++k) {
       _lcf.setInputs(b,b);
       _lcf.correlate(0,0,r00);
@@ -46,18 +46,18 @@ public class LocalLatticeFilter {
       if (k>0) {
         _lcf.setInputs(f,f);
         _lcf.correlate(0,0,rxx);
-        Array.add(rxx,r00,r00);
+        ArrayMath.add(rxx,r00,r00);
         _lcf.correlate(1,-1,rxx);
-        Array.add(rxx,rpm,rpm);
+        ArrayMath.add(rxx,rpm,rpm);
       } else {
-        Array.mul(2.0f,r00,r00);
-        Array.mul(2.0f,rpm,rpm);
+        ArrayMath.mul(2.0f,r00,r00);
+        ArrayMath.mul(2.0f,rpm,rpm);
       }
       _lcf.setInputs(b,f);
       _lcf.correlate(1,0,rp0);
-      Array.mul(2.0f,rp0,rp0);
+      ArrayMath.mul(2.0f,rp0,rp0);
       _lcf.correlate(0,1,r0p);
-      Array.mul(2.0f,r0p,r0p);
+      ArrayMath.mul(2.0f,r0p,r0p);
       for (int i2=n2-1; i2>k; --i2) {
         for (int i1=n1-1,kc=i1*m2+k*2; i1>k; --i1,kc-=m2) {
           double b1 = rp0[i2][i1];
@@ -289,8 +289,8 @@ public class LocalLatticeFilter {
     float[][] rp0 = new float[n2][n1];
     float[][] r0p = new float[n2][n1];
     float[][] rxx = new float[n2][n1];
-    Array.copy(x,b);
-    Array.copy(x,f);
+    ArrayMath.copy(x,b);
+    ArrayMath.copy(x,f);
     for (int k=0; k<m; ++k) {
       _lcf.setInputs(b,b);
       _lcf.correlate(0,0,r00);
@@ -298,18 +298,18 @@ public class LocalLatticeFilter {
       if (k>0) {
         _lcf.setInputs(f,f);
         _lcf.correlate(0,0,rxx);
-        Array.add(rxx,r00,r00);
+        ArrayMath.add(rxx,r00,r00);
         _lcf.correlate(1,-1,rxx);
-        Array.add(rxx,rpm,rpm);
+        ArrayMath.add(rxx,rpm,rpm);
       } else {
-        Array.mul(2.0f,r00,r00);
-        Array.mul(2.0f,rpm,rpm);
+        ArrayMath.mul(2.0f,r00,r00);
+        ArrayMath.mul(2.0f,rpm,rpm);
       }
       _lcf.setInputs(b,f);
       _lcf.correlate(1,0,rp0);
-      Array.mul(2.0f,rp0,rp0);
+      ArrayMath.mul(2.0f,rp0,rp0);
       _lcf.correlate(0,1,r0p);
-      Array.mul(2.0f,r0p,r0p);
+      ArrayMath.mul(2.0f,r0p,r0p);
       for (int i2=n2-1; i2>k; --i2) {
         for (int i1=n1-1; i1>k; --i1) {
           double b1 = rp0[i2][i1];
@@ -412,8 +412,8 @@ public class LocalLatticeFilter {
     float[][] bb1 = new float[n2][n1];
     float[][] bb2 = new float[n2][n1];
     float[][][] c = new float[m][n2][n1];
-    Array.copy(x,f);
-    Array.copy(x,b);
+    ArrayMath.copy(x,f);
+    ArrayMath.copy(x,b);
     for (int k=0; k<m; ++k) {
       for (int i2=1; i2<n2; ++i2) {
         for (int i1=1; i1<n1; ++i1) {
@@ -471,8 +471,8 @@ public class LocalLatticeFilter {
     float[][] ff = new float[n2][n1];
     float[][] bb = new float[n2][n1];
     float[][][] c = new float[m][n2][n1];
-    Array.copy(x,f);
-    Array.copy(x,b);
+    ArrayMath.copy(x,f);
+    ArrayMath.copy(x,b);
     for (int k=0; k<m; ++k) {
       int k1 = (k+2)/2;
       int k2 = (k+1)/2;
@@ -516,8 +516,8 @@ public class LocalLatticeFilter {
     float[][] ff = new float[n2][n1];
     float[][] bb = new float[n2][n1];
     float[][][] c = new float[m][n2][n1];
-    Array.copy(x,f);
-    Array.copy(x,b);
+    ArrayMath.copy(x,f);
+    ArrayMath.copy(x,b);
     for (int k=0; k<m; ++k) {
       int k2 = (k+2)/2;
       int k1 = (k+1)/2;
@@ -561,8 +561,8 @@ public class LocalLatticeFilter {
     float[][] ff = new float[n2][n1];
     float[][] bb = new float[n2][n1];
     float[][][] c = new float[m][n2][n1];
-    Array.copy(x,f);
-    Array.copy(x,b);
+    ArrayMath.copy(x,f);
+    ArrayMath.copy(x,b);
     for (int k=0; k<m; ++k) {
       int k1 = (k+2)/2;
       int k2 = (k+1)/2;

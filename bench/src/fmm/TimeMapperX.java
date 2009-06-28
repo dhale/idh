@@ -327,7 +327,7 @@ public class TimeMapperX {
         isort[i] = i;
       }
     }
-    Array.quickIndexSort(tsort,isort);
+    ArrayMath.quickIndexSort(tsort,isort);
     tsort = null;
 
     // Flags for samples.

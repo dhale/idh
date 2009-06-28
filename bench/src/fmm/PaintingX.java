@@ -13,8 +13,6 @@ import static edu.mines.jtk.util.MathPlus.*;
 import java.awt.*;
 import java.awt.image.*;
 import java.io.*;
-import java.util.*;
-import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 import edu.mines.jtk.awt.*;
 import edu.mines.jtk.dsp.*;
@@ -188,7 +186,7 @@ public class PaintingX {
     _k1[i2][i1] = i1;
     _k2[i2][i1] = i2;
     _tk[i2][i1] = TIME_INVALID;
-    _vk[i2][i1] = Array.copy(v);
+    _vk[i2][i1] = ArrayMath.copy(v);
   }
 
   /**
@@ -351,7 +349,7 @@ public class PaintingX {
       // In stage 2, interpolated values are not extrapolated, and must not
       // affect other interpolated values, so we store them in a separate
       // array of values to be merged later.
-      float[] vk = Array.mul(wi,_vk[k2][k1]);
+      float[] vk = ArrayMath.mul(wi,_vk[k2][k1]);
       if (stage1) {
         _vk[k2][k1] = vk;
       } else {
@@ -737,9 +735,9 @@ public class PaintingX {
         int[] k1New = new int[2*k1List.length];
         int[] k2New = new int[2*k2List.length];
         float[] tkNew = new float[2*tkList.length];
-        Array.copy(n,k1List,k1New);
-        Array.copy(n,k2List,k2New);
-        Array.copy(n,tkList,tkNew);
+        ArrayMath.copy(n,k1List,k1New);
+        ArrayMath.copy(n,k2List,k2New);
+        ArrayMath.copy(n,tkList,tkNew);
         k1List = k1New;
         k2List = k2New;
         tkList = tkNew;
@@ -796,7 +794,7 @@ public class PaintingX {
       // march is complete. Then, when we compute the interpolated values, 
       // those values will already be referenced by all extrapolated samples
       // nearest to the interpolated sample.
-      float[] vk = _vk[k2][k1] = Array.copy(_vk[k2][k1]);
+      float[] vk = _vk[k2][k1] = ArrayMath.copy(_vk[k2][k1]);
 
       // Count of values accumulated for the interpolated sample.
       int nk = 1;
@@ -949,9 +947,9 @@ public class PaintingX {
       float[][] sv = new float[n2][n1];
       LocalOrientFilter lof = new LocalOrientFilter(sigma);
       lof.apply(x,null,u1,u2,null,null,su,sv,null);
-      float[][] sc = Array.sub(1.0f,coherence(sigma,x));
-      su = Array.mul(su,sc);
-      sv = Array.mul(sv,sc);
+      float[][] sc = ArrayMath.sub(1.0f,coherence(sigma,x));
+      su = ArrayMath.mul(su,sc);
+      sv = ArrayMath.mul(sv,sc);
       plot(su);
       for (int i2=0; i2<n2; ++i2) {
         for (int i1=0; i1<n1; ++i1) {

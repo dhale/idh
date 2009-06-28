@@ -23,9 +23,10 @@ from javax.swing import *
 from edu.mines.jtk.dsp import *
 from edu.mines.jtk.io import *
 from edu.mines.jtk.mosaic import *
-from edu.mines.jtk.util import *
 from edu.mines.jtk.sgl import *
 from edu.mines.jtk.sgl.test import *
+from edu.mines.jtk.util import *
+from edu.mines.jtk.util.ArrayMath import *
 
 from tp import *
 
@@ -77,8 +78,8 @@ def convert():
   ais = ArrayInputStream(sgyFile)
   aos = ArrayOutputStream(datFile)
   ais.skipBytes(nhead+nbhed)
-  x = Array.zeroint(n1)
-  y = Array.zerofloat(n1)
+  x = zeroint(n1)
+  y = zerofloat(n1)
   n = 0
   if missingTrace:
     j2 = 1
@@ -101,10 +102,10 @@ def convert():
 
 def display():
   ais = ArrayInputStream(datFile)
-  x = Array.zerofloat(n1,n2,n3)
+  x = zerofloat(n1,n2,n3)
   ais.readFloats(x)
   ais.close()
-  print "x min =",Array.min(x)," max =",Array.max(x)
+  print "x min =",min(x)," max =",max(x)
   s1,s2,s3 = Sampling(n1),Sampling(n2),Sampling(n3)
   ipg = ImagePanelGroup(s1,s2,s3,x)
   world = World()
@@ -117,11 +118,11 @@ def readFormat():
   ais.skipBytes(nhead)
 # floating point format code should be in bytes 3225-6
 # 1 for IBM floating point, 5 for IEEE floating point
-  h = Array.zeroshort(nbhed)
+  h = zeroshort(nbhed)
   ais.readShorts(h)
   ais.close()
   print "dump of binary header as shorts"
-  Array.dump(h)
+  dump(h)
   print "current sampling interval in usec =",h[8]
   print "original sampling interval in usec =",h[9]
   print "number of samples per trace =",h[10]
@@ -135,9 +136,9 @@ def readFormat():
     print "format =",format,"is unknown!"
 
 def testFormat():
-  xi = Array.zeroint(n1)
-  x1 = Array.zerofloat(n1)
-  x2 = Array.zerofloat(n1)
+  xi = zeroint(n1)
+  x1 = zerofloat(n1)
+  x2 = zerofloat(n1)
   ais = ArrayInputStream(sgyFile)
   ais.skipBytes(nhead+nbhed)
   ais.skipBytes(n3/2*n2*(nthed+4*n1))

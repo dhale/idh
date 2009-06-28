@@ -11,6 +11,7 @@ from edu.mines.jtk.dsp import *
 from edu.mines.jtk.io import *
 from edu.mines.jtk.mosaic import *
 from edu.mines.jtk.util import *
+from edu.mines.jtk.util.ArrayMath import *
 
 from ldf import *
 
@@ -49,17 +50,17 @@ def goInterp():
   n1,n2 = len(x[0]),len(x)
   v1,v2,ds = getV(x)
   #theta = 0.15*pi
-  #v1 = Array.fillfloat(sin(theta),n1,n2)
-  #v2 = Array.fillfloat(cos(theta),n1,n2)
-  f = Array.zerobyte(n1,n2)
-  y = Array.zerofloat(n1,n2)
-  z = Array.zerofloat(n1,n2)
+  #v1 = fillfloat(sin(theta),n1,n2)
+  #v2 = fillfloat(cos(theta),n1,n2)
+  f = zerobyte(n1,n2)
+  y = zerofloat(n1,n2)
+  z = zerofloat(n1,n2)
   #plot(x,-10,10,gray,"x")
   #for itest in [0,1,2,3]:
   for itest in [0,1,2,3]:
-    Array.zero(f);
-    Array.zero(y);
-    Array.zero(z);
+    zero(f);
+    zero(y);
+    zero(z);
     if itest<2:
       d0 = None
       d1 = None
@@ -81,11 +82,11 @@ def goInterp():
         for i1 in range(n1):
           f[i2][i1] = 1
         #y[i2] = smoothSgn(x[i2])
-        y[i2] = Array.copy(x[i2])
+        y[i2] = copy(x[i2])
       cmin = -10
       cmax = 10
       ldt = LocalDiffusionTensors2(0.01,1.0,d0,d1,v1)
-    Array.copy(y,z)
+    copy(y,z)
     small = 0.001
     niter = 1000
     lif = LocalInterpolationFilterIc(small,niter)
@@ -96,7 +97,7 @@ def goInterp():
 
 def smoothSgn(x):
   n = len(x)
-  y = Array.zerofloat(n)
+  y = zerofloat(n)
   for i in range(n):
     if x[i]<0:
       y[i] = -10
@@ -111,12 +112,12 @@ def goInterpOld():
   n1,n2 = len(x[0]),len(x)
   v1,v2,ds = getV(x)
   #theta = 0.1*pi
-  #v1 = Array.fillfloat(sin(theta),n1,n2)
-  #v2 = Array.fillfloat(cos(theta),n1,n2)
-  #ds = Array.fillfloat(1.0,n1,n2)
-  f = Array.zerobyte(n1,n2)
-  y = Array.zerofloat(n1,n2)
-  z = Array.zerofloat(n1,n2)
+  #v1 = fillfloat(sin(theta),n1,n2)
+  #v2 = fillfloat(cos(theta),n1,n2)
+  #ds = fillfloat(1.0,n1,n2)
+  f = zerobyte(n1,n2)
+  y = zerofloat(n1,n2)
+  z = zerofloat(n1,n2)
   #plot(x,-10,10,gray,"x")
   #for itest in [0,1,2,3]:
   for itest in [0]:
@@ -146,8 +147,8 @@ def goInterpOld():
     else:
       ds = makeBlock(n1,n2)
       es = makeBlock(n1,n2)
-    z1 = Array.copy(y)
-    z2 = Array.copy(y)
+    z1 = copy(y)
+    z2 = copy(y)
     lif.apply(ds,v1,f,z1)
     lif.applyLinear(ds,es,v1,f,z2)
     z2[0][n1-1] = 1.0
@@ -155,13 +156,13 @@ def goInterpOld():
     #plot(y,cmin,cmax,jet,"y"+str(itest))
     plot(z1,cmin,cmax,jet,"z1"+str(itest))
     plot(z2,cmin,cmax,jet,"z2"+str(itest))
-    #plot(Array.sub(z,y),cmin,cmax,jet)
+    #plot(sub(z,y),cmin,cmax,jet)
     #plot2(x,z,cmin,cmax,"xz"+str(itest))
 
 def readImage():
   fileName = dataDir+"/seis/vg/junks.dat"
   ais = ArrayInputStream(fileName,ByteOrder.LITTLE_ENDIAN)
-  f = Array.zerofloat(n1,n2)
+  f = zerofloat(n1,n2)
   ais.readFloats(f)
   ais.close()
   return f
@@ -169,14 +170,14 @@ def readImage():
 def getV(x):
   n1 = len(x[0])
   n2 = len(x)
-  v1 = Array.zerofloat(n1,n2)
-  v2 = Array.zerofloat(n1,n2)
-  el = Array.zerofloat(n1,n2)
+  v1 = zerofloat(n1,n2)
+  v2 = zerofloat(n1,n2)
+  el = zerofloat(n1,n2)
   lof.apply(x,None,None,None,v1,v2,None,None,el)
   return v1,v2,el
 
 def makeFault(n1,n2):
-  ds = Array.fillfloat(1.0,n1,n2);
+  ds = fillfloat(1.0,n1,n2);
   #for i2 in range(n2/3,n2):
   #  for i1 in range(n1):
   #    ds[i2][i1] = 1.0
@@ -187,7 +188,7 @@ def makeFault(n1,n2):
   return ds
 
 def makeBlock(n1,n2):
-  ds = Array.fillfloat(0.001,n1,n2);
+  ds = fillfloat(0.001,n1,n2);
   #for i2 in range(n2/3,n2):
   #  for i1 in range(n1):
   #    ds[i2][i1] = 1.0
@@ -199,9 +200,9 @@ def makeBlock(n1,n2):
 def flip2(f):
   n1 = len(f[0])
   n2 = len(f)
-  g = Array.zerofloat(n1,n2)
+  g = zerofloat(n1,n2)
   for i2 in range(n2):
-    Array.copy(f[n2-1-i2],g[i2])
+    copy(f[n2-1-i2],g[i2])
   return g
  
 #############################################################################

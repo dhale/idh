@@ -1,9 +1,6 @@
 package tp;
 
 import java.io.*;
-import java.util.*;
-import java.util.regex.*;
-import static java.lang.Math.*;
 
 import edu.mines.jtk.io.*;
 import edu.mines.jtk.util.*;
@@ -53,7 +50,7 @@ public class Horizon {
     double zdatum = Coordinates.DATUM_FT;
     double nullValue = -999.99;
     int m = 500, n = 500; // (m,n) = (inline,xline) dimensions
-    int[][] grid = Array.fillint(-1,n,m);
+    int[][] grid = ArrayMath.fillint(-1,n,m);
     int ns = 0;
     FloatList x1List = new FloatList();
     FloatList x2List = new FloatList();
