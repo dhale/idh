@@ -6,11 +6,12 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package lcc;
 
-import java.util.logging.*;
+import java.util.logging.Logger;
 
-import edu.mines.jtk.dsp.*;
+import edu.mines.jtk.dsp.DifferenceFilter;
 import edu.mines.jtk.opt.*;
-import edu.mines.jtk.util.*;
+import edu.mines.jtk.util.ArrayMath;
+import edu.mines.jtk.util.LogMonitor;
 
 /**
  * Filters displacements to minimize strain.

@@ -6,10 +6,9 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package terry;
 
-import static java.lang.Math.*;
-
-import edu.mines.jtk.dsp.*;
-import edu.mines.jtk.mosaic.*;
+import edu.mines.jtk.dsp.Sampling;
+import edu.mines.jtk.mosaic.PixelsView;
+import edu.mines.jtk.mosaic.PlotPanel;
 
 /**
  * Displays a function f(x,y;t) as a movie for sampled times t.

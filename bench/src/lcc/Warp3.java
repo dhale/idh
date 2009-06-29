@@ -1,14 +1,15 @@
 package lcc;
 
 import java.awt.*;
-import java.awt.image.*;
+import java.awt.image.IndexColorModel;
 import javax.swing.*;
 
 import edu.mines.jtk.awt.*;
 import edu.mines.jtk.dsp.*;
 import edu.mines.jtk.sgl.*;
-import edu.mines.jtk.util.*;
+import edu.mines.jtk.util.ArrayMath;
 import static edu.mines.jtk.util.MathPlus.*;
+import edu.mines.jtk.util.SimpleFloat3;
 
 public class Warp3 {
 

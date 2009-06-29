@@ -1,6 +1,6 @@
 package jss;
 
-import edu.mines.jtk.util.*;
+import edu.mines.jtk.util.ArrayMath;
 
 /**
  * Computations for apparent shifts. 

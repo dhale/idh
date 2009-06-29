@@ -6,20 +6,19 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package terry;
 
-import static java.lang.Math.*;
-
 import java.awt.*;
-import java.awt.event.*;
-import java.io.*;
+import java.awt.event.ActionEvent;
+import java.io.File;
+import static java.lang.Math.max;
+import static java.lang.Math.min;
 import java.util.Timer;
 import java.util.TimerTask;
 import javax.swing.*;
-import javax.swing.event.*;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 
-import edu.mines.jtk.awt.*;
-import edu.mines.jtk.dsp.*;
-import edu.mines.jtk.mosaic.*;
-import edu.mines.jtk.util.*;
+import edu.mines.jtk.mosaic.PlotFrame;
+import edu.mines.jtk.mosaic.PlotPanel;
 
 /**
  * Abstract base class for movies.

@@ -1,6 +1,6 @@
 package lcc;
 
-import edu.mines.jtk.dsp.*;
+import edu.mines.jtk.dsp.SincInterpolator;
 import static edu.mines.jtk.util.MathPlus.*;
 
 /**

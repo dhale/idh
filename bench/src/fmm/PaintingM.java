@@ -6,10 +6,9 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package fmm;
 
-import edu.mines.jtk.util.*;
-
-// for testing
-import edu.mines.jtk.dsp.*;
+import edu.mines.jtk.dsp.LocalSmoothingFilter;
+import edu.mines.jtk.dsp.Tensors2;
+import edu.mines.jtk.util.ArrayMath;
 
 /**
  * A 2D array of painted values, where most values are painted automatically.

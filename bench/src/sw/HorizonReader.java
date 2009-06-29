@@ -7,9 +7,10 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 package sw;
 
 import java.io.*;
-import java.util.*;
+import java.util.InputMismatchException;
+import java.util.Scanner;
 
-import edu.mines.jtk.util.*;
+import edu.mines.jtk.util.ArrayMath;
 
 /**
  * Reads horizons for sw data.

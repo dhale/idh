@@ -6,14 +6,14 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package ldf;
 
-import edu.mines.jtk.util.*;
+import edu.mines.jtk.awt.ColorMap;
+import edu.mines.jtk.mosaic.PixelsView;
+import edu.mines.jtk.mosaic.SimplePlot;
+import edu.mines.jtk.sgl.ImagePanelGroup;
+import edu.mines.jtk.sgl.World;
+import edu.mines.jtk.sgl.test.TestFrame;
+import edu.mines.jtk.util.ArrayMath;
 import static edu.mines.jtk.util.MathPlus.*;
-
-// for testing
-import edu.mines.jtk.awt.*;
-import edu.mines.jtk.mosaic.*;
-import edu.mines.jtk.sgl.*;
-import edu.mines.jtk.sgl.test.*;
 
 /**
  * Local anisotropic interpolation filter via conjugate gradient iterations.

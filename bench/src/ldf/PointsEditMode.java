@@ -12,7 +12,8 @@ import javax.swing.*;
 
 import edu.mines.jtk.awt.*;
 import edu.mines.jtk.mosaic.*;
-import edu.mines.jtk.util.*;
+import edu.mines.jtk.util.ArrayMath;
+import edu.mines.jtk.util.Check;
 
 /**
  * A mode for editing points displayed in a PointsView.

@@ -1,13 +1,15 @@
 package tp;
 
 import java.io.*;
+import static java.lang.Math.abs;
 import java.util.*;
-import java.util.regex.*;
-import static java.lang.Math.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-import edu.mines.jtk.dsp.*;
-import edu.mines.jtk.io.*;
-import edu.mines.jtk.util.*;
+import edu.mines.jtk.dsp.Sampling;
+import edu.mines.jtk.io.ArrayInputStream;
+import edu.mines.jtk.io.ArrayOutputStream;
+import edu.mines.jtk.util.Check;
 
 /**
  * A well log from Teapot Dome.

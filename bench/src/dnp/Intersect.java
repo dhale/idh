@@ -1,6 +1,7 @@
 package dnp;
 
-import edu.mines.jtk.sgl.*;
+import edu.mines.jtk.sgl.Point3;
+import edu.mines.jtk.sgl.Vector3;
 
 /*
 *		  		

@@ -7,9 +7,10 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 package fmm;
 
 import java.util.*;
-import edu.mines.jtk.awt.*;
-import edu.mines.jtk.mosaic.*;
-import edu.mines.jtk.util.*;
+
+import edu.mines.jtk.awt.ColorMap;
+import edu.mines.jtk.mosaic.PixelsView;
+import edu.mines.jtk.mosaic.SimplePlot;
 
 /**
  * Some ideas in natural-neighbor interpolation.

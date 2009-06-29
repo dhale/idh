@@ -6,8 +6,10 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package fmm;
 
-import edu.mines.jtk.dsp.*;
-import static edu.mines.jtk.util.MathPlus.*;
+import edu.mines.jtk.dsp.Sampling;
+import edu.mines.jtk.dsp.Tensors3;
+import static edu.mines.jtk.util.MathPlus.max;
+import static edu.mines.jtk.util.MathPlus.min;
 
 /**
  * A paint brush for 3D images.

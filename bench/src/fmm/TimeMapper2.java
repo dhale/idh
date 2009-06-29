@@ -6,12 +6,14 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package fmm;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Random;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.*;
-import edu.mines.jtk.dsp.*;
-import edu.mines.jtk.util.*;
-import static edu.mines.jtk.util.MathPlus.*;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import edu.mines.jtk.dsp.Tensors2;
+import static edu.mines.jtk.util.MathPlus.min;
+import static edu.mines.jtk.util.MathPlus.sqrt;
 
 /**
  * A time transform for a 2D anisotropic eikonal equation. The non-linear 

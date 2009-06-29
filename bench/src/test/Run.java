@@ -1,6 +1,6 @@
 package test;
 
-import edu.mines.jtk.util.*;
+import edu.mines.jtk.util.Stopwatch;
 
 public class Run {
   public static void main(String[] args) {

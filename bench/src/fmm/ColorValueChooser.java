@@ -8,14 +8,14 @@ package fmm;
 
 import java.awt.*;
 import java.awt.event.*;
-import java.awt.image.*;
-import java.beans.*;
-import java.util.EnumSet;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import javax.swing.*;
 
-import edu.mines.jtk.awt.*;
-import edu.mines.jtk.dsp.Sampling;
-import edu.mines.jtk.mosaic.*;
+import edu.mines.jtk.awt.ColorMap;
+import edu.mines.jtk.awt.ColorMapListener;
+import edu.mines.jtk.mosaic.ColorBar;
+import edu.mines.jtk.mosaic.Tile;
 import edu.mines.jtk.util.StringUtil;
 
 /**

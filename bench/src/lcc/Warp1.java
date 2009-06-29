@@ -1,13 +1,13 @@
 package lcc;
 
 import java.awt.*;
-import java.util.*;
+import java.util.Random;
 import javax.swing.*;
 
-import edu.mines.jtk.awt.*;
+import edu.mines.jtk.awt.ColorMap;
 import edu.mines.jtk.dsp.*;
 import edu.mines.jtk.mosaic.*;
-import edu.mines.jtk.util.*;
+import edu.mines.jtk.util.ArrayMath;
 import static edu.mines.jtk.util.MathPlus.*;
 
 public class Warp1 {

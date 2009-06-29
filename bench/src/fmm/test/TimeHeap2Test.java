@@ -6,10 +6,11 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package fmm.test;
 
-import junit.framework.*;
+import junit.framework.TestCase;
+import junit.framework.TestSuite;
 
-import fmm.TimeHeap2;
 import edu.mines.jtk.util.ArrayMath;
+import fmm.TimeHeap2;
 
 /**
  * Tests {@link fmm.TimeHeap2}.

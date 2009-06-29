@@ -1,11 +1,11 @@
 package tp;
 
-import java.io.*;
-import java.util.*;
-import java.util.Scanner;
+import java.io.FileInputStream;
+import java.io.IOException;
 import static java.lang.Math.*;
+import java.util.*;
 
-import edu.mines.jtk.util.*;
+import edu.mines.jtk.util.ArrayMath;
 
 /**
  * A directional survey from Teapot Dome.

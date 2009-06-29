@@ -6,17 +6,16 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package fmm;
 
+import java.io.IOException;
 import java.util.concurrent.*;
+import javax.swing.*;
 
-import edu.mines.jtk.util.*;
-import static edu.mines.jtk.util.MathPlus.*;
-
-// for testing
-import java.io.*;
-import javax.swing.SwingUtilities;
-
-import edu.mines.jtk.dsp.*;
-import edu.mines.jtk.io.*;
+import edu.mines.jtk.dsp.EigenTensors3;
+import edu.mines.jtk.dsp.LocalOrientFilter;
+import edu.mines.jtk.io.ArrayInputStream;
+import edu.mines.jtk.util.ArrayMath;
+import static edu.mines.jtk.util.MathPlus.sqrt;
+import edu.mines.jtk.util.Stopwatch;
 
 /**
  * A 3D array of painted values, where most values are painted automatically.

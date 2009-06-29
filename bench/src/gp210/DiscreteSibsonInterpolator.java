@@ -1,17 +1,19 @@
 package gp210;
 
 import java.awt.*;
-import java.io.*;
-import java.util.*;
-import javax.swing.SwingUtilities;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Scanner;
+import javax.swing.*;
 
-import edu.mines.jtk.awt.*;
-import edu.mines.jtk.dsp.*;
+import edu.mines.jtk.awt.ColorMap;
+import edu.mines.jtk.dsp.Sampling;
 import edu.mines.jtk.mosaic.*;
+import static edu.mines.jtk.ogl.Gl.GL_AMBIENT_AND_DIFFUSE;
 import edu.mines.jtk.sgl.*;
-import edu.mines.jtk.util.*;
 import edu.mines.jtk.sgl.test.TestFrame;
-import static edu.mines.jtk.ogl.Gl.*;
+import edu.mines.jtk.util.ArrayMath;
 
 /**
  * A simple discrete approximation of Sibson's natural neighbor interpolation.

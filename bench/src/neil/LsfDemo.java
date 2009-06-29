@@ -1,11 +1,13 @@
 package neil;
 
-import java.io.*;
+import java.io.IOException;
 import javax.swing.*;
+
 import edu.mines.jtk.dsp.*;
-import edu.mines.jtk.io.*;
-import edu.mines.jtk.mosaic.*;
-import edu.mines.jtk.util.*;
+import edu.mines.jtk.io.ArrayFile;
+import edu.mines.jtk.mosaic.PixelsView;
+import edu.mines.jtk.mosaic.SimplePlot;
+import edu.mines.jtk.util.ArrayMath;
 
 /**
  * Demonstrates use of LocalShiftFinder.

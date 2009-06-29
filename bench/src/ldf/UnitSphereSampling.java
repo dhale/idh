@@ -7,8 +7,9 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 package ldf;
 
 import static java.lang.Math.*;
-import edu.mines.jtk.util.Check;
+
 import edu.mines.jtk.util.ArrayMath;
+import edu.mines.jtk.util.Check;
 
 /**
  * A roughly uniform sampling of the unit-sphere.

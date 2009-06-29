@@ -6,9 +6,10 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package lcc;
 
-import edu.mines.jtk.dsp.*;
-import edu.mines.jtk.util.*;
-import static edu.mines.jtk.util.MathPlus.*;
+import edu.mines.jtk.dsp.RecursiveGaussianFilter;
+import edu.mines.jtk.util.ArrayMath;
+import static edu.mines.jtk.util.MathPlus.abs;
+import static edu.mines.jtk.util.MathPlus.sqrt;
 
 /**
  * Local Burg prediction error filtering for 2-D and 3-D images.

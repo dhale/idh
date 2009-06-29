@@ -1,7 +1,6 @@
 package sw;
 
-import edu.mines.jtk.dsp.*;
-import static edu.mines.jtk.util.MathPlus.*;
+import edu.mines.jtk.dsp.Sampling;
 
 /**
  * Estimates horizontal components of shifts from vertical time shifts.

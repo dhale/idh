@@ -6,18 +6,20 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package fmm;
 
+import java.awt.image.IndexColorModel;
+import java.util.ArrayList;
+import java.util.Random;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.*;
-import edu.mines.jtk.util.*;
-import static edu.mines.jtk.util.MathPlus.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
-// for testing only
-import java.awt.image.*;
-import java.util.*;
-
-import edu.mines.jtk.dsp.*;
-import edu.mines.jtk.sgl.*;
-import edu.mines.jtk.sgl.test.*;
+import edu.mines.jtk.dsp.Tensors3;
+import edu.mines.jtk.sgl.ImagePanelGroup;
+import edu.mines.jtk.sgl.World;
+import edu.mines.jtk.sgl.test.TestFrame;
+import edu.mines.jtk.util.ArrayMath;
+import static edu.mines.jtk.util.MathPlus.min;
+import static edu.mines.jtk.util.MathPlus.sqrt;
+import edu.mines.jtk.util.Stopwatch;
 
 /**
  * A solver for 3D anisotropic eikonal equations. The non-linear equations 

@@ -1,10 +1,11 @@
 package ysun;
 
-import java.io.*;
+import java.io.IOException;
+
 import edu.mines.jtk.dsp.*;
-import edu.mines.jtk.io.*;
-import edu.mines.jtk.mosaic.*;
-import edu.mines.jtk.util.*;
+import edu.mines.jtk.io.ArrayFile;
+import edu.mines.jtk.mosaic.SimplePlot;
+import edu.mines.jtk.util.ArrayMath;
 
 public class First {
   public static void main(String[] args) {

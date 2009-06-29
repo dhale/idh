@@ -6,11 +6,13 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package lcc.test;
 
-import junit.framework.*;
+import junit.framework.TestCase;
+import junit.framework.TestSuite;
+
 import edu.mines.jtk.dsp.Conv;
 import edu.mines.jtk.util.ArrayMath;
-import static edu.mines.jtk.util.MathPlus.*;
-
+import static edu.mines.jtk.util.MathPlus.FLT_EPSILON;
+import static edu.mines.jtk.util.MathPlus.abs;
 import lcc.RecursiveRectangleFilter;
 
 /**

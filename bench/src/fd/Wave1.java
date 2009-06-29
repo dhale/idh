@@ -8,10 +8,11 @@ package fd;
 
 import java.awt.*;
 import javax.swing.*;
-import edu.mines.jtk.dsp.*;
+
+import edu.mines.jtk.dsp.Sampling;
 import edu.mines.jtk.mosaic.*;
-import edu.mines.jtk.util.*;
-import static edu.mines.jtk.util.MathPlus.*;
+import edu.mines.jtk.util.ArrayMath;
+import static edu.mines.jtk.util.MathPlus.exp;
 
 /**
  * Demonstrates finite-difference approximations of the 1-D wave equation.

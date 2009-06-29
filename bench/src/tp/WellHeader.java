@@ -1,10 +1,8 @@
 package tp;
 
-import java.io.*;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.*;
-import java.util.Scanner;
-
-import edu.mines.jtk.util.*;
 
 /**
  * A well header from Teapot Dome.

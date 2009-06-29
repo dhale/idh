@@ -5,10 +5,11 @@ the Common Public License - v1.0, which accompanies this distribution, and is
 available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package ldf;
-import edu.mines.jtk.dsp.*;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
+import edu.mines.jtk.dsp.Tensors2;
+import edu.mines.jtk.dsp.Tensors3;
 import edu.mines.jtk.util.*;
 
 /**

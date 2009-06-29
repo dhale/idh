@@ -9,7 +9,8 @@ package ldf;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import edu.mines.jtk.util.*;
-import static edu.mines.jtk.util.MathPlus.*;
+import static edu.mines.jtk.util.MathPlus.max;
+import static edu.mines.jtk.util.MathPlus.min;
 
 /**
  * Local anisotropic diffusion filter via conjugate gradient iterations.

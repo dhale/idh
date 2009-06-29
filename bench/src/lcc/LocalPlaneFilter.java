@@ -6,9 +6,10 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package lcc;
 
-import edu.mines.jtk.dsp.*;
-import edu.mines.jtk.la.*;
-import edu.mines.jtk.util.*;
+import edu.mines.jtk.dsp.CausalFilter;
+import edu.mines.jtk.dsp.LocalCausalFilter;
+import edu.mines.jtk.la.TridiagonalFMatrix;
+import edu.mines.jtk.util.ArrayMath;
 import static edu.mines.jtk.util.MathPlus.*;
 
 /**

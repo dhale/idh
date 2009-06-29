@@ -8,9 +8,9 @@ package fmm;
 
 import javax.swing.*;
 
-import edu.mines.jtk.dsp.*;
-import edu.mines.jtk.mosaic.*;
-import edu.mines.jtk.util.*;
+import edu.mines.jtk.dsp.Sampling;
+import edu.mines.jtk.mosaic.SimplePlot;
+import edu.mines.jtk.util.ArrayMath;
 
 /**
  * 1D interpolation using fast marching methods.

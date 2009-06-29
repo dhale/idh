@@ -1,8 +1,11 @@
 package test;
 
-import java.io.*;
-import edu.mines.jtk.io.*;
-import edu.mines.jtk.util.*;
+import java.io.File;
+import java.io.IOException;
+
+import edu.mines.jtk.io.ArrayFile;
+import edu.mines.jtk.util.ArrayMath;
+import edu.mines.jtk.util.Stopwatch;
 
 public class IoBench {
   public static void main(String[] args) {

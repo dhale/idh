@@ -6,17 +6,17 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package ldf;
 
-import java.io.*;
+import java.io.IOException;
 
+import edu.mines.jtk.awt.ColorMap;
 import edu.mines.jtk.dsp.*;
-import edu.mines.jtk.io.*;
-import edu.mines.jtk.util.*;
+import edu.mines.jtk.io.ArrayFile;
+import edu.mines.jtk.sgl.ImagePanelGroup;
+import edu.mines.jtk.sgl.World;
+import edu.mines.jtk.sgl.test.TestFrame;
+import edu.mines.jtk.util.ArrayMath;
+import edu.mines.jtk.util.Check;
 import static edu.mines.jtk.util.MathPlus.*;
-
-// FOR EXPERIMENTS ONLY!
-import edu.mines.jtk.awt.*;
-import edu.mines.jtk.sgl.*;
-import edu.mines.jtk.sgl.test.*;
 
 /**
  * Local anisotropic diffusion filter via minimum-phase factors.

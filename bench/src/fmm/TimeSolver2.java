@@ -6,12 +6,15 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package fmm;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Random;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.*;
-import edu.mines.jtk.dsp.*;
-import edu.mines.jtk.util.*;
-import static edu.mines.jtk.util.MathPlus.*;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import edu.mines.jtk.dsp.Tensors2;
+import edu.mines.jtk.util.ArrayMath;
+import static edu.mines.jtk.util.MathPlus.min;
+import static edu.mines.jtk.util.MathPlus.sqrt;
 
 /**
  * A solver for 2D anisotropic eikonal equations. The non-linear equations 

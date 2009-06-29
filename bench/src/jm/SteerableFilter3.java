@@ -1,13 +1,14 @@
 package jm;
 
-import static java.lang.Math.*;
 import java.awt.*;
-import java.util.*;
-import javax.swing.SwingUtilities;
-import edu.mines.jtk.awt.*;
-import edu.mines.jtk.dsp.*;
+import static java.lang.Math.*;
+import java.util.Random;
+import javax.swing.*;
+
+import edu.mines.jtk.awt.ColorMap;
+import edu.mines.jtk.dsp.Sampling;
 import edu.mines.jtk.mosaic.*;
-import edu.mines.jtk.util.*;
+import edu.mines.jtk.util.ArrayMath;
 
 public class SteerableFilter3 {
 

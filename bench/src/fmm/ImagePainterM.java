@@ -8,17 +8,21 @@ package fmm;
 
 import java.awt.*;
 import java.awt.event.*;
-import java.awt.image.*;
-import java.io.*;
+import java.awt.image.IndexColorModel;
+import java.io.File;
+import java.io.IOException;
 import javax.swing.*;
-import javax.swing.event.*;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 
 import edu.mines.jtk.awt.*;
-import edu.mines.jtk.dsp.*;
-import edu.mines.jtk.io.*;
+import edu.mines.jtk.dsp.EigenTensors2;
+import edu.mines.jtk.dsp.LocalOrientFilter;
+import edu.mines.jtk.io.ArrayInputStream;
 import edu.mines.jtk.mosaic.*;
-import edu.mines.jtk.util.*;
+import edu.mines.jtk.util.ArrayMath;
 import static edu.mines.jtk.util.MathPlus.*;
+import edu.mines.jtk.util.Quantiler;
 
 /**
  * 2D interactive image-guided painting.

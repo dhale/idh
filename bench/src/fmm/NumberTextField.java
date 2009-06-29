@@ -7,7 +7,7 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 package fmm;
 
 import java.awt.*;
-import java.text.*;
+import java.text.ParseException;
 import javax.swing.*;
 import javax.swing.text.*;
 

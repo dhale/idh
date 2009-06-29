@@ -6,21 +6,20 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package fmm;
 
-import edu.mines.jtk.util.*;
-import static edu.mines.jtk.util.MathPlus.*;
-
-// for testing
 import java.awt.*;
-import java.util.*;
-import javax.swing.SwingUtilities;
-import edu.mines.jtk.awt.*;
+import java.util.Random;
+import javax.swing.*;
+
+import edu.mines.jtk.awt.ColorMap;
 import edu.mines.jtk.dsp.*;
-import edu.mines.jtk.interp.*;
-import edu.mines.jtk.mesh.*;
+import edu.mines.jtk.interp.SibsonInterpolator2;
+import edu.mines.jtk.mesh.TriMesh;
 import edu.mines.jtk.mosaic.*;
-import static edu.mines.jtk.ogl.Gl.*;
+import static edu.mines.jtk.ogl.Gl.GL_AMBIENT_AND_DIFFUSE;
 import edu.mines.jtk.sgl.*;
-import edu.mines.jtk.sgl.test.*;
+import edu.mines.jtk.sgl.test.TestFrame;
+import edu.mines.jtk.util.ArrayMath;
+import static edu.mines.jtk.util.MathPlus.*;
 
 /**
  * @author Dave Hale, Colorado School of Mines

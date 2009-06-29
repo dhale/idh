@@ -12,12 +12,13 @@ import java.io.*;
 import javax.swing.*;
 
 import edu.mines.jtk.awt.*;
-import edu.mines.jtk.dsp.*;
-import edu.mines.jtk.io.*;
-import static edu.mines.jtk.ogl.Gl.*;
+import edu.mines.jtk.dsp.EigenTensors3;
+import edu.mines.jtk.io.ArrayInputStream;
+import static edu.mines.jtk.ogl.Gl.GL_AMBIENT_AND_DIFFUSE;
 import edu.mines.jtk.sgl.*;
-import edu.mines.jtk.util.*;
-import static edu.mines.jtk.util.MathPlus.*;
+import edu.mines.jtk.util.ArrayMath;
+import static edu.mines.jtk.util.MathPlus.max;
+import static edu.mines.jtk.util.MathPlus.min;
 
 /**
  * 3D image painting using an anistropic brush shape.

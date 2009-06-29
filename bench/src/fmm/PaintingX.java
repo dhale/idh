@@ -6,18 +6,18 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package fmm;
 
-import edu.mines.jtk.util.*;
-import static edu.mines.jtk.util.MathPlus.*;
-
-// for testing
 import java.awt.*;
-import java.awt.image.*;
-import java.io.*;
-import javax.swing.SwingUtilities;
-import edu.mines.jtk.awt.*;
-import edu.mines.jtk.dsp.*;
-import edu.mines.jtk.io.*;
+import java.awt.image.IndexColorModel;
+import java.io.IOException;
+import javax.swing.*;
+
+import edu.mines.jtk.awt.ColorMap;
+import edu.mines.jtk.dsp.EigenTensors2;
+import edu.mines.jtk.dsp.LocalOrientFilter;
+import edu.mines.jtk.io.ArrayInputStream;
 import edu.mines.jtk.mosaic.*;
+import edu.mines.jtk.util.ArrayMath;
+import static edu.mines.jtk.util.MathPlus.*;
 
 /**
  * A 2D array of painted values, where most values are painted automatically.

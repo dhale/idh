@@ -6,8 +6,8 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package fmm;
 
-import edu.mines.jtk.util.Check;
 import edu.mines.jtk.util.ArrayMath;
+import edu.mines.jtk.util.Check;
 
 /**
  * A min- or max-heap of times sampled in a 3D array. 

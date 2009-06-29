@@ -6,7 +6,7 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package lcc;
 
-import edu.mines.jtk.util.*;
+import edu.mines.jtk.util.ArrayMath;
 
 /**
  * Local line filtering of images.

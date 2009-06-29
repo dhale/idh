@@ -8,12 +8,13 @@ package fmm;
 
 import java.awt.*;
 import java.awt.event.*;
-import java.awt.image.*;
+import java.awt.image.IndexColorModel;
 import java.util.EnumSet;
 import javax.swing.*;
 
-import edu.mines.jtk.awt.*;
-import edu.mines.jtk.dsp.*;
+import edu.mines.jtk.awt.ColorMap;
+import edu.mines.jtk.awt.ColorMapListener;
+import edu.mines.jtk.dsp.Sampling;
 import edu.mines.jtk.mosaic.*;
 
 /**

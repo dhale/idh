@@ -2,8 +2,9 @@ package tp;
 
 import java.io.*;
 
-import edu.mines.jtk.io.*;
-import edu.mines.jtk.util.*;
+import edu.mines.jtk.io.ArrayInputStream;
+import edu.mines.jtk.io.ArrayOutputStream;
+import edu.mines.jtk.util.ArrayMath;
 
 /**
  * A gridded horizon from Teapot Dome.

@@ -1,8 +1,9 @@
 package util;
 
 import java.nio.ByteOrder;
+
 import edu.mines.jtk.io.*;
-import edu.mines.jtk.util.*;
+import edu.mines.jtk.util.ArrayMath;
 
 public class Floats {
 

@@ -1,13 +1,13 @@
 package ivus;
 
 import java.awt.*;
-import java.awt.event.*;
-import java.io.*;
+import java.awt.event.ActionEvent;
+import java.io.IOException;
 import javax.swing.*;
 
 import edu.mines.jtk.awt.*;
-import edu.mines.jtk.dsp.*;
-import edu.mines.jtk.io.*;
+import edu.mines.jtk.dsp.Sampling;
+import edu.mines.jtk.io.ArrayFile;
 import edu.mines.jtk.sgl.*;
 import edu.mines.jtk.util.*;
 

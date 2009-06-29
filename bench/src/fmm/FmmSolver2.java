@@ -6,15 +6,17 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package fmm;
 
-import edu.mines.jtk.util.*;
-import static edu.mines.jtk.util.MathPlus.*;
+import java.awt.image.IndexColorModel;
+import javax.swing.*;
 
-// for testing
-import java.awt.image.*;
-import javax.swing.SwingUtilities;
-import edu.mines.jtk.awt.*;
-import edu.mines.jtk.dsp.*;
-import edu.mines.jtk.mosaic.*;
+import edu.mines.jtk.awt.ColorMap;
+import edu.mines.jtk.dsp.EigenTensors2;
+import edu.mines.jtk.dsp.Tensors2;
+import edu.mines.jtk.mosaic.PixelsView;
+import edu.mines.jtk.mosaic.SimplePlot;
+import edu.mines.jtk.util.ArrayMath;
+import static edu.mines.jtk.util.MathPlus.*;
+import edu.mines.jtk.util.Stopwatch;
 
 /**
  * 2D implementation of the fast marching method.

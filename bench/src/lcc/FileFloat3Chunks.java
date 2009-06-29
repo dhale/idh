@@ -6,11 +6,14 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package lcc;
 
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
 
-import edu.mines.jtk.io.*;
-import edu.mines.jtk.util.*;
-import static edu.mines.jtk.util.MathPlus.*;
+import edu.mines.jtk.io.ArrayFile;
+import edu.mines.jtk.util.ArrayMath;
+import edu.mines.jtk.util.Check;
+import static edu.mines.jtk.util.MathPlus.max;
+import static edu.mines.jtk.util.MathPlus.min;
 
 /**
  * A filter for 3-D arrays of floats in files too large to fit in memory.

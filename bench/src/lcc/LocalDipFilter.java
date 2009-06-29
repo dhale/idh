@@ -6,10 +6,12 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package lcc;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 
-import edu.mines.jtk.dsp.*;
-import edu.mines.jtk.util.*;
+import edu.mines.jtk.dsp.CausalFilter;
+import edu.mines.jtk.dsp.LocalCausalFilter;
+import edu.mines.jtk.util.ArrayMath;
 import static edu.mines.jtk.util.MathPlus.*;
 
 /**
