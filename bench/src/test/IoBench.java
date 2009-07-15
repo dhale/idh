@@ -4,8 +4,8 @@ import java.io.File;
 import java.io.IOException;
 
 import edu.mines.jtk.io.ArrayFile;
-import edu.mines.jtk.util.ArrayMath;
 import edu.mines.jtk.util.Stopwatch;
+import static edu.mines.jtk.util.ArrayMath.*;
 
 public class IoBench {
   public static void main(String[] args) {
@@ -82,7 +82,7 @@ public class IoBench {
     trace("makeFile: begin");
     try {
       ArrayFile af = new ArrayFile(name,"rw");
-      float[] a = ArrayMath.randfloat(n1);
+      float[] a = randfloat(n1);
       for (int i3=0; i3<n3; ++i3) {
         for (int i2=0; i2<n2; ++i2) {
           af.writeFloats(a);

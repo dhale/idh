@@ -16,9 +16,7 @@ import edu.mines.jtk.dsp.Tensors3;
 import edu.mines.jtk.sgl.ImagePanelGroup;
 import edu.mines.jtk.sgl.World;
 import edu.mines.jtk.sgl.test.TestFrame;
-import edu.mines.jtk.util.ArrayMath;
-import static edu.mines.jtk.util.MathPlus.min;
-import static edu.mines.jtk.util.MathPlus.sqrt;
+import static edu.mines.jtk.util.ArrayMath.*;
 import edu.mines.jtk.util.Stopwatch;
 
 /**
@@ -132,7 +130,7 @@ public class TimeSolver3 {
    * Resets all times to infinity.
    */
   public void reset() {
-    ArrayMath.fill(INFINITY,_t);
+    fill(INFINITY,_t);
   }
 
   /**
@@ -178,7 +176,7 @@ public class TimeSolver3 {
     _n2m = n2-1;
     _n3m = n3-1;
     _tensors = tensors;
-    _t = (t!=null)?t: ArrayMath.fillfloat(INFINITY,n1,n2,n3);
+    _t = (t!=null)?t:fillfloat(INFINITY,n1,n2,n3);
     _s = new Sample[n3][n2][n1];
     for (int i3=0; i3<n3; ++i3)
       for (int i2=0; i2<n2; ++i2)
@@ -772,7 +770,7 @@ public class TimeSolver3 {
     ts.zeroAt(i1,i2,i3);
     sw.stop();
     float[][][] t = ts.getTimes();
-    trace("  time="+sw.time()+" sum="+ ArrayMath.sum(t));
+    trace("  time="+sw.time()+" sum="+sum(t));
     return t;
   }
 
@@ -786,9 +784,9 @@ public class TimeSolver3 {
     int i1 = 2*(n1-1)/4, i2 = 2*(n2-1)/4, i3 = 2*(n3-1)/4;
     float[][][] ts = computeSerial(n1,n2,n3,i1,i2,i3,tensors);
     float[][][] tp = computeParallel(n1,n2,n3,i1,i2,i3,tensors);
-    float[][][] te = ArrayMath.div(ArrayMath.abs(ArrayMath.sub(tp,ts)),ts);
+    float[][][] te = div(abs(sub(tp,ts)),ts);
     te[i3][i2][i1] = 0.0f;
-    float temax = ArrayMath.max(te);
+    float temax = max(te);
     trace("temax="+temax);
     trace("********************************************************");
     //plot(ts,ColorMap.PRISM);

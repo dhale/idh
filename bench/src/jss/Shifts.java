@@ -1,7 +1,5 @@
 package jss;
 
-import edu.mines.jtk.util.ArrayMath;
-
 /**
  * Computations for apparent shifts. 
  * @author Dave Hale
@@ -17,7 +15,7 @@ public class Shifts {
   {
     int nx = ux.length;
     int nz = ux[0].length;
-    float[][] phi = ArrayMath.zerofloat(nz,nx);
+    float[][] phi = new float[nx][nz];
     for (int ix=0; ix<nx; ++ix) {
       for (int iz=1; iz<nz; ++iz) {
         phi[ix][iz] = phi[ix][iz-1]+dz*uza[ix][iz];

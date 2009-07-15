@@ -12,8 +12,8 @@ import javax.swing.*;
 
 import edu.mines.jtk.awt.*;
 import edu.mines.jtk.mosaic.*;
-import edu.mines.jtk.util.ArrayMath;
 import edu.mines.jtk.util.Check;
+import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
  * A mode for editing points displayed in a PointsView.
@@ -572,7 +572,7 @@ public class PointsEditMode extends Mode {
   private static void go() {
     int n1 = 101;
     int n2 = 101;
-    float[][] f = ArrayMath.sin(ArrayMath.rampfloat(0.0f,0.1f,0.1f,n1,n2));
+    float[][] f = sin(rampfloat(0.0f,0.1f,0.1f,n1,n2));
     float[][] x1 = new float[0][0];
     float[][] x2 = new float[0][0];
 

@@ -6,10 +6,8 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package ldf;
 
-import static java.lang.Math.*;
-
-import edu.mines.jtk.util.ArrayMath;
 import edu.mines.jtk.util.Check;
+import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
  * A roughly uniform sampling of the unit-sphere.
@@ -633,7 +631,7 @@ public class UnitSphereSampling {
       }
     }
     trace("emax="+emax);
-    ArrayMath.dump(pmax);
+    dump(pmax);
   }
   private static float func(float x, float y, float z) {
     return 0.1f*(9.0f*x*x*x-2.0f*x*x*y+3.0f*x*y*y-4.0f*y*y*y+2.0f*z*z*z-x*y*z);
@@ -657,11 +655,11 @@ public class UnitSphereSampling {
       float dc = distanceOnSphere(p,qc);
       if (i!=ia && i!=ib && i!=ic) {
         trace("d="+d+" da="+da+" db="+db+" dc="+dc);
-        ArrayMath.dump(p);
-        ArrayMath.dump(q);
-        ArrayMath.dump(qa);
-        ArrayMath.dump(qb);
-        ArrayMath.dump(qc);
+        dump(p);
+        dump(q);
+        dump(qa);
+        dump(qb);
+        dump(qc);
         assert false:"i equals ia or ib or ic";
       }
     }
@@ -681,10 +679,10 @@ public class UnitSphereSampling {
       float[] wabc = uss.getWeights(p,iabc);
       float wa = wabc[0], wb = wabc[1], wc = wabc[2];
       trace("wa="+wa+" wb="+wb+" wc="+wc);
-      ArrayMath.dump(p);
-      ArrayMath.dump(qa);
-      ArrayMath.dump(qb);
-      ArrayMath.dump(qc);
+      dump(p);
+      dump(qa);
+      dump(qb);
+      dump(qc);
     }
   }
 
@@ -711,9 +709,9 @@ public class UnitSphereSampling {
     float dmaxDegrees = (float)(dmax*180.0/PI);
     trace("npoint="+npoint+" dmax="+dmax+" degrees="+dmaxDegrees);
     trace("pmax=");
-    ArrayMath.dump(pmax);
+    dump(pmax);
     trace("qmax=");
-    ArrayMath.dump(qmax);
+    dump(qmax);
     return dmax;
   }
 

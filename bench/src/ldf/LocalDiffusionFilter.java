@@ -6,9 +6,8 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package ldf;
 
-import edu.mines.jtk.util.ArrayMath;
 import edu.mines.jtk.util.Check;
-import static edu.mines.jtk.util.MathPlus.sqrt;
+import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
  * Local anisotropic diffusion filter.
@@ -51,7 +50,7 @@ public class LocalDiffusionFilter {
     float[][] ds, float[][] v1, float[][] x, float[][] y) 
   {
     solveLinear(ds,v1,x,y);
-    ArrayMath.sub(x,y,y);
+    sub(x,y,y);
   }
 
   /**
@@ -88,7 +87,7 @@ public class LocalDiffusionFilter {
     byte[][][] is, short[][][] iw, float[][][] x, float[][][] y) 
   {
     solveLinear(is,iw,x,y);
-    ArrayMath.sub(x,y,y);
+    sub(x,y,y);
   }
 
   /**
@@ -125,7 +124,7 @@ public class LocalDiffusionFilter {
     byte[][][] is, short[][][] iu, float[][][] x, float[][][] y) 
   {
     solvePlanar(is,iu,x,y);
-    ArrayMath.sub(x,y,y);
+    sub(x,y,y);
   }
 
   /**
@@ -232,11 +231,11 @@ public class LocalDiffusionFilter {
   {
     int n1 = x[0].length;
     int n2 = x.length;
-    float dsmax = (ds!=null)? ArrayMath.max(ds):1.0f;
+    float dsmax = (ds!=null)?max(ds):1.0f;
     float ssmax = dsmax*_sigma;
     int ns = 1+(int)(ssmax*ssmax);
     float sigma = _sigma/sqrt(ns);
-    ArrayMath.copy(x,y);
+    copy(x,y);
     //float r = 0.5f*(1.0f+sqrt(2.0f/3.0f));
     //float s = 0.5f*(1.0f-sqrt(2.0f/3.0f));
     float r = 0.5f;

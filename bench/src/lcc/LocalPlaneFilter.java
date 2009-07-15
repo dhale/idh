@@ -9,8 +9,7 @@ package lcc;
 import edu.mines.jtk.dsp.CausalFilter;
 import edu.mines.jtk.dsp.LocalCausalFilter;
 import edu.mines.jtk.la.TridiagonalFMatrix;
-import edu.mines.jtk.util.ArrayMath;
-import static edu.mines.jtk.util.MathPlus.*;
+import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
  * Local plane filtering of images.
@@ -436,7 +435,7 @@ public class LocalPlaneFilter {
     for (int i2=0; i2<n2; ++i2) {
       float[] xtmp = xi20;  xi20 = xi21;  xi21 = xtmp;
       float[] yi2 = y[i2];
-      ArrayMath.copy(x[i2],xi20);
+      copy(x[i2],xi20);
       float u1i = u1[i2][0];
       float u2i = u2[i2][0];
       float v11 = 1.0f-u1i*u1i;
@@ -550,8 +549,8 @@ public class LocalPlaneFilter {
     applyInverseFoldedB0(u1[0],u2[0],x[0],y[0]);
     for (int i2=1; i2<n2; ++i2) {
       applyForwardFoldedB1(u1[i2],u2[i2],y[i2-1],r);
-      ArrayMath.sub(x[i2],r,r);
-      ArrayMath.copy(y[i2-1],y[i2]);
+      sub(x[i2],r,r);
+      copy(y[i2-1],y[i2]);
       applyInverseFoldedB0(u1[i2],u2[i2],r,y[i2]);
     }
   }
@@ -562,11 +561,11 @@ public class LocalPlaneFilter {
     float[] r = new float[n1]; // r
     float[] s = new float[n1]; // d
     float[] t = new float[n1]; // q
-    //ArrayMath.zero(y);
-    //ArrayMath.copy(x,r);
+    //zero(y);
+    //copy(x,r);
     applyForwardFoldedB0(u1,u2,y,t);
-    ArrayMath.sub(x,t,r);
-    ArrayMath.copy(r,s);
+    sub(x,t,r);
+    copy(r,s);
     float rr = dot(r,r);
     float small = rr*1.0e-12f;
     int niter;
@@ -640,9 +639,9 @@ public class LocalPlaneFilter {
     float[][] r = new float[n2][n1]; // r
     float[][] s = new float[n2][n1]; // d
     float[][] t = new float[n2][n1]; // q
-    ArrayMath.zero(y);
-    ArrayMath.copy(x,r);
-    ArrayMath.copy(r,s);
+    zero(y);
+    copy(x,r);
+    copy(r,s);
     float rr = dot(r,r);
     float small = rr*0.00001f;
     trace("small="+small);
@@ -676,8 +675,8 @@ public class LocalPlaneFilter {
     float[][] s = new float[n2][n1]; // d
     float[][] t = new float[n2][n1]; // q
     float[][] w = new float[n2][n1]; // s
-    ArrayMath.zero(y);
-    ArrayMath.copy(x,r);
+    zero(y);
+    copy(x,r);
     smf.applyInverse(r,s);
     float rr = dot(r,s);
     float small = rr*0.00001f;
@@ -711,8 +710,8 @@ public class LocalPlaneFilter {
     float[][] s = new float[n2][n1]; // d
     float[][] t = new float[n2][n1]; // q
     float[][] w = new float[n2][n1]; // s
-    ArrayMath.zero(y);
-    ArrayMath.copy(x,r);
+    zero(y);
+    copy(x,r);
     applyInverseSsor(u1,u2,r,s);
     float rr = dot(r,s);
     float small = rr*0.00001f;
@@ -873,9 +872,9 @@ public class LocalPlaneFilter {
     float[][][] r = new float[n3][n2][n1]; // r
     float[][][] s = new float[n3][n2][n1]; // d
     float[][][] t = new float[n3][n2][n1]; // q
-    ArrayMath.zero(y);
-    ArrayMath.copy(x,r);
-    ArrayMath.copy(r,s);
+    zero(y);
+    copy(x,r);
+    copy(r,s);
     float rr = dot(r,r);
     float small = rr*0.00001f;
     trace("small="+small);
@@ -943,7 +942,7 @@ public class LocalPlaneFilter {
     int n1 = x[0].length;
     int n2 = x.length;
     float u1i,u2i,um,up,umy,upy;
-    ArrayMath.copy(x,y);
+    copy(x,y);
 
     // Apply plane filter.
     for (int i2=n2-1; i2>0; --i2) {
@@ -1049,7 +1048,7 @@ public class LocalPlaneFilter {
         }
       }
       public void get(int i1, int i2, float[] a) {
-        ArrayMath.copy(_aTable[_istab][_index[i2][i1]],a);
+        copy(_aTable[_istab][_index[i2][i1]],a);
       }
       private int[][] _index;
       private int _istab;

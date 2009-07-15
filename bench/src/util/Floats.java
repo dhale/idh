@@ -3,7 +3,7 @@ package util;
 import java.nio.ByteOrder;
 
 import edu.mines.jtk.io.*;
-import edu.mines.jtk.util.ArrayMath;
+import static edu.mines.jtk.util.ArrayMath.*;
 
 public class Floats {
 
@@ -34,7 +34,7 @@ public class Floats {
           afi.seek(offset);
           if (k1o>1) {
             afi.readFloats(fi);
-            ArrayMath.copy(n1o,0,k1o,fi,0,1,fo);
+            copy(n1o,0,k1o,fi,0,1,fo);
           } else {
             afi.readFloats(fo);
           }

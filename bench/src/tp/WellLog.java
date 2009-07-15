@@ -165,6 +165,31 @@ public class WellLog {
     }
 
     /**
+     * Clips these well log data by removing all logs outside bounds.
+     * @param s2 sampling for bounds in 2nd dimension
+     * @param s3 sampling for bounds in 3rd dimension
+     */
+    public void clip(Sampling s2, Sampling s3) {
+      float f2 = (float)s2.getFirst();
+      float f3 = (float)s3.getFirst();
+      float l2 = (float)s2.getLast();
+      float l3 = (float)s3.getLast();
+      Map<Long,WellLog> data = new HashMap<Long,WellLog>();
+      for (long id:_data.keySet()) {
+        WellLog log = _data.get(id);
+        float[] x2 = log.x2;
+        float[] x3 = log.x3;
+        int n = log.n;
+        boolean ok = true;
+        for (int i=0; i<n && ok; ++i)
+          ok = f2<=x2[i] && x2[i]<=l2 && f3<=x3[i] && x3[i]<=l3;
+        if (ok)
+          data.put(id,log);
+      }
+      _data = data;
+    }
+
+    /**
      * Gets the well log for the specified well id.
      * @param id the well id.
      * @return the well log; null, if none.

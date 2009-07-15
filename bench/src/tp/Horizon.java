@@ -2,9 +2,10 @@ package tp;
 
 import java.io.*;
 
+import edu.mines.jtk.dsp.Sampling;
 import edu.mines.jtk.io.ArrayInputStream;
 import edu.mines.jtk.io.ArrayOutputStream;
-import edu.mines.jtk.util.ArrayMath;
+import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
  * A gridded horizon from Teapot Dome.
@@ -44,14 +45,17 @@ public class Horizon {
   /**
    * Reads a horizon from a text file with the specified name.
    * The file format is that used by Transform Software.
+   * The returned horizon includes only those points that lie within
+   * the specified sampling bounds.
    * @param fileName the file name.
+   * @param time true, if a time horizon; false, otherwise.
    * @return the horizon.
    */
   public static Horizon readText(String fileName, boolean time) {
     double zdatum = Coordinates.DATUM_FT;
     double nullValue = -999.99;
-    int m = 500, n = 500; // (m,n) = (inline,xline) dimensions
-    int[][] grid = ArrayMath.fillint(-1,n,m);
+    int m = 500, n = 500; // (m,n) = max (inline,xline) dimensions
+    int[][] index = fillint(-1,n,m);
     int ns = 0;
     FloatList x1List = new FloatList();
     FloatList x2List = new FloatList();
@@ -70,7 +74,7 @@ public class Horizon {
         double xe = Double.parseDouble(fields[2]);
         double yn = Double.parseDouble(fields[3]);
         double zd = Double.parseDouble(fields[4]);
-        assert grid[i][j]<0:"no duplicate samples";
+        assert index[i][j]<0:"no duplicate samples";
         if (xe==nullValue || yn==nullValue || zd==nullValue)
           continue;
         if (time) {
@@ -86,7 +90,7 @@ public class Horizon {
           x2List.add((float)csm.x2);
           x3List.add((float)csm.x3);
         }
-        grid[i][j] = ns++;
+        index[i][j] = ns++;
       }
       br.close();
     } catch (IOException e) {
@@ -100,10 +104,10 @@ public class Horizon {
     IntList icList = new IntList();
     for (int i=1; i<m; ++i) {
       for (int j=1; j<n; ++j) {
-        int imm = grid[i-1][j-1];
-        int imp = grid[i-1][j  ];
-        int ipm = grid[i  ][j-1];
-        int ipp = grid[i  ][j  ];
+        int imm = index[i-1][j-1];
+        int imp = index[i-1][j  ];
+        int ipm = index[i  ][j-1];
+        int ipp = index[i  ][j  ];
         if (imm>=0 && imp>=0 && ipm>=0 && ipp>=0) {
           iaList.add(imp); ibList.add(imm); icList.add(ipm);
           iaList.add(imp); ibList.add(ipm); icList.add(ipp);
@@ -123,6 +127,55 @@ public class Horizon {
     int[] ic = icList.trim();
     int nt = ia.length;
     return new Horizon(ns,x1,x2,x3,nt,ia,ib,ic);
+  }
+
+  /**
+   * Clips this horizon to bounds implied by the specified samplings.
+   * @param s2 sampling of CSM coordinate x2
+   * @param s3 sampling of CSM coordinate x3
+   */
+  public void clip(Sampling s2, Sampling s3) {
+    double f2 = s2.getFirst();
+    double f3 = s3.getFirst();
+    double l2 = s2.getLast();
+    double l3 = s3.getLast();
+    int[] index = fillint(-1,ns);
+    FloatList x1List = new FloatList();
+    FloatList x2List = new FloatList();
+    FloatList x3List = new FloatList();
+    int ms = 0;
+    for (int is=0; is<ns; ++is) {
+      if (f2<=x2[is] && x2[is]<=l2 &&
+          f3<=x3[is] && x3[is]<=l3) {
+        index[is] = ms++;
+        x1List.add(x1[is]);
+        x2List.add(x2[is]);
+        x3List.add(x3[is]);
+      }
+    }
+    IntList iaList = new IntList();
+    IntList ibList = new IntList();
+    IntList icList = new IntList();
+    int mt = 0;
+    for (int it=0; it<nt; ++it) {
+      int ja = index[ia[it]];
+      int jb = index[ib[it]];
+      int jc = index[ic[it]];
+      if (ja>=0 && jb>=0 && jc>=0) {
+        ++mt;
+        iaList.add(ja);
+        ibList.add(jb);
+        icList.add(jc);
+      }
+    }
+    ns = ms;
+    x1 = x1List.trim();
+    x2 = x2List.trim();
+    x3 = x3List.trim();
+    nt = mt;
+    ia = iaList.trim();
+    ib = ibList.trim();
+    ic = icList.trim();
   }
 
   /**

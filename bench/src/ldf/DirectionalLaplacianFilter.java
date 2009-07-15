@@ -9,7 +9,7 @@ package ldf;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import edu.mines.jtk.util.*;
-import static edu.mines.jtk.util.MathPlus.*;
+import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
  * Directional Laplacian filter. The Laplacian operator appears in 
@@ -580,9 +580,9 @@ public class DirectionalLaplacianFilter {
     }
     private void computeProducts(int i2) {
       if (i2<=0 || i2>=_n2) {
-        ArrayMath.zero(_cmm[i2%2]);
-        ArrayMath.zero(_cmp[i2%2]);
-        ArrayMath.zero(_cpp[i2%2]);
+        zero(_cmm[i2%2]);
+        zero(_cmp[i2%2]);
+        zero(_cpp[i2%2]);
       } else {
         float[] cmm = _cmm[i2%2];
         float[] cmp = _cmp[i2%2];
@@ -682,20 +682,20 @@ public class DirectionalLaplacianFilter {
   private static void testStencil() {
     int n1 = 5;
     int n2 = 7;
-    float[][] ds = ArrayMath.randfloat(n1,n2);
-    float[][] v1 = ArrayMath.randfloat(n1,n2);
-    float[][] x = ArrayMath.randfloat(n1,n2);
-    float[][] y = ArrayMath.zerofloat(n1,n2);
-    float[][] z = ArrayMath.zerofloat(n1,n2);
+    float[][] ds = randfloat(n1,n2);
+    float[][] v1 = randfloat(n1,n2);
+    float[][] x = randfloat(n1,n2);
+    float[][] y = zerofloat(n1,n2);
+    float[][] z = zerofloat(n1,n2);
     DirectionalLaplacianFilter dlf = new DirectionalLaplacianFilter(1.0);
     dlf.applyLinear(ds,v1,x,y);
     dlf.applyLinearStencil33Reverse(ds,v1,x,z);
     //edu.mines.jtk.mosaic.SimplePlot.asPixels(y);
     //edu.mines.jtk.mosaic.SimplePlot.asPixels(z);
-    //ArrayMath.dump(x);
-    //ArrayMath.dump(y);
-    //ArrayMath.dump(z);
-    float e = ArrayMath.max(ArrayMath.abs(ArrayMath.sub(z,y)));
+    //dump(x);
+    //dump(y);
+    //dump(z);
+    float e = max(abs(sub(z,y)));
     System.out.println("error = "+e);
   }
   private static void benchStencil() {
@@ -703,29 +703,29 @@ public class DirectionalLaplacianFilter {
     double maxtime = 2.0;
     int n1 = 1000;
     int n2 = 1000;
-    float[][] ds = ArrayMath.randfloat(n1,n2);
-    float[][] v1 = ArrayMath.randfloat(n1,n2);
-    float[][] x = ArrayMath.randfloat(n1,n2);
-    float[][] y = ArrayMath.zerofloat(n1,n2);
-    float[][] z = ArrayMath.zerofloat(n1,n2);
+    float[][] ds = randfloat(n1,n2);
+    float[][] v1 = randfloat(n1,n2);
+    float[][] x = randfloat(n1,n2);
+    float[][] y = zerofloat(n1,n2);
+    float[][] z = zerofloat(n1,n2);
     DirectionalLaplacianFilter dlf = new DirectionalLaplacianFilter(1.0);
     Stopwatch sw = new Stopwatch();
     sw.restart();
     for (napply=0; sw.time()<maxtime; ++napply) {
-      ArrayMath.zero(y);
+      zero(y);
       dlf.applyLinear(ds,v1,x,y);
     }
     sw.stop();
     System.out.println(" simple rate = "+napply/sw.time());
     sw.restart();
     for (napply=0; sw.time()<maxtime; ++napply) {
-      ArrayMath.zero(z);
+      zero(z);
       dlf.applyLinearStencil33(ds,v1,x,z);
     }
     sw.stop();
     System.out.println("stencil rate = "+napply/sw.time());
-    edu.mines.jtk.mosaic.SimplePlot.asPixels(ArrayMath.sub(z,y));
-    float e = ArrayMath.max(ArrayMath.abs(ArrayMath.sub(z,y)));
+    edu.mines.jtk.mosaic.SimplePlot.asPixels(sub(z,y));
+    float e = max(abs(sub(z,y)));
     System.out.println("error = "+e);
   }
 }

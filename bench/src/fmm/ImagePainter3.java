@@ -16,9 +16,7 @@ import edu.mines.jtk.dsp.EigenTensors3;
 import edu.mines.jtk.io.ArrayInputStream;
 import static edu.mines.jtk.ogl.Gl.GL_AMBIENT_AND_DIFFUSE;
 import edu.mines.jtk.sgl.*;
-import edu.mines.jtk.util.ArrayMath;
-import static edu.mines.jtk.util.MathPlus.max;
-import static edu.mines.jtk.util.MathPlus.min;
+import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
  * 3D image painting using an anistropic brush shape.
@@ -347,8 +345,8 @@ public class ImagePainter3 {
     int n2 = 161;
     int n3 = 357;
     float[][][] image = readImage(n1,n2,n3,"/data/seis/tp/tp3f.dat");
-    float[][][] paint = ArrayMath.fillfloat(0.0f,n1,n2,n3);
-    image = ArrayMath.add(image, ArrayMath.mul(0.001f, ArrayMath.randfloat(n1,n2,n3)));
+    float[][][] paint = fillfloat(0.0f,n1,n2,n3);
+    image = add(image,mul(0.001f,randfloat(n1,n2,n3)));
     EigenTensors3 tensors = readTensors("/data/seis/tp/et3s211.dat");
     //EigenTensors3 tensors = readTensors("/data/seis/tp/tp_et211.dat");
     ImagePainter3 ip = new ImagePainter3(image,paint,tensors);

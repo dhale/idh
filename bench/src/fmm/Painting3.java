@@ -13,8 +13,7 @@ import javax.swing.*;
 import edu.mines.jtk.dsp.EigenTensors3;
 import edu.mines.jtk.dsp.LocalOrientFilter;
 import edu.mines.jtk.io.ArrayInputStream;
-import edu.mines.jtk.util.ArrayMath;
-import static edu.mines.jtk.util.MathPlus.sqrt;
+import static edu.mines.jtk.util.ArrayMath.*;
 import edu.mines.jtk.util.Stopwatch;
 
 /**
@@ -197,7 +196,7 @@ public class Painting3 {
     _k1[i3][i2][i1] = i1;
     _k2[i3][i2][i1] = i2;
     _tk[i3][i2][i1] = TIME_INVALID;
-    _vk[i3][i2][i1] = ArrayMath.copy(v);
+    _vk[i3][i2][i1] = copy(v);
   }
 
   /**
@@ -361,7 +360,7 @@ public class Painting3 {
       // In stage 2, interpolated values are not extrapolated, and must not
       // affect other interpolated values, so we store them in a separate
       // array of values to be merged later.
-      float[] vk = ArrayMath.copy(_vk[k3][k2][k1]);
+      float[] vk = copy(_vk[k3][k2][k1]);
       if (stage1) {
         _vk[k3][k2][k1] = vk;
       } else {
@@ -1126,10 +1125,10 @@ public class Painting3 {
         int[] k2New = new int[2*k2List.length];
         int[] k3New = new int[2*k3List.length];
         float[] tkNew = new float[2*tkList.length];
-        ArrayMath.copy(n,k1List,k1New);
-        ArrayMath.copy(n,k2List,k2New);
-        ArrayMath.copy(n,k3List,k3New);
-        ArrayMath.copy(n,tkList,tkNew);
+        copy(n,k1List,k1New);
+        copy(n,k2List,k2New);
+        copy(n,k3List,k3New);
+        copy(n,tkList,tkNew);
         k1List = k1New;
         k2List = k2New;
         k3List = k3New;
@@ -1258,9 +1257,9 @@ public class Painting3 {
     s.start();
     p.extrapolate();
     s.stop();
-    float sum = ArrayMath.sum(p.getTimes());
+    float sum = sum(p.getTimes());
     trace("done: time="+s.time()+" sum="+sum);
-    //ArrayMath.dump(p.getTimes());
+    //dump(p.getTimes());
     //plot(p.getValues());
   }
 

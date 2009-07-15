@@ -16,7 +16,7 @@ import edu.mines.jtk.mosaic.*;
 import static edu.mines.jtk.ogl.Gl.GL_AMBIENT_AND_DIFFUSE;
 import edu.mines.jtk.sgl.*;
 import edu.mines.jtk.sgl.test.TestFrame;
-import edu.mines.jtk.util.ArrayMath;
+import static edu.mines.jtk.util.ArrayMath.*;
 
 public class Data {
 
@@ -51,10 +51,10 @@ public class Data {
   }
 
   private static Sampling[] makeSamplings(float[] x, float[] y) {
-    float xmin = ArrayMath.min(x);
-    float xmax = ArrayMath.max(x);
-    float ymin = ArrayMath.min(y);
-    float ymax = ArrayMath.max(y);
+    float xmin = min(x);
+    float xmax = max(x);
+    float ymin = min(y);
+    float ymax = max(y);
     int nx = 401;
     int ny = 401;
     double fx = 0.000;
@@ -136,7 +136,7 @@ public class Data {
     TriMesh.Tri triLast = null;
     float xa = 0.0f, ya = 0.0f, za = 0.0f, ax = 0.0f, ay = 0.0f;
     float xb,yb,zb,xc,yc,zc;
-    float znull = 0.5f*(ArrayMath.min(z)+ ArrayMath.max(z));
+    float znull = 0.5f*(min(z)+max(z));
     for (int iy=0; iy<ny; ++iy) {
       float yi = (float)sy.getValue(iy);
       for (int ix=0; ix<nx; ++ix) {
@@ -213,8 +213,8 @@ public class Data {
     float a =  8.0f/20.0f;
     float b = -2.0f/20.0f;
     float c = -1.0f/20.0f;
-    float zmax = ArrayMath.max(z);
-    float zmin = ArrayMath.min(z);
+    float zmax = max(z);
+    float zmin = min(z);
     float dpeps = 0.000001f*(zmax-zmin);
     float dseps = dpeps*dpeps;
     float dsmax = Float.MAX_VALUE;
@@ -315,8 +315,8 @@ public class Data {
     float[] x, float[] y, float[] z,
     Sampling sx, Sampling sy, float[][] sz)
   {
-    sz = ArrayMath.mul(0.01f,sz);
-    z = ArrayMath.mul(0.01f,z);
+    sz = mul(0.01f,sz);
+    z = mul(0.01f,z);
     PointGroup pg = makePointGroup(x,y,z);
     TriangleGroup tg = makeTriangleGroup(sx,sy,sz);
     World world = new World();
@@ -332,9 +332,9 @@ public class Data {
   private static PointGroup makePointGroup(float[] x, float[] y, float[] z) {
     int n = x.length;
     float[] xyz = new float[3*n];
-    ArrayMath.copy(n,0,1,x,0,3,xyz);
-    ArrayMath.copy(n,0,1,y,1,3,xyz);
-    ArrayMath.copy(n,0,1,z,2,3,xyz);
+    copy(n,0,1,x,0,3,xyz);
+    copy(n,0,1,y,1,3,xyz);
+    copy(n,0,1,z,2,3,xyz);
     float size = 0.01f;
     PointGroup pg = new PointGroup(size,xyz);
     StateSet states = new StateSet();
@@ -355,7 +355,7 @@ public class Data {
   private static TriangleGroup makeTriangleGroup(
     Sampling sx, Sampling sy, float[][] sz) 
   {
-    sz = ArrayMath.transpose(sz);
+    sz = transpose(sz);
     TriangleGroup tg = new TriangleGroup(true,sx,sy,sz);
     StateSet states = new StateSet();
     ColorState cs = new ColorState();

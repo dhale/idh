@@ -1,11 +1,10 @@
 package jm;
 
-import static java.lang.Math.*;
 import java.util.Random;
 
 import edu.mines.jtk.dsp.Sampling;
 import edu.mines.jtk.mosaic.SimplePlot;
-import edu.mines.jtk.util.ArrayMath;
+import static edu.mines.jtk.util.ArrayMath.*;
 
 public class SteerableFilter2 {
 
@@ -166,7 +165,7 @@ public class SteerableFilter2 {
     double stheta = 0.1*PI/180.0;
     Random r = new Random();
     int ntest = 1;
-    double[][] f = ArrayMath.sub(ArrayMath.randdouble(3,ntest),0.5);
+    double[][] f = sub(randdouble(3,ntest),0.5);
     /*
     f[0] = new double[]{1.0,1.0,1.0};
     f[1] = new double[]{1.0,0.0,0.0};

@@ -7,9 +7,8 @@ import javax.swing.*;
 import edu.mines.jtk.awt.*;
 import edu.mines.jtk.dsp.*;
 import edu.mines.jtk.sgl.*;
-import edu.mines.jtk.util.ArrayMath;
-import static edu.mines.jtk.util.MathPlus.*;
 import edu.mines.jtk.util.SimpleFloat3;
+import static edu.mines.jtk.util.ArrayMath.*;
 
 public class Warp3 {
 
@@ -40,12 +39,12 @@ public class Warp3 {
   }
 
   private float[][][] makeImage() {
-    float[][][] f = ArrayMath.sub(ArrayMath.randfloat(_n1,_n2,_n3),0.5f);
+    float[][][] f = sub(randfloat(_n1,_n2,_n3),0.5f);
     RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(1.5);
     rgf.apply0XX(f,f);
     rgf.applyX0X(f,f);
     rgf.applyXX0(f,f);
-    System.out.println("f min="+ ArrayMath.min(f)+" max="+ ArrayMath.max(f));
+    System.out.println("f min="+min(f)+" max="+max(f));
     return f;
   }
 
@@ -69,8 +68,8 @@ public class Warp3 {
     int l2 = _lmax;
     int l3 = _lmax;
     ShiftFinder _sf = new ShiftFinder(_sigma);
-    float[][][] f = ArrayMath.copy(_f);
-    float[][][] g = ArrayMath.copy(_g);
+    float[][][] f = copy(_f);
+    float[][][] g = copy(_g);
     /*{
       _sf.whiten(_f,f);
       _sf.whiten(_g,g);
@@ -83,26 +82,26 @@ public class Warp3 {
     float[][][] u2 = new float[n3][n2][n1];
     float[][][] u3 = new float[n3][n2][n1];
     float[][][] du = new float[n3][n2][n1];
-    float[][][] h = ArrayMath.copy(g);
+    float[][][] h = copy(g);
 
     for (int iter=0; iter<4; ++iter) {
       float[][][] ht;
       _sf.find1(-l1,l1,f,h,du);
-      System.out.println("1: du min="+ ArrayMath.min(du)+" max="+ ArrayMath.max(du));
+      System.out.println("1: du min="+min(du)+" max="+max(du));
       _sf.shift1(du,u1,u2,u3,h);
-      System.out.println("1: u1 min="+ ArrayMath.min(u1)+" max="+ ArrayMath.max(u1));
+      System.out.println("1: u1 min="+min(u1)+" max="+max(u1));
       _sf.find2(-l2,l2,f,h,du);
-      System.out.println("2: du min="+ ArrayMath.min(du)+" max="+ ArrayMath.max(du));
+      System.out.println("2: du min="+min(du)+" max="+max(du));
       _sf.shift2(du,u1,u2,u3,h);
-      System.out.println("2: u2 min="+ ArrayMath.min(u2)+" max="+ ArrayMath.max(u2));
+      System.out.println("2: u2 min="+min(u2)+" max="+max(u2));
       _sf.find3(-l3,l3,f,h,du);
-      System.out.println("3: du min="+ ArrayMath.min(du)+" max="+ ArrayMath.max(du));
+      System.out.println("3: du min="+min(du)+" max="+max(du));
       _sf.shift3(du,u1,u2,u3,h);
-      System.out.println("3: u3 min="+ ArrayMath.min(u3)+" max="+ ArrayMath.max(u3));
+      System.out.println("3: u3 min="+min(u3)+" max="+max(u3));
       World world = new World();
-      addSlices(world, ArrayMath.copy(u1),_d1max,ColorMap.JET);
-      addSlices(world, ArrayMath.copy(u2),_d2max,ColorMap.JET);
-      addSlices(world, ArrayMath.copy(u3),_d3max,ColorMap.JET);
+      addSlices(world,copy(u1),_d1max,ColorMap.JET);
+      addSlices(world,copy(u2),_d2max,ColorMap.JET);
+      addSlices(world,copy(u3),_d3max,ColorMap.JET);
       frame(world);
     }
   }

@@ -6,9 +6,8 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package ldf;
 
-import edu.mines.jtk.util.ArrayMath;
 import edu.mines.jtk.util.Check;
-import static edu.mines.jtk.util.MathPlus.max;
+import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
  * Local symmetric positive-definite (SPD) filter with a 3-D 19-point stencil.
@@ -369,7 +368,7 @@ public class LocalSpd19Filter {
     float xi;
 
     // Solve L*z = b.
-    ArrayMath.zero(x);
+    zero(x);
     for (i3=0,i3p=i3+1; i3<n3; ++i3,++i3p) {
       for (i2=0,i2m=i2-1,i2p=i2+1; i2<n2; ++i2,++i2m,++i2p) {
         if (0<=i2m && i2p<n2 && i3p<n3) {
@@ -590,20 +589,20 @@ public class LocalSpd19Filter {
     return l;
   }
   private static float[][][][] attemptIC0(float[][][][] a, float bias) {
-    float[][][] l000 = ArrayMath.copy(a[0]);
-    float[][][] l00p = ArrayMath.copy(a[1]);
-    float[][][] l0pm = ArrayMath.copy(a[2]);
-    float[][][] l0p0 = ArrayMath.copy(a[3]);
-    float[][][] l0pp = ArrayMath.copy(a[4]);
-    float[][][] lpm0 = ArrayMath.copy(a[5]);
-    float[][][] lp0m = ArrayMath.copy(a[6]);
-    float[][][] lp00 = ArrayMath.copy(a[7]);
-    float[][][] lp0p = ArrayMath.copy(a[8]);
-    float[][][] lpp0 = ArrayMath.copy(a[9]);
+    float[][][] l000 = copy(a[0]);
+    float[][][] l00p = copy(a[1]);
+    float[][][] l0pm = copy(a[2]);
+    float[][][] l0p0 = copy(a[3]);
+    float[][][] l0pp = copy(a[4]);
+    float[][][] lpm0 = copy(a[5]);
+    float[][][] lp0m = copy(a[6]);
+    float[][][] lp00 = copy(a[7]);
+    float[][][] lp0p = copy(a[8]);
+    float[][][] lpp0 = copy(a[9]);
     float[][][] d000 = l000; // will contain inverse of diagonal matrix D
     float[][][][] l = {l000,l00p,l0pm,l0p0,l0pp,lpm0,lp0m,lp00,lp0p,lpp0};
     if (bias>0.0f)
-      ArrayMath.mul(1.0f+bias,l000,l000);
+      mul(1.0f+bias,l000,l000);
 
     // Incomplete Cholesky decomposition, in-place.
     int n1 = a[0][0][0].length;
@@ -858,19 +857,19 @@ public class LocalSpd19Filter {
     LocalSpd19Filter lsf = new LocalSpd19Filter(s);
     //float[][] a = lsf.getMatrix();
     //edu.mines.jtk.mosaic.SimplePlot.asPixels(a);
-    float[][][] x = ArrayMath.randfloat(n1,n2,n3);
-    float[][][] y = ArrayMath.randfloat(n1,n2,n3);
-    float[][][] z = ArrayMath.randfloat(n1,n2,n3);
-    float[][][] w = ArrayMath.randfloat(n1,n2,n3);
+    float[][][] x = randfloat(n1,n2,n3);
+    float[][][] y = randfloat(n1,n2,n3);
+    float[][][] z = randfloat(n1,n2,n3);
+    float[][][] w = randfloat(n1,n2,n3);
     lsf.apply(x,y);
     lsf.applyApproximate(x,z);
     lsf.applyApproximateInverse(z,w);
-    ArrayMath.dump(x);
-    ArrayMath.dump(y);
-    ArrayMath.dump(z);
-    ArrayMath.dump(ArrayMath.sub(z,y));
-    ArrayMath.dump(w);
-    ArrayMath.dump(ArrayMath.sub(w,x));
+    dump(x);
+    dump(y);
+    dump(z);
+    dump(sub(z,y));
+    dump(w);
+    dump(sub(w,x));
   }
 
   public static void main(String[] args) {

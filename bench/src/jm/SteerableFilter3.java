@@ -1,14 +1,13 @@
 package jm;
 
 import java.awt.*;
-import static java.lang.Math.*;
 import java.util.Random;
 import javax.swing.*;
 
 import edu.mines.jtk.awt.ColorMap;
 import edu.mines.jtk.dsp.Sampling;
 import edu.mines.jtk.mosaic.*;
-import edu.mines.jtk.util.ArrayMath;
+import static edu.mines.jtk.util.ArrayMath.*;
 
 public class SteerableFilter3 {
 
@@ -574,7 +573,7 @@ public class SteerableFilter3 {
   private static void testCriticalAbc() {
     Random r = new Random();
     int ntest = 7;
-    double[][] ftests = ArrayMath.sub(ArrayMath.randdouble(6,ntest),0.5);
+    double[][] ftests = sub(randdouble(6,ntest),0.5);
     /*
     ftests[0] = new double[]{1.0,0.0,0.0,0.0,0.0,0.0};
     ftests[1] = new double[]{0.0,1.0,0.0,0.0,0.0,0.0};

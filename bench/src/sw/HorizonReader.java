@@ -10,7 +10,7 @@ import java.io.*;
 import java.util.InputMismatchException;
 import java.util.Scanner;
 
-import edu.mines.jtk.util.ArrayMath;
+import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
  * Reads horizons for sw data.
@@ -40,10 +40,10 @@ public class HorizonReader {
     float[][][] tb = readTopBase();
     float[][] t = tb[0];
     float[][] b = tb[1];
-    float tmin = ArrayMath.min(t);
-    float tmax = ArrayMath.max(t);
-    float bmin = ArrayMath.min(b);
-    float bmax = ArrayMath.max(b);
+    float tmin = min(t);
+    float tmax = max(t);
+    float bmin = min(b);
+    float bmax = max(b);
     System.out.println("tmin="+tmin+" tmax="+tmax+" bmin="+bmin+" bmax="+bmax);
   }
 
@@ -111,12 +111,12 @@ public class HorizonReader {
         }
       }
     }
-    return ArrayMath.copy(n,xyz);
+    return copy(n,xyz);
   }
 
   public static float[][][] readTopBase() {
     float[][][] tb = new float[2][NX][NY];
-    ArrayMath.fill(BOGUS,tb);
+    fill(BOGUS,tb);
     Scanner s;
     try {
       s = new Scanner(new BufferedReader(new FileReader(FILENAME)));

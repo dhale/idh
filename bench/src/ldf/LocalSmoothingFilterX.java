@@ -11,6 +11,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import edu.mines.jtk.dsp.Tensors2;
 import edu.mines.jtk.dsp.Tensors3;
 import edu.mines.jtk.util.*;
+import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
  * Local smoothing of images with tensor filter coefficients.
@@ -413,8 +414,8 @@ public class LocalSmoothingFilterX {
     int iter;
     for (iter=0; iter<_niter && delta>deltaSmall; ++iter) {
       //trace("  iter="+iter+" delta="+delta+" ratio="+delta/deltaBegin);
-      //trace("  r min="+ArrayMath.min(r)+" max="+ArrayMath.max(r));
-      //trace("  x min="+ArrayMath.min(x)+" max="+ArrayMath.max(x));
+      //trace("  r min="+min(r)+" max="+max(r));
+      //trace("  x min="+min(x)+" max="+max(x));
       a.apply(d,q);
       float dq = sdot(d,q);
       float alpha = delta/dq;
@@ -430,7 +431,7 @@ public class LocalSmoothingFilterX {
 
   // Zeros array x.
   private static void szero(float[][] x) {
-    ArrayMath.zero(x);
+    zero(x);
   }
   private static void szero(float[][][] x) {
     if (PARALLEL) {
@@ -461,7 +462,7 @@ public class LocalSmoothingFilterX {
 
   // Copys array x to array y.
   private static void scopy(float[][] x, float[][] y) {
-    ArrayMath.copy(x,y);
+    copy(x,y);
   }
   private static void scopy(float[][][] x, float[][][] y) {
     if (PARALLEL) {

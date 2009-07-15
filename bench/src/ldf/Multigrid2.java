@@ -8,10 +8,8 @@ package ldf;
 
 import edu.mines.jtk.la.DMatrix;
 import edu.mines.jtk.la.DMatrixLud;
-import edu.mines.jtk.util.ArrayMath;
 import edu.mines.jtk.util.Check;
-import static edu.mines.jtk.util.MathPlus.FLT_PI;
-import static edu.mines.jtk.util.MathPlus.sin;
+import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
  * A multigrid solver for 2-D grids. Solves Ax = b, where A is a linear
@@ -90,7 +88,7 @@ public class Multigrid2 {
     _ncycle = ncycle;
     _nafter = nafter;
 
-    // ArrayMath of operators, for the specified grid and coarser grids.
+    // Array of operators, for the specified grid and coarser grids.
     _a33s = new A33[_nlevel];
     _a33s[_nlevel-1] = a33;
     for (int ilevel=_nlevel-2; ilevel>=0; --ilevel) {
@@ -118,7 +116,7 @@ public class Multigrid2 {
    * @param x array[n2][n1] for the solution.
    */
   public float normResidual(float[][] b, float[][] x) {
-    float[][] c = ArrayMath.copy(x);
+    float[][] c = copy(x);
     apply(_a33s[_nlevel-1],x,c);
     return normError(b,c);
   }
@@ -181,9 +179,9 @@ public class Multigrid2 {
       int j2 = (i2+1)%3;
       if (_i[j2]!=i2) {
         if (0<=i2 && i2<_n2) {
-          ArrayMath.copy(_n1,0,_a[i2],1,_b[j2]);
+          copy(_n1,0,_a[i2],1,_b[j2]);
         } else {
-          ArrayMath.zero(_b[j2]);
+          zero(_b[j2]);
         }
         _i[j2] = i2;
       }
@@ -296,7 +294,7 @@ public class Multigrid2 {
       // Apply operator and compute residual.
       float[][] r = new float[n2][n1];
       apply(a33,x,r);
-      ArrayMath.sub(b,r,r);
+      sub(b,r,r);
 
       // Downsample the residual.
       int m1 = (n1+1)/2;
@@ -628,7 +626,7 @@ public class Multigrid2 {
   }
   private static void tracePixels(float[][] x) {
     if (TRACE) {
-      trace("tracePixels: min="+ ArrayMath.min(x)+" max="+ ArrayMath.max(x));
+      trace("tracePixels: min="+min(x)+" max="+max(x));
       edu.mines.jtk.mosaic.SimplePlot.asPixels(x);
       /*
       edu.mines.jtk.mosaic.SimplePlot sp =
@@ -658,10 +656,10 @@ public class Multigrid2 {
     System.out.println("testDownUpSampling: n="+n);
     int nx = n;
     int ny = (nx+1)/2;
-    float[] x = ArrayMath.randfloat(nx);
-    float[] y = ArrayMath.randfloat(ny);
-    float[] ax = ArrayMath.zerofloat(ny);
-    float[] ay = ArrayMath.zerofloat(nx);
+    float[] x = randfloat(nx);
+    float[] y = randfloat(ny);
+    float[] ax = zerofloat(ny);
+    float[] ay = zerofloat(nx);
     downsample(3.1f,x,ax);
     upsample(3.1f,y,ay);
     double xay = 0.0;
@@ -680,10 +678,10 @@ public class Multigrid2 {
     int n1y = (n1x+1)/2;
     int n2x = n2;
     int n2y = (n2x+1)/2;
-    float[][] x = ArrayMath.randfloat(n1x,n2x);
-    float[][] y = ArrayMath.randfloat(n1y,n2y);
-    float[][] ax = ArrayMath.zerofloat(n1y,n2y);
-    float[][] ay = ArrayMath.zerofloat(n1x,n2x);
+    float[][] x = randfloat(n1x,n2x);
+    float[][] y = randfloat(n1y,n2y);
+    float[][] ax = zerofloat(n1y,n2y);
+    float[][] ay = zerofloat(n1x,n2x);
     downsample(2.3f,x,ax);
     upsample(2.3f,y,ay);
     double xay = 0.0;
@@ -708,7 +706,7 @@ public class Multigrid2 {
     float[][] y = new float[n2][n1]; // exact solution
     //loadBriggs(a,y,b);
     loadSimple(a,y,b);
-    trace("y: min="+ ArrayMath.min(y)+" max="+ ArrayMath.max(y));
+    trace("y: min="+min(y)+" max="+max(y));
     tracePixels(y);
 
     A33 a33 = new Multigrid2.SimpleA33(a);

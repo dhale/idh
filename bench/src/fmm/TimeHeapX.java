@@ -6,7 +6,7 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package fmm;
 
-import edu.mines.jtk.util.ArrayMath;
+import static edu.mines.jtk.util.ArrayMath.*;
 import edu.mines.jtk.util.Check;
 
 /**
@@ -305,8 +305,8 @@ public class TimeHeapX<E extends TimeHeapX.Entry> {
     int n1 = heap.getN1();
     int n2 = heap.getN2();
     int n = n1*n2;
-    float[] s = ArrayMath.randfloat(n);
-    float[][] t = ArrayMath.reshape(n1,n2,s);
+    float[] s = randfloat(n);
+    float[][] t = reshape(n1,n2,s);
     Sample[][] sample = new Sample[n2][n1];
     for (int i2=0,i=0; i2<n2; ++i2) {
       for (int i1=0; i1<n1; ++i1,++i) {
@@ -325,9 +325,9 @@ public class TimeHeapX<E extends TimeHeapX.Entry> {
     }
     assert !heap.isEmpty();
     assert heap.size()==n;
-    ArrayMath.quickSort(s); // increasing order
+    quickSort(s); // increasing order
     if (heap.getType()==TimeHeapX.Type.MAX)
-      s = ArrayMath.reverse(s); // decreasing order
+      s = reverse(s); // decreasing order
     for (int i=0; i<n; ++i) {
       Sample si = heap.remove();
       float ti = si.t();

@@ -5,8 +5,7 @@ import javax.swing.*;
 import edu.mines.jtk.awt.ColorMap;
 import edu.mines.jtk.dsp.*;
 import edu.mines.jtk.mosaic.*;
-import edu.mines.jtk.util.ArrayMath;
-import static edu.mines.jtk.util.MathPlus.*;
+import static edu.mines.jtk.util.ArrayMath.*;
 import util.Floats;
 
 public class Warp2 {
@@ -72,11 +71,11 @@ public class Warp2 {
   }
 
   private float[][] makeImage() {
-    float[][] f = ArrayMath.mul(ArrayMath.sub(ArrayMath.randfloat(_n1,_n2),0.5f),20.0f);
+    float[][] f = mul(sub(randfloat(_n1,_n2),0.5f),20.0f);
     RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(1.5);
     rgf.apply0X(f,f);
     rgf.applyX0(f,f);
-    System.out.println("makeImage: f min="+ ArrayMath.min(f)+" max="+ ArrayMath.max(f));
+    System.out.println("makeImage: f min="+ min(f)+" max="+max(f));
     return f;
   }
 
@@ -101,8 +100,8 @@ public class Warp2 {
     int l2 = _lmax;
     ShiftFinder _sf = new ShiftFinder(_sigma);
 
-    float[][] f = ArrayMath.copy(_f);
-    float[][] g = ArrayMath.copy(_g);
+    float[][] f = copy(_f);
+    float[][] g = copy(_g);
     /*
     if (_whiten) {
       _sf.whiten(_f,f);
@@ -115,19 +114,19 @@ public class Warp2 {
     float[][] u1 = new float[n2][n1];
     float[][] u2 = new float[n2][n1];
     float[][] du = new float[n2][n1];
-    float[][] h = ArrayMath.copy(g);
+    float[][] h = copy(g);
 
-    plot(ArrayMath.sub(g,f),0.0f,null);
+    plot(sub(g,f),0.0f,null);
 
     for (int iter=0; iter<4; ++iter) {
       _sf.find1(-l1,l1,f,h,du);
-      System.out.println("1: du min="+ ArrayMath.min(du)+" max="+ ArrayMath.max(du));
+      System.out.println("1: du min="+min(du)+" max="+max(du));
       _sf.shift1(du,u1,u2,h);
-      System.out.println("1: u1 min="+ ArrayMath.min(u1)+" max="+ ArrayMath.max(u1));
+      System.out.println("1: u1 min="+min(u1)+" max="+max(u1));
       _sf.find2(-l2,l2,f,h,du);
-      System.out.println("2: du min="+ ArrayMath.min(du)+" max="+ ArrayMath.max(du));
+      System.out.println("2: du min="+min(du)+" max="+max(du));
       _sf.shift2(du,u1,u2,h);
-      System.out.println("2: u2 min="+ ArrayMath.min(u2)+" max="+ ArrayMath.max(u2));
+      System.out.println("2: u2 min="+min(u2)+" max="+max(u2));
       plotu(u1,_d1max,"u1");
       plotu(u2,_d2max,"u2");
     }
@@ -136,7 +135,7 @@ public class Warp2 {
     float[][] e2 = _disp.u2x();
     plotu(e1,_d1max,"e1");
     plotu(e2,_d2max,"e2");
-    plot(ArrayMath.sub(h,f),0.0f,null);
+    plot(sub(h,f),0.0f,null);
   }
 
   private void doLcc() {
@@ -157,7 +156,7 @@ public class Warp2 {
       for (int lag1=-l1; lag1<=l1; ++lag1) {
         _lcf.correlate(lag1,lag2,t);
         _lcf.normalize(lag1,lag2,t);
-        ArrayMath.copy(n1/m1,n2/m2,l1,l2,m1,m2,t,l1+lag1,l2+lag2,m1,m2,c);
+        copy(n1/m1,n2/m2,l1,l2,m1,m2,t,l1+lag1,l2+lag2,m1,m2,c);
         for (int k=0; k<nk; ++k) {
           ck[k][l2+lag2][l1+lag1] = t[k2[k]][k1[k]];
         }
@@ -183,9 +182,9 @@ public class Warp2 {
     int[] lag1 = {1, 0};
     int[] lag2 = {0, 1};
     lpf.applyPef(lag1,lag2,_f,t);
-    ArrayMath.copy(t,_f);
+    copy(t,_f);
     lpf.applyPef(lag1,lag2,_g,t);
-    ArrayMath.copy(t,_g);
+    copy(t,_g);
     if (_smoothAfterWhiten) { 
       rgf.apply0X(_f,_f);
       rgf.applyX0(_f,_f);

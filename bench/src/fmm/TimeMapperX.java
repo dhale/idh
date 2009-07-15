@@ -9,9 +9,7 @@ package fmm;
 import java.util.Random;
 
 import edu.mines.jtk.dsp.Tensors2;
-import edu.mines.jtk.util.ArrayMath;
-import static edu.mines.jtk.util.MathPlus.abs;
-import static edu.mines.jtk.util.MathPlus.sqrt;
+import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
  * A time transform for a 2D anisotropic eikonal equation. The non-linear 
@@ -329,7 +327,7 @@ public class TimeMapperX {
         isort[i] = i;
       }
     }
-    ArrayMath.quickIndexSort(tsort,isort);
+    quickIndexSort(tsort,isort);
     tsort = null;
 
     // Flags for samples.

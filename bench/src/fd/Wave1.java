@@ -11,8 +11,7 @@ import javax.swing.*;
 
 import edu.mines.jtk.dsp.Sampling;
 import edu.mines.jtk.mosaic.*;
-import edu.mines.jtk.util.ArrayMath;
-import static edu.mines.jtk.util.MathPlus.exp;
+import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
  * Demonstrates finite-difference approximations of the 1-D wave equation.
@@ -284,10 +283,10 @@ public class Wave1 {
       Wave1 wave1 = new Wave1(methods[imethod],dt,dx,d,v);
       for (int it=0; it<nt; ++it) {
         float[] fi = wave1.step(mt);
-        float[] ft = ArrayMath.copy(nx/2,fi);
-        float fmax = ArrayMath.max(ft);
+        float[] ft = copy(nx/2,fi);
+        float fmax = max(ft);
         System.out.println("fmax="+fmax+" fr="+fmax*rc+" ft="+fmax*tc);
-        ArrayMath.copy(fi,f[it][imethod]);
+        copy(fi,f[it][imethod]);
       }
     }
     for (int it=0; it<nt; ++it) {

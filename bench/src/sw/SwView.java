@@ -12,6 +12,7 @@ import edu.mines.jtk.io.ArrayFile;
 import static edu.mines.jtk.ogl.Gl.GL_AMBIENT_AND_DIFFUSE;
 import edu.mines.jtk.sgl.*;
 import edu.mines.jtk.util.*;
+import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
  * A frame for viewing sw data.
@@ -110,11 +111,11 @@ public class SwView extends JFrame {
     SimpleFloat3 sf3;
     try {
       ArrayFile af = new ArrayFile(DATA_DIR+fileName,"r");
-      float[][][] f = ArrayMath.zerofloat(nz,ny,nx);
+      float[][][] f = zerofloat(nz,ny,nx);
       if (bytes) {
-        byte[][][] b = ArrayMath.zerobyte(nz,ny,nx);
+        byte[][][] b = zerobyte(nz,ny,nx);
         af.readBytes(b);
-        f = ArrayMath.tofloat(b);
+        f = tofloat(b);
       } else {
         af.readFloats(f);
       }

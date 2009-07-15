@@ -7,8 +7,7 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 package ldf;
 
 import edu.mines.jtk.dsp.SincInterpolator;
-import edu.mines.jtk.util.ArrayMath;
-import static edu.mines.jtk.util.MathPlus.*;
+import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
  * Local anisotropic smoothing filter.
@@ -40,7 +39,7 @@ public class LocalSmoothingFilter {
 
   public void applyKill(float[] es, float[] x, float[] y) {
     applyPass(es,x,y);
-    ArrayMath.sub(x,y,y);
+    sub(x,y,y);
   }
 
   /**
@@ -88,7 +87,7 @@ public class LocalSmoothingFilter {
     float[][] x, float[][] y) 
   {
     applyPass(ds,es,v1,x,y);
-    ArrayMath.sub(x,y,y);
+    sub(x,y,y);
   }
 
   /**
@@ -321,7 +320,7 @@ public class LocalSmoothingFilter {
     si.setUniformSampling(n1,1.0f,0.0f);
     float[] t1 = new float[n1];
     float[] y1 = new float[n1];
-    float[] u1 = ArrayMath.rampfloat(0.0f,1.0f,n1);
+    float[] u1 = rampfloat(0.0f,1.0f,n1);
 
     // Sub-diagonal of SPD tridiagonal matrix A in array e.
     float[][] e = new float[n2][n1];

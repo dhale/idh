@@ -7,8 +7,7 @@ import javax.swing.*;
 import edu.mines.jtk.awt.ColorMap;
 import edu.mines.jtk.dsp.*;
 import edu.mines.jtk.mosaic.*;
-import edu.mines.jtk.util.ArrayMath;
-import static edu.mines.jtk.util.MathPlus.*;
+import static edu.mines.jtk.util.ArrayMath.*;
 
 public class Warp1 {
 
@@ -97,8 +96,8 @@ public class Warp1 {
   private float[] makeRandom(int n, double fl, double fh) {
 
     // Random sequence in [-1,1].
-    float[] f = ArrayMath.randfloat(new Random(314159),n);
-    f = ArrayMath.sub(ArrayMath.mul(2.0f,f),1.0f);
+    float[] f = randfloat(new Random(314159),n);
+    f = sub(mul(2.0f,f),1.0f);
 
     // Lowpass filter.
     ButterworthFilter lp = new ButterworthFilter(0.01,0.01,0.02,0.99);

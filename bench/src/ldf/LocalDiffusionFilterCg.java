@@ -9,8 +9,7 @@ package ldf;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import edu.mines.jtk.util.*;
-import static edu.mines.jtk.util.MathPlus.max;
-import static edu.mines.jtk.util.MathPlus.min;
+import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
  * Local anisotropic diffusion filter via conjugate gradient iterations.
@@ -339,7 +338,7 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
   }
 
   private static void scopy(float[][] x, float[][] y) {
-    ArrayMath.copy(x,y);
+    copy(x,y);
   }
   private static void scopy(float[][][] x, float[][][] y) {
     if (PARALLEL) {
@@ -511,8 +510,8 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
     int n1 = 100;
     int n2 = 101;
     DirectionalLaplacianFilter dlf = new DirectionalLaplacianFilter(1.0);
-    float[][] ds = ArrayMath.randfloat(n1,n2);
-    float[][] v1 = ArrayMath.randfloat(n1,n2);
+    float[][] ds = randfloat(n1,n2);
+    float[][] v1 = randfloat(n1,n2);
     Operator2 a = new LinearOperator2(dlf,ds,v1);
     Operator2 m = new LinearSsorOperator2(dlf,ds,v1);
     testSpd(n1,n2,a);
@@ -520,10 +519,10 @@ public class LocalDiffusionFilterCg extends LocalDiffusionFilter {
   }
 
   private static void testSpd(int n1, int n2, Operator2 a) {
-    float[][] x = ArrayMath.sub(ArrayMath.randfloat(n1,n2),0.5f);
-    float[][] y = ArrayMath.sub(ArrayMath.randfloat(n1,n2),0.5f);
-    float[][] ax = ArrayMath.zerofloat(n1,n2);
-    float[][] ay = ArrayMath.zerofloat(n1,n2);
+    float[][] x = sub(randfloat(n1,n2),0.5f);
+    float[][] y = sub(randfloat(n1,n2),0.5f);
+    float[][] ax = zerofloat(n1,n2);
+    float[][] ay = zerofloat(n1,n2);
     a.apply(x,ax);
     a.apply(y,ay);
     float xax = sdot(x,ax);

@@ -6,8 +6,7 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package ldf;
 
-import edu.mines.jtk.util.ArrayMath;
-import static edu.mines.jtk.util.MathPlus.sqrt;
+import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
  * Local anisotropic diffusion filtering via a multigrid method.
@@ -45,7 +44,7 @@ public class LocalDiffusionFilterMg extends LocalDiffusionFilter {
     float[][] ds, float[][] v1, float[][] x, float[][] y) 
   {
     Multigrid2.A33 a33 = makeOperator(makeInlineTensors(ds,v1));
-    ArrayMath.copy(x,y); // initial guess for output y is input x
+    copy(x,y); // initial guess for output y is input x
     solveMg(a33,x,y);
   }
 
@@ -96,14 +95,14 @@ public class LocalDiffusionFilterMg extends LocalDiffusionFilter {
     float r = 0.5f;
     float s = 0.5f;
 
-    // ArrayMath of stencil coefficients.
+    // Array of stencil coefficients.
     float[][][] a = new float[n2][n1][9];
 
     // Arrays of ones and zeros to pick out stencil coefficients.
-    // ArrayMath x00s picks out the coefficient of x[i2  ][i1  ].
-    // ArrayMath x01s picks out the coefficient of x[i2  ][i1-1].
-    // ArrayMath x10s picks out the coefficient of x[i2-1][i1  ].
-    // ArrayMath x11s picks out the coefficient of x[i2-1][i1-1].
+    // Array x00s picks out the coefficient of x[i2  ][i1  ].
+    // Array x01s picks out the coefficient of x[i2  ][i1-1].
+    // Array x10s picks out the coefficient of x[i2-1][i1  ].
+    // Array x11s picks out the coefficient of x[i2-1][i1-1].
     float[][] x00s = {{1.0f,0.0f},{0.0f,0.0f}};
     float[][] x01s = {{0.0f,1.0f},{0.0f,0.0f}};
     float[][] x10s = {{0.0f,0.0f},{1.0f,0.0f}};
@@ -163,7 +162,7 @@ public class LocalDiffusionFilterMg extends LocalDiffusionFilter {
         }
       }
     }
-    //ArrayMath.dump(a[n2/2][n1/2]);
+    //dump(a[n2/2][n1/2]);
     return new Multigrid2.SimpleA33(a);
   }
 

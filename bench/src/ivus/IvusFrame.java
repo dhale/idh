@@ -10,6 +10,7 @@ import edu.mines.jtk.dsp.Sampling;
 import edu.mines.jtk.io.ArrayFile;
 import edu.mines.jtk.sgl.*;
 import edu.mines.jtk.util.*;
+import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
  * A frame for viewing IVUS data.
@@ -95,9 +96,9 @@ public class IvusFrame extends JFrame {
       //ArrayFile af = 
       //  new ArrayFile(DATA_DIR+"FC_patient/FC_2000_2999.imgs","r");
       af.seek(175+kz*nx*ny);
-      byte[][][] b = ArrayMath.zerobyte(nx,ny,nz);
+      byte[][][] b = zerobyte(nx,ny,nz);
       af.readBytes(b);
-      float[][][] f = ArrayMath.zerofloat(nz,ny,nx);
+      float[][][] f = zerofloat(nz,ny,nx);
       for (int ix=0; ix<nx; ++ix) {
         for (int iy=0; iy<ny; ++iy) {
           for (int iz=0; iz<nz; ++iz) {

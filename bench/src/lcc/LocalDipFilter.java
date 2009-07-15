@@ -11,8 +11,7 @@ import java.util.Map;
 
 import edu.mines.jtk.dsp.CausalFilter;
 import edu.mines.jtk.dsp.LocalCausalFilter;
-import edu.mines.jtk.util.ArrayMath;
-import static edu.mines.jtk.util.MathPlus.*;
+import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
  * Local dip filtering of images. Local dip filters are linear filters
@@ -293,7 +292,7 @@ public class LocalDipFilter {
   private void applyForwardNot(
     float[][] vw, float[][] v1, float[][] x, float[][] y) 
   {
-    ArrayMath.zero(y);
+    zero(y);
     int n1 = x[0].length;
     int n2 = x.length;
     for (int i2=1; i2<n2; ++i2) {
@@ -337,7 +336,7 @@ public class LocalDipFilter {
   private void applyForwardNot(
     float sd, float sn, float[][] u2, float[][] x, float[][] y) 
   {
-    ArrayMath.zero(y);
+    zero(y);
     float aone = 1.0f+sd;
     float aeps = sn;
     int n1 = x[0].length;
@@ -423,9 +422,9 @@ public class LocalDipFilter {
     float[][] r = new float[n2][n1]; // r
     float[][] s = new float[n2][n1]; // d
     float[][] t = new float[n2][n1]; // q
-    ArrayMath.zero(y);
-    ArrayMath.copy(x,r);
-    ArrayMath.copy(r,s);
+    zero(y);
+    copy(x,r);
+    copy(r,s);
     float rr = dot(r,r);
     float stop = rr*CG_SMALL;
     trace("stop="+stop);
@@ -461,8 +460,8 @@ public class LocalDipFilter {
     float[][] s = new float[n2][n1]; // d
     float[][] t = new float[n2][n1]; // q
     float[][] w = new float[n2][n1]; // s
-    ArrayMath.zero(y);
-    ArrayMath.copy(x,r);
+    zero(y);
+    copy(x,r);
     ff.applyInverse(u2,r,s);
     float rr = dot(r,s);
     float stop = rr*CG_SMALL;
@@ -568,9 +567,9 @@ public class LocalDipFilter {
     float[][][] r = new float[n3][n2][n1]; // r
     float[][][] s = new float[n3][n2][n1]; // d
     float[][][] t = new float[n3][n2][n1]; // q
-    ArrayMath.zero(y);
-    ArrayMath.copy(x,r);
-    ArrayMath.copy(r,s);
+    zero(y);
+    copy(x,r);
+    copy(r,s);
     float rr = dot(r,r);
     float stop = rr*CG_SMALL;
     trace("stop="+stop);
@@ -629,8 +628,8 @@ public class LocalDipFilter {
         float theta = FTHETA+itheta*DTHETA;
         for (int iwidth=0; iwidth<NWIDTH; ++iwidth) {
           float width = FWIDTH+iwidth*DWIDTH;
-          ArrayMath.fill(width,w);
-          ArrayMath.fill(-sin(theta),v);
+          fill(width,w);
+          fill(-sin(theta),v);
           ldf.applyForwardNot(w,v,t,r);
           cf.factorWilsonBurg(100,0.000001f,r);
           _atable[itheta][iwidth] = cf.getA();
@@ -720,12 +719,12 @@ public class LocalDipFilter {
       for (int itheta=0; itheta<NTHETA; ++itheta) {
         float theta = FTHETA+itheta*DTHETA;
         trace("theta = "+theta*180.0f/FLT_PI);
-        ArrayMath.fill(-sin(theta),u);
+        fill(-sin(theta),u);
         ldf.applyForward(small.sd,small.sn,u,t,r);
-        //ArrayMath.dump(r);
+        //dump(r);
         cf.factorWilsonBurg(100,0.000001f,r);
         _atable[itheta] = cf.getA();
-        ArrayMath.dump(cf.getA());
+        dump(cf.getA());
       }
       _lcf = new LocalCausalFilter(lag1,lag2);
     }

@@ -6,7 +6,7 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package ldf;
 
-import edu.mines.jtk.util.ArrayMath;
+import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
  * A 3D array of diffusion tensors. Each diffusion tensor is a symmetric 
@@ -466,8 +466,8 @@ public class DiffusionTensors3 {
   }
 
   private static void checkTensors(float[] s, float[] t) {
-    ArrayMath.dump(s);
-    ArrayMath.dump(t);
+    dump(s);
+    dump(t);
     float e = 0.0f, d = 0.0f;
     e += Math.abs(s[0]-t[0]); d += Math.abs(s[0]);
     e += Math.abs(s[1]-t[1]); d += Math.abs(s[1]);

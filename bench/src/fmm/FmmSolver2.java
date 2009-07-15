@@ -14,8 +14,7 @@ import edu.mines.jtk.dsp.EigenTensors2;
 import edu.mines.jtk.dsp.Tensors2;
 import edu.mines.jtk.mosaic.PixelsView;
 import edu.mines.jtk.mosaic.SimplePlot;
-import edu.mines.jtk.util.ArrayMath;
-import static edu.mines.jtk.util.MathPlus.*;
+import static edu.mines.jtk.util.ArrayMath.*;
 import edu.mines.jtk.util.Stopwatch;
 
 /**
@@ -191,7 +190,7 @@ public class FmmSolver2 {
       _nk = 8;
     }
     if (_t==null) 
-      _t = ArrayMath.fillfloat(INFINITY,n1,n2);
+      _t = fillfloat(INFINITY,n1,n2);
     _mark = new int[_n2][_n1];
     _heap = new TimeHeap2(TimeHeap2.Type.MIN,_n1,_n2);
   }
@@ -357,7 +356,7 @@ public class FmmSolver2 {
   // testing
 
   private static void plot(float[][] x, IndexColorModel icm) {
-    float[][] y = ArrayMath.copy(x);
+    float[][] y = copy(x);
     int n1 = y[0].length;
     int n2 = y.length;
     for (int i2=0; i2<n2; ++i2) {
@@ -473,7 +472,7 @@ public class FmmSolver2 {
     fs.zeroAt(2*(n1-1)/4,2*(n2-1)/4);
     sw.stop();
     plot(fs.getTimes(),ColorMap.PRISM);
-    trace("testSine: time="+sw.time()+" tmax="+ ArrayMath.max(fs.getTimes()));
+    trace("testSine: time="+sw.time()+" tmax="+ max(fs.getTimes()));
   }
 
   private static void testWave() {
@@ -484,7 +483,7 @@ public class FmmSolver2 {
     FmmSolver2 fs = new FmmSolver2(n1,n2,stencil,tensors);
     fs.zeroAt(2*(n1-1)/4,2*(n2-1)/4);
     plot(fs.getTimes(),ColorMap.PRISM);
-    trace("testWave: tmax="+ ArrayMath.max(fs.getTimes()));
+    trace("testWave: tmax="+ max(fs.getTimes()));
   }
 
   private static void trace(String s) {

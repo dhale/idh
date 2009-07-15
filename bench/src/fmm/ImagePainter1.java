@@ -10,7 +10,7 @@ import javax.swing.*;
 
 import edu.mines.jtk.dsp.Sampling;
 import edu.mines.jtk.mosaic.SimplePlot;
-import edu.mines.jtk.util.ArrayMath;
+import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
  * 1D interpolation using fast marching methods.
@@ -20,7 +20,7 @@ import edu.mines.jtk.util.ArrayMath;
 public class ImagePainter1 {
 
   public ImagePainter1(float[] d) {
-    _d = ArrayMath.copy(d);
+    _d = copy(d);
     _nv = 1;
     _n1 = d.length;
     _dv = new float[_nv];
@@ -126,7 +126,7 @@ public class ImagePainter1 {
     _type[i1] = FIXED;
     _k1[i1] = i1;
     _tk[i1] = INFINITY;
-    _vk[i1] = ArrayMath.copy(v);
+    _vk[i1] = copy(v);
   }
 
   /**
@@ -236,7 +236,7 @@ public class ImagePainter1 {
       // have completed the computation of the interpolated values, those 
       // values will already be referenced by all extrapolated samples 
       // nearest to the interpolated sample.
-      float[] vk = ArrayMath.mul(wi,_vk[k1]);
+      float[] vk = mul(wi,_vk[k1]);
       _vk[k1] = vk;
 
       // Mark all samples as far, set the type of the interpolated sample,
@@ -420,8 +420,8 @@ public class ImagePainter1 {
     SimplePlot sp = SimplePlot.asSequence(sx,f);
     double xmin = sx.getFirst();
     double xmax = sx.getLast();
-    double fmin = ArrayMath.min(f);
-    double fmax = ArrayMath.max(f);
+    double fmin = min(f);
+    double fmax = max(f);
     double xpad = 0.05*(xmax-xmin);
     double fpad = 0.05*(fmax-fmin);
     sp.setHLimits(xmin-xpad,xmax+xpad);
@@ -431,8 +431,8 @@ public class ImagePainter1 {
   private static void plotPoints(Sampling sx, float[] f, String file) {
     double xmin = sx.getFirst();
     double xmax = sx.getLast();
-    double fmin = ArrayMath.min(f);
-    double fmax = ArrayMath.max(f);
+    double fmin = min(f);
+    double fmax = max(f);
     double xpad = 0.05*(xmax-xmin);
     double fpad = 0.05*(fmax-fmin);
     SimplePlot sp = new SimplePlot();
@@ -468,7 +468,7 @@ public class ImagePainter1 {
         plotPoints(s1,ip.getValues(),null);
         ip.extrapolate();
         plotPoints(s1,ip.getValues(),"ip1fe");
-        plotPoints(s1, ArrayMath.mul(d1,ip.getTimes()),"ip1t");
+        plotPoints(s1, mul(d1,ip.getTimes()),"ip1t");
         ip.interpolate();
         plotPoints(s1,ip.getValues(),"ip1fi");
       }

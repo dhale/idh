@@ -12,8 +12,8 @@ import javax.swing.*;
 
 import edu.mines.jtk.awt.*;
 import edu.mines.jtk.mosaic.*;
-import edu.mines.jtk.util.ArrayMath;
 import edu.mines.jtk.util.Check;
+import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
  * A mode for editing an image by drawing curves.
@@ -42,7 +42,7 @@ public class ImageEditMode extends Mode {
     setShortDescription("Edit points");
     _tile = pixels.getTile();
     _pixels = pixels;
-    ArrayMath.fill(vnull,v);
+    fill(vnull,v);
     _vnull = vnull;
     _n1 = v[0].length;
     _n2 = v.length;
@@ -314,7 +314,7 @@ public class ImageEditMode extends Mode {
   }
 
   private void updateImage() {
-    ArrayMath.fill(_vnull,_v);
+    fill(_vnull,_v);
     for (int is=0; is<_ns; ++is) {
       float[] x1 = _x1[is];
       float[] x2 = _x2[is];
@@ -657,8 +657,8 @@ public class ImageEditMode extends Mode {
   private static void go() {
     int n1 = 101;
     int n2 = 101;
-    //float[][] f = ArrayMath.sin(ArrayMath.rampfloat(0.0f,0.1f,0.1f,n1,n2));
-    float[][] f = ArrayMath.zerofloat(n1,n2);
+    //float[][] f = sin(rampfloat(0.0f,0.1f,0.1f,n1,n2));
+    float[][] f = zerofloat(n1,n2);
 
     PlotPanel.Orientation orientation = PlotPanel.Orientation.X1DOWN_X2RIGHT;
     PlotPanel panel = new PlotPanel(orientation);

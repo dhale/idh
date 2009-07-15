@@ -47,10 +47,16 @@ public class Coordinates {
   // and angle (in radians) were determined visually. DOE coordinates 
   // (x2d,x3d) and CSM coordinates (x2c,x3c) are measured in km and
   // related by:
-  //   x2d = X2DC + x2c*cos(PHIC) + x3c*sin(PHIC)
-  //   x3d = X3DC - x2c*sin(PHIC) + x3c*cos(PHIC)
-  static final double X2DC = 4.192, X3DC = 0.935; // in km
-  static final double PHIC = -0.485364; // in radians; equals -27.8093 degrees
+  //   x2d = X2DC + x2c*cos(PHIC) - x3c*sin(PHIC)
+  //   x3d = X3DC + x2c*sin(PHIC) + x3c*cos(PHIC)
+  //static final double X2DC = 4.192; // km
+  //static final double X3DC = 0.935; // km
+  //static final double PHIC = 0.485364; // radians = 27.8093 degrees
+  //static final double COSC = cos(PHIC);
+  //static final double SINC = sin(PHIC);
+  static final double X2DC =  0.039880; // km
+  static final double X3DC =  8.807096; // km
+  static final double PHIC = -1.085432; // radians = -62.1907 degrees
   static final double COSC = cos(PHIC);
   static final double SINC = sin(PHIC);
 
@@ -115,8 +121,8 @@ public class Coordinates {
       double x2c = csm.x2;
       double x3c = csm.x3;
       x1 = x1c;
-      x2 = X2DC+COSC*x2c+SINC*x3c;
-      x3 = X3DC-SINC*x2c+COSC*x3c;
+      x2 = X2DC+COSC*x2c-SINC*x3c;
+      x3 = X3DC+SINC*x2c+COSC*x3c;
     }
   }
 
@@ -138,8 +144,8 @@ public class Coordinates {
       double x2d = doe.x2-X2DC;
       double x3d = doe.x3-X3DC;
       x1 = x1d;
-      x2 = COSC*x2d-SINC*x3d;
-      x3 = SINC*x2d+COSC*x3d;
+      x2 =  COSC*x2d+SINC*x3d;
+      x3 = -SINC*x2d+COSC*x3d;
     }
     public Csm(Map map) {
       this(new Doe(map));

@@ -6,8 +6,7 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package ldf;
 
-import edu.mines.jtk.util.ArrayMath;
-import static edu.mines.jtk.util.MathPlus.*;
+import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
  * A local diffusion kernel for use in anisotropic diffusion filtering.
@@ -902,39 +901,39 @@ public class LocalDiffusionKernel {
   private static void testGetCoefficients2() {
     int n1 = 5;
     int n2 = 5;
-    float[][] x = ArrayMath.zerofloat(n1,n2);
-    //float[][] x = ArrayMath.randfloat(n1,n2);
+    float[][] x = zerofloat(n1,n2);
+    //float[][] x = randfloat(n1,n2);
     //x[0][0] = x[n2-1][0] = x[0][n1-1] = x[n2-1][n1-1] = 1.0f;
     x[n2/2][n1/2] = 1.0f;
-    float[][] y = ArrayMath.zerofloat(n1,n2);
-    float[][] z = ArrayMath.zerofloat(n1,n2);
+    float[][] y = zerofloat(n1,n2);
+    float[][] z = zerofloat(n1,n2);
     float theta = FLT_PI*0.0f/8.0f;
-    float[][] d0 = ArrayMath.fillfloat(1.0f,n1,n2);
-    float[][] d1 = ArrayMath.fillfloat(1.0f,n1,n2);
-    float[][] v1 = ArrayMath.fillfloat(sin(theta),n1,n2);
+    float[][] d0 = fillfloat(1.0f,n1,n2);
+    float[][] d1 = fillfloat(1.0f,n1,n2);
+    float[][] v1 = fillfloat(sin(theta),n1,n2);
     LocalDiffusionTensors2 ldt = new LocalDiffusionTensors2(0.0,1.0,d0,d1,v1);
     float rs = 3.0f/12.0f;
     LocalDiffusionKernel ldk = new LocalDiffusionKernel(rs);
     LocalSpd9Filter lsf = new LocalSpd9Filter(ldk.getCoefficients(ldt));
     ldk.apply(ldt,x,y);
     lsf.apply(x,z);
-    ArrayMath.dump(x);
-    ArrayMath.dump(y);
-    ArrayMath.dump(z);
-    System.out.println("error = "+ ArrayMath.sum(ArrayMath.abs(ArrayMath.sub(y,z))));
+    dump(x);
+    dump(y);
+    dump(z);
+    System.out.println("error = "+sum(abs(sub(y,z))));
   }
 
   private static void testGetCoefficients3() {
     int n1 = 5;
     int n2 = 4;
     int n3 = 3;
-    //float[][][] x = ArrayMath.randfloat(n1,n2,n3);
-    float[][][] x = ArrayMath.zerofloat(n1,n2,n3);
+    //float[][][] x = randfloat(n1,n2,n3);
+    float[][][] x = zerofloat(n1,n2,n3);
     x[n3/2][n2/2][n1/2] = 1.0f;
     //for (int i3=0; i3<n3; ++i3)
     //  x[i3][n2/2][n1/2] = 1.0f;
-    float[][][] y = ArrayMath.zerofloat(n1,n2,n3);
-    float[][][] z = ArrayMath.zerofloat(n1,n2,n3);
+    float[][][] y = zerofloat(n1,n2,n3);
+    float[][][] z = zerofloat(n1,n2,n3);
     //DiffusionTensors3 ldt = makeRandomDiffusionTensors3(n1,n2,n3);
     float theta = FLT_PI*2.0f/8.0f;
     float phi = FLT_PI*0.0f/8.0f;
@@ -944,12 +943,12 @@ public class LocalDiffusionKernel {
     LocalSpd27Filter lsf = new LocalSpd27Filter(ldk.getCoefficients(ldt));
     ldk.apply(ldt,x,y);
     lsf.apply(x,z);
-    ArrayMath.dump(x);
-    ArrayMath.dump(y);
-    ArrayMath.dump(z);
-    System.out.println("error = "+ ArrayMath.sum(ArrayMath.abs(ArrayMath.sub(y,z))));
-    System.out.println("sum y = "+ ArrayMath.sum(y));
-    System.out.println("sum z = "+ ArrayMath.sum(z));
+    dump(x);
+    dump(y);
+    dump(z);
+    System.out.println("error = "+sum(abs(sub(y,z))));
+    System.out.println("sum y = "+sum(y));
+    System.out.println("sum z = "+sum(z));
   }
 
   private static DiffusionTensors3 makeLinearDiffusionTensors3(

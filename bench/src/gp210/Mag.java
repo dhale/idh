@@ -4,7 +4,6 @@ import java.awt.*;
 import java.awt.image.IndexColorModel;
 import java.io.File;
 import java.io.IOException;
-import static java.lang.Math.*;
 import java.util.ArrayList;
 import java.util.Scanner;
 import javax.swing.*;
@@ -17,7 +16,7 @@ import edu.mines.jtk.mosaic.*;
 import static edu.mines.jtk.ogl.Gl.GL_AMBIENT_AND_DIFFUSE;
 import edu.mines.jtk.sgl.*;
 import edu.mines.jtk.sgl.test.TestFrame;
-import edu.mines.jtk.util.ArrayMath;
+import static edu.mines.jtk.util.ArrayMath.*;
 
 public class Mag {
 
@@ -105,10 +104,10 @@ public class Mag {
   }
 
   private static Sampling[] makeSamplings(float[] x, float[] y) {
-    float xmin = ArrayMath.min(x);
-    float xmax = ArrayMath.max(x);
-    float ymin = ArrayMath.min(y);
-    float ymax = ArrayMath.max(y);
+    float xmin = min(x);
+    float xmax = max(x);
+    float ymin = min(y);
+    float ymax = max(y);
     double fx = xmin;
     double fy = ymin;
     //double dx = 0.5;
@@ -131,7 +130,7 @@ public class Mag {
     int n = x.length;
     int nx = sx.getCount();
     int ny = sy.getCount();
-    float[][] zi = ArrayMath.fillfloat(-1.0f,nx,ny);
+    float[][] zi = fillfloat(-1.0f,nx,ny);
     for (int i=0; i<n; ++i) {
       int ix = sx.indexOfNearest(x[i]);
       int iy = sy.indexOfNearest(y[i]);
@@ -287,9 +286,9 @@ public class Mag {
   private static PointGroup makePointGroup(float[] x, float[] y, float[] z) {
     int n = x.length;
     float[] xyz = new float[3*n];
-    ArrayMath.copy(n,0,1,x,0,3,xyz);
-    ArrayMath.copy(n,0,1,y,1,3,xyz);
-    ArrayMath.copy(n,0,1,z,2,3,xyz);
+    copy(n,0,1,x,0,3,xyz);
+    copy(n,0,1,y,1,3,xyz);
+    copy(n,0,1,z,2,3,xyz);
     float size = 0.2f;
     PointGroup pg = new PointGroup(size,xyz);
     StateSet states = new StateSet();
@@ -310,7 +309,7 @@ public class Mag {
   private static TriangleGroup makeTriangleGroup(
     Sampling sx, Sampling sy, float[][] sz) 
   {
-    sz = ArrayMath.transpose(sz);
+    sz = transpose(sz);
     TriangleGroup tg = new TriangleGroup(true,sx,sy,sz);
     StateSet states = new StateSet();
     ColorState cs = new ColorState();
@@ -341,7 +340,7 @@ public class Mag {
   private static void interpolate() {
     float[][] data = readData();
     float[] x = data[0], y = data[1], z = data[2], g = data[3];
-    ArrayMath.mul(100.0f,z,z);
+    mul(100.0f,z,z);
     Sampling[] s = makeSamplings(x,y);
     Sampling sx = s[0], sy = s[1];
 

@@ -40,8 +40,8 @@ xul,yul = ftToKm(xul),ftToKm(yul)
 
 # CSM sampling of 3D seismic time images
 s1c = Sampling(1501,0.002,0.000)
-s2c = Sampling(161,0.025,0.000)
-s3c = Sampling(357,0.025,0.000)
+s2c = Sampling(357,0.025,0.000)
+s3c = Sampling(161,0.025,0.000)
 
 # DOE sampling of 3D seismic time images
 s1d = Sampling(1501,0.002,0.000)

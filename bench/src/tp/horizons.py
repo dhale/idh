@@ -47,8 +47,8 @@ def setGlobals(w):
   what = w
   tpDir = "/data/seis/tp/"
   tssHorizonDir = tpDir+"tss/horizons/"
-  s2 = Sampling(161,0.025,0.000)
-  s3 = Sampling(357,0.025,0.000)
+  s2 = Sampling(357,0.025,0.000)
+  s3 = Sampling(161,0.025,0.000)
   if what=="t":
     csmHorizonDir = tpDir+"csm/horizont/"
     csmSeismicImage = tpDir+"csm/seismict/tpst.dat"
@@ -63,6 +63,7 @@ def setGlobals(w):
 def makeHorizons():
   for name in horizonNames:
     h = Horizon.readText(tssHorizonDir+what+name+".txt",time)
+    h.clip(s2,s3)
     print name," ns =",h.ns," nt=",h.nt
     h.writeBinary(horizonFile(name))
 
@@ -89,7 +90,8 @@ def addHorizonGroups(world):
 
 def makeFrame(world):
   frame = TestFrame(world)
-  #view = frame.getOrbitView()
+  view = frame.getOrbitView()
+  view.setAxesOrientation(View.AxesOrientation.XRIGHT_YOUT_ZDOWN)
   #view.setAxesScale(1.0,1.0,3.0)
   #view.setScale(2.0)
   #view.setAzimuth(10.0)

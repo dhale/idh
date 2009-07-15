@@ -8,7 +8,7 @@ package fmm;
 
 import edu.mines.jtk.dsp.LocalSmoothingFilter;
 import edu.mines.jtk.dsp.Tensors2;
-import edu.mines.jtk.util.ArrayMath;
+import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
  * A 2D array of painted values, where most values are painted automatically.
@@ -142,7 +142,7 @@ public class PaintingM {
 
     // Prepare for local smoothing filter.
     float c = 0.25f;
-    float[][] s = ArrayMath.mul(_times,_times);
+    float[][] s = mul(_times,_times);
     float[][] v = new float[_n2][_n1];
     LocalSmoothingFilter lsf = new LocalSmoothingFilter(0.01,1000);
 

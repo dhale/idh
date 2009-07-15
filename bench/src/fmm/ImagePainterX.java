@@ -20,8 +20,7 @@ import edu.mines.jtk.dsp.EigenTensors2;
 import edu.mines.jtk.dsp.LocalOrientFilter;
 import edu.mines.jtk.io.ArrayInputStream;
 import edu.mines.jtk.mosaic.*;
-import edu.mines.jtk.util.ArrayMath;
-import static edu.mines.jtk.util.MathPlus.*;
+import static edu.mines.jtk.util.ArrayMath.*;
 import edu.mines.jtk.util.Quantiler;
 
 /**
@@ -476,7 +475,7 @@ public class ImagePainterX {
         sm[i2][i1] = s[1];
       }
     }
-    sm = ArrayMath.copy(m1,m2,j1,j2,ns,ns,sm);
+    sm = copy(m1,m2,j1,j2,ns,ns,sm);
     float smq = Quantiler.estimate(0.05f,sm);
     double r = 0.45*ns*sqrt(smq);
     float[][] x1 = new float[nm][nt];
@@ -559,15 +558,15 @@ public class ImagePainterX {
       float[][] sv = new float[n2][n1];
       LocalOrientFilter lof = new LocalOrientFilter(sigma);
       lof.apply(x,null,u1,u2,null,null,su,sv,null);
-      trace("su min="+ ArrayMath.min(su)+" max="+ ArrayMath.max(su));
-      trace("sv min="+ ArrayMath.min(sv)+" max="+ ArrayMath.max(sv));
-      float[][] sa = ArrayMath.pow(su,alpha);
-      float[][] sb = ArrayMath.pow(ArrayMath.div(sv,su),beta);
-      float[][] sc = ArrayMath.pow(ArrayMath.sub(1.0f,coherence(sigma,x)),gamma);
-      su = ArrayMath.mul(sa,sc);
-      sv = ArrayMath.mul(sb,su);
-      trace("su min="+ ArrayMath.min(su)+" max="+ ArrayMath.max(su));
-      trace("sv min="+ ArrayMath.min(sv)+" max="+ ArrayMath.max(sv));
+      trace("su min="+ min(su)+" max="+max(su));
+      trace("sv min="+ min(sv)+" max="+max(sv));
+      float[][] sa = pow(su,alpha);
+      float[][] sb = pow(div(sv,su),beta);
+      float[][] sc = pow(sub(1.0f,coherence(sigma,x)),gamma);
+      su = mul(sa,sc);
+      sv = mul(sb,su);
+      trace("su min="+ min(su)+" max="+max(su));
+      trace("sv min="+ min(sv)+" max="+max(sv));
       //SimplePlot.asPixels(su);
       //SimplePlot.asPixels(sv);
       for (int i2=0; i2<n2; ++i2) {

@@ -20,8 +20,7 @@ import edu.mines.jtk.dsp.EigenTensors2;
 import edu.mines.jtk.dsp.LocalOrientFilter;
 import edu.mines.jtk.io.ArrayInputStream;
 import edu.mines.jtk.mosaic.*;
-import edu.mines.jtk.util.ArrayMath;
-import static edu.mines.jtk.util.MathPlus.*;
+import static edu.mines.jtk.util.ArrayMath.*;
 import edu.mines.jtk.util.Quantiler;
 
 /**
@@ -476,7 +475,7 @@ public class ImagePainterM {
         sm[i2][i1] = s[1];
       }
     }
-    sm = ArrayMath.copy(m1,m2,j1,j2,ns,ns,sm);
+    sm = copy(m1,m2,j1,j2,ns,ns,sm);
     float smq = Quantiler.estimate(0.98f,sm);
     double r = 0.45*ns/sqrt(smq);
     float[][] x1 = new float[nm][nt];
@@ -556,16 +555,16 @@ public class ImagePainterM {
       float[][] sv = new float[n2][n1];
       LocalOrientFilter lof = new LocalOrientFilter(sigma);
       lof.apply(x,null,u1,u2,null,null,su,sv,null);
-      //trace("su min="+ArrayMath.min(su)+" max="+ArrayMath.max(su));
-      //trace("sv min="+ArrayMath.min(sv)+" max="+ArrayMath.max(sv));
-      float[][] dc = ArrayMath.pow(ArrayMath.sub(1.0f,coherence(sigma,x)),-gamma);
-      float[][] du = ArrayMath.mul(dc, ArrayMath.pow(su,-alpha));
-      float[][] dv = ArrayMath.mul(du, ArrayMath.pow(ArrayMath.div(sv,su),-beta));
-      float ds = 1.0f/ ArrayMath.max(dv);
-      du = ArrayMath.mul(ds,du);
-      dv = ArrayMath.mul(ds,dv);
-      //trace("du min="+ArrayMath.min(du)+" max="+ArrayMath.max(du));
-      //trace("dv min="+ArrayMath.min(dv)+" max="+ArrayMath.max(dv));
+      //trace("su min="+min(su)+" max="+max(su));
+      //trace("sv min="+min(sv)+" max="+max(sv));
+      float[][] dc = pow(sub(1.0f,coherence(sigma,x)),-gamma);
+      float[][] du = mul(dc,pow(su,-alpha));
+      float[][] dv = mul(du,pow(div(sv,su),-beta));
+      float ds = 1.0f/max(dv);
+      du = mul(ds,du);
+      dv = mul(ds,dv);
+      //trace("du min="+min(du)+" max="+max(du));
+      //trace("dv min="+min(dv)+" max="+max(dv));
       //SimplePlot.asPixels(du);
       //SimplePlot.asPixels(dv);
       for (int i2=0; i2<n2; ++i2) {

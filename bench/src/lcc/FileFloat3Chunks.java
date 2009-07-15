@@ -10,10 +10,8 @@ import java.io.File;
 import java.io.IOException;
 
 import edu.mines.jtk.io.ArrayFile;
-import edu.mines.jtk.util.ArrayMath;
 import edu.mines.jtk.util.Check;
-import static edu.mines.jtk.util.MathPlus.max;
-import static edu.mines.jtk.util.MathPlus.min;
+import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
  * A filter for 3-D arrays of floats in files too large to fit in memory.
@@ -147,7 +145,7 @@ public class FileFloat3Chunks {
   public void apply(Filter filter, ArrayFile[] xf, ArrayFile[] yf, int[] ip) 
     throws IOException 
   {
-    ip = (ip!=null)?ip: ArrayMath.fillint(-1,yf.length);
+    ip = (ip!=null)?ip:fillint(-1,yf.length);
     if (_m1>0) {
       apply1(filter,xf,yf,ip);
     } else if (_m2>0) {
@@ -460,9 +458,9 @@ public class FileFloat3Chunks {
     int n3, int l3, int r3) 
     throws IOException 
   {
-    float[][][] x = ArrayMath.randfloat(n1,n2,n3);
-    float[][][] y = ArrayMath.zerofloat(n1,n2,n3);
-    float[][][] z = ArrayMath.zerofloat(n1,n2,n3);
+    float[][][] x = randfloat(n1,n2,n3);
+    float[][][] y = zerofloat(n1,n2,n3);
+    float[][][] z = zerofloat(n1,n2,n3);
     TestFilter tf = new TestFilter(l1,r1,l2,r2,l3,r3);
     File xfile = null;
     File yfile = null;
@@ -480,10 +478,10 @@ public class FileFloat3Chunks {
       ff3c.apply(tf,new ArrayFile[]{xaf},new ArrayFile[]{yaf});
       yaf.seek(0);
       yaf.readFloats(y);
-      float xsum = ArrayMath.sum(x);
-      float ysum = ArrayMath.sum(y);
-      float zsum = ArrayMath.sum(z);
-      float emax = ArrayMath.max(ArrayMath.abs(ArrayMath.sub(y,z)));
+      float xsum = sum(x);
+      float ysum = sum(y);
+      float zsum = sum(z);
+      float emax = max(abs(sub(y,z)));
       System.out.println("xsum = "+xsum);
       System.out.println("ysum = "+ysum);
       System.out.println("zsum = "+zsum);

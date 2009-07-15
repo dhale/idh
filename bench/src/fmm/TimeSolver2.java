@@ -12,9 +12,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import edu.mines.jtk.dsp.Tensors2;
-import edu.mines.jtk.util.ArrayMath;
-import static edu.mines.jtk.util.MathPlus.min;
-import static edu.mines.jtk.util.MathPlus.sqrt;
+import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
  * A solver for 2D anisotropic eikonal equations. The non-linear equations 
@@ -115,7 +113,7 @@ public class TimeSolver2 {
    * Resets all times to infinity.
    */
   public void reset() {
-    ArrayMath.fill(INFINITY,_t);
+    fill(INFINITY,_t);
   }
 
   /**
@@ -159,7 +157,7 @@ public class TimeSolver2 {
     _n1m = n1-1;
     _n2m = n2-1;
     _tensors = tensors;
-    _t = (t!=null)?t: ArrayMath.fillfloat(INFINITY,n1,n2);
+    _t = (t!=null)?t:fillfloat(INFINITY,n1,n2);
     _s = new Sample[n2][n1];
     for (int i2=0; i2<n2; ++i2)
       for (int i1=0; i1<n1; ++i1)

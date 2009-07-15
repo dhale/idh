@@ -26,20 +26,20 @@ from tp import *
 def main(args):
   #process("st")
   #process("sz")
-  #process("tz")
+  process("tz")
 
 def process(what):
   setGlobals(what)
   resample()
-  display()
+  #display()
 
 doeFile,csmFile = "",""
 s1d = Sampling(2762,0.002,0.000)
 s2d = Sampling(188,0.033528,0.000) # 0.033528 km = 110 ft
 s3d = Sampling(345,0.033528,0.000)
 s1c = Sampling(2762,0.002,0.000)
-s2c = Sampling(161,0.025,0.000)
-s3c = Sampling(357,0.025,0.000)
+s2c = Sampling(357,0.025,0.000)
+s3c = Sampling(161,0.025,0.000)
 def setGlobals(what):
   global doeFile,csmFile
   global s1d,s2d,s3d # DOE sampling
@@ -53,7 +53,7 @@ def setGlobals(what):
   elif what=="sz": # seismic depth image
     doeFile = tpDir+"tss/tpszAll.dat"
     csmFile = tpDir+"csm/seismicz/tpsz.dat"
-  elif what=="tz": # seismic depth image
+  elif what=="tz": # time depth image
     doeFile = tpDir+"tss/tptzAll.dat"
     csmFile = tpDir+"csm/seismicz/tptz.dat"
   print "doeFile =",doeFile
@@ -110,6 +110,8 @@ def display():
   world = World()
   world.addChild(ipg)
   frame = TestFrame(world)
+  view = frame.getOrbitView()
+  view.setAxesOrientation(View.AxesOrientation.XRIGHT_YOUT_ZDOWN)
   frame.setVisible(True)
 
 #############################################################################

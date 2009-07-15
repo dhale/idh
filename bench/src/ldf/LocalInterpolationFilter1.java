@@ -6,7 +6,7 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package ldf;
 
-import edu.mines.jtk.util.ArrayMath;
+import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
  * Local interpolation filter via conjugate gradient iterations.
@@ -85,7 +85,7 @@ public class LocalInterpolationFilter1 {
 
   public void applyCg(float[] ds, byte[] f, float[] x) {
     int n1 = x.length;
-    float[] t = ArrayMath.neg(x);
+    float[] t = neg(x);
     float[] b = new float[n1];
     mask(0,f,t,t);
     laplacian(ds,t,b);
@@ -172,7 +172,7 @@ public class LocalInterpolationFilter1 {
           y[i1] = 0.0f;
       }
       _lsf.applyTranspose(y,y);
-      ArrayMath.sub(x,y,y);
+      sub(x,y,y);
     }
     private LocalSmoothingFilter1 _lsf;
     private byte[] _f;
@@ -211,7 +211,7 @@ public class LocalInterpolationFilter1 {
   }
 
   private static void scopy(float[] x, float[] y) {
-    ArrayMath.copy(x,y);
+    copy(x,y);
   }
 
   // Returns the dot product x'y.
