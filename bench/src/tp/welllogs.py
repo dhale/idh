@@ -44,7 +44,9 @@ def main(args):
   #viewWellCurves("deep","density")
   #viewWellCurves("deep","gamma")
   #viewWellCurves("deep","porosity")
+  #viewWellsWithSeismic("all","velocity")
   #viewWellsWithSeismic("deep","velocity")
+  viewWellsWithSeismic("all","gamma")
   #viewWellsWithSeismic("deep","gamma")
   viewElevations("deep")
 
@@ -224,7 +226,9 @@ def viewWellsWithSeismic(what,curve):
   frame.setVisible(True)
 
 def addWellGroups(world,wdata,curve):
-  for log in wdata.getLogsWith(curve):
+  logs = wdata.getLogsWith(curve)
+  print "number of logs =",len(logs)
+  for log in logs:
     pg = makePointGroup(log)
     world.addChild(pg)
 
