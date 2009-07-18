@@ -13,6 +13,160 @@
 #content()
 
 <h3>
+Image-guided blended neighbor interpolation of scattered data
+</h3>
+<dl class="img first">
+  <dt><img src="${base}/images/SectionInterp.png" 
+       width="200" alt=""/>
+  </dt>
+  <dd>
+    A condensed SEG Expanded Abstract of 
+    <a href="#igbni">the following report</a>.
+  </dd>
+  <dd>
+    <a href="http://www.mines.edu/~dhale">Hale</a>, D.,
+    2009,
+    <cite>
+      79th Annual International Meeting, 
+      Society of Exploration Geophysicists.
+    </cite>
+  </dd>
+  <dd>
+    <a
+    href="${base}/papers/Hale09ImageGuidedBlendedNeighborInterpolationOfScatteredData.pdf">
+      [Expanded Abstract]
+    </a>
+  </dd>
+</dl>
+
+<h3>
+<a name="igbni"></a>
+Image-guided blended neighbor interpolation
+</h3>
+<dl class="img first">
+  <dt><img src="${base}/images/ChannelsInterp.png" 
+       width="200" alt=""/>
+  </dt>
+  <dd>
+    Uniformly sampled images are often used to interpolate other data acquired 
+    more sparsely with an entirely different mode of measurement.
+    For example, downhole tools enable geophysical properties to be measured
+    with high precision near boreholes that are scattered spatially, 
+    and less precise seismic images acquired at the earth's surface are used 
+    to interpolate those properties at locations far away from the boreholes.
+    <em>Image-guided interpolation</em> is designed specifically to enhance 
+    this process.
+  </dd>
+  <dd>
+    Most existing methods for interpolation require distances from points
+    where data will be interpolated to nearby points where data are known.
+    Image-guided interpolation requires non-Euclidean distances in metric 
+    tensor fields that represent the coherence, orientations and shapes
+    of features in images.
+    This requirement leads to a new method for interpolating scattered data 
+    that I call <em>blended neighbor interpolation</em>.
+    For simple Euclidean distances, blended neighbor interpolation resembles 
+    the classic natural neighbor interpolation.
+  </dd>
+  <dd>
+    <a href="http://www.mines.edu/~dhale">Hale</a>, D.,
+    2009,
+    <cite>
+      CWP Report 634.
+    </cite>
+  </dd>
+  <dd>
+    <a href="${base}/papers/Hale09ImageGuidedBlendedNeighborInterpolation.pdf">
+      [Report]
+    </a>
+  </dd>
+</dl>
+
+<h3>
+Structure-oriented smoothing and semblance
+</h3>
+<dl class="img first">
+  <dt><img src="${base}/images/StructureOrientedSemblance.png" 
+       width="200" alt=""/>
+  </dt>
+  <dd>
+    Smoothing along structures apparent in seismic images can enhance these 
+    structural features while preserving important discontinuities such as 
+    faults or channels.
+    Filters appropriate for such smoothing must seamlessly adapt to 
+    variations in the orientation and coherence of image features.
+    I describe an implementation of smoothing filters that does this 
+    and is both computationally efficient and simple to implement.
+  </dd>
+  <dd>
+    Structure-oriented filters lead naturally to the computation of 
+    structure-oriented semblance, an attribute commonly used to
+    highlight discontinuities in seismic images.
+    Semblance is defined in this paper as simply the ratio of a 
+    squared smoothed-image to a smoothed squared-image.
+    This definition of semblance generalizes that commonly used today,
+    because an unlimited variety of smoothing filters can be used to 
+    compute the numerator and denominator images in the semblance ratio.
+    The smoothing filters described in this paper yield an especially 
+    flexible method for computing structure-oriented semblance.
+  </dd>
+  <dd>
+    <a href="http://www.mines.edu/~dhale">Hale</a>, D.,
+    2009,
+    <cite>
+      CWP Report 635.
+    </cite>
+  </dd>
+  <dd>
+    <a href="${base}/papers/Hale09StructureOrientedSmoothingAndSemblance.pdf">
+      [Report]
+    </a>
+  </dd>
+</dl>
+
+<h3>
+Apparent horizontal displacements
+in time-lapse seismic images
+</h3>
+<dl class="img first">
+  <dt><img src="${base}/images/ApparentHorizontalDisplacements.png" 
+       width="200" alt=""/>
+  </dt>
+  <dd>
+    In addition to vertical time shifts commonly observed in time-lapse 
+    seismic images, horizontal displacements are apparent as well.
+    These apparent horizontal displacements may be small relatively to seismic
+    wavelengths, perhaps only 5 m at depths of 5 km, but they consistently 
+    suggest an outward lateral expansion of images away from a compacting 
+    reservoir.
+  </dd>
+  <dd>
+    It is well known that apparent vertical displacements are caused mostly 
+    by a decrease in seismic wave velocities above compacting reservoirs.
+    Those same velocity changes contribute to horizontal displacements.
+    This contribution can be computed from the velocity changes that, 
+    in turn, can be estimated from measured vertical displacements.
+    Horizontal displacements computed in this way are similar to those 
+    measured, and this similarity suggests that horizontal as well as 
+    vertical displacements may be largely due to velocity changes.
+  </dd>
+  <dd>
+    <a href="http://www.mines.edu/~dhale">Hale</a>, 
+    D., B. Cox &amp; P. Hatchell,
+    2008,
+    <cite>
+      78th Annual International Meeting, 
+      Society of Exploration Geophysicists.
+    </cite>
+  </dd>
+  <dd>
+    <a href="${base}/papers/Hale08ApparentHorizontalDisplacements.pdf">
+      [Expanded Abstract]
+    </a>
+  </dd>
+</dl>
+
+<h3>
 A method for estimating apparent displacement
 vectors from time-lapse seismic images
 </h3>
@@ -120,8 +274,6 @@ Local dip filtering with directional Laplacians
   </dd>
 </dl>
 
-<hr/>
-
 <h3>
   Seamless local prediction filtering
 </h3>
@@ -151,8 +303,6 @@ Local dip filtering with directional Laplacians
     </a>
   </dd>
 </dl>
-
-<hr/>
 
 <h3>
   Recursive Gaussian filters
@@ -186,8 +336,6 @@ Local dip filtering with directional Laplacians
   </dd>
 </dl>
 
-<hr/>
-
 <h3>
   Meshing for velocity modeling and ray tracing in 
   complex velocity fields
@@ -219,8 +367,6 @@ Local dip filtering with directional Laplacians
     </a>
   </dd>
 </dl>
-
-<hr/>
 
 <h3>Seismic interpretation with fluid flow simulation</h3>
 <dl class="img">
@@ -255,8 +401,6 @@ Local dip filtering with directional Laplacians
   </dd>
 </dl>
 
-<hr/>
-
 <h3>Seismic interpretation using global image segmentation</h3>
 <dl class="img">
   <dt><img src="${base}/images/FaultSegments.png" 
@@ -287,8 +431,6 @@ Local dip filtering with directional Laplacians
     </a>
   </dd>
 </dl>
-
-<hr/>
 
 <h3>Atomic meshing of seismic images</h3>
 <dl class="img">
@@ -357,8 +499,6 @@ Local dip filtering with directional Laplacians
     <a href="${base}/papers/Hale02AtomicMeshes.pdf">[Paper]</a>
   </dd>
 </dl>
-
-<hr/>
 
 <h3>Atomic images &mdash; a method for meshing digital images</h3>
 <dl class="img">

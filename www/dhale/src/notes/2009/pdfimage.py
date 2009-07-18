@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# Author: Dave Hale, Colorado School of Mines, 2009.07.08
 try:
   import os, sys
   from LaunchServices import *
@@ -28,7 +29,6 @@ if len(sys.argv)<2:
 # us specify image parameters, such as DPI or compression. Therefore,
 # in the second step, we use the MAC OS X command-line program sips to 
 # set those parameters in the image files.
-# Author: Dave Hale, Colorado School of Mines, 2009.07.08
 
 def jpgWrite(bmc,ipage):
   jpgFile = pdfBase+suffix(ipage)+".jpg"
