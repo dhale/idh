@@ -127,7 +127,7 @@ public class Multigrid2 {
    * @param x array[n2][n1] for the estimated solution.
    * @param y array[n2][n1] for the known solution.
    */
-  public static float normError(float[][] x, float[][] y) {
+  public float normError(float[][] x, float[][] y) {
     int n1 = x[0].length;
     int n2 = x.length;
     double sum = 0.0f;

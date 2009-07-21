@@ -9,8 +9,8 @@ import static edu.mines.jtk.util.ArrayMath.*;
 
 public class IoBench {
   public static void main(String[] args) {
-    benchCopy();
-    //benchReadWrite(23);
+    //benchCopy();
+    benchReadWrite(23);
     //benchReadWrite(32);
   }
 
@@ -71,11 +71,11 @@ public class IoBench {
   }
 
   private static final String dira = "/data/tmp/";
-  private static final String dirb = "/datb/tmp/";
-  private static final String dirc = "/datc/tmp/";
+  private static final String dirb = "/data/tmp/";
+  private static final String dirc = "/data/tmp/";
   private static final int n1 = 1000;
-  private static final int n2 = 1000;
-  private static final int n3 = 1000;
+  private static final int n2 = 100;
+  private static final int n3 = 100;
   private static final long nbytes = n1*n2*n3*4L;
 
   private static void makeFile(String name) {
