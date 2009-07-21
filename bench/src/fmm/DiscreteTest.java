@@ -391,7 +391,6 @@ public class DiscreteTest {
   private static void shift(float[][] s) {
     int n1 = s[0].length;
     int n2 = s.length;
-    float[][] t = copy(s);
     for (int i2=n2-1; i2>0; --i2) {
       for (int i1=n1-1; i1>0; --i1) {
         s[i2][i1] = 0.25f*(s[i2][i1]+s[i2-1][i1]+s[i2][i1-1]+s[i2-1][i1-1]);

@@ -237,6 +237,7 @@ public class TimeMarker3 {
   // List of active samples.
   private class ActiveList {
     void append(Sample s) {
+      s.activated = _activated;
       if (_n==_a.length)
         growTo(2*_n);
       _a[_n++] = s;
@@ -295,8 +296,8 @@ public class TimeMarker3 {
     }
   }
 
-  // Marks set during computation of times. For efficiency, do not
-  // loop over all the marks to clear them before computing times.
+  // Flags set during computation of times. For efficiency, do not
+  // loop over all the flags to clear them before computing times.
   // Instead, modify the value that represents activated samples.
   private int _activated = 1;
   private void clearActivated() {
@@ -317,7 +318,7 @@ public class TimeMarker3 {
     s.activated = _activated;
   }
   private void clearActivated(Sample s) {
-    s.activated -= 1;
+    s.activated = 0;
   }
   private boolean wasActivated(Sample s) {
     return s.activated==_activated;
@@ -367,7 +368,7 @@ public class TimeMarker3 {
       for (int i2=0; i2<_n2; ++i2) {
         for (int i1=0; i1<_n1; ++i1) {
           if (times[i3][i2][i1]==0.0f) {
-            for (int k=0; k<4; ++k) {
+            for (int k=0; k<6; ++k) {
               int k1 = K1[k];
               int k2 = K2[k];
               int k3 = K3[k];
@@ -581,9 +582,10 @@ public class TimeMarker3 {
 
   /**
    * Determines whether to compute time for sample with specified indices.
-   * As sample should be processed iff at least one of its neighbors is 
+   * A sample should be processed iff at least one of its neighbors is 
    * less than the minimum time computed so far.
    */
+  /*
   private boolean doComputeTime(
     float[][][] t, float[][][] times, int i1, int i2, int i3) 
   {
@@ -595,6 +597,7 @@ public class TimeMarker3 {
            t3m(t,i1,i2,i3)<=timei ||
            t3p(t,i1,i2,i3)<=timei;
   }
+  */
 
   // Methods to get times for neighbors.
   private float t1m(float[][][] t, int i1, int i2, int i3) {

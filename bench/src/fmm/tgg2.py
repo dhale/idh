@@ -1,5 +1,5 @@
 #############################################################################
-# Tests 2D time marker.
+# Tests 2D tensor-guided gridder
 
 import sys
 from math import *
@@ -34,39 +34,37 @@ prism = ColorMap.PRISM
 
 def main(args):
   #testSimple()
-  testConstant()
-  #testSine()
+  #testConstant()
+  testSine()
   #testTsai()
-  return
 
 def testSimple():
-  n1,n2 = 501,503
+  n1,n2 = 201,203
   i1,i2 = randomSites(10,n1,n2)
   tensors = ConstantTensors2(n1,n2,0.0,1.000,1.000)
-  testMarker(n1,n2,i1,i2,tensors)
+  testGridder(n1,n2,i1,i2,tensors)
  
 def testConstant():
-  n1,n2 = 513,513
+  n1,n2 = 501,501
   #i1 = [3*n1/8,6*n1/8,4*n1/8]
   #i2 = [2*n2/8,4*n2/8,6*n2/8]
   i1 = [9*n1/16,7*n1/16]
   i2 = [7*n2/16,9*n2/16]
-  #i1,i2 = randomSites(10,n1,n2)
-  #tensors = ConstantTensors2(n1,n2,0.0,1.000,1.000)
-  tensors = ConstantTensors2(n1,n2,-30.0,0.050,1.000)
+  i1,i2 = randomSites(100,n1,n2)
+  tensors = ConstantTensors2(n1,n2,0.0,1.000,1.000)
+  #tensors = ConstantTensors2(n1,n2,-30.0,0.050,1.000)
   #tensors = ConstantTensors2(n1,n2,-30.0,0.0001,1.000)
   #tensors = ConstantTensors2(n1,n2,0.0,0.050,1.000)
-  testMarker(n1,n2,i1,i2,tensors)
-  #testSolver(n1,n2,i1,i2,tensors)
+  testGridder(n1,n2,i1,i2,tensors)
  
 def testSine():
-  n1,n2 = 601,601
+  n1,n2 = 501,501
   #i1 = [7*n1/8,3*n1/8,5*n1/8,2*n1/8]
   #i2 = [1*n2/8,4*n2/8,4*n2/8,6*n2/8]
   i1,i2 = randomSites(10,n1,n2)
   tensors = SineTensors2(n1,n2,400.0,30.0)
   #tensors = SineTensors2(n1,n2,0.0,30.0)
-  testMarker(n1,n2,i1,i2,tensors)
+  testGridder(n1,n2,i1,i2,tensors)
  
 def testTsai():
   n1,n2 = 101,101
@@ -74,34 +72,26 @@ def testTsai():
   #i2 = [2*n2/8,5*n2/8,6*n2/8,6*n2/8]
   i1,i2 = randomSites(10,n1,n2)
   tensors = TsaiTensors2(n1,n2)
-  testMarker(n1,n2,i1,i2,tensors)
+  testGridder(n1,n2,i1,i2,tensors)
 
-def testMarker(n1,n2,i1,i2,tensors):
-  times = fillfloat(Float.MAX_VALUE,n1,n2)
-  marks = zeroint(n1,n2)
+def testGridder(n1,n2,i1,i2,tensors):
+  t = fillfloat(-1.0,n1,n2)
+  p = zerofloat(n1,n2)
+  q = zerofloat(n1,n2)
   for k in range(len(i1)):
     k1,k2 = i1[k],i2[k]
-    times[k2][k1] = 0.0
-    marks[k2][k1] = 1+k
-  tm = TimeMarker2(n1,n2,tensors)
-  tm.apply(times,marks)
-  print "times min =",min(times),"max =",max(times)
-  print "marks min =",min(marks),"max =",max(marks)
-  marks = floatsFromInts(marks)
-  plot(times,0,0,prism)
-  plot(marks,0,0,jet)
-
-def testSolver(n1,n2,i1,i2,tensors):
-  known = zerobyte(n1,n2)
-  times = zerofloat(n1,n2)
-  marks = zeroint(n1,n2)
-  ts = TimeSolver2(n1,n2,tensors)
-  for k in range(len(i1)):
-    k1,k2 = i1[k],i2[k]
-    ts.zeroAt(k1,k2)
-  times = ts.getTimes()
-  print "times min =",min(times),"max =",max(times)
-  plot(times,0,0,prism)
+    t[k2][k1] = 0.0
+    p[k2][k1] = 1.0+k
+  tgg = TensorGuidedGridder2(tensors)
+  tgg.gridNearest(t,p)
+  print "t: min =",min(t),"max =",max(t)
+  print "p: min =",min(p),"max =",max(p)
+  t = clip(0.0,200.0,t)
+  tgg.gridBlended(t,p,q)
+  print "q: min =",min(q),"max =",max(q)
+  plot(t,0,0,prism)
+  plot(p,0,0,jet)
+  plot(q,0,0,jet)
 
 def randomSites(n,n1,n2):
   random = Random()
@@ -117,18 +107,6 @@ def randomSites(n,n1,n2):
     i1.append(int(n1*random.nextFloat()))
     i2.append(int(n2*random.nextFloat()))
   return i1,i2
-
-#############################################################################
-# other functions
-
-def floatsFromInts(i):
-  n1 = len(i[0])
-  n2 = len(i)
-  f = zerofloat(n1,n2)
-  for i2 in range(n2):
-    for i1 in range(n1):
-      f[i2][i1] = i[i2][i1]
-  return f
 
 #############################################################################
 # tensors

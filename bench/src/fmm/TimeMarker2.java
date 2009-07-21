@@ -118,8 +118,6 @@ public class TimeMarker2 {
     for (int ik=0; ik<nk; ++ik) {
       int i1 = k1[ik];
       int i2 = k2[ik];
-      //trace("processing known sample at i1="+i1+" i2="+i2+
-      //      " mark="+marks[i2][i1]);
 
       // Clear activated flags so we can tell which samples become activated.
       clearActivated();
@@ -395,8 +393,8 @@ public class TimeMarker2 {
       al.appendIfAbsent(bl);
       bl.clear();
     }
-    trace("solveSerial: ntotal="+ntotal);
-    trace("             nratio="+(float)ntotal/(float)(_n1*_n2));
+    //trace("solveSerial: ntotal="+ntotal);
+    //trace("             nratio="+(float)ntotal/(float)(_n1*_n2));
   }
   
   /**
@@ -464,8 +462,8 @@ public class TimeMarker2 {
       //  plot(_t,ColorMap.JET);
     }
     es.shutdown();
-    trace("solveParallel: ntotal="+ntotal);
-    trace("               nratio="+(float)ntotal/(float)(_n1*_n2));
+    //trace("solveParallel: ntotal="+ntotal);
+    //trace("               nratio="+(float)ntotal/(float)(_n1*_n2));
   }
 
   /**
@@ -546,9 +544,10 @@ public class TimeMarker2 {
 
   /**
    * Determines whether to compute time for sample with specified indices.
-   * As sample should be processed iff at least one of its neighbors is 
+   * A sample should be processed iff at least one of its neighbors is 
    * less than the minimum time computed so far.
    */
+  /*
   private boolean doComputeTime(
     float[][] t, float[][] times, int i1, int i2) 
   {
@@ -558,6 +557,7 @@ public class TimeMarker2 {
            t2m(t,i1,i2)<=timei ||
            t2p(t,i1,i2)<=timei;
   }
+  */
 
   // Methods to get times for neighbors.
   private float t1m(float[][] t, int i1, int i2) {

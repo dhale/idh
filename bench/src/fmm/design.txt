@@ -1,3 +1,7 @@
+BlendedNaborGridder2
+TensorGuidedGridder2
+
+
  ImagePainter2
 
 LocalDiffusionTensors2[n2][n1] (structure tensors)
