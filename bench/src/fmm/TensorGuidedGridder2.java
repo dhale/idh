@@ -6,26 +6,21 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package fmm;
 
-import java.util.ArrayList;
-import java.util.Random;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import edu.mines.jtk.dsp.LocalSmoothingFilter;
 import edu.mines.jtk.dsp.Tensors2;
 import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
  * Tensor-guided gridding of 2D data.
- * Gridding is interpolation of known sample values on a uniformly 
- * sampled grid. Here, this interpolation is performed by a two-step 
- * process described by Hale (2009).
+ * Gridding is interpolation of a set of known sample values on a 
+ * uniformly sampled grid. Here the interpolation is performed by 
+ * a two-step process described by Hale (2009).
  * <p>
  * The first step is to compute for all samples the distance to the 
  * nearest known sample and the value of that known sample. This first
  * step produces a distance map and a nearest-neighbor interpolant.
  * The second step is to blend (smooth) the nearest-neighbor interpolant,
- * where the extent of smoothing varies spatially, but is proportional to 
+ * where the extent of smoothing varies spatially and is proportional to 
  * distances in the distance map.
  * <p>
  * In tensor-guided gridding, we replace distance with time. Time is a
@@ -94,28 +89,40 @@ public class TensorGuidedGridder2 {
   public void gridNearest(float[][] t, float[][] p) {
     int n1 = t[0].length;
     int n2 = t.length;
-    TimeMarker2 tm = new TimeMarker2(n1,n2,_tensors);
+
+    // First count the known samples, the number of marks.
+    int nmark = 0;
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        if (t[i2][i1]==0.0f)
+          ++nmark;
+      }
+    }
+
+    // Make an array for marks, while storing values of known samples
+    // in an array of values indexed by mark.
+    float[] pmark = new float[nmark];
     int[][] m = new int[n2][n1];
-    int mark = 1;
-    FloatList plist = new FloatList();
+    int mark = 0;
     for (int i2=0; i2<n2; ++i2) {
       for (int i1=0; i1<n1; ++i1) {
         if (t[i2][i1]==0.0f) {
-          m[i2][i1] = mark++;
-          plist.add(p[i2][i1]);
+          pmark[mark] = p[i2][i1];
+          m[i2][i1] = mark;
+          ++mark;
         }
       }
     }
-    float[] pmark = plist.trim();
-    plist = null;
+
+    // Use the time marker to compute both times and marks.
+    TimeMarker2 tm = new TimeMarker2(n1,n2,_tensors);
     tm.apply(t,m);
+
+    // Use the marks to compute the nearest-neighbor interpolant.
     for (int i2=0; i2<n2; ++i2) {
       for (int i1=0; i1<n1; ++i1) {
-        if (t[i2][i1]!=0.0f) {
-          if (m[i2][i1]==0)
-            trace("m=0 for i1="+i1+" i2=");
-          p[i2][i1] = pmark[m[i2][i1]-1];
-        }
+        if (t[i2][i1]!=0.0f)
+          p[i2][i1] = pmark[m[i2][i1]];
       }
     }
   }
@@ -132,18 +139,26 @@ public class TensorGuidedGridder2 {
   public void gridBlended(float[][] t, float[][] p, float[][] q) {
     int n1 = t[0].length;
     int n2 = t.length;
-    float[][] s = mul(t,t); // time squared
+
+    // Compute time squared, shifted to account for the shift in the
+    // finite-difference stencil usd in the local smoothing filter.
+    float[][] s = mul(t,t);
     for (int i2=n2-1; i2>0; --i2) {
       for (int i1=n1-1; i1>0; --i1) {
-        s[i2][i1] = 0.25f*(s[i2  ][i1  ]+  // shifted to account
-                           s[i2  ][i1-1]+  // for shift in finite-
-                           s[i2-1][i1  ]+  // difference stencil in
-                           s[i2-1][i1-1]); // local smoothing filter
+        s[i2][i1] = 0.25f*(s[i2  ][i1  ] +
+                           s[i2  ][i1-1] +
+                           s[i2-1][i1  ] +
+                           s[i2-1][i1-1]);
       }
     }
-    float c = 0.5f;
+
+    // Construct an apply a local smoothing filter.
+    float c = 0.5f; // constant for linear precision
     LocalSmoothingFilter lsf = new LocalSmoothingFilter(0.01,10000);
     lsf.apply(_tensors,c,s,p,q);
+
+    // Restore the known sample values. Due to errors in finite-difference
+    // approximations, these values may have changed during smoothing.
     for (int i2=0; i2<n2; ++i2) {
       for (int i1=0; i1<n1; ++i1) {
         if (t[i2][i1]==0.0f) {
@@ -157,28 +172,4 @@ public class TensorGuidedGridder2 {
   // private
 
   private Tensors2 _tensors;
-
-  private static class FloatList {
-    public int n;
-    public float[] a = new float[1024];
-    public void add(float f) {
-      if (n==a.length) {
-        float[] t = new float[2*n];
-        System.arraycopy(a,0,t,0,n);
-        a = t;
-      }
-      a[n++] = f;
-    }
-    public float[] trim() {
-      if (n==0)
-        return null;
-      float[] t = new float[n];
-      System.arraycopy(a,0,t,0,n);
-      return t;
-    }
-  }
-
-  private static void trace(String s) {
-    System.out.println(s);
-  }
 }
