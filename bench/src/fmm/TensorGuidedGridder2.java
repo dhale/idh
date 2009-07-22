@@ -28,8 +28,8 @@ import static edu.mines.jtk.util.ArrayMath.*;
  * field. So "nearest" now means nearest in time. In the first step we 
  * compute a time map by solving an eikonal equation with coefficients 
  * that may be both anisotropic and spatially varying. In the second 
- * step, we blend the nearest-neighbor interpolant with smoothing that
- * is both anistropic and spatially varying.
+ * step, we blend the nearest-neighbor interpolant with an anisotropic 
+ * and spatially varying smoothing filter.
  * <p>
  * The default tensor field is homogeneous and isotropic. In this
  * special case, time is equivalent to distance, and tensor-guided
