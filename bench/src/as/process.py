@@ -128,7 +128,7 @@ def plot3d(x):
   world.addChild(ipg)
   frame = TestFrame(world)
   #view = frame.getOrbitView()
-  #view.setAxesOrientation(View.AxesOrientation.XRIGHT_YUP_ZOUT)
+  #view.setAxesOrientation(AxesOrientation.XRIGHT_YUP_ZOUT)
   frame.setVisible(True)
 
 def transpose13(x):

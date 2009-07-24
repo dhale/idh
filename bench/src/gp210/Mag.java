@@ -279,7 +279,7 @@ public class Mag {
     world.addChild(tg);
     TestFrame frame = new TestFrame(world);
     OrbitView view = frame.getOrbitView();
-    view.setAxesOrientation(View.AxesOrientation.XOUT_YRIGHT_ZUP);
+    view.setAxesOrientation(AxesOrientation.XOUT_YRIGHT_ZUP);
     frame.setSize(new Dimension(1200,800));
     frame.setVisible(true);
   }

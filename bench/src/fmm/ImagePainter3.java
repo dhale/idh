@@ -88,7 +88,7 @@ public class ImagePainter3 {
 
   private void makeFrame() {
     OrbitView view = new OrbitView(_world);
-    view.setAxesOrientation(View.AxesOrientation.XRIGHT_YOUT_ZDOWN);
+    view.setAxesOrientation(AxesOrientation.XRIGHT_YOUT_ZDOWN);
     _canvas = new ViewCanvas(view);
     _canvas.setView(view);
 

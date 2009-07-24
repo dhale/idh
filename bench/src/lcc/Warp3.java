@@ -108,7 +108,7 @@ public class Warp3 {
 
   private JFrame frame(World world) {
     OrbitView view = new OrbitView(world);
-    view.setAxesOrientation(View.AxesOrientation.XRIGHT_YOUT_ZDOWN);
+    view.setAxesOrientation(AxesOrientation.XRIGHT_YOUT_ZDOWN);
     ViewCanvas canvas = new ViewCanvas(view);
     canvas.setView(view);
     ModeManager mm = new ModeManager();

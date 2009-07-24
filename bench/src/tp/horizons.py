@@ -91,7 +91,7 @@ def addHorizonGroups(world):
 def makeFrame(world):
   frame = TestFrame(world)
   view = frame.getOrbitView()
-  view.setAxesOrientation(View.AxesOrientation.XRIGHT_YOUT_ZDOWN)
+  view.setAxesOrientation(AxesOrientation.XRIGHT_YOUT_ZDOWN)
   #view.setAxesScale(1.0,1.0,3.0)
   #view.setScale(2.0)
   #view.setAzimuth(10.0)

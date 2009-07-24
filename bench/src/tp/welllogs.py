@@ -222,7 +222,7 @@ def viewWellsWithSeismic(what,curve):
   addWellGroups(world,wdata,curve)
   frame = TestFrame(world)
   view = frame.getOrbitView()
-  view.setAxesOrientation(View.AxesOrientation.XRIGHT_YOUT_ZDOWN)
+  view.setAxesOrientation(AxesOrientation.XRIGHT_YOUT_ZDOWN)
   frame.setVisible(True)
 
 def addWellGroups(world,wdata,curve):

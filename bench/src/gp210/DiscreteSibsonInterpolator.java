@@ -338,7 +338,7 @@ public class DiscreteSibsonInterpolator {
     TestFrame frame = new TestFrame(world);
     OrbitView view = frame.getOrbitView();
     view.setScale(2.0f);
-    view.setAxesOrientation(View.AxesOrientation.XOUT_YRIGHT_ZUP);
+    view.setAxesOrientation(AxesOrientation.XOUT_YRIGHT_ZUP);
     frame.setSize(new Dimension(1200,800));
     frame.setVisible(true);
   }

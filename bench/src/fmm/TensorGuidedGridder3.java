@@ -7,14 +7,14 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 package fmm;
 
 import edu.mines.jtk.dsp.LocalSmoothingFilter;
-import edu.mines.jtk.dsp.Tensors2;
+import edu.mines.jtk.dsp.Tensors3;
 import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
- * Tensor-guided blended neighbor gridding in 2D.
+ * Tensor-guided blended neighbor gridding in 3D.
  * Gridding is interpolation of a set of known sample values on a 
  * uniformly sampled grid. Here the interpolation is performed by 
- * a two-step blended neighbor process described by Hale (2009).
+ * a two-step process described by Hale (2009).
  * <p>
  * The first step is to compute for all samples the distance to the 
  * nearest known sample and the value of that known sample. This first
@@ -43,12 +43,12 @@ import static edu.mines.jtk.util.ArrayMath.*;
  * @author Dave Hale, Colorado School of Mines
  * @version 2009.07.21
  */
-public class TensorGuidedGridder2 {
+public class TensorGuidedGridder3 {
 
   /**
    * Constructs a gridder for a homogeneous and isotropic tensor field.
    */
-  public TensorGuidedGridder2() {
+  public TensorGuidedGridder3() {
     this(null);
   }
 
@@ -56,7 +56,7 @@ public class TensorGuidedGridder2 {
    * Constructs a gridder for the specified tensors.
    * @param tensors the tensors.
    */
-  public TensorGuidedGridder2(Tensors2 tensors) {
+  public TensorGuidedGridder3(Tensors3 tensors) {
     setTensors(tensors);
   }
 
@@ -65,14 +65,17 @@ public class TensorGuidedGridder2 {
    * The default is a homogeneous and isotropic tensor field.
    * @param tensors the tensors; null for default tensors.
    */
-  public void setTensors(Tensors2 tensors) {
+  public void setTensors(Tensors3 tensors) {
     _tensors = tensors;
     if (_tensors==null) {
-      _tensors = new Tensors2() {
-        public void getTensor(int i1, int i2, float[] d) {
+      _tensors = new Tensors3() {
+        public void getTensor(int i1, int i2, int i3, float[] d) {
           d[0] = 1.0f;
           d[1] = 0.0f;
-          d[2] = 1.0f;
+          d[2] = 0.0f;
+          d[3] = 1.0f;
+          d[4] = 0.0f;
+          d[5] = 1.0f;
         }
       };
     }
@@ -87,43 +90,50 @@ public class TensorGuidedGridder2 {
    * @param t array of times to nearest known samples.
    * @param p array of nearest-neighbor gridded values.
    */
-  public void gridNearest(float[][] t, float[][] p) {
-    int n1 = t[0].length;
-    int n2 = t.length;
+  public void gridNearest(float[][][] t, float[][][] p) {
+    int n1 = t[0][0].length;
+    int n2 = t[0].length;
+    int n3 = t.length;
 
     // Count the known samples, the number of marks we need.
     int nmark = 0;
-    for (int i2=0; i2<n2; ++i2) {
-      for (int i1=0; i1<n1; ++i1) {
-        if (t[i2][i1]==0.0f)
-          ++nmark;
+    for (int i3=0; i3<n3; ++i3) {
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          if (t[i3][i2][i1]==0.0f)
+            ++nmark;
+        }
       }
     }
 
     // Make an array for marks, while storing values of known samples
     // in an array of values indexed by the mark.
     float[] pmark = new float[nmark];
-    int[][] m = new int[n2][n1];
+    int[][][] m = new int[n3][n2][n1];
     int mark = 0;
-    for (int i2=0; i2<n2; ++i2) {
-      for (int i1=0; i1<n1; ++i1) {
-        if (t[i2][i1]==0.0f) {
-          pmark[mark] = p[i2][i1];
-          m[i2][i1] = mark;
-          ++mark;
+    for (int i3=0; i3<n3; ++i3) {
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          if (t[i3][i2][i1]==0.0f) {
+            pmark[mark] = p[i3][i2][i1];
+            m[i3][i2][i1] = mark;
+            ++mark;
+          }
         }
       }
     }
 
     // Use the time marker to compute both times and marks.
-    TimeMarker2 tm = new TimeMarker2(n1,n2,_tensors);
+    TimeMarker3 tm = new TimeMarker3(n1,n2,n3,_tensors);
     tm.apply(t,m);
 
     // Use the marks to compute the nearest-neighbor interpolant.
-    for (int i2=0; i2<n2; ++i2) {
-      for (int i1=0; i1<n1; ++i1) {
-        if (t[i2][i1]!=0.0f)
-          p[i2][i1] = pmark[m[i2][i1]];
+    for (int i3=0; i3<n3; ++i3) {
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          if (t[i3][i2][i1]!=0.0f)
+            p[i3][i2][i1] = pmark[m[i3][i2][i1]];
+        }
       }
     }
   }
@@ -137,19 +147,26 @@ public class TensorGuidedGridder2 {
    * @param p array of nearest-neighbor gridded values.
    * @param q array of blended-neighbor gridded values.
    */
-  public void gridBlended(float[][] t, float[][] p, float[][] q) {
-    int n1 = t[0].length;
-    int n2 = t.length;
+  public void gridBlended(float[][][] t, float[][][] p, float[][][] q) {
+    int n1 = t[0][0].length;
+    int n2 = t[0].length;
+    int n3 = t.length;
 
     // Compute time squared, shifted to account for the shift in the
     // finite-difference stencil usd in the local smoothing filter.
-    float[][] s = mul(t,t);
-    for (int i2=n2-1; i2>0; --i2) {
-      for (int i1=n1-1; i1>0; --i1) {
-        s[i2][i1] = 0.25f*(s[i2  ][i1  ] +
-                           s[i2  ][i1-1] +
-                           s[i2-1][i1  ] +
-                           s[i2-1][i1-1]);
+    float[][][] s = mul(t,t);
+    for (int i3=n3-1; i3>0; --i3) {
+      for (int i2=n2-1; i2>0; --i2) {
+        for (int i1=n1-1; i1>0; --i1) {
+          s[i3][i2][i1] = 0.125f*(s[i3  ][i2  ][i1  ] +
+                                  s[i3  ][i2  ][i1-1] +
+                                  s[i3  ][i2-1][i1  ] +
+                                  s[i3  ][i2-1][i1-1] +
+                                  s[i3-1][i2  ][i1  ] +
+                                  s[i3-1][i2  ][i1-1] +
+                                  s[i3-1][i2-1][i1  ] +
+                                  s[i3-1][i2-1][i1-1]);
+        }
       }
     }
 
@@ -160,10 +177,12 @@ public class TensorGuidedGridder2 {
 
     // Restore the known sample values. Due to errors in finite-difference
     // approximations, these values may have changed during smoothing.
-    for (int i2=0; i2<n2; ++i2) {
-      for (int i1=0; i1<n1; ++i1) {
-        if (t[i2][i1]==0.0f) {
-          q[i2][i1] = p[i2][i1];
+    for (int i3=0; i3<n3; ++i3) {
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          if (t[i3][i2][i1]==0.0f) {
+            q[i3][i2][i1] = p[i3][i2][i1];
+          }
         }
       }
     }
@@ -172,5 +191,5 @@ public class TensorGuidedGridder2 {
   ///////////////////////////////////////////////////////////////////////////
   // private
 
-  private Tensors2 _tensors;
+  private Tensors3 _tensors;
 }

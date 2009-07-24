@@ -55,7 +55,7 @@ def plot3d(x):
   world.addChild(ipg)
   frame = TestFrame(world)
   view = frame.getOrbitView()
-  view.setAxesOrientation(View.AxesOrientation.XUP_YRIGHT_ZOUT)
+  view.setAxesOrientation(AxesOrientation.XUP_YRIGHT_ZOUT)
   frame.setVisible(True)
 
 #############################################################################

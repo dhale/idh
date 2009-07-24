@@ -275,7 +275,7 @@ public class SambridgeError {
     view.setScale(2.3f);
     view.setAzimuth(-90.0f);
     view.setElevation(18.0f);
-    view.setAxesOrientation(View.AxesOrientation.XOUT_YRIGHT_ZUP);
+    view.setAxesOrientation(AxesOrientation.XOUT_YRIGHT_ZUP);
     frame.setSize(new Dimension(1200,800));
     frame.setVisible(true);
   }
