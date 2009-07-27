@@ -1,45 +1,26 @@
-# Resamples 3D seismic images from DOE coordinates to CSM coordinates.
-# Resampling includes translation and rotation, in addition to changing
-# spatial sampling intervals. The translation and rotation better aligns
-# the (x2,x3) axes with the predominant strike and dip of geologic 
-# structures apparent in the images.
-#
-# Author: Dave Hale, Colorado School of Mines
-# Version: 2009.06.07
+"""
+Resamples 3D seismic images from DOE coordinates to CSM coordinates.
+Resampling includes translation and rotation, in addition to changing
+spatial sampling intervals. The translation and rotation better aligns
+the (x2,x3) axes with the predominant strike and dip of geologic 
+structures apparent in the images.
 
-import sys
-from math import *
+Author: Dave Hale, Colorado School of Mines
+Version: 2009.06.07
+"""
+from imports import *
 
-from java.lang import *
-from javax.swing import *
-
-from edu.mines.jtk.dsp import *
-from edu.mines.jtk.io import *
-from edu.mines.jtk.mosaic import *
-from edu.mines.jtk.sgl import *
-from edu.mines.jtk.sgl.test import *
-from edu.mines.jtk.util import *
-from edu.mines.jtk.util.ArrayMath import *
-
-from tp import *
-
+#############################################################################
 def main(args):
-  #process("st")
+  process("st")
   #process("sz")
-  process("tz")
+  #process("tz")
 
 def process(what):
   setGlobals(what)
-  resample()
-  #display()
+  #resample()
+  display()
 
-doeFile,csmFile = "",""
-s1d = Sampling(2762,0.002,0.000)
-s2d = Sampling(188,0.033528,0.000) # 0.033528 km = 110 ft
-s3d = Sampling(345,0.033528,0.000)
-s1c = Sampling(2762,0.002,0.000)
-s2c = Sampling(357,0.025,0.000)
-s3c = Sampling(161,0.025,0.000)
 def setGlobals(what):
   global doeFile,csmFile
   global s1d,s2d,s3d # DOE sampling
@@ -51,11 +32,17 @@ def setGlobals(what):
     doeFile = tpDir+"doe/3D_Seismic/tpstAll.dat"
     csmFile = tpDir+"csm/seismict/tpst.dat"
   elif what=="sz": # seismic depth image
+    s1d = Sampling(2762,0.002,0.000)
+    s1c = Sampling(2762,0.002,0.000)
     doeFile = tpDir+"tss/tpszAll.dat"
     csmFile = tpDir+"csm/seismicz/tpsz.dat"
   elif what=="tz": # time depth image
     doeFile = tpDir+"tss/tptzAll.dat"
     csmFile = tpDir+"csm/seismicz/tptz.dat"
+  s2d = Sampling(188,0.033528,0.000) # 0.033528 km = 110 ft
+  s3d = Sampling(345,0.033528,0.000)
+  s2c = Sampling(357,0.025,0.000)
+  s3c = Sampling(161,0.025,0.000)
   print "doeFile =",doeFile
   print "csmFile =",csmFile
 
@@ -106,12 +93,7 @@ def display():
   ais.readFloats(x)
   ais.close()
   print "x min =",min(x)," max =",max(x)
-  ipg = ImagePanelGroup(s1c,s2c,s3c,x)
-  world = World()
-  world.addChild(ipg)
-  frame = TestFrame(world)
-  view = frame.getOrbitView()
-  frame.setVisible(True)
+  SimpleFrame.asImagePanels(s1c,s2c,s3c,x)
 
 #############################################################################
 class RunMain(Runnable):

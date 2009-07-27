@@ -1,35 +1,23 @@
-# Converts sgy files (SEG-Y format) to dat files (3D arrays of floats)
-# For Teapot Dome data, this means converting IBM floats to IEEE floats 
-# and removing all SEG-Y headers.
-#
-# Note that in Transform's depth images the first trace is missing from
-# each line. Specifically, in Transform's depth images, I observed that
-# first trace with indices (  0,  0) has (x,y) = (789048,938850)
-#  last trace with indices (186,344) has (x,y) = (808604,977165)
-# The (x,y) coordinates tell us that it is the first (not the last)
-# trace in each line that is missing. For each line, this conversion 
-# script recreates the missing trace by duplicating the first trace read.
-# In this way, this script writes 188 traces per line to all dat files.
-#
-# Author: Dave Hale, Colorado School of Mines
-# Version: 2009.06.06
+"""
+Converts sgy files (SEG-Y format) to dat files (3D arrays of floats)
+For Teapot Dome data, this means converting IBM floats to IEEE floats 
+and removing all SEG-Y headers.
 
-import sys
-from math import *
+Note that in Transform's depth images the first trace is missing from
+each line. Specifically, in Transform's depth images, I observed that
+first trace with indices (  0,  0) has (x,y) = (789048,938850)
+ last trace with indices (186,344) has (x,y) = (808604,977165)
+The (x,y) coordinates tell us that it is the first (not the last)
+trace in each line that is missing. For each line, this conversion 
+script recreates the missing trace by duplicating the first trace read.
+In this way, this script writes 188 traces per line to all dat files.
 
-from java.lang import *
-from javax.swing import *
+Author: Dave Hale, Colorado School of Mines
+Version: 2009.06.07
+"""
+from imports import *
 
-from edu.mines.jtk.dsp import *
-from edu.mines.jtk.io import *
-from edu.mines.jtk.mosaic import *
-from edu.mines.jtk.sgl import *
-from edu.mines.jtk.sgl.test import *
-from edu.mines.jtk.util import *
-from edu.mines.jtk.util.ArrayMath import *
-
-from tp import *
-
+#############################################################################
 def main(args):
   #setGlobals("tz"); readFormat()
   #setGlobals("st"); testFormat()

@@ -558,6 +558,80 @@ public class WellLog {
   }
 
   /**
+   * Gets non-null samples f(x1,x2,x3) for the specified well log curve.
+   * @param curve the curve name; e.g., "velocity".
+   * @return array of arrays {f,x1,x2,x3} of non-null samples; null if none.
+   */
+  public float[][] getSamples(String curve) {
+    return getSamples(curve,null,null,null);
+  }
+
+  /**
+   * Gets non-null samples f(x1,x2,x3) for the specified well log curve.
+   * Includes only samples within specified sampling bounds.
+   * @param curve the curve name; e.g., "velocity".
+   * @param s1 sampling in 1st dimension; null, if unbounded.
+   * @param s2 sampling in 2nd dimension; null, if unbounded.
+   * @param s3 sampling in 3rd dimension; null, if unbounded.
+   * @return array of arrays {f,x1,x2,x3} of non-null samples; null if none.
+   */
+  public float[][] getSamples(
+    String curve, Sampling s1, Sampling s2, Sampling s3) 
+  {
+    double x1min,x1max,x2min,x2max,x3min,x3max;
+    if (s1!=null) {
+      x1min = s1.getFirst()-0.5*s1.getDelta();
+      x1max = s1.getLast() +0.5*s1.getDelta();
+    } else {
+      x1min = -Float.MAX_VALUE; 
+      x1max =  Float.MAX_VALUE;
+    }
+    if (s2!=null) {
+      x2min = s2.getFirst()-0.5*s2.getDelta();
+      x2max = s2.getLast() +0.5*s2.getDelta();
+    } else {
+      x2min = -Float.MAX_VALUE; 
+      x2max =  Float.MAX_VALUE;
+    }
+    if (s3!=null) {
+      x3min = s3.getFirst()-0.5*s3.getDelta();
+      x3max = s3.getLast() +0.5*s3.getDelta();
+    } else {
+      x3min = -Float.MAX_VALUE; 
+      x3max =  Float.MAX_VALUE;
+    }
+    float[] f = getCurve(curve);
+    if (f==null)
+      return null;
+    int ns = 0;
+    for (int i=0; i<n; ++i)
+      if (f[i]!=NULL_VALUE)
+        ++ns;
+    float[] fs = new float[ns];
+    float[] x1s = new float[ns];
+    float[] x2s = new float[ns];
+    float[] x3s = new float[ns];
+    for (int i=0,is=0; i<n; ++i) {
+      float fi = f[i];
+      if (fi!=NULL_VALUE) {
+        float x1i = x1[i];
+        float x2i = x2[i];
+        float x3i = x3[i];
+        if (x1min<=x1i && x1i<=x1max && 
+            x2min<=x2i && x2i<=x2max && 
+            x3min<=x3i && x3i<=x3max) {
+          fs[is] = fi;
+          x1s[is] = x1i;
+          x2s[is] = x2i;
+          x3s[is] = x3i;
+          ++is;
+        }
+      }
+    }
+    return new float[][]{fs,x1s,x2s,x3s};
+  }
+
+  /**
    * Returns an array of derivatives (1/0.0003048)*dx1/dz.
    * The scale factor 0.0003048 (km/ft) compensates for the difference 
    * in units for dz1 (km) and dz (ft). This derivative should never 

@@ -1,21 +1,9 @@
-import sys
-from math import *
-
-from java.awt import *
-from java.lang import *
-from javax.swing import *
-
-from edu.mines.jtk.awt import *
-from edu.mines.jtk.dsp import *
-from edu.mines.jtk.io import *
-from edu.mines.jtk.mosaic import *
-from edu.mines.jtk.ogl.Gl import *
-from edu.mines.jtk.sgl import *
-from edu.mines.jtk.sgl.test import *
-from edu.mines.jtk.util import *
-from edu.mines.jtk.util.ArrayMath import *
-
-from tp import *
+"""
+Reads and reformats horizons from Teapot Dome.
+Author: Dave Hale, Colorado School of Mines
+Version: 2009.06.07
+"""
+from imports import *
 
 #############################################################################
 def main(args):
@@ -35,12 +23,6 @@ horizonColors = {
 }
 horizonNames = horizonColors.keys()
 
-what = ""
-tssHorizonDir = ""
-csmHorizonDir = ""
-csmSeismicImage = ""
-s1,s2,s3 = None,None,None
-time,depth = True,False
 def setGlobals(w):
   global what,tssHorizonDir,csmHorizonDir,csmSeismicImage
   global s1,s2,s3,time,depth
@@ -89,11 +71,11 @@ def addHorizonGroups(world):
     world.addChild(tg)
 
 def makeFrame(world):
-  frame = TestFrame(world)
+  frame = SimpleFrame(world)
   view = frame.getOrbitView()
-  #view.setAxesScale(1.0,1.0,3.0)
-  #view.setScale(2.0)
-  #view.setAzimuth(10.0)
+  view.setAxesScale(1.0,1.0,3.0)
+  view.setScale(2.0)
+  view.setAzimuth(-50.0)
   frame.setSize(1200,900)
   frame.setVisible(True)
   return frame
@@ -110,24 +92,8 @@ def makeTriangleGroup(horizon,color):
   ijk = horizon.getIABC()
   xyz = horizon.getX321()
   tg = TriangleGroup(ijk,xyz)
-  hs = makeHorizonStates(color)
-  tg.setStates(hs)
+  tg.setColor(color)
   return tg;
-
-def makeHorizonStates(color):
-  hs = StateSet()
-  cs = ColorState()
-  cs.setColor(color)
-  hs.add(cs)
-  lms = LightModelState()
-  lms.setTwoSide(True)
-  hs.add(lms)
-  ms = MaterialState()
-  ms.setColorMaterial(GL_AMBIENT_AND_DIFFUSE)
-  ms.setSpecular(Color.WHITE)
-  ms.setShininess(100.0)
-  hs.add(ms)
-  return hs
 
 #############################################################################
 class RunMain(Runnable):

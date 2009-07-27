@@ -1,22 +1,26 @@
-import sys
-from math import *
+"""
+Reads and reformats well logs from Teapot Dome.
+Author: Dave Hale, Colorado School of Mines
+Version: 2009.06.07
+"""
+from imports import *
 
-from java.awt import *
-from java.io import *
-from java.lang import *
-from javax.swing import *
-
-from edu.mines.jtk.awt import *
-from edu.mines.jtk.dsp import *
-from edu.mines.jtk.interp import *
-from edu.mines.jtk.io import *
-from edu.mines.jtk.mosaic import *
-from edu.mines.jtk.sgl import *
-from edu.mines.jtk.sgl.test import *
-from edu.mines.jtk.util import *
-from edu.mines.jtk.util.ArrayMath import *
-
-from tp import *
+#############################################################################
+def main(args):
+  #makeBinaryWellLogs("test")
+  #makeBinaryWellLogs("deep")
+  #makeBinaryWellLogs("shallow")
+  #makeBinaryWellLogs("all")
+  #viewWellCoordinates("deep")
+  #viewWellCurves("deep","velocity")
+  #viewWellCurves("deep","density")
+  #viewWellCurves("deep","gamma")
+  #viewWellCurves("deep","porosity")
+  #viewWellsWithSeismic("all","velocity")
+  #viewWellsWithSeismic("deep","velocity")
+  #viewWellsWithSeismic("all","gamma")
+  viewWellsWithSeismic("deep","gamma")
+  #viewElevations("deep")
 
 # Directories and files for well logs, headers, directional surveys
 tpDir = "/data/seis/tp/"
@@ -33,22 +37,6 @@ csmSeismic = csmSeismiczDir+"tpsz.dat"
 s1 = Sampling(2762,0.002,0.000)
 s2 = Sampling(357,0.025,0.000)
 s3 = Sampling(161,0.025,0.000)
-
-def main(args):
-  #makeBinaryWellLogs("test")
-  #makeBinaryWellLogs("deep")
-  #makeBinaryWellLogs("shallow")
-  #makeBinaryWellLogs("all")
-  #viewWellCoordinates("deep")
-  #viewWellCurves("deep","velocity")
-  #viewWellCurves("deep","density")
-  #viewWellCurves("deep","gamma")
-  #viewWellCurves("deep","porosity")
-  #viewWellsWithSeismic("all","velocity")
-  #viewWellsWithSeismic("deep","velocity")
-  viewWellsWithSeismic("all","gamma")
-  #viewWellsWithSeismic("deep","gamma")
-  viewElevations("deep")
 
 def setGlobals(what):
   global csmWellLogs,doeWellLogs
@@ -171,18 +159,11 @@ def viewWellCoordinates(what):
 def viewWellCurves(what,curve):
   setGlobals(what)
   wldata = WellLog.Data.readBinary(csmWellLogs)
-  zlist,clist = [],[]
+  flist,zlist = [],[]
   for log in wldata.getLogsWith(curve):
-    if curve=="velocity":
-      z,c = getNonNullValues(log.x1,log.v)
-    elif curve=="density":
-      z,c = getNonNullValues(log.x1,log.d)
-    elif curve=="gamma":
-      z,c = getNonNullValues(log.x1,log.g)
-    elif curve=="porosity":
-      z,c = getNonNullValues(log.x1,log.p)
+    f,z,y,x = log.getSamples(curve)
+    flist.append(f)
     zlist.append(z)
-    clist.append(c)
   sp = SimplePlot()
   sp.setHLabel("Depth (km)")
   if curve=="velocity":
@@ -193,19 +174,8 @@ def viewWellCurves(what,curve):
     sp.setVLabel("Gamma Ray")
   elif curve=="porosity":
     sp.setVLabel("Porosity")
-  tv = PointsView(zlist,clist)
+  tv = PointsView(flist,zlist)
   sp.add(tv)
-
-def getNonNullValues(z,c):
-  zlist = FloatList()
-  clist = FloatList()
-  cnull = -999.2500
-  n = len(z)
-  for i in range(n):
-    if c[i]!=cnull:
-      zlist.add(z[i])
-      clist.add(c[i])
-  return zlist.trim(),clist.trim()
 
 def viewWellsWithSeismic(what,curve):
   setGlobals(what)
@@ -220,29 +190,30 @@ def viewWellsWithSeismic(what,curve):
   world = World()
   world.addChild(ipg)
   addWellGroups(world,wdata,curve)
-  frame = TestFrame(world)
-  view = frame.getOrbitView()
-  frame.setVisible(True)
+  frame = SimpleFrame(world)
 
 def addWellGroups(world,wdata,curve):
   logs = wdata.getLogsWith(curve)
   print "number of logs =",len(logs)
-  for log in logs:
-    pg = makePointGroup(log)
-    world.addChild(pg)
-
-def makePointGroup(log):
-  n = log.n
-  xyz = zerofloat(3*n)
-  copy(n,0,1,log.x3,0,3,xyz)
-  copy(n,0,1,log.x2,1,3,xyz)
-  copy(n,0,1,log.x1,2,3,xyz)
   states = StateSet()
   cs = ColorState()
   cs.setColor(Color.YELLOW)
   states.add(cs)
+  wellsGroup = Group()
+  wellsGroup.setStates(states)
+  for log in logs:
+    f,x1,x2,x3 = log.getSamples(curve,s1,s2,s3)
+    pg = makePointGroup(x1,x2,x3)
+    wellsGroup.addChild(pg)
+  world.addChild(wellsGroup)
+
+def makePointGroup(x1,x2,x3):
+  n = len(x1)
+  xyz = zerofloat(3*n)
+  copy(n,0,1,x3,0,3,xyz)
+  copy(n,0,1,x2,1,3,xyz)
+  copy(n,0,1,x1,2,3,xyz)
   pg = PointGroup(xyz)
-  pg.setStates(states)
   return pg
 
 #############################################################################

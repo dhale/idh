@@ -1,17 +1,9 @@
-import sys
-from math import *
-
-from java.awt import *
-from java.lang import *
-from javax.swing import *
-
-from edu.mines.jtk.dsp import *
-from edu.mines.jtk.io import *
-from edu.mines.jtk.mosaic import *
-from edu.mines.jtk.util import *
-from edu.mines.jtk.util.ArrayMath import *
-
-from tp import *
+"""
+Shows DOE, Seismic and CSM coordinate rectangles for Teapot Dome data.
+Author: Dave Hale, Colorado School of Mines
+Version: 2009.07.25
+"""
+from imports import *
 
 def main(args):
   display()
