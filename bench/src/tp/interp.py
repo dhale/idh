@@ -6,67 +6,67 @@ from tputils import *
 setupForDirectory("subz_401_4_600")
 s1,s2,s3 = getSamplings()
 seismicFile = "tpsz"
-logSet = "deep"
+logSet = "d"
+logType = "v"
+method = "b"
+
+sfile = "tpsz" # seismic image
+gfile = "tpg"+logType # simple gridding (unknown samples are null)
+pfile = "tpp"+logType+method # values of nearest known samples
+qfile = "tpq"+logType+method # output of blended gridder
+tfile = "tpt"+logType+method # times to nearest known samples
 
 def main(args):
-  #logType = "density"
-  logType = "velocity"
-  #logType = "porosity"
-  #logType = "gamma"
-  #gridSibson(logType)
-  #gridNearest(logType)
-  gridBlendedP(logType)
-  display(logType)
+  #gridSibson()
+  #gridNearest()
+  #gridBlendedP()
+  gridBlendedQ()
+  s = readImage(sfile)
+  q = readImage(qfile)
+  display(s,q)
 
-def simplegFile(logType):
-  return "tpg"+logType[0]
-def interpgFile(logType):
-  return "tpi"+logType[0]
-def interppFile(logType):
-  return "tpp"+logType[0]
-def interptFile(logType):
-  return "tpt"+logType[0]
-
-def gridBlendedP(logType):
-  gfile = simplegFile(logType)
-  p = readImage(gfile)
+def gridBlendedP():
   bi = BlendedGridder3()
+  p = readImage(gfile)
   t = bi.gridNearest(0.0,p)
-  pfile = interppFile(logType)
-  tfile = interptFile(logType)
   writeImage(pfile,p)
   writeImage(tfile,t)
 
-def getScatteredSamples(logType):
-  g = readImage(simplegFile(logType))
+def gridBlendedQ():
+  bi = BlendedGridder3()
+  p = readImage(pfile)
+  t = readImage(tfile)
+  t = clip(0.0,100.0,t)
+  q = copy(p)
+  bi.gridBlended(t,p,q)
+  writeImage(qfile,q)
+
+def getScatteredSamples():
+  g = readImage(gfile)
   f,x1,x2,x3 = SimpleGridder3.getGriddedSamples(0.0,s1,s2,s3,g)
   return f,x1,x2,x3
 
-def gridNearest(logType):
-  f,x1,x2,x3 = getScatteredSamples(logType)
+def gridNearest():
+  f,x1,x2,x3 = getScatteredSamples()
   print "got scattered samples: n =",len(f)
   ni = NearestGridder3(f,x1,x2,x3)
   print "constructed nearest gridder"
   g = ni.grid(s1,s2,s3)
   print "gridding complete: min =",min(g)," max =",max(g)
-  gfile = interpgFile(logType)
   writeImage(gfile,g)
 
-def gridSibson(logType):
-  f,x1,x2,x3 = getScatteredSamples(logType)
+def gridSibson():
+  f,x1,x2,x3 = getScatteredSamples()
   print "got scattered samples: n =",len(f)
   si = SibsonGridder3(f,x1,x2,x3)
   print "constructed Sibson gridder"
   g = si.grid(s1,s2,s3)
   print "gridding complete: min =",min(g)," max =",max(g)
-  gfile = interpgFile(logType)
   writeImage(gfile,g)
 
-def display(logType):
-  x = readImage(seismicFile)
-  g = readImage(interpgFile(logType))
+def display(s,g):
   world = World()
-  addImage2ToWorld(world,x,g)
+  addImage2ToWorld(world,s,g)
   addLogsToWorld(world,logSet,logType)
   addHorizonToWorld(world,"TensleepASand")
   makeFrame(world)
