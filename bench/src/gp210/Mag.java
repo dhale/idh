@@ -339,7 +339,7 @@ public class Mag {
 
   private static void interpolate() {
     float[][] data = readData();
-    float[] x = data[0], y = data[1], z = data[2], g = data[3];
+    float[] x = data[0], y = data[1], z = data[2]; //, g = data[3];
     mul(100.0f,z,z);
     Sampling[] s = makeSamplings(x,y);
     Sampling sx = s[0], sy = s[1];

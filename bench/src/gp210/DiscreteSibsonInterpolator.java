@@ -284,10 +284,6 @@ public class DiscreteSibsonInterpolator {
   }
 
   private static Sampling[] makeSamplings(float[] x, float[] y) {
-    float xmin = min(x);
-    float xmax = max(x);
-    float ymin = min(y);
-    float ymax = max(y);
     int nx = 315;
     int ny = 315;
     double fx = 0.0;
@@ -391,7 +387,6 @@ public class DiscreteSibsonInterpolator {
     float[] x = data[0], y = data[1], z = data[2];
     Sampling[] s = makeSamplings(x,y);
     Sampling sx = s[0], sy = s[1];
-    int nx = sx.getCount(), ny = sy.getCount();
     DiscreteSibsonInterpolator dsi = new DiscreteSibsonInterpolator(sx,sy);
     dsi.setSmoothingIterations(100);
     float[][] zi = dsi.apply(x,y,z);

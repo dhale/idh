@@ -51,10 +51,6 @@ public class Data {
   }
 
   private static Sampling[] makeSamplings(float[] x, float[] y) {
-    float xmin = min(x);
-    float xmax = max(x);
-    float ymin = min(y);
-    float ymax = max(y);
     int nx = 401;
     int ny = 401;
     double fx = 0.000;
@@ -72,7 +68,6 @@ public class Data {
     int n = x.length;
     int nx = sx.getCount();
     int ny = sy.getCount();
-    float[][] zi = new float[ny][nx];
     TriMesh mesh = new TriMesh();
     TriMesh.NodePropertyMap zmap = mesh.getNodePropertyMap("z");
     for (int i=0; i<n; ++i) {

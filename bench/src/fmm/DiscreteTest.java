@@ -63,7 +63,7 @@ public class DiscreteTest {
     float[] w = copy(x);
     c *= -0.5f/(float)niter;
     for (int jiter=0; jiter<niter; ++jiter) {
-      float gi,csi;
+      float gi;
       for (int i1=1; i1<n1; ++i1) {
         gi  = z[i1  ];
         gi -= z[i1-1];
@@ -559,7 +559,7 @@ public class DiscreteTest {
     //view.setElevation(30.0f); // good for impulse and circle points
     //view.setAzimuth(18.0f);
     view.setWorldSphere(new BoundingSphere(0.5,0.5,-0.5,1.0));
-    BoundingSphere bs = world.getBoundingSphere(true);
+    //BoundingSphere bs = world.getBoundingSphere(true);
     //trace("bs center: "+bs.getCenter());
     //trace("bs radius: "+bs.getRadius());
     frame.setSize(new Dimension(1200,800));
