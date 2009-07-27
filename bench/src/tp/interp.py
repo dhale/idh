@@ -5,22 +5,21 @@ from tputils import *
 
 setupForDirectory("subz_401_4_600")
 s1,s2,s3 = getSamplings()
-seismicFile = "tpsz"
-logSet = "d"
-logType = "v"
-method = "b"
+logSet = "d" # deep logs only
+logType = "v" # velocity
+method = "b" # blended
 
 sfile = "tpsz" # seismic image
-gfile = "tpg"+logType # simple gridding (unknown samples are null)
+gfile = "tpg"+logType # simple gridding with null for unknown samples
 pfile = "tpp"+logType+method # values of nearest known samples
 qfile = "tpq"+logType+method # output of blended gridder
 tfile = "tpt"+logType+method # times to nearest known samples
 
 def main(args):
-  #gridSibson()
+  #gridSibson() # very slow!
   #gridNearest()
   #gridBlendedP()
-  gridBlendedQ()
+  #gridBlendedQ()
   s = readImage(sfile)
   q = readImage(qfile)
   display(s,q)

@@ -88,6 +88,25 @@ def writeImage(name,image):
   aos.close()
   return image
 
+from org.python.util import PythonObjectInputStream
+def readTensors(name):
+  """
+  Reads tensors from file with specified basename; e.g., "tpet".
+  """
+  fis = FileInputStream(seismicDir+name+".dat")
+  ois = PythonObjectInputStream(fis)
+  tensors = ois.readObject()
+  fis.close()
+  return tensors
+def writeTensors(name,tensors):
+  """
+  Writes tensors to file with specified basename; e.g., "tpet".
+  """
+  fos = FileOutputStream(seismicDir+name+".dat")
+  oos = ObjectOutputStream(fos)
+  oos.writeObject(tensors)
+  fos.close()
+
 def readHorizon(name):
   """ 
   Reads a horizon with specified name.
