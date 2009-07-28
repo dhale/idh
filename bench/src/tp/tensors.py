@@ -12,10 +12,10 @@ sfile = "tpsz" # seismic image
 efile = "tpet" # eigen-tensors
 
 def main(args):
-  #makeTensors()
+  #makeStructureTensors()
   display()
 
-def makeTensors():
+def makeStructureTensors():
   s = readImage(sfile)
   lof = LocalOrientFilter(sigma)
   e = lof.applyForTensors(s)

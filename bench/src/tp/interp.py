@@ -10,6 +10,10 @@ logType = "v" # velocity
 method = "b" # blended
 
 sfile = "tpsz" # seismic image
+efile = "tpet" # eigen-tensors
+s1file = "tps1" # semblance w,uv
+s2file = "tps2" # semblance vw,u
+s3file = "tps3" # semblance uvw,
 gfile = "tpg"+logType # simple gridding with null for unknown samples
 pfile = "tpp"+logType+method # values of nearest known samples
 qfile = "tpq"+logType+method # output of blended gridder
@@ -18,14 +22,15 @@ tfile = "tpt"+logType+method # times to nearest known samples
 def main(args):
   #gridSibson() # very slow!
   #gridNearest()
-  #gridBlendedP()
+  gridBlendedP()
   #gridBlendedQ()
   s = readImage(sfile)
-  q = readImage(qfile)
-  display(s,q)
+  p = readImage(pfile)
+  display(s,p)
 
 def gridBlendedP():
-  bi = BlendedGridder3()
+  e = getEigenTensors()
+  bi = BlendedGridder3(e)
   p = readImage(gfile)
   t = bi.gridNearest(0.0,p)
   writeImage(pfile,p)
@@ -39,6 +44,14 @@ def gridBlendedQ():
   q = copy(p)
   bi.gridBlended(t,p,q)
   writeImage(qfile,q)
+
+def getEigenTensors():
+  e = readTensors(efile)
+  s1 = readImage(s1file)
+  s2 = readImage(s2file)
+  s3 = readImage(s3file)
+  e.setEigenvalues(s3,s2,s1)
+  return e
 
 def getScatteredSamples():
   g = readImage(gfile)
