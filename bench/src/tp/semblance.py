@@ -3,7 +3,7 @@ Computes semblance images.
 """
 from tputils import *
 
-setupForDirectory("subz_401_4_600")
+setupForSubset("subz_401_4_600")
 s1,s2,s3 = getSamplings()
 
 sfile = "tpsz" # seismic image
@@ -20,7 +20,9 @@ def main(args):
   #semblance1()
   #semblance2()
   #semblance3()
+  display(sfile,s1file)
   display(sfile,s2file)
+  display(sfile,s3file)
 
 def semblance1():
   e = readTensors(efile)

@@ -27,7 +27,7 @@ _horizonNames = _horizonColors.keys()
 #############################################################################
 # Setup
 
-def setupForDirectory(name):
+def setupForSubset(name):
   """
   Setup for a specified directory includes:
     time or depth flags
@@ -60,12 +60,15 @@ def setupForDirectory(name):
 def getSamplings():
   return s1,s2,s3
 
+def getSeismicDir():
+  return seismicDir
+
 #############################################################################
 # read/write files
 
 def readImage(name):
   """ 
-  Reads a 3D image file with specified name.
+  Reads an image from a file with specified name.
   name: base name of image file; e.g., "tpsz"
   """
   fileName = seismicDir+name+".dat"
@@ -78,14 +81,23 @@ def readImage(name):
 
 def writeImage(name,image):
   """ 
-  Writes a 3D image to a file with specified name.
+  Writes an image to a file with specified name.
   name: base name of image file; e.g., "tpgp"
-  image: the 3D image
+  image: the image
   """
   fileName = seismicDir+name+".dat"
   aos = ArrayOutputStream(fileName)
   aos.writeFloats(image)
   aos.close()
+  return image
+
+def readSlice3(name):
+  fileName = seismicDir+name+".dat"
+  n1,n2 = s1.count,s2.count
+  image = zerofloat(n1,n2)
+  ais = ArrayInputStream(fileName)
+  ais.readFloats(image)
+  ais.close()
   return image
 
 from org.python.util import PythonObjectInputStream

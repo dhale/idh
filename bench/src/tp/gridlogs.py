@@ -3,7 +3,7 @@ Grids well log curves.
 """
 from tputils import *
 
-setupForDirectory("subz_401_4_600")
+setupForSubset("subz_401_4_600")
 seismicFile = "tpsz"
 s1,s2,s3 = getSamplings()
 logSet = "deep" # use only deep logs
