@@ -252,6 +252,17 @@ def makeFrame(world):
   return frame
 
 #############################################################################
+# other
+
+def addNoise(s,x):
+  """ adds s percent random noise to reduce problems with zero traces """
+  xdif = max(x)-min(x)
+  n1,n2,n3 = s1.count,s2.count,s3.count
+  r = randfloat(n1,n2,n3)
+  x = add(mul(sub(r,0.5),s*xdif),x)
+  return x
+
+#############################################################################
 # Run the function main on the Swing thread
 import sys
 class _RunMain(Runnable):

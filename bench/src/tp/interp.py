@@ -20,20 +20,55 @@ qfile = "tpq"+logType+method # output of blended gridder
 tfile = "tpt"+logType+method # times to nearest known samples
 
 def main(args):
-  #dumpTensors()
-  #gridBlendedP()
-  #gridBlendedQ()
-  s = readImage(sfile); print "s min =",min(s)," max =",max(s)
-  p = readImage(pfile); print "p min =",min(p)," max =",max(p)
-  q = readImage(qfile); print "q min =",min(q)," max =",max(q)
+  gridBlendedP()
+  gridBlendedQ()
+  #s = readImage(sfile); print "s min =",min(s)," max =",max(s)
+  #p = readImage(pfile); print "p min =",min(p)," max =",max(p)
   #t = readImage(tfile); print "t min =",min(t)," max =",max(t)
-  display(s,p,3.0,5.0)
-  display(s,q,3.0,5.0)
-  #display(s,t,0.0,1000.0)
-  #gridBlended2()
-  #testSpd()
-  #gridSibson() # very slow!
-  #gridNearest()
+  #q = readImage(qfile); print "q min =",min(q)," max =",max(q)
+  #display(s,p,3.0,5.0)
+  #display(s,t,0.0,100.0)
+  #display(s,q,3.0,5.0)
+
+def gridBlendedQ():
+  e = getEigenTensors(0.01)
+  bi = BlendedGridder3(e)
+  p = readImage(pfile)
+  t = readImage(tfile)
+  t = clip(0.0,10.0,t)
+  q = copy(p)
+  bi.gridBlended(t,p,q)
+  writeImage(qfile,q)
+
+def gridBlendedP():
+  e = getEigenTensors(0.01)
+  bi = BlendedGridder3(e)
+  p = readImage(gfile)
+  t = bi.gridNearest(0.0,p)
+  writeImage(pfile,p)
+  writeImage(tfile,t)
+
+def getEigenTensors(eps):
+  e = readTensors(efile)
+  s1 = readImage(s1file); print "s1 min =",min(s1)," max =",max(s1)
+  s2 = readImage(s2file); print "s2 min =",min(s2)," max =",max(s2)
+  s3 = readImage(s3file); print "s3 min =",min(s3)," max =",max(s3)
+  s1 = clip(eps,1.0,s1)
+  s2 = clip(eps,1.0,s2)
+  s3 = clip(eps,1.0,s3)
+  s3 = clip(eps,eps,s3)
+  e.setEigenvalues(s3,s2,s1)
+  return e
+
+def display(s,g,cmin,cmax):
+  world = World()
+  ipg = addImage2ToWorld(world,s,g)
+  ipg.setClips2(cmin,cmax)
+  addLogsToWorld(world,logSet,logType)
+  addHorizonToWorld(world,"TensleepASand")
+  makeFrame(world)
+
+#############################################################################
 
 def dumpTensors():
   e = getEigenTensors()
@@ -44,15 +79,28 @@ def dumpTensors():
         e.getTensor(i1,i2,i3,d)
         dump(d)
 
-def gridBlendedQ():
-  e = getEigenTensors()
-  bi = BlendedGridder3(e)
-  p = readImage(pfile)
-  t = readImage(tfile)
-  t = clip(0.0,10.0,t)
-  q = copy(p)
-  bi.gridBlended(t,p,q)
-  writeImage(qfile,q)
+def getScatteredSamples():
+  g = readImage(gfile)
+  f,x1,x2,x3 = SimpleGridder3.getGriddedSamples(0.0,s1,s2,s3,g)
+  return f,x1,x2,x3
+
+def gridNearest():
+  f,x1,x2,x3 = getScatteredSamples()
+  print "got scattered samples: n =",len(f)
+  ni = NearestGridder3(f,x1,x2,x3)
+  print "constructed nearest gridder"
+  g = ni.grid(s1,s2,s3)
+  print "gridding complete: min =",min(g)," max =",max(g)
+  writeImage(gfile,g)
+
+def gridSibson():
+  f,x1,x2,x3 = getScatteredSamples()
+  print "got scattered samples: n =",len(f)
+  si = SibsonGridder3(f,x1,x2,x3)
+  print "constructed Sibson gridder"
+  g = si.grid(s1,s2,s3)
+  print "gridding complete: min =",min(g)," max =",max(g)
+  writeImage(gfile,g)
 
 def testSpd():
   e = getEigenTensors()
@@ -94,57 +142,6 @@ def display2(s,g=None,cmin=0,cmax=0):
     pv.setColorModel(ColorMap.getJet(0.3))
     if cmin!=cmax:
       pv.setClips(cmin,cmax)
-
-def gridBlendedP():
-  e = getEigenTensors(0.01)
-  bi = BlendedGridder3(e)
-  p = readImage(gfile)
-  t = bi.gridNearest(0.0,p)
-  writeImage(pfile,p)
-  writeImage(tfile,t)
-
-def getEigenTensors(eps):
-  e = readTensors(efile)
-  s1 = readImage(s1file); print "s1 min =",min(s1)," max =",max(s1)
-  s2 = readImage(s2file); print "s2 min =",min(s2)," max =",max(s2)
-  s3 = readImage(s3file); print "s3 min =",min(s3)," max =",max(s3)
-  s1 = clip(0.01,1.0,s1)
-  s2 = clip(0.01,1.0,s2)
-  s3 = clip(0.01,1.0,s3)
-  s3 = clip(eps,eps,s3)
-  e.setEigenvalues(s3,s2,s1)
-  return e
-
-def getScatteredSamples():
-  g = readImage(gfile)
-  f,x1,x2,x3 = SimpleGridder3.getGriddedSamples(0.0,s1,s2,s3,g)
-  return f,x1,x2,x3
-
-def gridNearest():
-  f,x1,x2,x3 = getScatteredSamples()
-  print "got scattered samples: n =",len(f)
-  ni = NearestGridder3(f,x1,x2,x3)
-  print "constructed nearest gridder"
-  g = ni.grid(s1,s2,s3)
-  print "gridding complete: min =",min(g)," max =",max(g)
-  writeImage(gfile,g)
-
-def gridSibson():
-  f,x1,x2,x3 = getScatteredSamples()
-  print "got scattered samples: n =",len(f)
-  si = SibsonGridder3(f,x1,x2,x3)
-  print "constructed Sibson gridder"
-  g = si.grid(s1,s2,s3)
-  print "gridding complete: min =",min(g)," max =",max(g)
-  writeImage(gfile,g)
-
-def display(s,g,cmin,cmax):
-  world = World()
-  ipg = addImage2ToWorld(world,s,g)
-  ipg.setClips2(cmin,cmax)
-  addLogsToWorld(world,logSet,logType)
-  addHorizonToWorld(world,"TensleepASand")
-  makeFrame(world)
 
 #############################################################################
 run(main)

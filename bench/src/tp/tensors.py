@@ -9,16 +9,20 @@ n1,n2,n3 = s1.count,s2.count,s3.count
 
 sigma = 8.0
 sfile = "tpsz" # seismic image
+mfile = "tpmz" # image mask
 efile = "tpet" # eigen-tensors
 
 def main(args):
   makeStructureTensors()
-  #display()
+  display()
 
 def makeStructureTensors():
   s = readImage(sfile)
+  m = readImage(mfile)
+  mask = ZeroMask(m)
   lof = LocalOrientFilter(sigma)
   e = lof.applyForTensors(s)
+  mask.apply((1.0,0.0,0.0,1.0,0.0,1.0),e)
   writeTensors(efile,e)
 
 def display():

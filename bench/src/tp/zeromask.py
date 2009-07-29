@@ -13,7 +13,7 @@ mfile = "tpmz" # mask image
 def main(args):
   s = readImage(sfile)
   mask = ZeroMask(0.1,10.0,1.0,1.0,s)
-  m = mask.getMaskAsFloats()
+  m = mask.getAsFloats()
   writeImage(mfile,m)
   display()
 

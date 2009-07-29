@@ -57,10 +57,30 @@ public class ZeroMask {
   }
 
   /**
+   * Constructs a zero mask from specified array of floats.
+   * Mask is true for all non-zero samples in the array.
+   * @param m array of values from which mask is derived.
+   */
+  public ZeroMask(float[][][] m) {
+    _n1 = m[0][0].length;
+    _n2 = m[0].length;
+    _n3 = m.length;
+    _mask = new boolean[_n3][_n2][_n1];
+    for (int i3=0; i3<_n3; ++i3) {
+      for (int i2=0; i2<_n2; ++i2) {
+        for (int i1=0; i1<_n1; ++i1) {
+          if (m[i3][i2][i1]!=0.0f)
+            _mask[i3][i2][i1] = true;
+        }
+      }
+    }
+  }
+
+  /**
    * Returns an array of floats representing this mask.
    * @return array of floats.
    */
-  public float[][][] getMaskAsFloats() {
+  public float[][][] getAsFloats() {
     float[][][] f = new float[_n3][_n2][_n1];
     for (int i3=0; i3<_n3; ++i3)
       for (int i2=0; i2<_n2; ++i2)
