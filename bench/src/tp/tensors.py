@@ -12,8 +12,8 @@ sfile = "tpsz" # seismic image
 efile = "tpet" # eigen-tensors
 
 def main(args):
-  #makeStructureTensors()
-  display()
+  makeStructureTensors()
+  #display()
 
 def makeStructureTensors():
   s = readImage(sfile)

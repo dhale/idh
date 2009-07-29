@@ -96,14 +96,14 @@ def display2(s,g=None,cmin=0,cmax=0):
       pv.setClips(cmin,cmax)
 
 def gridBlendedP():
-  e = getEigenTensors()
+  e = getEigenTensors(0.01)
   bi = BlendedGridder3(e)
   p = readImage(gfile)
   t = bi.gridNearest(0.0,p)
   writeImage(pfile,p)
   writeImage(tfile,t)
 
-def getEigenTensors():
+def getEigenTensors(eps):
   e = readTensors(efile)
   s1 = readImage(s1file); print "s1 min =",min(s1)," max =",max(s1)
   s2 = readImage(s2file); print "s2 min =",min(s2)," max =",max(s2)
@@ -111,6 +111,7 @@ def getEigenTensors():
   s1 = clip(0.01,1.0,s1)
   s2 = clip(0.01,1.0,s2)
   s3 = clip(0.01,1.0,s3)
+  s3 = clip(eps,eps,s3)
   e.setEigenvalues(s3,s2,s1)
   return e
 
