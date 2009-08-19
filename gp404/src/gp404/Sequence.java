@@ -8,8 +8,7 @@ package gp404;
 
 import edu.mines.jtk.dsp.*;
 import edu.mines.jtk.util.Check;
-import edu.mines.jtk.util.Array;
-import static edu.mines.jtk.util.MathPlus.*;
+import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
  * A sequence is a real-valued sampled function of one variable.
@@ -91,7 +90,7 @@ public class Sequence {
    * @param s the sequence to copy.
    */
   public Sequence(Sequence s) {
-    this(s._s,Array.copy(s._v));
+    this(s._s,copy(s._v));
   }
 
   /**

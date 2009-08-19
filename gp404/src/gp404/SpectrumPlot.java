@@ -14,7 +14,7 @@ import javax.swing.*;
 import edu.mines.jtk.dsp.*;
 import edu.mines.jtk.mosaic.*;
 import edu.mines.jtk.util.*;
-import static edu.mines.jtk.util.MathPlus.*;
+import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
  * A plot of a sequence with its amplitude (and optional phase) spectrum.
@@ -87,26 +87,26 @@ public class SpectrumPlot {
     float[] x = sx.getValues();
     FftReal fft = new FftReal(nfft);
     float[] cf = new float[2*nf];
-    Array.copy(nt,x,cf);
+    copy(nt,x,cf);
     fft.realToComplex(-1,cf,cf);
 
     // Adjust phase for possibly non-zero time of first sample.
-    float[] wft = Array.rampfloat(0.0f,-2.0f*FLT_PI*(float)(df*ft),nf);
-    cf = Array.cmul(cf,Array.cmplx(Array.cos(wft),Array.sin(wft)));
+    float[] wft = rampfloat(0.0f,-2.0f*FLT_PI*(float)(df*ft),nf);
+    cf = cmul(cf,cmplx(cos(wft),sin(wft)));
 
     // Amplitude spectrum, normalized.
-    float[] af = Array.cabs(cf);
-    float amax = max(Array.max(af),FLT_EPSILON);
-    af = Array.mul(1.0f/amax,af);
+    float[] af = cabs(cf);
+    float amax = max(max(af),FLT_EPSILON);
+    af = mul(1.0f/amax,af);
     if (db) {
-      af = Array.log10(af);
-      af = Array.mul(20.0f,af);
+      af = log10(af);
+      af = mul(20.0f,af);
     }
     Sequence a = new Sequence(fs,af);
 
     // Phase spectrum, in cycles.
-    float[] pf = Array.carg(cf);
-    pf = Array.mul(0.5f/FLT_PI,pf);
+    float[] pf = carg(cf);
+    pf = mul(0.5f/FLT_PI,pf);
     Sequence p = new Sequence(fs,pf);
 
     return new Sequence[]{a,p};
