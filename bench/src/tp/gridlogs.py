@@ -10,7 +10,8 @@ logSet = "deep" # use only deep logs
 
 def main(args):
   #gridAll()
-  display("velocity")
+  grid("density")
+  display("density")
 
 def gridAll():
   for logType in ["velocity","density","porosity","gamma"]:

@@ -20,25 +20,27 @@ qfile = "tpq"+logType+method # output of blended gridder
 tfile = "tpt"+logType+method # times to nearest known samples
 
 def main(args):
-  gridBlendedP()
-  gridBlendedQ()
-  #s = readImage(sfile); print "s min =",min(s)," max =",max(s)
+  #gridBlendedP()
+  #gridBlendedQ()
+  s = readImage(sfile); print "s min =",min(s)," max =",max(s)
   #p = readImage(pfile); print "p min =",min(p)," max =",max(p)
   #t = readImage(tfile); print "t min =",min(t)," max =",max(t)
-  #q = readImage(qfile); print "q min =",min(q)," max =",max(q)
+  q = readImage(qfile); print "q min =",min(q)," max =",max(q)
+  display1(s)
   #display(s,p,3.0,5.0)
   #display(s,t,0.0,100.0)
-  #display(s,q,3.0,5.0)
+  display(s,q,3.0,5.0)
 
 def gridBlendedQ():
-  e = getEigenTensors(0.01)
+  e = getEigenTensors(0.0)
   bi = BlendedGridder3(e)
+  bi.setSmoothness(1.0)
   p = readImage(pfile)
   t = readImage(tfile)
   t = clip(0.0,10.0,t)
   q = copy(p)
   bi.gridBlended(t,p,q)
-  writeImage(qfile,q)
+  #writeImage(qfile,q)
 
 def gridBlendedP():
   e = getEigenTensors(0.01)
@@ -56,16 +58,26 @@ def getEigenTensors(eps):
   s1 = clip(eps,1.0,s1)
   s2 = clip(eps,1.0,s2)
   s3 = clip(eps,1.0,s3)
-  s3 = clip(eps,eps,s3)
   e.setEigenvalues(s3,s2,s1)
   return e
+
+def display1(s):
+  world = World()
+  ipg = addImageToWorld(world,s)
+  addLogsToWorld(world,logSet,logType)
+  #addHorizonToWorld(world,"CrowMountainCRMT")
+  #addHorizonToWorld(world,"TensleepASand")
+  addHorizonToWorld(world,"TensleepBbaseC1Dolo")
+  makeFrame(world)
 
 def display(s,g,cmin,cmax):
   world = World()
   ipg = addImage2ToWorld(world,s,g)
   ipg.setClips2(cmin,cmax)
   addLogsToWorld(world,logSet,logType)
-  addHorizonToWorld(world,"TensleepASand")
+  #addHorizonToWorld(world,"CrowMountainCRMT")
+  #addHorizonToWorld(world,"TensleepASand")
+  addHorizonToWorld(world,"TensleepBbaseC1Dolo")
   makeFrame(world)
 
 #############################################################################

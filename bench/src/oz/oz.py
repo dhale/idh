@@ -1,5 +1,7 @@
+#############################################################################
+# Demo seismic data processing with Oz Yilmaz's common-source gathers.
+
 import sys
-from math import *
 from java.lang import *
 from java.util import *
 from java.nio import *
@@ -12,118 +14,138 @@ from edu.mines.jtk.mosaic import *
 from edu.mines.jtk.util import *
 from edu.mines.jtk.util.ArrayMath import *
 
-from ldf import *
-
-#True = 1
-#False = 0
-
-#############################################################################
-# parameters
-
-fontSize = 24
-width = 300
-height = 800
-widthColorBar = 80
+# Directories for binary data files and png images
 dataDir = "/data/seis/oz/"
-#pngDir = "./png"
-pngDir = None
+pngDir = None #"./png"
+
+# Maps data file name to metadata
+metaMap = {
+  "oz01":{
+    "area":"South Texas",
+    "source":"Vibroseis",
+    "st":Sampling(1275,0.004,0.004),
+    "sx":Sampling(53,0.100584,-2.615184)},
+  "oz02":{
+    "area":"West Texas",
+    "source":"Vibroseis",
+    "st":Sampling(1025,0.004,0.004),
+    "sx":Sampling(127,0.030480,-2.834640)},
+  "oz03":{
+    "area":"Louisiana",
+    "source":"Dynamite",
+    "st":Sampling(1500,0.004,0.004),
+    "sx":Sampling(24,0.103632,0.103632)},
+  "oz04":{
+    "area":"Turkey",
+    "source":"Vibroseis",
+    "st":Sampling(1275,0.004,0.004),
+    "sx":Sampling(52,0.1,-2.55)},
+  "oz05":{
+    "area":"South America",
+    "source":"Dynamite",
+    "st":Sampling(3000,0.002,0.002),
+    "sx":Sampling(51,0.1,-2.5)},
+}
 
 #############################################################################
-# functions
+# Data processing
 
 def main(args):
-  for i in range(1,6):
-    display(i)
+  for name in ["oz01"]: #metaMap:
+    process(name)
   return
 
-def display(index):
-  s1,s2,f = readData(index)
-  f = tpow(2.0,s1,f)
-  f = gpow(0.5,f)
-  plot(s1,s2,f)
+def process(name):
+  st = metaMap[name]["st"]
+  sx = metaMap[name]["sx"]
+  source = metaMap[name]["source"]
+  title = name+": "+source
+  f = read(name)
+  f = tpow(2.0,st,f)
+  f = nmo(3.0,st,sx,f)
+  plot(name+": before",st,sx,f,name)
+  f = align(f)
+  plot(name+": after",st,sx,f,name)
 
-def fileName(index):
-  if index<10:
-    name = "oz0"+str(index)+".F"
-  else:
-    name = "oz"+str(index)+".F"
-  return dataDir+name
-
-def samplings(index):
-  if index==1:
-    n1,d1,f1 = 1275,0.004,0.004
-    n2,d2,f2 = 53,0.100584,-2.615184
-  elif index==2:
-    n1,d1,f1 = 1025,0.004,0.004
-    n2,d2,f2 = 127,0.030480,-2.834640
-  elif index==3:
-    n1,d1,f1 = 1500,0.004,0.004
-    n2,d2,f2 = 24,0.103632,0.103632
-  elif index==4:
-    n1,d1,f1 = 1275,0.004,0.004
-    n2,d2,f2 = 52,0.100,-2.550
-  elif index==5:
-    n1,d1,f1 = 3000,0.002,0.002
-    n2,d2,f2 = 51,0.100,-2.500
-  else:
-    return None,None
-  return Sampling(n1,d1,f1),Sampling(n2,d2,f2)
-
-def gpow(p,f):
-  return mul(sgn(f),pow(abs(f),p))
-
-def tpow(p,s,f):
-  nt,dt,ft = s.count,s.delta,s.first
-  nx = len(f)
-  g = copy(f)
-  for ix in range(nx):
-    mul(g[ix],pow(rampfloat(ft,dt,nt),p),g[ix])
-  return g
-
-def readData(index):
-  s1,s2 = samplings(index)
-  n1,n2 = s1.count,s2.count
-  ais = ArrayInputStream(fileName(index),ByteOrder.BIG_ENDIAN)
-  f = zerofloat(n1,n2)
+def read(name):
+  """Reads gather with specified name."""
+  nt = metaMap[name]["st"].count
+  nx = metaMap[name]["sx"].count
+  fileName = dataDir+name+".F" # suffix F implies floats
+  ais = ArrayInputStream(fileName,ByteOrder.BIG_ENDIAN)
+  f = zerofloat(nt,nx)
   ais.readFloats(f)
   ais.close()
-  return s1,s2,f
+  return f
 
-#############################################################################
-# plot
+def tpow(power,st,f):
+  """Applies t^power gain."""
+  nt,dt,ft = st.count,st.delta,st.first
+  nx = len(f)
+  tp = pow(rampfloat(ft,dt,nt),power) # sampled times raised to power
+  g = zerofloat(nt,nx)
+  for ix in range(nx):
+    mul(tp,f[ix],g[ix])
+  return g
 
-def plot(s1,s2,f,png=None):
-  n1 = len(f[0])
-  n2 = len(f)
-  p = panel()
-  pv = p.addPixels(s1,s2,f)
+def gpow(power,f):
+  """Applies sgn(f)*|f|^power gain."""
+  return mul(sgn(f),pow(abs(f),power))
+
+def nmo(v,st,sx,f):
+  """Applies NMO correction for specified velocity v."""
+  nt,dt,ft = st.count,st.delta,st.first
+  nx = len(f)
+  t = rampfloat(ft,dt,nt) # sampled times
+  tt = mul(t,t) # sampled times squared
+  si = SincInterpolator() # high-fidelity sinc interpolation
+  si.setUniformSampling(nt,dt,ft) # time sampling constant within gather
+  g = zerofloat(nt,nx) # the output gather
+  for ix in range(nx): # loop over all traces in gather
+    x = sx.getValue(ix) # source-receiver offset x
+    t = sqrt(add(tt,(x*x)/(v*v))) # sqrt(t*t+(x*x)/(v*v))
+    si.setUniformSamples(f[ix]) # trace to be interpolated
+    si.interpolate(nt,t,g[ix]) # interpolated trace
+  return g
+
+def stack(f):
+  nt,nx = len(f[0]),len(f)
+  g = zerofloat(nt)
+  for ix in range(nx):
+    add(f[ix],g,g)
+  return g
+
+def align(f):
+  """Scary alignment warps traces to flatten reflections."""
+  nt,nx = len(f[0]),len(f)
+  s = stack(f)
+  g = zerofloat(nt,nx)
+  du = zerofloat(nt)
+  ut = zerofloat(nt)
+  sigma = 20 # Gaussian window half-width sigma = 20 samples
+  lsf = LocalShiftFinder(sigma)
+  for ix in range(nx):
+    lsf.find1(-10,10,s,f[ix],du)
+    copy(f[ix],g[ix])
+    lsf.shift1(du,ut,g[ix])
+  return g
+
+def plot(title,st,sx,f,png=None):
+  f = gpow(0.5,f)
+  sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
+  sp.setSize(500,900)
+  sp.setVLabel("Time (s)")
+  sp.setHLabel("Offset (km)")
+  sp.setTitle(title)
+  pv = sp.addPixels(st,sx,f)
   pv.setPercentiles(1.0,99.0)
-  pv.setColorModel(ColorMap.GRAY)
+  pv.setColorModel(ColorMap.RED_WHITE_BLUE)
   pv.setInterpolation(PixelsView.Interpolation.LINEAR)
-  frame(p,png)
-
-def panel():
-  p = PlotPanel(1,1,
-    PlotPanel.Orientation.X1DOWN_X2RIGHT,
-    PlotPanel.AxesPlacement.LEFT_TOP)
-  #p.addColorBar()
-  #p.setColorBarWidthMinimum(widthColorBar)
-  p.setHLabel("offset (km)");
-  p.setVLabel("time (s)");
-  return p
-
-def frame(panel,png=None):
-  frame = PlotFrame(panel)
-  frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE)
-  frame.setFontSize(fontSize)
-  frame.setSize(width,height)
-  frame.setVisible(True)
   if png and pngDir:
-    frame.paintToPng(100,6,pngDir+"/"+png+".png")
-  return frame
+    sp.paintToPng(100,6,pngDir+"/"+png+".png")
 
 #############################################################################
-# Do everything on Swing thread.
+# Run everything on Swing thread.
 
 class RunMain(Runnable):
   def run(self):

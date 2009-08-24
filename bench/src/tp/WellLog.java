@@ -526,7 +526,7 @@ public class WellLog {
 
     // Convert velocity and density to SI units.
     siVelocity(log.v);
-    siDensity(log.d);
+    //siDensity(log.d); // leave density in g/cc!
 
     // Clean up logs (or set to null, if too dirty).
     log.v = cleanVelocity(log.v);
@@ -782,7 +782,7 @@ public class WellLog {
     return d;
   }
   private static boolean validDensity(float d) {
-    return 500.0f<d && d<10000.0f;
+    return 0.5f<d && d<10.0f;
   }
 
   private static float[] cleanGamma(float[] g) {

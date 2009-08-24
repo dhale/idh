@@ -628,7 +628,7 @@ public class ImagePainterM {
     float alpha = 1.0f;
     float beta = 1.0f;
     float gamma = 1.0f;
-    float[][] image = readImage(n1,n2,"/data/seis/tp/tp73.dat");
+    float[][] image = readImage(n1,n2,"/data/seis/tp/csm/oldslices/tp73.dat");
     image = gain(image);
     ImagePainterM ip = new ImagePainterM(width,height,alpha,beta,gamma,image);
     ip.setValueRange(0.0,1.0);

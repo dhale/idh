@@ -7,6 +7,7 @@ from imports import *
 
 #############################################################################
 def main(args):
+  #fixDensityLogs()
   #makeBinaryWellLogs("test")
   #makeBinaryWellLogs("deep")
   #makeBinaryWellLogs("shallow")
@@ -19,7 +20,7 @@ def main(args):
   #viewWellsWithSeismic("all","velocity")
   #viewWellsWithSeismic("deep","velocity")
   #viewWellsWithSeismic("all","gamma")
-  viewWellsWithSeismic("deep","gamma")
+  #viewWellsWithSeismic("deep","gamma")
   #viewElevations("deep")
 
 # Directories and files for well logs, headers, directional surveys
@@ -52,6 +53,20 @@ def setGlobals(what):
   elif what=="test":
     doeWellLogs = doeWellLogsDir+"LAS_log_files/test/"
     csmWellLogs = csmWellLogsDir+"tpwt.dat"
+
+# Fix units for density logs; convert kg/m3 to g/cc.
+def fixDensityLogs():
+  for what in ["deep","shallow","all"]:
+    print "fixing",what
+    setGlobals(what)
+    wldata = WellLog.Data.readBinary(csmWellLogs)
+    for log in wldata.getLogsWith("density"):
+      n,d = log.n,log.d
+      dnull = WellLog.NULL_VALUE
+      for i in range(n):
+        if d[i]!=dnull:
+          d[i] *= 0.001
+    wldata.writeBinary(csmWellLogs)
 
 # Reads well locations in CSM (x1,x2,x3) coordinates
 def readLocations(what):
