@@ -193,6 +193,7 @@ public class SpectrumPlot {
     _plotFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     _plotFrame.setLocation(200,50);
     _plotFrame.setSize(800,700);
+    _plotFrame.setFontSize(12);
     _plotFrame.setVisible(true);
   }
 
