@@ -1,6 +1,6 @@
 Sequence provided by Karoline Volker, CSM, April 29, 2009.
 Values (in mV) reflect concentrations of decane.
-Time sampling interval dt is in nanoseconds.
+Time sampling interval dt is in microseconds.
 nt=500
 dt=2.0
 ft=0.0
