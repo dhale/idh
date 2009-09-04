@@ -12,7 +12,7 @@ method = "b" # blended
 sfile = "tpsz" # seismic image
 efile = "tpet" # eigen-tensors (structure tensors)
 esfile = "tpets" # eigen-tensors scaled by semblances
-sjfile = "tps1" # semblance w,uv
+s1file = "tps1" # semblance w,uv
 s2file = "tps2" # semblance vw,u
 s3file = "tps3" # semblance uvw,
 gfile = "tpg"+logType # simple gridding with null for unknown samples
@@ -32,6 +32,14 @@ def main(args):
   #display(s,t,0.0,100.0)
   display(s,q,3.0,5.0)
 
+def gridBlendedP():
+  e = getEigenTensors(0.01)
+  bi = BlendedGridder3(e)
+  p = readImage(gfile)
+  t = bi.gridNearest(0.0,p)
+  writeImage(pfile,p)
+  writeImage(tfile,t)
+
 def gridBlendedQ():
   e = getEigenTensors(0.0)
   bg = BlendedGridder3(e)
@@ -42,14 +50,6 @@ def gridBlendedQ():
   q = copy(p)
   bg.gridBlended(t,p,q)
   #writeImage(qfile,q)
-
-def gridBlendedP():
-  e = getEigenTensors(0.01)
-  bi = BlendedGridder3(e)
-  p = readImage(gfile)
-  t = bi.gridNearest(0.0,p)
-  writeImage(pfile,p)
-  writeImage(tfile,t)
 
 def getEigenTensors(eps):
   e = readTensors(efile)
