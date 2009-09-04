@@ -187,6 +187,12 @@ def addImage2ToWorld(world,image1,image2):
   world.addChild(ipg)
   return ipg
 
+def addTensorsInImage(ip,et,esize):
+  tp = TensorsPanel(s1,s2,s3,et)
+  tp.setEllipsoidSize(esize)
+  ip.getFrame().addChild(tp)
+  return tp
+
 def getHorizonColor(name):
   return _horizonColors[name]
 
@@ -236,6 +242,12 @@ def makePointGroup(x1,x2,x3):
   copy(n,0,1,x2,1,3,xyz)
   copy(n,0,1,x1,2,3,xyz)
   pg = PointGroup(xyz)
+  ps = PointState()
+  ps.setSize(2)
+  ps.setSmooth(True)
+  ss = StateSet()
+  ss.add(ps)
+  pg.setStates(ss)
   return pg
 
 def makeFrame(world):

@@ -7,16 +7,20 @@ setupForSubset("subz_401_4_600")
 s1,s2,s3 = getSamplings()
 n1,n2,n3 = s1.count,s2.count,s3.count
 
-sigma = 8.0
 sfile = "tpsz" # seismic image
 mfile = "tpmz" # image mask
 efile = "tpet" # eigen-tensors
+esfile = "tpets" # eigen-tensors scaled by semblance
+slfile = "tps1" # semblance w,uv
+spfile = "tps2" # semblance vw,u
+sifile = "tps3" # semblance uvw,
 
 def main(args):
-  makeStructureTensors()
+  #makeStructureTensors()
   display()
 
 def makeStructureTensors():
+  sigma = 8.0
   s = readImage(sfile)
   m = readImage(mfile)
   mask = ZeroMask(m)
@@ -26,6 +30,25 @@ def makeStructureTensors():
   writeTensors(efile,e)
 
 def display():
+  s = readImage(sfile)
+  et = readTensors(esfile)
+  eu = zerofloat(n1,n2,n3)
+  ev = zerofloat(n1,n2,n3)
+  ew = zerofloat(n1,n2,n3)
+  et.getEigenvalues(eu,ev,ew)
+  #eu = mul(eu,eu)
+  ev = mul(ev,ev)
+  ev = mul(ev,ev)
+  #ew = mul(ew,ew)
+  et.setEigenvalues(eu,ev,ew)
+  world = World()
+  ipg = addImageToWorld(world,s)
+  addTensorsInImage(ipg.getImagePanel(Axis.X),et,20)
+  addTensorsInImage(ipg.getImagePanel(Axis.Y),et,20)
+  addTensorsInImage(ipg.getImagePanel(Axis.Z),et,20)
+  makeFrame(world)
+
+def displayOld():
   s = readImage(sfile)
   e = readTensors(efile)
   eu = zerofloat(n1,n2,n3)

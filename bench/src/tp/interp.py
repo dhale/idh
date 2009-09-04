@@ -10,8 +10,9 @@ logType = "v" # velocity
 method = "b" # blended
 
 sfile = "tpsz" # seismic image
-efile = "tpet" # eigen-tensors
-s1file = "tps1" # semblance w,uv
+efile = "tpet" # eigen-tensors (structure tensors)
+esfile = "tpets" # eigen-tensors scaled by semblances
+sjfile = "tps1" # semblance w,uv
 s2file = "tps2" # semblance vw,u
 s3file = "tps3" # semblance uvw,
 gfile = "tpg"+logType # simple gridding with null for unknown samples
@@ -23,23 +24,23 @@ def main(args):
   #gridBlendedP()
   #gridBlendedQ()
   s = readImage(sfile); print "s min =",min(s)," max =",max(s)
-  #p = readImage(pfile); print "p min =",min(p)," max =",max(p)
+  p = readImage(pfile); print "p min =",min(p)," max =",max(p)
   #t = readImage(tfile); print "t min =",min(t)," max =",max(t)
   q = readImage(qfile); print "q min =",min(q)," max =",max(q)
-  display1(s)
-  #display(s,p,3.0,5.0)
+  #display1(s)
+  display(s,p,3.0,5.0)
   #display(s,t,0.0,100.0)
   display(s,q,3.0,5.0)
 
 def gridBlendedQ():
   e = getEigenTensors(0.0)
-  bi = BlendedGridder3(e)
-  bi.setSmoothness(1.0)
+  bg = BlendedGridder3(e)
+  bg.setSmoothness(1.0)
   p = readImage(pfile)
   t = readImage(tfile)
   t = clip(0.0,10.0,t)
   q = copy(p)
-  bi.gridBlended(t,p,q)
+  bg.gridBlended(t,p,q)
   #writeImage(qfile,q)
 
 def gridBlendedP():
@@ -59,6 +60,7 @@ def getEigenTensors(eps):
   s2 = clip(eps,1.0,s2)
   s3 = clip(eps,1.0,s3)
   e.setEigenvalues(s3,s2,s1)
+  #writeTensors(esfile,e)
   return e
 
 def display1(s):
