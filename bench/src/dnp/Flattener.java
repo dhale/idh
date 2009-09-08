@@ -37,37 +37,41 @@ public class Flattener {
     float[][] s = new float[n2][n1]; // the shifts
     makeNormals(_sigma,f,u2,el);
     //fill(1.0f,el);
-    float eps = 0.1f;
+    float eps = 0.05f;
     makeRhs(eps,u2,el,r);
     Operator2 a = new LhsOperator2(eps,u2,el);
     u2 = el = null;
     solve(a,r,s);
+    invertShifts(s);
+    return s;
+  }
+  private static void invertShifts(float[][] s) {
     cleanShifts(s);
+    int n1 = s[0].length;
+    int n2 = s.length;
     float[] t1 = rampfloat(0.0f,1.0f,n1);
     float[] t2 = new float[n1];
-    float[][] t = s;
     InverseInterpolator ii = new InverseInterpolator(n1,n1);
     for (int i2=0; i2<n2; ++i2) {
-      for (int i1=0; i1<n1; ++i1) {
-        t[i2][i1] = s[i2][i1]+t1[i1];
-        if (i1>0 && t[i2][i1]<t[i2][i1-1])
-          System.out.println("bad time = "+t[i2][i1]+", i1,i2 ="+i1+","+i2);
-      }
-      ii.invert(t[i2],t2);
       for (int i1=0; i1<n1; ++i1)
+        s[i2][i1] += t1[i1];
+      ii.invert(s[i2],t2);
+      float tmin = -5.0f;
+      float tmax = n1-1+5.0f;
+      for (int i1=0; i1<n1; ++i1) {
+        if (t2[i1]<tmin) t2[i1] = tmin;
+        if (t2[i1]>tmax) t2[i1] = tmax;
         s[i2][i1] = t1[i1]-t2[i1];
+      }
     }
-    return s;
   }
   private static void cleanShifts(float[][] s) {
     int n1 = s[0].length;
     int n2 = s.length;
     for (int i2=0; i2<n2; ++i2) {
       for (int i1=1; i1<n1; ++i1) {
-        if (s[i2][i1]<=s[i2][i1-1]-1.0f) {
-          System.out.println("bad shift = "+s[i2][i1]+", i1,i2 ="+i1+","+i2);
+        if (s[i2][i1]<=s[i2][i1-1]-1.0f)
           s[i2][i1] = s[i2][i1-1]-0.99f;
-        }
       }
     }
   }
@@ -160,73 +164,6 @@ public class Flattener {
     zm.apply(tiny,el);
   }
 
-  private static void xmakeRhs(
-    float eps, float[][] u2, float[][] el, float[][] y) 
-  {
-    int n1 = y[0].length;
-    int n2 = y.length;
-    szero(y);
-    float d11Constant = eps;
-    for (int i2=1; i2<n2; ++i2) {
-      for (int i1=1; i1<n1; ++i1) {
-        float eli = el[i2][i1];
-        float u2i = u2[i2][i1];
-        float u1i = sqrt(1.0f-u2i*u2i);
-        float p2i;
-        if (u2i<0.0f) {
-          p2i = (u2i>-10.0f*u1i)?u2i/u1i:-10.0f;
-        } else {
-          p2i = (u2i<10.0f*u1i)?u2i/u1i:10.0f;
-        }
-        float d11 = d11Constant;
-        float d12 = 0.0f; // axis-aligned anisotropy
-        float d22 = 1.0f;
-        float x1 = 0.0f;
-        float x2 = 0.5f*p2i;
-        float y1 = d11*x1+d12*x2;
-        float y2 = d12*x1+d22*x2;
-        float ya = y1+y2;
-        float yb = y1-y2;
-        y[i2  ][i1  ] += ya;
-        y[i2  ][i1-1] -= yb;
-        y[i2-1][i1  ] += yb;
-        y[i2-1][i1-1] -= ya;
-      }
-    }
-  }
-
-  private static void xapplyLhs(
-    float eps, float[][] u2, float[][] el, float[][] x, float[][] y) 
-  {
-    int n1 = x[0].length;
-    int n2 = x.length;
-    szero(y);
-    float d11Constant = eps*eps;
-    for (int i2=1; i2<n2; ++i2) {
-      for (int i1=1; i1<n1; ++i1) {
-        float d11 = d11Constant;
-        float d12 = 0.0f; // axis-aligned anisotropy
-        float d22 = 1.0f;
-        float x00 = x[i2  ][i1  ];
-        float x01 = x[i2  ][i1-1];
-        float x10 = x[i2-1][i1  ];
-        float x11 = x[i2-1][i1-1];
-        float xa = x00-x11;
-        float xb = x01-x10;
-        float x1 = 0.25f*(xa-xb);
-        float x2 = 0.25f*(xa+xb);
-        float y1 = d11*x1+d12*x2;
-        float y2 = d12*x1+d22*x2;
-        float ya = y1+y2;
-        float yb = y1-y2;
-        y[i2  ][i1  ] += ya;
-        y[i2  ][i1-1] -= yb;
-        y[i2-1][i1  ] += yb;
-        y[i2-1][i1-1] -= ya;
-      }
-    }
-  }
-
   private static void makeRhs(
     float eps, float[][] u2, float[][] el, float[][] y) 
   {
@@ -238,13 +175,11 @@ public class Flattener {
         float eli = el[i2][i1];
         float u2i = u2[i2][i1];
         float u1i = sqrt(1.0f-u2i*u2i);
-        float b11 = eps;
         float b12 = -u2i*eli;
         float b22 =  u1i*eli;
-        float x1 = 0.0f;
         float x2 = 0.5f*u2i;
-        float y1 = b11*x1+b12*x2;
-        float y2 =        b22*x2;
+        float y1 = b12*x2;
+        float y2 = b22*x2;
         float ya = y1+y2;
         float yb = y1-y2;
         y[i2  ][i1  ] += ya;

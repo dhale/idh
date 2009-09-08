@@ -42,6 +42,7 @@ def plot(x,cmap=ColorMap.GRAY):
   sp.setSize(1012,676)
   pv = sp.addPixels(x)
   pv.setColorModel(cmap)
+  #pv.setInterpolation(PixelsView.Interpolation.NEAREST);
 
 #############################################################################
 # read/write files

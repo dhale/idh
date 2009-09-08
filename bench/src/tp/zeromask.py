@@ -3,12 +3,14 @@ Computes a mask for samples that are zero or near zero.
 """
 from tputils import *
 
-setupForSubset("subz_401_4_600")
+#setupForSubset("subz_401_4_600")
+setupForSubset("subt_251_4_500")
 s1,s2,s3 = getSamplings()
 n1,n2,n3 = s1.count,s2.count,s3.count
 
-sfile = "tpsz" # seismic image
-mfile = "tpmz" # mask image
+#sfile = "tpsz" # seismic image
+sfile = "tpst" # seismic image
+mfile = "tpmt" # mask image
 
 def main(args):
   s = readImage(sfile)
