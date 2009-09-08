@@ -26,12 +26,13 @@ def main(args):
 
 def flatten():
   f = readImage(ffile)
-  #plot(f)
-  for fl in [FlattenerF(8.0,0.1),Flattener(8.0)]:
+  plot(f)
+  #for fl in [FlattenerF(8.0,0.1),Flattener(8.0)]:
+  for fl in [Flattener(8.0)]:
     s = fl.findShifts(f)
     g = fl.applyShifts(f,s)
     plot(g)
-    #plot(s,jet)
+    plot(s,jet)
 
 gray = ColorMap.GRAY
 jet = ColorMap.JET

@@ -36,13 +36,40 @@ public class Flattener {
     float[][] r = new float[n2][n1]; // right-hand side
     float[][] s = new float[n2][n1]; // the shifts
     makeNormals(_sigma,f,u2,el);
-    fill(1.0f,el);
-    float sigma1 = 0.1f;
-    makeRhs(sigma1,u2,el,r);
-    Operator2 a = new LhsOperator2(sigma1,u2,el);
+    //fill(1.0f,el);
+    float eps = 0.1f;
+    makeRhs(eps,u2,el,r);
+    Operator2 a = new LhsOperator2(eps,u2,el);
     u2 = el = null;
     solve(a,r,s);
+    cleanShifts(s);
+    float[] t1 = rampfloat(0.0f,1.0f,n1);
+    float[] t2 = new float[n1];
+    float[][] t = s;
+    InverseInterpolator ii = new InverseInterpolator(n1,n1);
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        t[i2][i1] = s[i2][i1]+t1[i1];
+        if (i1>0 && t[i2][i1]<t[i2][i1-1])
+          System.out.println("bad time = "+t[i2][i1]+", i1,i2 ="+i1+","+i2);
+      }
+      ii.invert(t[i2],t2);
+      for (int i1=0; i1<n1; ++i1)
+        s[i2][i1] = t1[i1]-t2[i1];
+    }
     return s;
+  }
+  private static void cleanShifts(float[][] s) {
+    int n1 = s[0].length;
+    int n2 = s.length;
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=1; i1<n1; ++i1) {
+        if (s[i2][i1]<=s[i2][i1-1]-1.0f) {
+          System.out.println("bad shift = "+s[i2][i1]+", i1,i2 ="+i1+","+i2);
+          s[i2][i1] = s[i2][i1-1]-0.99f;
+        }
+      }
+    }
   }
 
   public float[][] applyShifts(float[][] f, float[][] s) {
@@ -206,19 +233,18 @@ public class Flattener {
     int n1 = y[0].length;
     int n2 = y.length;
     szero(y);
-    float d11Constant = eps;
     for (int i2=1; i2<n2; ++i2) {
       for (int i1=1; i1<n1; ++i1) {
         float eli = el[i2][i1];
         float u2i = u2[i2][i1];
         float u1i = sqrt(1.0f-u2i*u2i);
-        float d11 = d11Constant;
-        float d12 = 0.0f; // axis-aligned anisotropy
-        float d22 = u1i*eli;
+        float b11 = eps;
+        float b12 = -u2i*eli;
+        float b22 =  u1i*eli;
         float x1 = 0.0f;
         float x2 = 0.5f*u2i;
-        float y1 = d11*x1+d12*x2;
-        float y2 = d12*x1+d22*x2;
+        float y1 = b11*x1+b12*x2;
+        float y2 =        b22*x2;
         float ya = y1+y2;
         float yb = y1-y2;
         y[i2  ][i1  ] += ya;
@@ -235,15 +261,17 @@ public class Flattener {
     int n1 = x[0].length;
     int n2 = x.length;
     szero(y);
-    float d11Constant = eps*eps;
+    eps = eps*eps;
     for (int i2=1; i2<n2; ++i2) {
       for (int i1=1; i1<n1; ++i1) {
         float eli = el[i2][i1];
         float els = eli*eli;
         float u2i = u2[i2][i1];
-        float u1s = 1.0f-u2i*u2i;
-        float d11 = d11Constant;
-        float d12 = 0.0f; // axis-aligned anisotropy
+        float u2s = u2i*u2i;
+        float u1s = 1.0f-u2s;
+        float u1i = sqrt(u1s);
+        float d11 = eps+u2s*els;
+        float d12 = -u2i*u1i*els;
         float d22 = u1s*els;
         float x00 = x[i2  ][i1  ];
         float x01 = x[i2  ][i1-1];
