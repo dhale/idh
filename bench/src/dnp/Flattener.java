@@ -499,3 +499,157 @@ public class Flattener {
     }
   }
 } 
+
+/*
+  //lhs
+
+  private static void applyLhs(
+    float eps, float[][][] u2, float[][] el, float[][] x, float[][] y) 
+    Tensors3 d, float c, float[][][] s, float[][][] x, float[][][] y) 
+  {
+    if (SMOOTH) {
+      szero(y);
+    } else {
+      scopy(x,y);
+    }
+    if (PARALLEL) {
+      applyLhsParallel(d,c,s,x,y);
+    } else {
+      applyLhsSerial(d,c,s,x,y);
+    }
+  }
+
+  private static void applyLhsSerial(
+    Tensors3 d, float c, float[][][] s, float[][][] x, float[][][] y) 
+  {
+    int n3 = x.length;
+    for (int i3=1; i3<n3; ++i3)
+      applyLhsSlice3(i3,d,c,s,x,y);
+  }
+
+  private static void applyLhsParallel(
+    final Tensors3 d, final float c, final float[][][] s, 
+    final float[][][] x, final float[][][] y) 
+  {
+    final int n3 = x.length;
+
+    // i3 = 1, 3, 5, ...
+    final AtomicInteger a1 = new AtomicInteger(1);
+    Thread[] thread1 = Threads.makeArray();
+    for (int ithread=0; ithread<thread1.length; ++ithread) {
+      thread1[ithread] = new Thread(new Runnable() {
+        public void run() {
+          for (int i3=a1.getAndAdd(2); i3<n3; i3=a1.getAndAdd(2))
+            applyLhsSlice3(i3,d,c,s,x,y);
+        }
+      });
+    }
+    Threads.startAndJoin(thread1);
+
+    // i3 = 2, 4, 6, ...
+    final AtomicInteger a2 = new AtomicInteger(2);
+    Thread[] thread2 = Threads.makeArray();
+    for (int ithread=0; ithread<thread2.length; ++ithread) {
+      thread2[ithread] = new Thread(new Runnable() {
+        public void run() {
+          for (int i3=a2.getAndAdd(2); i3<n3; i3=a2.getAndAdd(2))
+            applyLhsSlice3(i3,d,c,s,x,y);
+        }
+      });
+    }
+    Threads.startAndJoin(thread2);
+  }
+*/
+
+
+  /**
+   * Computes y = (S'S+D'TD)x for one constant-i3 slice.
+   */
+   /*
+  private static void applyLhsSlice3(
+    int i3, Tensors3 d, float c, float[][][] s, float[][][] x, float[][][] y) 
+  {
+    float[] di = new float[6];
+    int n1 = x[0][0].length;
+    int n2 = x[0].length;
+    for (int i2=1; i2<n2; ++i2) {
+      float[] x00 = x[i3  ][i2  ];
+      float[] x01 = x[i3  ][i2-1];
+      float[] x10 = x[i3-1][i2  ];
+      float[] x11 = x[i3-1][i2-1];
+      float[] y00 = y[i3  ][i2  ];
+      float[] y01 = y[i3  ][i2-1];
+      float[] y10 = y[i3-1][i2  ];
+      float[] y11 = y[i3-1][i2-1];
+      for (int i1=1,i1m=0; i1<n1; ++i1,++i1m) {
+        d.getTensor(i1,i2,i3,di);
+        float csi = (s!=null)?c*s[i3][i2][i1]:c;
+        float d11 = di[0]*csi;
+        float d12 = di[1]*csi;
+        float d13 = di[2]*csi;
+        float d22 = di[3]*csi;
+        float d23 = di[4]*csi;
+        float d33 = di[5]*csi;
+        applyLhs(i1,d11,d12,d13,d22,d23,d33,x00,x01,x10,x11,y00,y01,y10,y11);
+      }
+    }
+  }
+   */
+
+  /**
+   * Computes y = (S'S+D'TD)x for one sample.
+   */
+   /*
+  private static void applyLhs(int i1,
+   float d11, float d12, float d13, float d22, float d23, float d33,
+   float[] x00, float[] x01, float[] x10, float[] x11,
+   float[] y00, float[] y01, float[] y10, float[] y11)
+  {
+    int i1m = i1-1;
+    float x000 = x00[i1 ];
+    float x001 = x00[i1m];
+    float x010 = x01[i1 ];
+    float x011 = x01[i1m];
+    float x100 = x10[i1 ];
+    float x101 = x10[i1m];
+    float x110 = x11[i1 ];
+    float x111 = x11[i1m];
+    //float x1 = 0.0625f*(x000+x010+x100+x110-x001-x011-x101-x111);
+    //float x2 = 0.0625f*(x000+x001+x100+x101-x010-x011-x110-x111);
+    //float x3 = 0.0625f*(x000+x001+x010+x011-x100-x101-x110-x111);
+    float xa = x000-x111;
+    float xb = x001-x110;
+    float xc = x010-x101;
+    float xd = x100-x011;
+    float x1 = 0.0625f*(xa-xb+xc+xd);
+    float x2 = 0.0625f*(xa+xb-xc+xd);
+    float x3 = 0.0625f*(xa+xb+xc-xd);
+    float y1 = d11*x1+d12*x2+d13*x3;
+    float y2 = d12*x1+d22*x2+d23*x3;
+    float y3 = d13*x1+d23*x2+d33*x3;
+    float ya = y1+y2+y3;
+    float yb = y1-y2+y3;
+    float yc = y1+y2-y3;
+    float yd = y1-y2-y3;
+    if (SMOOTH) {
+      float xs = 0.015625f*(x000+x001+x010+x011+x100+x101+x110+x111);
+      y00[i1 ] += ya+xs;
+      y00[i1m] -= yd-xs;
+      y01[i1 ] += yb+xs;
+      y01[i1m] -= yc-xs;
+      y10[i1 ] += yc+xs;
+      y10[i1m] -= yb-xs;
+      y11[i1 ] += yd+xs;
+      y11[i1m] -= ya-xs;
+    } else {
+      y00[i1 ] += ya;
+      y00[i1m] -= yd;
+      y01[i1 ] += yb;
+      y01[i1m] -= yc;
+      y10[i1 ] += yc;
+      y10[i1m] -= yb;
+      y11[i1 ] += yd;
+      y11[i1m] -= ya;
+    }
+  }
+   */
