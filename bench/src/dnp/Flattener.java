@@ -18,19 +18,25 @@ import static edu.mines.jtk.util.ArrayMath.*;
  * In 2D, the shifts (in samples) are functions s(x1,x2) that flatten
  * image features. Specifically, for a 2D input image f(x1,x2), flattening 
  * is performed by computing g(x1,x2) = f(x1-s(x1,x2),x2). The shifts 
- * s(x1,x2) added to x1 in this expression are computed to minimize changes 
- * with respect to x2 in the output flattened image g(x1,x2).
+ * s(x1,x2) added to x1 in this expression are computed from slopes
+ * measured in the input image f(x1,x2) so that features in the output
+ * image g(x1,x2) vary as little as possible with x2.
+ *
+ * Flattens features in 3D images in the same way, but using shifts
+ * s(x1,x2,x3) to compute g(x1,x2,x3) = f(x1-s(x1,x2,x3),x2,x3).
+ * Features in the flattened image g(x1,x2,x3 vary little with x2 and x3.
  *
  * @author Dave Hale, Colorado School of Mines
- * @version 2009.09.03
+ * @version 2009.09.08
  */
 public class Flattener {
 
   public Flattener() {
   }
 
-  public Flattener(double sigma) {
+  public Flattener(double sigma, double eps) {
     _sigma = (float)sigma;
+    _eps = (float)eps;
   }
 
   public float[][] findShifts(float[][] f) {
@@ -41,9 +47,8 @@ public class Flattener {
     float[][] r = new float[n2][n1]; // right-hand side
     float[][] s = new float[n2][n1]; // the shifts
     makeNormals(_sigma,f,u2,el);
-    float eps = 0.1f;
-    makeRhs(eps,u2,el,r);
-    Operator2 a = new LhsOperator2(eps,u2,el);
+    makeRhs(_eps,u2,el,r);
+    Operator2 a = new LhsOperator2(_eps,u2,el);
     solve(a,r,s);
     invertShifts(s);
     return s;
@@ -73,9 +78,10 @@ public class Flattener {
 
   private static final boolean PARALLEL = true; // false for single-threaded
 
-  private float _sigma = 8.0f; // smoothing half-width in 1st dimension
+  private float _sigma = 8.0f; // smoothing half-width to estimate slopes
+  private float _eps = 0.1f; // penalty for ds/dx1 term in least-squares
   private float _small = 0.01f; // stop iterations when residuals are small
-  private int _niter = 2000; // number of iterations
+  private int _niter = 2000; // maximum number of iterations
 
   private static interface Operator2 {
     public void apply(float[][] x, float[][] y);
@@ -182,6 +188,7 @@ public class Flattener {
         float u1i = sqrt(1.0f-u2i*u2i);
         float b12 = -u2i*eli;
         float b22 =  u1i*eli;
+        // float x1 = 0.0f;
         float x2 = 0.5f*u2i;
         float y1 = b12*x2;
         float y2 = b22*x2;
