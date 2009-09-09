@@ -15,6 +15,11 @@ import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
  * Estimates and applies shifts to flatten features in 2D and 3D images.
+ * In 2D, the shifts (in samples) are functions s(x1,x2) that flatten
+ * image features. Specifically, for a 2D input image f(x1,x2), flattening 
+ * is performed by computing g(x1,x2) = f(x1-s(x1,x2),x2). The shifts 
+ * s(x1,x2) added to x1 in this expression are computed to minimize changes 
+ * with respect to x2 in the output flattened image g(x1,x2).
  *
  * @author Dave Hale, Colorado School of Mines
  * @version 2009.09.03
@@ -36,44 +41,12 @@ public class Flattener {
     float[][] r = new float[n2][n1]; // right-hand side
     float[][] s = new float[n2][n1]; // the shifts
     makeNormals(_sigma,f,u2,el);
-    //fill(1.0f,el);
-    float eps = 0.05f;
+    float eps = 0.1f;
     makeRhs(eps,u2,el,r);
     Operator2 a = new LhsOperator2(eps,u2,el);
-    u2 = el = null;
     solve(a,r,s);
     invertShifts(s);
     return s;
-  }
-  private static void invertShifts(float[][] s) {
-    cleanShifts(s);
-    int n1 = s[0].length;
-    int n2 = s.length;
-    float[] t1 = rampfloat(0.0f,1.0f,n1);
-    float[] t2 = new float[n1];
-    InverseInterpolator ii = new InverseInterpolator(n1,n1);
-    for (int i2=0; i2<n2; ++i2) {
-      for (int i1=0; i1<n1; ++i1)
-        s[i2][i1] += t1[i1];
-      ii.invert(s[i2],t2);
-      float tmin = -5.0f;
-      float tmax = n1-1+5.0f;
-      for (int i1=0; i1<n1; ++i1) {
-        if (t2[i1]<tmin) t2[i1] = tmin;
-        if (t2[i1]>tmax) t2[i1] = tmax;
-        s[i2][i1] = t1[i1]-t2[i1];
-      }
-    }
-  }
-  private static void cleanShifts(float[][] s) {
-    int n1 = s[0].length;
-    int n2 = s.length;
-    for (int i2=0; i2<n2; ++i2) {
-      for (int i1=1; i1<n1; ++i1) {
-        if (s[i2][i1]<=s[i2][i1-1]-1.0f)
-          s[i2][i1] = s[i2][i1-1]-0.99f;
-      }
-    }
   }
 
   public float[][] applyShifts(float[][] f, float[][] s) {
@@ -109,15 +82,15 @@ public class Flattener {
   }
 
   private static class LhsOperator2 implements Operator2 {
-    LhsOperator2(float sigma, float[][] u2, float[][] el) {
-      _sigma = sigma;
+    LhsOperator2(float eps, float[][] u2, float[][] el) {
+      _eps = eps;
       _u2 = u2;
       _el = el;
     }
     public void apply(float[][] x, float[][] y) {
-      applyLhs(_sigma,_u2,_el,x,y);
+      applyLhs(_eps,_u2,_el,x,y);
     }
-    private float _sigma;
+    private float _eps;
     private float[][] _u2;
     private float[][] _el;
   }
@@ -164,6 +137,38 @@ public class Flattener {
     zm.apply(tiny,el);
   }
 
+  private static void invertShifts(float[][] s) {
+    cleanShifts(s);
+    int n1 = s[0].length;
+    int n2 = s.length;
+    float[] t1 = rampfloat(0.0f,1.0f,n1);
+    float[] t2 = new float[n1];
+    InverseInterpolator ii = new InverseInterpolator(n1,n1);
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1)
+        s[i2][i1] += t1[i1];
+      ii.invert(s[i2],t2);
+      float tmin = -5.0f;
+      float tmax = n1-1+5.0f;
+      for (int i1=0; i1<n1; ++i1) {
+        if (t2[i1]<tmin) t2[i1] = tmin;
+        if (t2[i1]>tmax) t2[i1] = tmax;
+        s[i2][i1] = t1[i1]-t2[i1];
+      }
+    }
+  }
+
+  private static void cleanShifts(float[][] s) {
+    int n1 = s[0].length;
+    int n2 = s.length;
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=1; i1<n1; ++i1) {
+        if (s[i2][i1]<=s[i2][i1-1]-1.0f)
+          s[i2][i1] = s[i2][i1-1]-0.99f;
+      }
+    }
+  }
+
   private static void makeRhs(
     float eps, float[][] u2, float[][] el, float[][] y) 
   {
@@ -196,7 +201,7 @@ public class Flattener {
     int n1 = x[0].length;
     int n2 = x.length;
     szero(y);
-    eps = eps*eps;
+    float epss = eps*eps;
     for (int i2=1; i2<n2; ++i2) {
       for (int i1=1; i1<n1; ++i1) {
         float eli = el[i2][i1];
@@ -205,7 +210,7 @@ public class Flattener {
         float u2s = u2i*u2i;
         float u1s = 1.0f-u2s;
         float u1i = sqrt(u1s);
-        float d11 = eps+u2s*els;
+        float d11 = epss+u2s*els;
         float d12 = -u2i*u1i*els;
         float d22 = u1s*els;
         float x00 = x[i2  ][i1  ];
@@ -448,12 +453,6 @@ public class Flattener {
       });
     }
     Threads.startAndJoin(threads);
-  }
-
-  private static final boolean TRACE = true;
-  private static void trace(String s) {
-    if (TRACE)
-      System.out.println(s);
   }
 
   ///////////////////////////////////////////////////////////////////////////
