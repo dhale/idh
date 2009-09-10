@@ -27,23 +27,20 @@ n1,n2,n3 = s1.count,s2.count,s3.count
 def main(args):
   #display()
   #slopes()
-  normals()
+  flatten()
 
-def normals():
+def flatten():
   f = readImage(ffile)
   m = readImage(mfile)
-  u2 = copy(f)
-  u3 = copy(f)
-  ep = copy(f)
-  Flattener.normals(f,u2,u3,ep)
-  mask = ZeroMask(m)
-  mask.apply(0.0,u2)
-  mask.apply(0.0,u3)
-  mask.apply(0.0,ep)
-  for g in [u2,u3,ep]:
-    world = World()
-    addImage2ToWorld(world,f,g)
-    makeFrame(world)
+  fl = FlattenerS(8.0,0.1)
+  s = fl.findShifts(f,m)
+  writeImage("tpss",s)
+  g = fl.applyShifts(f,s)
+  writeImage("tpsf",g)
+  world = World()
+  addImageToWorld(world,f)
+  addImage2ToWorld(world,g,s)
+  makeFrame(world)
 
 def slopes():
   f = readImage(ffile)

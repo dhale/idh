@@ -35,7 +35,7 @@ public class CgLinearSolver {
   /**
    * An abstract linear operator A for 1D arrays.
    */
-  public interface Operator1 {
+  public interface A1 {
 
     /**
      * Computes the matrix-vector product y = Ax.
@@ -48,7 +48,7 @@ public class CgLinearSolver {
   /**
    * An abstract linear operator A for 2D arrays.
    */
-  public interface Operator2 {
+  public interface A2 {
 
     /**
      * Computes the matrix-vector product y = Ax.
@@ -61,7 +61,7 @@ public class CgLinearSolver {
   /**
    * An abstract linear operator A for 3D arrays.
    */
-  public interface Operator3 {
+  public interface A3 {
 
     /**
      * Computes the matrix-vector product y = Ax.
@@ -105,7 +105,7 @@ public class CgLinearSolver {
    * @param b the right-hand-side column vector.
    * @param x the solution column vector.
    */
-  public void solve(Operator1 a, float[] b, float[] x) {
+  public void solve(A1 a, float[] b, float[] x) {
     int n1 = b.length;
     float[] d = new float[n1];
     float[] q = new float[n1];
@@ -141,7 +141,7 @@ public class CgLinearSolver {
    * @param b the right-hand-side column vector.
    * @param x the solution column vector.
    */
-  public void solve(Operator2 a, float[][] b, float[][] x) {
+  public void solve(A2 a, float[][] b, float[][] x) {
     int n1 = b[0].length;
     int n2 = b.length;
     float[][] d = new float[n2][n1];
@@ -178,7 +178,7 @@ public class CgLinearSolver {
    * @param b the right-hand-side column vector.
    * @param x the solution column vector.
    */
-  public void solve(Operator3 a, float[][][] b, float[][][] x) {
+  public void solve(A3 a, float[][][] b, float[][][] x) {
     int n1 = b[0][0].length;
     int n2 = b[0].length;
     int n3 = b.length;

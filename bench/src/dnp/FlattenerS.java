@@ -46,14 +46,14 @@ public class FlattenerS {
     LocalSlopeFinder lsf = new LocalSlopeFinder(_sigma,10.0);
     lsf.findSlopes(f,p2,el);
     makeRhs(_epsilon,p2,el,r);
-    LhsOperator2 a = new LhsOperator2(_epsilon,p2,el);
+    A2 a = new A2(_epsilon,p2,el);
     CgLinearSolver cls = new CgLinearSolver(_niter,_small);
     cls.solve(a,r,s);
     invertShifts(s);
     return s;
   }
 
-  public float[][][] findShifts(float[][][] f) {
+  public float[][][] findShifts(float[][][] f, float[][][] m) {
     int n1 = f[0][0].length;
     int n2 = f[0].length;
     int n3 = f.length;
@@ -64,8 +64,16 @@ public class FlattenerS {
     float[][][] s = new float[n3][n2][n1]; // the shifts
     LocalSlopeFinder lsf = new LocalSlopeFinder(_sigma,10.0);
     lsf.findSlopes(f,p2,p3,ep);
+    if (m!=null) {
+      ZeroMask zm = new ZeroMask(m);
+      float zero = 0.00f;
+      float tiny = 0.01f;
+      zm.apply(zero,p2);
+      zm.apply(zero,p3);
+      zm.apply(tiny,ep);
+    }
     makeRhs(_epsilon,p2,p3,ep,r);
-    LhsOperator3 a = new LhsOperator3(_epsilon,p2,p3,ep);
+    A3 a = new A3(_epsilon,p2,p3,ep);
     CgLinearSolver cls = new CgLinearSolver(_niter,_small);
     cls.solve(a,r,s);
     invertShifts(s);
@@ -117,8 +125,8 @@ public class FlattenerS {
   private float _small = 0.01f; // stop iterations when residuals are small
   private int _niter = 2000; // maximum number of iterations
 
-  private static class LhsOperator2 implements CgLinearSolver.Operator2 {
-    LhsOperator2(float epsilon, float[][] p2, float[][] el) {
+  private static class A2 implements CgLinearSolver.A2 {
+    A2(float epsilon, float[][] p2, float[][] el) {
       _epsilon = epsilon;
       _p2 = p2;
       _el = el;
@@ -131,10 +139,8 @@ public class FlattenerS {
     private float[][] _el;
   }
 
-  private static class LhsOperator3 implements CgLinearSolver.Operator3 {
-    LhsOperator3(
-      float epsilon, float[][][] p2, float[][][] p3, float[][][] ep) 
-    {
+  private static class A3 implements CgLinearSolver.A3 {
+    A3(float epsilon, float[][][] p2, float[][][] p3, float[][][] ep) {
       _epsilon = epsilon;
       _p2 = p2;
       _p3 = p3;
