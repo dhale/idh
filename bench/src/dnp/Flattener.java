@@ -6,7 +6,6 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package dnp;
 
-import java.util.logging.Logger;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import edu.mines.jtk.dsp.*;
@@ -31,9 +30,6 @@ import static edu.mines.jtk.util.ArrayMath.*;
  */
 public class Flattener {
 
-  public Flattener() {
-  }
-
   public Flattener(double sigma, double eps) {
     _sigma = (float)sigma;
     _eps = (float)eps;
@@ -48,8 +44,9 @@ public class Flattener {
     float[][] s = new float[n2][n1]; // the shifts
     makeNormals(_sigma,f,u2,el);
     makeRhs(_eps,u2,el,r);
-    Operator2 a = new LhsOperator2(_eps,u2,el);
-    solve(a,r,s);
+    LhsOperator2 a = new LhsOperator2(_eps,u2,el);
+    CgLinearSolver cls = new CgLinearSolver(_niter,_small);
+    cls.solve(a,r,s);
     invertShifts(s);
     return s;
   }
@@ -73,9 +70,6 @@ public class Flattener {
   ///////////////////////////////////////////////////////////////////////////
   // private
 
-  private static Logger log = 
-    Logger.getLogger(Flattener.class.getName());
-
   private static final boolean PARALLEL = true; // false for single-threaded
 
   private float _sigma = 8.0f; // smoothing half-width to estimate slopes
@@ -83,11 +77,8 @@ public class Flattener {
   private float _small = 0.01f; // stop iterations when residuals are small
   private int _niter = 2000; // maximum number of iterations
 
-  private static interface Operator2 {
-    public void apply(float[][] x, float[][] y);
-  }
-
-  private static class LhsOperator2 implements Operator2 {
+  private static class LhsOperator2 
+    implements CgLinearSolver.Operator2 {
     LhsOperator2(float eps, float[][] u2, float[][] el) {
       _eps = eps;
       _u2 = u2;
@@ -180,7 +171,7 @@ public class Flattener {
   {
     int n1 = y[0].length;
     int n2 = y.length;
-    szero(y);
+    zero(y);
     for (int i2=1; i2<n2; ++i2) {
       for (int i1=1; i1<n1; ++i1) {
         float eli = el[i2][i1];
@@ -207,7 +198,7 @@ public class Flattener {
   {
     int n1 = x[0].length;
     int n2 = x.length;
-    szero(y);
+    zero(y);
     float epss = eps*eps;
     for (int i2=1; i2<n2; ++i2) {
       for (int i1=1; i1<n1; ++i1) {
@@ -238,228 +229,6 @@ public class Flattener {
         y[i2-1][i1-1] -= ya;
       }
     }
-  }
-
-  /**
-   * Solves Ax = b via conjugate gradient iterations. (No preconditioner.)
-   * Uses the initial values of x; does not assume they are zero.
-   */
-  private void solve(Operator2 a, float[][] b, float[][] x) {
-    int n1 = b[0].length;
-    int n2 = b.length;
-    float[][] d = new float[n2][n1];
-    float[][] q = new float[n2][n1];
-    float[][] r = new float[n2][n1];
-    scopy(b,r);
-    a.apply(x,q);
-    saxpy(-1.0f,q,r); // r = b-Ax
-    scopy(r,d);
-    float delta = sdot(r,r);
-    float deltaBegin = delta;
-    float deltaSmall = sdot(b,b)*_small*_small;
-    log.fine("solve: delta="+delta);
-    int iter;
-    for (iter=0; iter<_niter && delta>deltaSmall; ++iter) {
-      log.finer("  iter="+iter+" delta="+delta+" ratio="+delta/deltaBegin);
-      a.apply(d,q);
-      float dq = sdot(d,q);
-      float alpha = delta/dq;
-      saxpy( alpha,d,x);
-      saxpy(-alpha,q,r);
-      float deltaOld = delta;
-      delta = sdot(r,r);
-      float beta = delta/deltaOld;
-      sxpay(beta,r,d);
-    }
-    log.fine("  iter="+iter+" delta="+delta+" ratio="+delta/deltaBegin);
-  }
-
-  // Zeros array x.
-  private static void szero(float[][] x) {
-    zero(x);
-  }
-  private static void szero(float[][][] x) {
-    if (PARALLEL) {
-      szeroP(x);
-    } else {
-      szeroS(x);
-    }
-  }
-  private static void szeroS(float[][][] x) {
-    int n3 = x.length;
-    for (int i3=0; i3<n3; ++i3)
-      szero(x[i3]);
-  }
-  private static void szeroP(final float[][][] x) {
-    final int n3 = x.length;
-    final AtomicInteger a3 = new AtomicInteger(0);
-    Thread[] threads = Threads.makeArray();
-    for (int ithread=0; ithread<threads.length; ++ithread) {
-      threads[ithread] = new Thread(new Runnable() {
-        public void run() {
-          for (int i3=a3.getAndIncrement(); i3<n3; i3=a3.getAndIncrement())
-            szero(x[i3]);
-        }
-      });
-    }
-    Threads.startAndJoin(threads);
-  }
-
-  // Copys array x to array y.
-  private static void scopy(float[][] x, float[][] y) {
-    copy(x,y);
-  }
-  private static void scopy(float[][][] x, float[][][] y) {
-    if (PARALLEL) {
-      scopyP(x,y);
-    } else {
-      scopyS(x,y);
-    }
-  }
-  private static void scopyS(float[][][] x, float[][][] y) {
-    int n3 = x.length;
-    for (int i3=0; i3<n3; ++i3)
-      scopy(x[i3],y[i3]);
-  }
-  private static void scopyP(final float[][][] x, final float[][][] y) {
-    final int n3 = x.length;
-    final AtomicInteger a3 = new AtomicInteger(0);
-    Thread[] threads = Threads.makeArray();
-    for (int ithread=0; ithread<threads.length; ++ithread) {
-      threads[ithread] = new Thread(new Runnable() {
-        public void run() {
-          for (int i3=a3.getAndIncrement(); i3<n3; i3=a3.getAndIncrement())
-            scopy(x[i3],y[i3]);
-        }
-      });
-    }
-    Threads.startAndJoin(threads);
-  }
-
-  // Returns the dot product x'y.
-  private static float sdot(float[][] x, float[][] y) {
-    int n1 = x[0].length;
-    int n2 = x.length;
-    float d = 0.0f;
-    for (int i2=0; i2<n2; ++i2) {
-      float[] x2 = x[i2], y2 = y[i2];
-      for (int i1=0; i1<n1; ++i1) {
-        d += x2[i1]*y2[i1];
-      }
-    }
-    return d;
-  }
-  private static float sdot(float[][][] x, float[][][] y) {
-    if (PARALLEL) {
-      return sdotP(x,y);
-    } else {
-      return sdotS(x,y);
-    }
-  }
-  private static float sdotS(float[][][] x, float[][][] y) {
-    int n3 = x.length;
-    float d = 0.0f;
-    for (int i3=0; i3<n3; ++i3)
-      d += sdot(x[i3],y[i3]);
-    return d;
-  }
-  private static float sdotP(final float[][][] x, final float[][][] y) {
-    final int n3 = x.length;
-    final AtomicFloat ad = new AtomicFloat(0.0f);
-    final AtomicInteger a3 = new AtomicInteger(0);
-    Thread[] threads = Threads.makeArray();
-    for (int ithread=0; ithread<threads.length; ++ithread) {
-      threads[ithread] = new Thread(new Runnable() {
-        public void run() {
-          float d = 0.0f;
-          for (int i3=a3.getAndIncrement(); i3<n3; i3=a3.getAndIncrement())
-            d += sdot(x[i3],y[i3]);
-          ad.getAndAdd(d);
-        }
-      });
-    }
-    Threads.startAndJoin(threads);
-    return ad.get();
-  }
-
-  // Computes y = y + a*x.
-  private static void saxpy(float a, float[][] x, float[][] y) {
-    int n1 = x[0].length;
-    int n2 = x.length;
-    for (int i2=0; i2<n2; ++i2) {
-      float[] x2 = x[i2], y2 = y[i2];
-      for (int i1=0; i1<n1; ++i1) {
-        y2[i1] += a*x2[i1];
-      }
-    }
-  }
-  private static void saxpy(float a, float[][][] x, float[][][] y) {
-    if (PARALLEL) {
-      saxpyP(a,x,y);
-    } else {
-      saxpyS(a,x,y);
-    }
-  }
-  private static void saxpyS(float a, float[][][] x, float[][][] y) {
-    int n3 = x.length;
-    for (int i3=0; i3<n3; ++i3)
-      saxpy(a,x[i3],y[i3]);
-  }
-  private static void saxpyP(
-    final float a, final float[][][] x, final float[][][] y)
-  {
-    final int n3 = x.length;
-    final AtomicInteger a3 = new AtomicInteger(0);
-    Thread[] threads = Threads.makeArray();
-    for (int ithread=0; ithread<threads.length; ++ithread) {
-      threads[ithread] = new Thread(new Runnable() {
-        public void run() {
-          for (int i3=a3.getAndIncrement(); i3<n3; i3=a3.getAndIncrement())
-            saxpy(a,x[i3],y[i3]);
-        }
-      });
-    }
-    Threads.startAndJoin(threads);
-  }
-
-  // Computes y = x + a*y.
-  private static void sxpay(float a, float[][] x, float[][] y) {
-    int n1 = x[0].length;
-    int n2 = x.length;
-    for (int i2=0; i2<n2; ++i2) {
-      float[] x2 = x[i2], y2 = y[i2];
-      for (int i1=0; i1<n1; ++i1) {
-        y2[i1] = a*y2[i1]+x2[i1];
-      }
-    }
-  }
-  private static void sxpay(float a, float[][][] x, float[][][] y) {
-    if (PARALLEL) {
-      sxpayP(a,x,y);
-    } else {
-      sxpayS(a,x,y);
-    }
-  }
-  private static void sxpayS(float a, float[][][] x, float[][][] y) {
-    int n3 = x.length;
-    for (int i3=0; i3<n3; ++i3)
-      sxpay(a,x[i3],y[i3]);
-  }
-  private static void sxpayP(
-    final float a, final float[][][] x, final float[][][] y)
-  {
-    final int n3 = x.length;
-    final AtomicInteger a3 = new AtomicInteger(0);
-    Thread[] threads = Threads.makeArray();
-    for (int ithread=0; ithread<threads.length; ++ithread) {
-      threads[ithread] = new Thread(new Runnable() {
-        public void run() {
-          for (int i3=a3.getAndIncrement(); i3<n3; i3=a3.getAndIncrement())
-            sxpay(a,x[i3],y[i3]);
-        }
-      });
-    }
-    Threads.startAndJoin(threads);
   }
 
   ///////////////////////////////////////////////////////////////////////////
