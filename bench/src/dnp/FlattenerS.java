@@ -64,7 +64,7 @@ public class FlattenerS {
     float[][][] s = new float[n3][n2][n1]; // the shifts
     LocalSlopeFinder lsf = new LocalSlopeFinder(_sigma,10.0);
     lsf.findSlopes(f,p2,p3,ep);
-    //makeRhs(_epsilon,p2,p3,ep,r);
+    makeRhs(_epsilon,p2,p3,ep,r);
     LhsOperator3 a = new LhsOperator3(_epsilon,p2,p3,ep);
     CgLinearSolver cls = new CgLinearSolver(_niter,_small);
     cls.solve(a,r,s);
@@ -222,6 +222,48 @@ public class FlattenerS {
     }
   }
 
+  private static void makeRhs(
+    float epsilon, 
+    float[][][] p2, float[][][] p3, float[][][] ep, 
+    float[][][] y) 
+  {
+    int n1 = y[0][0].length;
+    int n2 = y[0].length;
+    int n3 = y.length;
+    zero(y);
+    for (int i3=1; i3<n3; ++i3) {
+      for (int i2=1; i2<n2; ++i2) {
+        for (int i1=1; i1<n1; ++i1) {
+          float epi = ep[i3][i2][i1];
+          float p2i = p2[i3][i2][i1];
+          float p3i = p3[i3][i2][i1];
+          float b12 = p2i*epi;
+          float b13 = p3i*epi;
+          float b22 = epi;
+          float b33 = epi;
+          // float x1 = 0.0f;
+          float x2 = -0.25f*p2i;
+          float x3 = -0.25f*p3i;
+          float y1 = b12*x2+b13*x3;
+          float y2 = b22*x2;
+          float y3 = b33*x3;
+          float ya = y1+y2+y3;
+          float yb = y1-y2+y3;
+          float yc = y1+y2-y3;
+          float yd = y1-y2-y3;
+          y[i3  ][i2  ][i1  ] += ya;
+          y[i3  ][i2  ][i1-1] -= yd;
+          y[i3  ][i2-1][i1  ] += yb;
+          y[i3  ][i2-1][i1-1] -= yc;
+          y[i3-1][i2  ][i1  ] += yc;
+          y[i3-1][i2  ][i1-1] -= yb;
+          y[i3-1][i2-1][i1  ] += yd;
+          y[i3-1][i2-1][i1-1] -= ya;
+        }
+      }
+    }
+  }
+
   private static void applyLhs(
     float epsilon, float[][] p2, float[][] el, float[][] x, float[][] y) 
   {
@@ -263,7 +305,7 @@ public class FlattenerS {
     float[][][] p2, float[][][] p3, float[][][] ep, 
     float[][][] x, float[][][] y) 
   {
-     zero(y);
+    zero(y);
     if (PARALLEL) {
       applyLhsParallel(epsilon,p2,p3,ep,x,y);
     } else {
