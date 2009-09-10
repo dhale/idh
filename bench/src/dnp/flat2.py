@@ -26,7 +26,7 @@ def main(args):
 
 def flatten():
   f = readImage(ffile)
-  #plot(f)
+  plot(f)
   sigma = 8.0
   eps = 0.1
   for fl in [FlattenerS(sigma,eps)]:
