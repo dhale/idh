@@ -27,7 +27,56 @@ n1,n2,n3 = s1.count,s2.count,s3.count
 def main(args):
   #display()
   #slopes()
-  flatten()
+  #flatten()
+  #flattenWithSlopes()
+  flattenTest()
+
+n1,n2,n3 = 101,101,101
+s1,s2,s3 = Sampling(n1),Sampling(n2),Sampling(n3)
+def flattenTest():
+  """Test for t(tau,x) = tau*(1+a*sin(bx)*sin(cy))"""
+  x = rampfloat(0,0,0,1,n1,n2,n3)
+  y = rampfloat(0,0,1,0,n1,n2,n3)
+  t = rampfloat(0,1,0,0,n1,n2,n3)
+  smax = 5.0
+  a = smax/(n1-1)
+  b = 2*PI/(n2-1)
+  c = 2*PI/(n3-1)
+  bx = mul(b,x)
+  cy = mul(c,y)
+  cosbx,coscy = cos(bx),cos(cy)
+  sinbx,sincy = sin(bx),sin(cy)
+  asinbx,asincy = mul(a,sinbx),mul(a,sincy)
+  bcosbx,ccoscy = mul(b,cosbx),mul(c,coscy)
+  asinbxsincy = mul(asinbx,sincy)
+  den = add(1,asinbxsincy)
+  p2 = div(mul(t,mul(asinbx,ccoscy)),den)
+  p3 = div(mul(t,mul(bcosbx,asincy)),den)
+  ep = fillfloat(1,n1,n2,n3)
+  fl = FlattenerS(8.0,0.1)
+  sf = fl.findShifts(p2,p3,ep) # found shifts
+  se = neg(mul(t,asinbxsincy)) # exact shifts
+  world = World()
+  addImageToWorld(world,sf,jet,-smax,smax)
+  addImageToWorld(world,se,jet,-smax,smax)
+  makeFrame(world)
+
+def flattenWithSlopes():
+  f = readImage("tpst")
+  p2 = readImage("tpp2")
+  p3 = readImage("tpp3")
+  ep = readImage("tpep")
+  fl = FlattenerS(8.0,0.1)
+  s = fl.findShifts(p2,p3,ep)
+  print "s min =",min(s),"max =",max(s)
+  #writeImage("tpss",s)
+  g = fl.applyShifts(f,s)
+  #writeImage("tpsf",g)
+  world = World()
+  addImage2ToWorld(world,f,g)
+  s = clip(-5,5,s)
+  addImage2ToWorld(world,g,s)
+  makeFrame(world)
 
 def flatten():
   f = readImage(ffile)
@@ -47,16 +96,22 @@ def slopes():
   m = readImage(mfile)
   p2 = copy(f)
   p3 = copy(f)
-  Flattener.slopes(1,1,f,p2,p3)
-  mask = ZeroMask(m)
-  mask.apply(0.0,p2)
-  mask.apply(0.0,p3)
-  world = World()
-  addImage2ToWorld(world,f,p2)
-  makeFrame(world)
-  world = World()
-  addImage2ToWorld(world,f,p3)
-  makeFrame(world)
+  ep = copy(f)
+  lsf = LocalSlopeFinder(8.0,5.0)
+  lsf.findSlopes(f,p2,p3,ep);
+  zm = ZeroMask(m)
+  zero = 0.00;
+  tiny = 0.01;
+  zm.apply(zero,p2);
+  zm.apply(zero,p3);
+  zm.apply(tiny,ep);
+  writeImage("tpp2",p2)
+  writeImage("tpp3",p3)
+  writeImage("tpep",ep)
+  for g in [p2,p3,ep]:
+    world = World()
+    addImage2ToWorld(world,f,g)
+    makeFrame(world)
 
 def display():
   f = readImage(ffile)
@@ -114,8 +169,14 @@ def writeTensors(name,tensors):
 #############################################################################
 # graphics
 
-def addImageToWorld(world,image):
+gray = ColorMap.GRAY
+jet = ColorMap.JET
+
+def addImageToWorld(world,image,cmap=gray,cmin=0,cmax=0):
   ipg = ImagePanelGroup(s1,s2,s3,image)
+  ipg.setColorModel(cmap)
+  if cmin<cmax:
+    ipg.setClips(cmin,cmax)
   world.addChild(ipg)
   return ipg
 

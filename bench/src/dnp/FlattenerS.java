@@ -41,10 +41,16 @@ public class FlattenerS {
     int n2 = f.length;
     float[][] p2 = new float[n2][n1]; // slopes p2
     float[][] el = new float[n2][n1]; // linearities
-    float[][] r = new float[n2][n1]; // right-hand side
-    float[][] s = new float[n2][n1]; // the shifts
     LocalSlopeFinder lsf = new LocalSlopeFinder(_sigma,10.0);
     lsf.findSlopes(f,p2,el);
+    return findShifts(p2,el);
+  }
+
+  public float[][] findShifts(float[][] p2, float[][] el) {
+    int n1 = p2[0].length;
+    int n2 = p2.length;
+    float[][] r = new float[n2][n1]; // right-hand side
+    float[][] s = new float[n2][n1]; // the shifts
     makeRhs(_epsilon,p2,el,r);
     A2 a = new A2(_epsilon,p2,el);
     CgLinearSolver cls = new CgLinearSolver(_niter,_small);
@@ -53,30 +59,31 @@ public class FlattenerS {
     return s;
   }
 
-  public float[][][] findShifts(float[][][] f, float[][][] m) {
+  public float[][][] findShifts(float[][][] f) {
     int n1 = f[0][0].length;
     int n2 = f[0].length;
     int n3 = f.length;
     float[][][] p2 = new float[n3][n2][n1]; // slopes p2
     float[][][] p3 = new float[n3][n2][n1]; // slopes p3
     float[][][] ep = new float[n3][n2][n1]; // planarities
-    float[][][] r = new float[n3][n2][n1]; // right-hand side
-    float[][][] s = new float[n3][n2][n1]; // the shifts
     LocalSlopeFinder lsf = new LocalSlopeFinder(_sigma,10.0);
     lsf.findSlopes(f,p2,p3,ep);
-    if (m!=null) {
-      ZeroMask zm = new ZeroMask(m);
-      float zero = 0.00f;
-      float tiny = 0.01f;
-      zm.apply(zero,p2);
-      zm.apply(zero,p3);
-      zm.apply(tiny,ep);
-    }
+    return findShifts(p2,p3,ep);
+  }
+
+  public float[][][] findShifts(
+    float[][][] p2, float[][][] p3, float[][][] ep) 
+  {
+    int n1 = p2[0][0].length;
+    int n2 = p2[0].length;
+    int n3 = p2.length;
+    float[][][] r = new float[n3][n2][n1]; // right-hand side
+    float[][][] s = new float[n3][n2][n1]; // the shifts
     makeRhs(_epsilon,p2,p3,ep,r);
     A3 a = new A3(_epsilon,p2,p3,ep);
-    CgLinearSolver cls = new CgLinearSolver(_niter,_small);
+    CgLinearSolver cls = new CgLinearSolver(1000,_small);
     cls.solve(a,r,s);
-    invertShifts(s);
+    //invertShifts(s);
     return s;
   }
 
@@ -207,7 +214,7 @@ public class FlattenerS {
   {
     int n1 = y[0].length;
     int n2 = y.length;
-    zero(y);
+    szero(y);
     for (int i2=1; i2<n2; ++i2) {
       for (int i1=1; i1<n1; ++i1) {
         float eli = el[i2][i1];
@@ -236,7 +243,7 @@ public class FlattenerS {
     int n1 = y[0][0].length;
     int n2 = y[0].length;
     int n3 = y.length;
-    zero(y);
+    szero(y);
     for (int i3=1; i3<n3; ++i3) {
       for (int i2=1; i2<n2; ++i2) {
         for (int i1=1; i1<n1; ++i1) {
@@ -275,7 +282,7 @@ public class FlattenerS {
   {
     int n1 = x[0].length;
     int n2 = x.length;
-    zero(y);
+    szero(y);
     float epsilons = epsilon*epsilon;
     for (int i2=1; i2<n2; ++i2) {
       for (int i1=1; i1<n1; ++i1) {
@@ -311,7 +318,7 @@ public class FlattenerS {
     float[][][] p2, float[][][] p3, float[][][] ep, 
     float[][][] x, float[][][] y) 
   {
-    zero(y);
+    szero(y);
     if (PARALLEL) {
       applyLhsParallel(epsilon,p2,p3,ep,x,y);
     } else {
@@ -425,5 +432,35 @@ public class FlattenerS {
         y11[i1m] -= ya;
       }
     }
+  }
+
+  private static void szero(float[][] x) {
+    zero(x);
+  }
+  private static void szero(float[][][] x) {
+    if (PARALLEL) {
+      szeroP(x);
+    } else {
+      szeroS(x);
+    }
+  }
+  private static void szeroS(float[][][] x) {
+    int n3 = x.length;
+    for (int i3=0; i3<n3; ++i3)
+      szero(x[i3]);
+  }
+  private static void szeroP(final float[][][] x) {
+    final int n3 = x.length;
+    final AtomicInteger a3 = new AtomicInteger(0);
+    Thread[] threads = Threads.makeArray();
+    for (int ithread=0; ithread<threads.length; ++ithread) {
+      threads[ithread] = new Thread(new Runnable() {
+        public void run() {
+          for (int i3=a3.getAndIncrement(); i3<n3; i3=a3.getAndIncrement())
+            szero(x[i3]);
+        }
+      });
+    }
+    Threads.startAndJoin(threads);
   }
 }
