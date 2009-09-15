@@ -82,7 +82,7 @@ public class LsqrSolver {
      */
     ZERO,
     /**
-     * The equations A*x = b are probably compatible. The L2 norm ||A*x-b|| 
+     * The equations A*x = b are probably compatible. The L2 norm ||b-A*x|| 
      * of residuals is sufficiently small, given the values of atol and btol.
      */
     RTOL,
@@ -99,7 +99,7 @@ public class LsqrSolver {
     CTOL,
     /**
      * The equations A*x = b are probably compatible. Further iterations
-     * likely cannot further reduce the L2 norm ||A*x-b|| of residuals.
+     * likely cannot further reduce the L2 norm ||b-A*x|| of residuals.
      */
     RTOL_EPSILON,
     /**
@@ -134,7 +134,7 @@ public class LsqrSolver {
    * </code></pre>
    * This solver minimizes the function rnorm with respect to x.
    */
-  public class Info {
+  public static class Info {
     private Info(
       Stop stop, int niter, 
       float anorm, float acond, float rnorm, float arnorm, float xnorm)
@@ -482,10 +482,10 @@ public class LsqrSolver {
   }
 
   // Zeros array x.
-  private void szero(float[] x) {
+  private static void szero(float[] x) {
     zero(x);
   }
-  private void szero(float[][] x) {
+  private static void szero(float[][] x) {
     zero(x);
   }
   private void szero(float[][][] x) {
@@ -516,10 +516,10 @@ public class LsqrSolver {
   }
 
   // Copys array x to array y.
-  private void scopy(float[] x, float[] y) {
+  private static void scopy(float[] x, float[] y) {
     copy(x,y);
   }
-  private void scopy(float[][] x, float[][] y) {
+  private static void scopy(float[][] x, float[][] y) {
     copy(x,y);
   }
   private void scopy(float[][][] x, float[][][] y) {
@@ -550,10 +550,10 @@ public class LsqrSolver {
   }
 
   // Scales array x.
-  private void sscal(float a, float[] x) {
+  private static void sscal(float a, float[] x) {
     mul(a,x,x);
   }
-  private void sscal(float a, float[][] x) {
+  private static void sscal(float a, float[][] x) {
     sscal(a,x);
   }
   private void sscal(float a, float[][][] x) {
@@ -584,7 +584,7 @@ public class LsqrSolver {
   }
 
   // Returns the sum of squares of elements of x.
-  private float ssums(float[] x) {
+  private static float ssums(float[] x) {
     int n1 = x.length;
     float sum = 0.0f;
     for (int i1=0; i1<n1; ++i1) {
@@ -593,7 +593,7 @@ public class LsqrSolver {
     }
     return sum;
   }
-  private float ssums(float[][] x) {
+  private static float ssums(float[][] x) {
     int n2 = x.length;
     float sum = 0.0f;
     for (int i2=0; i2<n2; ++i2)
@@ -634,13 +634,177 @@ public class LsqrSolver {
   }
 
   // Returns L2 norm of x.
-  private float snorm(float[] x) {
+  private static float snorm(float[] x) {
     return sqrt(ssums(x));
   }
-  private float snorm(float[][] x) {
+  private static float snorm(float[][] x) {
     return sqrt(ssums(x));
   }
   private float snorm(float[][][] x) {
     return sqrt(ssums(x));
+  }
+
+  ///////////////////////////////////////////////////////////////////////////
+  // testing
+  
+  private static class TestH implements A1 {
+    public int m,n;
+    public int ndup,npow;
+    public float damp,acond,rnorm;
+    public float[] x,b,d,hy,hz,w;
+    public TestH(int m, int n, int ndup, int npow, float damp, float[] x) {
+      this.m = m;
+      this.n = n;
+      this.ndup = ndup;
+      this.npow = npow;
+      this.damp = damp;
+      this.x = x;
+      float[] b = this.b = new float[m];
+      float[] d = this.d = new float[n];
+      float[] hy = this.hy = new float[m];
+      float[] hz = this.hz = new float[n];
+      float[] w = this.w = new float[m];
+
+      // Make two vectors with norm 1 for Householder transformations.
+      float dampsq = damp*damp;
+      float fourpi = 4.0f*FLT_PI;
+      float alfa = fourpi/m;
+      float beta = fourpi/n;
+      for (int i=0; i<m; ++i)
+        hy[i] = sin((i+1)*alfa);
+      for (int i=0; i<n; ++i)
+        hz[i] = cos((i+1)*beta);
+      alfa = snorm(hy);
+      beta = snorm(hz);
+      sscal(-1.0f/alfa,hy);
+      sscal(-1.0f/beta,hz);
+
+      // Set the diagonal matrix D, which contains the singular values of A.
+      for (int i=0; i<n; ++i) {
+        int j = (i+ndup)/ndup;
+        float t = j*ndup;
+        t /= n;
+        d[i] = pow(t,npow);
+      }
+      acond = sqrt((d[n-1]*d[n-1]+dampsq)/(d[0]*d[0]+dampsq));
+
+      // Compute the residual vector, storing it in b.
+      hprod(hz,x,b);
+      for (int i=0; i<n; ++i)
+        b[i] *= dampsq/d[i];
+      float t = 1.0f;
+      for (int i=n; i<m; ++i) {
+        int j = i-n;
+        b[i] = (t*j)/m;
+        t = -t;
+      }
+      hprod(hy,b,b);
+      float bnorm = snorm(b);
+      float xnorm = snorm(x);
+      rnorm = sqrt(bnorm*bnorm+dampsq*xnorm*xnorm);
+
+      // Now compute the true b = r + A*x.
+      apply(x,b);
+    }
+    public void apply(float[] x, float[] y) {
+      // y += A*x, where A = Hy*D*Hz
+      hprod(hz,x,w);
+      for (int i=0; i<n; ++i)
+        w[i] *= d[i];
+      for (int i=n; i<m; ++i)
+        w[i] = 0.0f;
+      hprod(hy,w,w);
+      for (int i=0; i<m; ++i)
+        y[i] += w[i];
+    }
+    public void applyTranspose(float[] y, float[] x) {
+      // x += A'*y, where A = Hy*D*Hz
+      hprod(hy,y,w);
+      for (int i=0; i<n; ++i)
+        w[i] *= d[i];
+      hprod(hz,w,w);
+      for (int i=0; i<n; ++i)
+        x[i] += w[i];
+    }
+    private void hprod(float[] hz, float[] x, float[] y) {
+      // Householder transformation: y = (I-2*Hz*Hz')*x
+      int n = hz.length;
+      float s = 0.0f;
+      for (int i=0; i<n; ++i)
+         s += hz[i]*x[i];
+      s += s;
+      for (int i=0; i<n; ++i)
+        y[i] = x[i]-s*hz[i];
+    }
+  }
+  public static void testH(int m, int n, int ndup, int npow, float damp) {
+    float[] xtrue = new float[n];
+    for (int j=0; j<n; ++j)
+      xtrue[j] = n-j-1;
+    TestH p = new TestH(m,n,ndup,npow,damp,xtrue);
+    float acond = p.acond;
+    float rnorm = p.rnorm;
+    float[] b = p.b;
+    float atol = 1.0e-6f;
+    float btol = atol;
+    float ctol = 0.1f/acond;
+    int maxi = m+n+50;
+    LsqrSolver ls = new LsqrSolver(atol,btol,ctol,maxi);
+    float[] x = new float[n];
+    LsqrSolver.Info info = ls.solve(p,damp,b,x);
+    println("x="); dump(x);
+    println("xtrue="); dump(x);
+    printInfo(info);
+  }
+
+  public static class Test1 implements LsqrSolver.A1 {
+    public void apply(float[] x, float[] y) {
+      y[0] += 2.0f*x[0]+1.0f*x[1];
+      y[1] += 3.0f*x[0]+4.0f*x[1];
+    }
+    public void applyTranspose(float[] y, float[] x) {
+      x[0] += 2.0f*y[0]+3.0f*y[1];
+      x[1] += 1.0f*y[0]+4.0f*y[1];
+    }
+  }
+  public static void test1() {
+    float atol = 0.0f;
+    float btol = 0.0f;
+    float ctol = 0.0f;
+    int maxi = 4;
+    LsqrSolver ls = new LsqrSolver(atol,btol,ctol,maxi);
+    float[] b = {4.0f,11.0f};
+    float[] x = {1.0f,2.0f};
+    float[] xtrue = copy(x);
+    float damp = 0.0f;
+    LsqrSolver.A1 a = new Test1();
+    LsqrSolver.Info info = ls.solve(a,damp,b,x);
+    println("x="); dump(x);
+    println("xtrue="); dump(xtrue);
+    printInfo(info);
+  }
+
+  private static void println(String s) {
+    System.out.println(s);
+  }
+  private static void printInfo(LsqrSolver.Info info) {
+    println("info:");
+    println("    stop="+info.stop);
+    println("   niter="+info.niter);
+    println("   anorm="+info.anorm);
+    println("   acond="+info.acond);
+    println("   rnorm="+info.rnorm);
+    println("  arnorm="+info.arnorm);
+    println("   xnorm="+info.xnorm);
+  }
+
+  public static void main(String[] args) {
+    //test1();
+    testH(1,1,1,1,0.0f);
+    testH(2,1,1,1,0.0f);
+    testH(40,40,4,4,0.0f);
+    testH(40,40,4,4,0.01f);
+    testH(80,40,4,4,0.01f);
+    testH(20,10,1,1,0.001f);
   }
 }
