@@ -7,7 +7,7 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 package dnp;
 
 /**
- * A vector represented by a 1D array of doubles.
+ * A vector represented by a 1D array[n1] of doubles.
  * @author Dave Hale, Colorado School of Mines
  * @version 2009.09.15
  */
