@@ -22,8 +22,28 @@ n1,n2 = s1.count,s2.count
 
 
 def main(args):
-  #flatten()
-  flattenTest()
+  flatten()
+  #flattenTest()
+
+def flatten():
+  f = readImage(ffile)
+  plot(f)
+  sigma = 8.0
+  pmax = 10.0
+  lsf = LocalSlopeFinder(sigma,pmax)
+  sigma1 = 6.0
+  sigma2 = 12.0
+  for fl in [FlattenerCg(sigma1,sigma2)]:
+    p2 = zerofloat(n1,n2)
+    el = zerofloat(n1,n2)
+    lsf.findSlopes(f,p2,el)
+    el = mul(el,el)
+    #plot(p2,gray,-1,1)
+    #plot(el,gray)
+    s = fl.findShifts(p2,el)
+    g = fl.applyShifts(f,s)
+    plot(g)
+    plot(s,jet)
 
 def flattenTest():
   """Test for t(tau,x) = tau*(1+a*sin(b*x))"""
@@ -46,23 +66,12 @@ def flattenTest():
   plot(sf,jet,-smax,smax)
   plot(se,jet,-smax,smax)
 
-def flatten():
-  f = readImage(ffile)
-  plot(f)
-  sigma = 8.0
-  eps = 0.1
-  for fl in [FlattenerS(sigma,eps)]:
-    s = fl.findShifts(f)
-    g = fl.applyShifts(f,s)
-    plot(g)
-    #plot(s,jet)
-
 gray = ColorMap.GRAY
 jet = ColorMap.JET
 def plot(x,cmap=ColorMap.GRAY,cmin=0,cmax=0):
   sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
   sp.addColorBar();
-  sp.setSize(1012,676)
+  sp.setSize(600,900)
   pv = sp.addPixels(x)
   pv.setColorModel(cmap)
   if cmin<cmax:

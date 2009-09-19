@@ -52,6 +52,22 @@ public class LocalSlopeFinder {
   }
 
   /**
+   * Constructs a local slope finder with specified smoothing and bounds.
+   * @param sigma1 half-width of smoother in 1st dimension.
+   * @param p2min minimum slope p2 returned by this slope finder.
+   * @param p2max maximum slope p2 returned by this slope finder.
+   * @param p3min minimum slope p3 returned by this slope finder.
+   * @param p3max maximum slope p3 returned by this slope finder.
+   */
+  public LocalSlopeFinder(double sigma1,
+    double p2min, double p2max,
+    double p3min, double p3max) 
+  {
+    _sigma1 = (float)sigma1;
+    setBounds(p2min,p2max,p3min,p3max);
+  }
+
+  /**
    * Sets bounds on slopes returned by this slope finder.
    * @param pmax maximum slope returned by this slope finder.
    *  The minimum slope will be the negative of this maximum.

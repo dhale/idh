@@ -7,7 +7,6 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 package dnp;
 
 import java.util.logging.Logger;
-
 import static java.lang.Math.abs;
 import static java.lang.Math.sqrt;
 
@@ -216,9 +215,9 @@ public class LsqrSolver {
    * @param maxi maximum number of iterations to perform.
    */
   public LsqrSolver(double atol, double btol, double ctol, int maxi) {
-    _atol = (float)atol;
-    _btol = (float)btol;
-    _ctol = (float)ctol;
+    _atol = atol;
+    _btol = btol;
+    _ctol = ctol;
     _maxi = maxi;
   }
 
@@ -252,7 +251,8 @@ public class LsqrSolver {
     double sn2 = zero;
     double z = zero;
     x.zero();
-    Vec u = b.clone(); // or save space with u = b?
+    //Vec u = b.clone(); // or save space with u = b?
+    Vec u = b;
     Vec v = x.clone();
     Vec w = null;
 
