@@ -27,12 +27,55 @@ n1,n2,n3 = s1.count,s2.count,s3.count
 def main(args):
   #display()
   #slopes()
-  #flatten()
-  #flattenWithSlopes()
-  flattenTest()
+  flatten()
+  #flattenTest()
 
-n1,n2,n3 = 101,101,101
-s1,s2,s3 = Sampling(n1),Sampling(n2),Sampling(n3)
+def flatten():
+  f = readImage("tpst")
+  doFlat = True
+  if doFlat:
+    p2 = readImage("tpp2")
+    p3 = readImage("tpp3")
+    ep = readImage("tpep")
+    ep = pow(ep,6.0)
+    fl = FlattenerCg(6.0,12.0)
+    s = fl.findShifts(p2,p3,ep)
+    writeImage("tpss",s)
+    s = readImage("tpss")
+    print "s min =",min(s),"max =",max(s)
+    g = fl.applyShifts(f,s)
+    writeImage("tpsf",g)
+  g = readImage("tpsf")
+  world = World()
+  addImageToWorld(world,f)
+  addImageToWorld(world,g)
+  #addImage2ToWorld(world,f,s)
+  makeFrame(world)
+
+def slopes():
+  f = readImage(ffile)
+  m = readImage(mfile)
+  p2 = copy(f)
+  p3 = copy(f)
+  ep = copy(f)
+  lsf = LocalSlopeFinder(8.0,2.0)
+  lsf.findSlopes(f,p2,p3,ep);
+  zm = ZeroMask(m)
+  zero = 0.00;
+  tiny = 0.01;
+  zm.apply(zero,p2);
+  zm.apply(zero,p3);
+  zm.apply(tiny,ep);
+  writeImage("tpp2",p2)
+  writeImage("tpp3",p3)
+  writeImage("tpep",ep)
+  for g in [p2,p3,ep]:
+    world = World()
+    addImage2ToWorld(world,f,g)
+    makeFrame(world)
+
+#n1,n2,n3 = 101,101,101
+#s1,s2,s3 = Sampling(n1),Sampling(n2),Sampling(n3)
 def flattenTest():
   """Test for t(tau,x) = tau*(1+a*sin(bx)*sin(cy))"""
   x = rampfloat(0,0,0,1,n1,n2,n3)
@@ -53,65 +96,13 @@ def flattenTest():
   p2 = div(mul(t,mul(asinbx,ccoscy)),den)
   p3 = div(mul(t,mul(bcosbx,asincy)),den)
   ep = fillfloat(1,n1,n2,n3)
-  fl = FlattenerS(8.0,0.1)
+  fl = FlattenerCg(6.0,12.0)
   sf = fl.findShifts(p2,p3,ep) # found shifts
   se = neg(mul(t,asinbxsincy)) # exact shifts
   world = World()
   addImageToWorld(world,sf,jet,-smax,smax)
   addImageToWorld(world,se,jet,-smax,smax)
   makeFrame(world)
-
-def flattenWithSlopes():
-  f = readImage("tpst")
-  p2 = readImage("tpp2")
-  p3 = readImage("tpp3")
-  ep = readImage("tpep")
-  fl = FlattenerS(8.0,0.1)
-  s = fl.findShifts(p2,p3,ep)
-  print "s min =",min(s),"max =",max(s)
-  #writeImage("tpss",s)
-  g = fl.applyShifts(f,s)
-  #writeImage("tpsf",g)
-  world = World()
-  addImage2ToWorld(world,f,g)
-  s = clip(-5,5,s)
-  addImage2ToWorld(world,g,s)
-  makeFrame(world)
-
-def flatten():
-  f = readImage(ffile)
-  m = readImage(mfile)
-  fl = FlattenerS(8.0,0.1)
-  s = fl.findShifts(f,m)
-  writeImage("tpss",s)
-  g = fl.applyShifts(f,s)
-  writeImage("tpsf",g)
-  world = World()
-  addImageToWorld(world,f)
-  addImage2ToWorld(world,g,s)
-  makeFrame(world)
-
-def slopes():
-  f = readImage(ffile)
-  m = readImage(mfile)
-  p2 = copy(f)
-  p3 = copy(f)
-  ep = copy(f)
-  lsf = LocalSlopeFinder(8.0,5.0)
-  lsf.findSlopes(f,p2,p3,ep);
-  zm = ZeroMask(m)
-  zero = 0.00;
-  tiny = 0.01;
-  zm.apply(zero,p2);
-  zm.apply(zero,p3);
-  zm.apply(tiny,ep);
-  writeImage("tpp2",p2)
-  writeImage("tpp3",p3)
-  writeImage("tpep",ep)
-  for g in [p2,p3,ep]:
-    world = World()
-    addImage2ToWorld(world,f,g)
-    makeFrame(world)
 
 def display():
   f = readImage(ffile)

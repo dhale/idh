@@ -171,7 +171,7 @@ public class LocalSlopeFinder {
             p2[i3][i2][i1] = (u2i<0.0f)?_p2max:_p2min;
             p3[i3][i2][i1] = (u3i<0.0f)?_p3max:_p3min;
           } else {
-            p3[i3][i2][i1] = -u2i/u1i;
+            p2[i3][i2][i1] = -u2i/u1i;
             p3[i3][i2][i1] = -u3i/u1i;
           }
         }

@@ -37,13 +37,14 @@ def flatten():
     p2 = zerofloat(n1,n2)
     el = zerofloat(n1,n2)
     lsf.findSlopes(f,p2,el)
-    el = mul(el,el)
-    #plot(p2,gray,-1,1)
+    el = pow(el,6)
     #plot(el,gray)
+    #plot(p2,gray,-1,1)
     s = fl.findShifts(p2,el)
     g = fl.applyShifts(f,s)
     plot(g)
     plot(s,jet)
+    print "average shift =",sum(s)/(n1*n2),"samples"
 
 def flattenTest():
   """Test for t(tau,x) = tau*(1+a*sin(b*x))"""

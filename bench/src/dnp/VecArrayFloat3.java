@@ -119,7 +119,8 @@ public class VecArrayFloat3 implements Vec {
 
   private float[][][] _a;
   private int _n1,_n2,_n3;
-  private int _nthread;
+  private int _nthread = Threads.getAvailableProcessors();
+  //private int _nthread = 0;
 
   // Zeros array x.
   private static void szero(float[] x) {

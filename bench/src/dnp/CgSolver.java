@@ -106,7 +106,13 @@ public class CgSolver {
       double dq = d.dot(q);
       double alpha = rrnorm/dq;
       x.add(1.0,d, alpha);
-      r.add(1.0,q,-alpha);
+      if (iter%50==49) {
+        a.apply(x,q); // q = Ax
+        r.add(0.0,b,1.0); // r = b
+        r.add(1.0,q,-1.0); // r = b-Ax
+      } else {
+        r.add(1.0,q,-alpha); // r -= alpha*q
+      }
       double rrnormOld = rrnorm;
       rnorm = r.norm2();
       rrnorm = rnorm*rnorm;
