@@ -57,7 +57,7 @@ public class FlattenerCg {
     float[][] r = new float[n2][n1]; // right-hand side
     float[][] s = new float[n2][n1]; // the shifts
     makeRhs(p2,el,r);
-    zeroReference(r);
+    //zeroReference(r);
     smoothTranspose(_sigma1,_sigma2,el,r);
     A2 a2 = new A2(_sigma1,_sigma2,_epsilon,p2,el);
     Vec2 vr = new Vec2(r);
@@ -96,7 +96,7 @@ public class FlattenerCg {
     float[][][] r = new float[n3][n2][n1]; // right-hand side
     float[][][] s = new float[n3][n2][n1]; // the shifts
     makeRhs(p2,p3,ep,r);
-    zeroReference(r);
+    //zeroReference(r);
     smoothTranspose(_sigma1,_sigma2,ep,r);
     A3 a3 = new A3(_sigma1,_sigma2,_epsilon,p2,p3,ep);
     Vec3 vr = new Vec3(r);
@@ -169,7 +169,7 @@ public class FlattenerCg {
 
   private float _sigma1 = 6.0f; // half-width of smoother in 1st dimension
   private float _sigma2 = 6.0f; // half-width of smoother in 2nd dimension
-  private float _epsilon = 0.001f; // damping for stability?
+  private float _epsilon = 0.000f; // damping for stability?
   private float _small = 0.01f; // stop CG iterations if residuals are small
   private int _niter = 1000; // maximum number of CG iterations
 
@@ -303,9 +303,8 @@ public class FlattenerCg {
       float[][] y = v2y.getArray();
       float[][] z = v2z.getArray();
       smooth(_sigma1,_sigma2,_el,z);
-      zeroReference(z,_zr);
+      //zeroReference(z,_zr);
       applyLhs(_p2,_el,z,y);
-      /*
       double ya0 = 0.0;
       double ya1 = 0.0;
       double za0 = v2z.a0;
@@ -324,8 +323,7 @@ public class FlattenerCg {
       }
       v2y.a0 = (float)ya0;
       v2y.a1 = (float)ya1;
-      */
-      setReference(_zr,y);
+      //setReference(_zr,y);
       smoothTranspose(_sigma1,_sigma2,_el,y);
       if (_epsilon>0.0f)
         v2y.v.add(1.0,v2x.v,_epsilon*_epsilon);
@@ -368,7 +366,7 @@ public class FlattenerCg {
       float[][][] y = v3y.getArray();
       float[][][] z = v3z.getArray();
       smooth(_sigma1,_sigma23,_ep,z);
-      zeroReference(z,_zr);
+      //zeroReference(z,_zr);
       applyLhs(_p2,_p3,_ep,z,y);
       double ya0 = 0.0;
       double ya1 = 0.0;
@@ -391,7 +389,7 @@ public class FlattenerCg {
       }
       v3y.a0 = (float)ya0;
       v3y.a1 = (float)ya1;
-      setReference(_zr,y);
+      //setReference(_zr,y);
       smoothTranspose(_sigma1,_sigma23,_ep,y);
       if (_epsilon>0.0f)
         v3y.v.add(1.0,v3x.v,_epsilon*_epsilon);
@@ -408,16 +406,13 @@ public class FlattenerCg {
   }
 
   private static void setReference(float[] r, float[][] x) {
-    /*
     int n1 = x[0].length;
     int n2 = x.length;
     int i2 = n2/2;
     for (int i1=0; i1<n1; ++i1)
       x[i2][i1] = r[i1];
-    */
   }
   private static void setReference(float[] r, float[][][] x) {
-    /*
     int n1 = x[0][0].length;
     int n2 = x[0].length;
     int n3 = x.length;
@@ -425,13 +420,11 @@ public class FlattenerCg {
     int i3 = n3/2;
     for (int i1=0; i1<n1; ++i1)
       x[i3][i2][i1] = r[i1];
-    */
   }
   private static void zeroReference(float[][] x) {
     zeroReference(x,null);
   }
   private static void zeroReference(float[][] x, float[] r) {
-    /*
     int n1 = x[0].length;
     int n2 = x.length;
     int i2 = n2/2;
@@ -439,13 +432,11 @@ public class FlattenerCg {
       if (r!=null) r[i1] = x[i2][i1];
       x[i2][i1] = 0.0f;
     }
-    */
   }
   private static void zeroReference(float[][][] x) {
     zeroReference(x,null);
   }
   private static void zeroReference(float[][][] x, float[] r) {
-    /*
     int n1 = x[0][0].length;
     int n2 = x[0].length;
     int n3 = x.length;
@@ -455,7 +446,6 @@ public class FlattenerCg {
       if (r!=null) r[i1] = x[i3][i2][i1];
       x[i3][i2][i1] = 0.0f;
     }
-    */
   }
 
   // Smoothing operators (and transposes) for 2D and 3D images.
@@ -515,6 +505,19 @@ public class FlattenerCg {
     for (int i2=0; i2<n2; ++i2) {
       smooth1(a,x[i2],y);
       copy(y,x[i2]);
+    }
+  }
+  private static void xsmooth1(float sigma, float[][] x) {
+    if (sigma<1.0f)
+      return;
+    float c = 0.5f*sigma*sigma;
+    int n1 = x[0].length;
+    int n2 = x.length;
+    float[] xt = new float[n1];
+    LocalSmoothingFilter lsf = new LocalSmoothingFilter();
+    for (int i2=0; i2<n2; ++i2) {
+      copy(x[i2],xt);
+      lsf.apply(c,xt,x[i2]);
     }
   }
   private static void smooth1(float sigma, float[][][] x) {

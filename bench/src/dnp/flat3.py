@@ -32,25 +32,33 @@ def main(args):
 
 def flatten():
   f = readImage("tpst")
-  doFlat = True
-  if doFlat:
+  fl = FlattenerCg(6.0,6.0)
+  findShifts = True
+  if findShifts:
     p2 = readImage("tpp2")
     p3 = readImage("tpp3")
     ep = readImage("tpep")
     ep = pow(ep,6.0)
-    fl = FlattenerCg(6.0,12.0)
     s = fl.findShifts(p2,p3,ep)
     writeImage("tpss",s)
-    s = readImage("tpss")
-    print "s min =",min(s),"max =",max(s)
-    g = fl.applyShifts(f,s)
-    writeImage("tpsf",g)
+  s = readImage("tpss")
+  print "s min =",min(s),"max =",max(s),"avg =",sum(s)/n1/n2/n3
+  #adjustShifts(n2/2,n3/2,s)
+  #print "s min =",min(s),"max =",max(s),"avg =",sum(s)/n1/n2/n3
+  g = fl.applyShifts(f,s)
+  writeImage("tpsf",g)
   g = readImage("tpsf")
   world = World()
   addImageToWorld(world,f)
   addImageToWorld(world,g)
   #addImage2ToWorld(world,f,s)
   makeFrame(world)
+
+def adjustShifts(k2,k3,s):
+  r = copy(s[k3][k2]);
+  for i3 in range(n3):
+    for i2 in range(n2):
+      sub(s[i3][i2],r,s[i3][i2])
 
 def slopes():
   f = readImage(ffile)
