@@ -44,7 +44,7 @@ def flatten():
   s = readImage("tpss")
   print "s min =",min(s),"max =",max(s),"avg =",sum(s)/n1/n2/n3
   #adjustShifts(n2/2,n3/2,s)
-  #print "s min =",min(s),"max =",max(s),"avg =",sum(s)/n1/n2/n3
+  print "s min =",min(s),"max =",max(s),"avg =",sum(s)/n1/n2/n3
   g = fl.applyShifts(f,s)
   writeImage("tpsf",g)
   g = readImage("tpsf")

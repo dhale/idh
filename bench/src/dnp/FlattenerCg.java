@@ -877,8 +877,8 @@ public class FlattenerCg {
     for (int i1=0; i1<n1; ++i1)
       s[i1] += u[i1];
     ii.invert(s,t);
-    float tmin = -5.0f;
-    float tmax = n1-1+5.0f;
+    float tmin = -n1;
+    float tmax = n1+n1;
     for (int i1=0; i1<n1; ++i1) {
       if (t[i1]<tmin) t[i1] = tmin;
       if (t[i1]>tmax) t[i1] = tmax;
