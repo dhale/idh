@@ -301,30 +301,52 @@ public class FlattenerCg {
     private float _sigma1,_sigma2,_sigma3;
     private float[][][] _ep;
     private float[] _e0,_e1;
-    private void subtract(float[][][] x) {
-      int n1 = x[0][0].length;
-      int n2 = x[0].length;
-      int n3 = x.length;
-      double d0 = 0.0;
-      double d1 = 0.0;
-      for (int i3=0; i3<n3; ++i3) {
-        for (int i2=0; i2<n2; ++i2) {
-          for (int i1=0; i1<n1; ++i1) {
-            d0 += _e0[i1]*x[i3][i2][i1];
-            d1 += _e1[i1]*x[i3][i2][i1];
+    private void subtract(final float[][][] x) {
+      final int n1 = x[0][0].length;
+      final int n2 = x[0].length;
+      final int n3 = x.length;
+      Thread[] threads = Threads.makeArray();
+      final AtomicDouble ad0 = new AtomicDouble(0.0);
+      final AtomicDouble ad1 = new AtomicDouble(0.0);
+      final AtomicInteger ai = new AtomicInteger();
+      ai.set(0);
+      for (int ithread=0; ithread<threads.length; ++ithread) {
+        threads[ithread] = new Thread(new Runnable() {
+          public void run() {
+            double d0 = 0.0;
+            double d1 = 0.0;
+            for (int i3=ai.getAndIncrement(); i3<n3; i3=ai.getAndIncrement()) {
+              for (int i2=0; i2<n2; ++i2) {
+                for (int i1=0; i1<n1; ++i1) {
+                  d0 += _e0[i1]*x[i3][i2][i1];
+                  d1 += _e1[i1]*x[i3][i2][i1];
+                }
+              }
+            }
+            ad0.getAndAdd(d0);
+            ad1.getAndAdd(d1);
           }
-        }
+        });
       }
-      float f0 = (float)d0;
-      float f1 = (float)d1;
-      for (int i3=0; i3<n3; ++i3) {
-        for (int i2=0; i2<n2; ++i2) {
-          for (int i1=0; i1<n1; ++i1) {
-            x[i3][i2][i1] -= f0*_e0[i1];
-            x[i3][i2][i1] -= f1*_e1[i1];
+      Threads.startAndJoin(threads);
+      final float f0 = (float)ad0.get();
+      final float f1 = (float)ad1.get();
+      ai.set(0);
+      for (int ithread=0; ithread<threads.length; ++ithread) {
+        threads[ithread] = new Thread(new Runnable() {
+          public void run() {
+            for (int i3=ai.getAndIncrement(); i3<n3; i3=ai.getAndIncrement()) {
+              for (int i2=0; i2<n2; ++i2) {
+                for (int i1=0; i1<n1; ++i1) {
+                  x[i3][i2][i1] -= f0*_e0[i1];
+                  x[i3][i2][i1] -= f1*_e1[i1];
+                }
+              }
+            }
           }
-        }
+        });
       }
+      Threads.startAndJoin(threads);
     }
   }
 
