@@ -56,35 +56,18 @@ public class FlattenerCg {
     int n2 = p2.length;
     float[][] r = new float[n2][n1]; // right-hand side
     float[][] s = new float[n2][n1]; // the shifts
-    makeRhs(p2,el,r);
-    //zeroReference(r);
-    smoothTranspose(_sigma1,_sigma2,el,r);
-    A2 a2 = new A2(_sigma1,_sigma2,_epsilon,p2,el);
-    Vec2 vr = new Vec2(r);
-    Vec2 vs = new Vec2(s);
+    VecArrayFloat2 vr = new VecArrayFloat2(r);
+    VecArrayFloat2 vs = new VecArrayFloat2(s);
+    Smoother2 s2 = new Smoother2(n1,n2,_sigma1,_sigma2,el);
+    A2 a2 = new A2(_epsilon,s2,p2,el);
     CgSolver cs = new CgSolver(_small,_niter);
-    CgSolver.Info info = cs.solve(a2,vr,vs);
-    System.out.println("vs.a0="+vs.a0);
-    System.out.println("vs.a1="+vs.a1);
-    smooth(_sigma1,_sigma2,el,s);
+    makeRhs(p2,el,r);
+    s2.applyTranspose(r);
+    cs.solve(a2,vr,vs);
+    s2.apply(s);
     checkShifts(s);
     invertShifts(s);
     return s;
-  }
-  private static void checkShifts(float[][] s) {
-    int n1 = s[0].length;
-    int n2 = s.length;
-    double s0 = 0.0;
-    double s1 = 0.0;
-    for (int i2=0; i2<n2; ++i2) {
-      for (int i1=0; i1<n1; ++i1) {
-        s0 += s[i2][i1];
-        s1 += i1*s[i2][i1];
-      }
-    }
-    s0 = s0/n1/n2;
-    s1 = s1*0.5/(n1-1)/n1/n2;
-    System.out.println("s0="+s0+" s1="+s1);
   }
 
   public float[][][] findShifts(
@@ -95,36 +78,18 @@ public class FlattenerCg {
     int n3 = p2.length;
     float[][][] r = new float[n3][n2][n1]; // right-hand side
     float[][][] s = new float[n3][n2][n1]; // the shifts
-    makeRhs(p2,p3,ep,r);
-    //zeroReference(r);
-    smoothTranspose(_sigma1,_sigma2,ep,r);
-    A3 a3 = new A3(_sigma1,_sigma2,_epsilon,p2,p3,ep);
-    Vec3 vr = new Vec3(r);
-    Vec3 vs = new Vec3(s);
+    VecArrayFloat3 vr = new VecArrayFloat3(r);
+    VecArrayFloat3 vs = new VecArrayFloat3(s);
+    Smoother3 s3 = new Smoother3(n1,n2,n3,_sigma1,_sigma2,_sigma2,ep);
+    A3 a3 = new A3(_epsilon,s3,p2,p3,ep);
     CgSolver cs = new CgSolver(_small,_niter);
-    CgSolver.Info info = cs.solve(a3,vr,vs);
-    smooth(_sigma1,_sigma2,ep,s);
+    makeRhs(p2,p3,ep,r);
+    s3.applyTranspose(r);
+    cs.solve(a3,vr,vs);
+    s3.apply(s);
     checkShifts(s);
     invertShifts(s);
     return s;
-  }
-  private static void checkShifts(float[][][] s) {
-    int n1 = s[0][0].length;
-    int n2 = s[0].length;
-    int n3 = s.length;
-    double s0 = 0.0;
-    double s1 = 0.0;
-    for (int i3=0; i3<n3; ++i3) {
-      for (int i2=0; i2<n2; ++i2) {
-        for (int i1=0; i1<n1; ++i1) {
-          s0 += s[i3][i2][i1];
-          s1 += i1*s[i3][i2][i1];
-        }
-      }
-    }
-    s0 = s0/n1/n2/n3;
-    s1 = s1*0.5/(n1-1)/n1/n2/n3;
-    System.out.println("s0="+s0+" s1="+s1);
   }
 
   public float[][] applyShifts(float[][] f, float[][] s) {
@@ -173,311 +138,194 @@ public class FlattenerCg {
   private float _small = 0.01f; // stop CG iterations if residuals are small
   private int _niter = 1000; // maximum number of CG iterations
 
-  // Vectors with extra elements for Lagrange multipliers.
-  private static class Vec2 implements Vec {
-    public VecArrayFloat2 v;
-    public float a0,a1;
-    public Vec2(float[][] a) {
-      v = new VecArrayFloat2(a);
-      a0 = 0.0f;
-      a1 = 0.0f;
-    }
-    public float[][] getArray() {
-      return v.getArray();
-    }
-    public double epsilon() {
-      return v.epsilon();
-    }
-    public Vec2 clone() {
-      Vec2 v2 = new Vec2();
-      v2.v = v.clone();
-      v2.a0 = a0;
-      v2.a1 = a1;
-      return v2;
-    }
-    public double dot(Vec vthat) {
-      Vec2 v2 = (Vec2)vthat;
-      return v.dot(v2.v)+a0*v2.a0+a1*v2.a1;
-    }
-    public double norm2() {
-      double vnorm = v.norm2();
-      return sqrt(a0*a0+a1*a1+vnorm*vnorm);
-    }
-    public void zero() {
-      v.zero();
-      a0 = 0.0f;
-      a1 = 0.0f;
-    }
-    public void scale(double s) {
-      v.scale(s);
-      a0 *= s;
-      a1 *= s;
-    }
-    public void add(double sthis, Vec vthat, double sthat) {
-      Vec2 v2 = (Vec2)vthat;
-      v.add(sthis,v2.v,sthat);
-      float fthis = (float)sthis;
-      float fthat = (float)sthat;
-      a0 = a0*fthis+v2.a0*fthat;
-      a1 = a1*fthis+v2.a1*fthat;
-    }
-    private Vec2() {
-    }
-  }
-  private static class Vec3 implements Vec {
-    public VecArrayFloat3 v;
-    public float a0,a1;
-    public Vec3(float[][][] a) {
-      v = new VecArrayFloat3(a);
-      a0 = 0.0f;
-      a1 = 0.0f;
-    }
-    public float[][][] getArray() {
-      return v.getArray();
-    }
-    public double epsilon() {
-      return v.epsilon();
-    }
-    public Vec3 clone() {
-      Vec3 v3 = new Vec3();
-      v3.v = v.clone();
-      v3.a0 = a0;
-      v3.a1 = a1;
-      return v3;
-    }
-    public double dot(Vec vthat) {
-      Vec3 v3 = (Vec3)vthat;
-      return v.dot(v3.v)+a0*v3.a0+a1*v3.a1;
-    }
-    public double norm2() {
-      double vnorm = v.norm2();
-      return sqrt(a0*a0+a1*a1+vnorm*vnorm);
-    }
-    public void zero() {
-      v.zero();
-      a0 = 0.0f;
-      a1 = 0.0f;
-    }
-    public void scale(double s) {
-      v.scale(s);
-      a0 *= s;
-      a1 *= s;
-    }
-    public void add(double sthis, Vec vthat, double sthat) {
-      Vec3 v3 = (Vec3)vthat;
-      v.add(sthis,v3.v,sthat);
-      float fthis = (float)sthis;
-      float fthat = (float)sthat;
-      a0 = a0*fthis+v3.a0*fthat;
-      a1 = a1*fthis+v3.a1*fthat;
-    }
-    private Vec3() {
-    }
-  }
-
   // Conjugate-gradient operators.
   private static class A2 implements CgSolver.A {
-    A2(float sigma1, float sigma2, float epsilon, 
-       float[][] p2, float[][] el) 
-    {
-      int n1 = p2[0].length;
-      int n2 = p2.length;
-      _zr = new float[n1];
-      _sigma1 = sigma1;
-      _sigma2 = sigma2;
+    A2(float epsilon, Smoother2 s2, float[][] p2, float[][] el) {
       _epsilon = epsilon;
+      _s2 = s2;
       _p2 = p2;
       _el = el;
-      double delta0 = 0.0/n1/n2; // turned off!
-      double delta1 = 0.5*delta0/(n1-1);
-      double first1 = -(n1/2)*delta1;
-      _e0 = filldouble(delta0,n1);
-      _e1 = rampdouble(first1,delta1,n1);
     }
     public void apply(Vec vx, Vec vy) {
-      Vec2 v2x = (Vec2)vx;
-      Vec2 v2y = (Vec2)vy;
-      Vec2 v2z = v2x.clone();
+      VecArrayFloat2 v2x = (VecArrayFloat2)vx;
+      VecArrayFloat2 v2y = (VecArrayFloat2)vy;
+      VecArrayFloat2 v2z = v2x.clone();
       v2y.zero();
       float[][] x = v2x.getArray();
       float[][] y = v2y.getArray();
       float[][] z = v2z.getArray();
-      smooth(_sigma1,_sigma2,_el,z);
-      //zeroReference(z,_zr);
+      _s2.apply(z);
       applyLhs(_p2,_el,z,y);
-      double ya0 = 0.0;
-      double ya1 = 0.0;
-      double za0 = v2z.a0;
-      double za1 = v2z.a1;
-      int n1 = x[0].length;
-      int n2 = x.length;
-      for (int i2=0; i2<n2; ++i2) {
-        for (int i1=0; i1<n1; ++i1) {
-          double zi = z[i2][i1];
-          double e0i = _e0[i1];
-          double e1i = _e1[i1];
-          y[i2][i1] += (float)(za0*e0i+za1*e1i);
-          ya0 += zi*e0i;
-          ya1 += zi*e1i;
-        }
-      }
-      v2y.a0 = (float)ya0;
-      v2y.a1 = (float)ya1;
-      //setReference(_zr,y);
-      smoothTranspose(_sigma1,_sigma2,_el,y);
+      _s2.applyTranspose(y);
       if (_epsilon>0.0f)
-        v2y.v.add(1.0,v2x.v,_epsilon*_epsilon);
+        v2y.add(1.0,v2x,_epsilon*_epsilon);
     }
-    private float _sigma1;
-    private float _sigma2;
     private float _epsilon;
+    private Smoother2 _s2;
     private float[][] _p2;
     private float[][] _el;
-    private float[] _zr;
-    private double[] _e0;
-    private double[] _e1;
   }
   private static class A3 implements CgSolver.A {
-    A3(float sigma1, float sigma23, float epsilon, 
+    A3(float epsilon, Smoother3 s3,
        float[][][] p2, float[][][] p3, float[][][] ep) 
     {
-      int n1 = p2[0][0].length;
-      int n2 = p2[0].length;
-      int n3 = p2.length;
-      _zr = new float[n1];
-      _sigma1 = sigma1;
-      _sigma23 = sigma23;
       _epsilon = epsilon;
+      _s3 = s3;
       _p2 = p2;
       _p3 = p3;
       _ep = ep;
-      double delta0 = 0.0/n1/n2/n3; // turned off!
-      double delta1 = 0.5*delta0/(n1-1);
-      double first1 = -(n1/2)*delta1;
-      _e0 = filldouble(delta0,n1);
-      _e1 = rampdouble(first1,delta1,n1);
     }
     public void apply(Vec vx, Vec vy) {
-      Vec3 v3x = (Vec3)vx;
-      Vec3 v3y = (Vec3)vy;
-      Vec3 v3z = v3x.clone();
+      VecArrayFloat3 v3x = (VecArrayFloat3)vx;
+      VecArrayFloat3 v3y = (VecArrayFloat3)vy;
+      VecArrayFloat3 v3z = v3x.clone();
       v3y.zero();
       float[][][] x = v3x.getArray();
       float[][][] y = v3y.getArray();
       float[][][] z = v3z.getArray();
-      smooth(_sigma1,_sigma23,_ep,z);
-      //zeroReference(z,_zr);
+      _s3.apply(z);
       applyLhs(_p2,_p3,_ep,z,y);
-      double ya0 = 0.0;
-      double ya1 = 0.0;
-      double za0 = v3z.a0;
-      double za1 = v3z.a1;
-      int n1 = x[0][0].length;
-      int n2 = x[0].length;
-      int n3 = x.length;
-      for (int i3=0; i3<n3; ++i3) {
-        for (int i2=0; i2<n2; ++i2) {
-          for (int i1=0; i1<n1; ++i1) {
-            double zi = z[i3][i2][i1];
-            double e0i = _e0[i1];
-            double e1i = _e1[i1];
-            y[i3][i2][i1] += (float)(za0*e0i+za1*e1i);
-            ya0 += zi*e0i;
-            ya1 += zi*e1i;
-          }
-        }
-      }
-      v3y.a0 = (float)ya0;
-      v3y.a1 = (float)ya1;
-      //setReference(_zr,y);
-      smoothTranspose(_sigma1,_sigma23,_ep,y);
+      _s3.applyTranspose(y);
       if (_epsilon>0.0f)
-        v3y.v.add(1.0,v3x.v,_epsilon*_epsilon);
+        v3y.add(1.0,v3x,_epsilon*_epsilon);
     }
-    private float _sigma1;
-    private float _sigma23;
     private float _epsilon;
+    private Smoother3 _s3;
     private float[][][] _p2;
     private float[][][] _p3;
     private float[][][] _ep;
-    private float[] _zr;
-    private double[] _e0;
-    private double[] _e1;
   }
 
-  private static void setReference(float[] r, float[][] x) {
-    int n1 = x[0].length;
-    int n2 = x.length;
-    int i2 = n2/2;
-    for (int i1=0; i1<n1; ++i1)
-      x[i2][i1] = r[i1];
-  }
-  private static void setReference(float[] r, float[][][] x) {
-    int n1 = x[0][0].length;
-    int n2 = x[0].length;
-    int n3 = x.length;
-    int i2 = n2/2;
-    int i3 = n3/2;
-    for (int i1=0; i1<n1; ++i1)
-      x[i3][i2][i1] = r[i1];
-  }
-  private static void zeroReference(float[][] x) {
-    zeroReference(x,null);
-  }
-  private static void zeroReference(float[][] x, float[] r) {
-    int n1 = x[0].length;
-    int n2 = x.length;
-    int i2 = n2/2;
-    for (int i1=0; i1<n1; ++i1) {
-      if (r!=null) r[i1] = x[i2][i1];
-      x[i2][i1] = 0.0f;
+  // Smoothers used as preconditioners.
+  private static class Smoother2 {
+    public Smoother2(
+      int n1, int n2, float sigma1, float sigma2, float[][] el) 
+    {
+      _sigma1 = sigma1;
+      _sigma2 = sigma2;
+      _el = el;
+      _e0 = new float[n1];
+      _e1 = new float[n1];
+      double d0s = 0.0;
+      double d1s = 0.0;
+      for (int i1=0; i1<n1; ++i1) {
+        _e0[i1] = 1.0f;
+        _e1[i1] = 2*i1-(n1-1);
+        d0s += _e0[i1]*_e0[i1];
+        d1s += _e1[i1]*_e1[i1];
+      }
+      d0s *= n2;
+      d1s *= n2;
+      float f0s = 1.0f/(float)sqrt(d0s);
+      float f1s = 1.0f/(float)sqrt(d1s);
+      for (int i1=0; i1<n1; ++i1) {
+        _e0[i1] *= f0s;
+        _e1[i1] *= f1s;
+      }
+    }
+    public void apply(float[][] x) {
+      smooth1(_sigma1,x);
+      smooth2(_sigma2,_el,x);
+      subtract(x);
+    }
+    public void applyTranspose(float[][] x) {
+      subtract(x);
+      smooth2(_sigma2,_el,x);
+      smooth1(_sigma1,x);
+    }
+    private float _sigma1,_sigma2;
+    private float[][] _el;
+    private float[] _e0,_e1;
+    private void subtract(float[][] x) {
+      int n1 = x[0].length;
+      int n2 = x.length;
+      double d0 = 0.0;
+      double d1 = 0.0;
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          d0 += _e0[i1]*x[i2][i1];
+          d1 += _e1[i1]*x[i2][i1];
+        }
+      }
+      float f0 = (float)d0;
+      float f1 = (float)d1;
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          x[i2][i1] -= f0*_e0[i1];
+          x[i2][i1] -= f1*_e1[i1];
+        }
+      }
     }
   }
-  private static void zeroReference(float[][][] x) {
-    zeroReference(x,null);
-  }
-  private static void zeroReference(float[][][] x, float[] r) {
-    int n1 = x[0][0].length;
-    int n2 = x[0].length;
-    int n3 = x.length;
-    int i2 = n2/2;
-    int i3 = n3/2;
-    for (int i1=0; i1<n1; ++i1) {
-      if (r!=null) r[i1] = x[i3][i2][i1];
-      x[i3][i2][i1] = 0.0f;
+  private static class Smoother3 {
+    public Smoother3(
+      int n1, int n2, int n3, 
+      float sigma1, float sigma2, float sigma3, 
+      float[][][] ep) 
+    {
+      _sigma1 = sigma1;
+      _sigma2 = sigma2;
+      _sigma3 = sigma3;
+      _ep = ep;
+      _e0 = new float[n1];
+      _e1 = new float[n1];
+      double d0s = 0.0;
+      double d1s = 0.0;
+      for (int i1=0; i1<n1; ++i1) {
+        _e0[i1] = 1.0f;
+        _e1[i1] = 2*i1-(n1-1);
+        d0s += _e0[i1]*_e0[i1];
+        d1s += _e1[i1]*_e1[i1];
+      }
+      d0s *= n2; d0s *= n3;
+      d1s *= n2; d1s *= n3;
+      float f0s = 1.0f/(float)sqrt(d0s);
+      float f1s = 1.0f/(float)sqrt(d1s);
+      for (int i1=0; i1<n1; ++i1) {
+        _e0[i1] *= f0s;
+        _e1[i1] *= f1s;
+      }
     }
-  }
-
-  // Smoothing operators (and transposes) for 2D and 3D images.
-  private static void smooth(
-    float sigma1, float sigma2, 
-    float[][] s, float[][] x) 
-  {
-    smooth1(sigma1,x);
-    smooth2(sigma2,s,x);
-  }
-  private static void smoothTranspose(
-    float sigma1, float sigma2, 
-    float[][] s, float[][] x) 
-  {
-    smooth2(sigma2,s,x);
-    smooth1(sigma1,x);
-  }
-  private static void smooth(
-    float sigma1, float sigma23,
-    float[][][] s, float[][][] x) 
-  {
-    smooth1(sigma1,x);
-    smooth2(sigma23,s,x);
-    smooth3(sigma23,s,x);
-  }
-  private static void smoothTranspose(
-    float sigma1, float sigma23, 
-    float[][][] s, float[][][] x) 
-  {
-    smooth3(sigma23,s,x);
-    smooth2(sigma23,s,x);
-    smooth1(sigma1,x);
+    public void apply(float[][][] x) {
+      smooth1(_sigma1,x);
+      smooth2(_sigma2,_ep,x);
+      smooth3(_sigma3,_ep,x);
+      subtract(x);
+    }
+    public void applyTranspose(float[][][] x) {
+      subtract(x);
+      smooth3(_sigma3,_ep,x);
+      smooth2(_sigma2,_ep,x);
+      smooth1(_sigma1,x);
+    }
+    private float _sigma1,_sigma2,_sigma3;
+    private float[][][] _ep;
+    private float[] _e0,_e1;
+    private void subtract(float[][][] x) {
+      int n1 = x[0][0].length;
+      int n2 = x[0].length;
+      int n3 = x.length;
+      double d0 = 0.0;
+      double d1 = 0.0;
+      for (int i3=0; i3<n3; ++i3) {
+        for (int i2=0; i2<n2; ++i2) {
+          for (int i1=0; i1<n1; ++i1) {
+            d0 += _e0[i1]*x[i3][i2][i1];
+            d1 += _e1[i1]*x[i3][i2][i1];
+          }
+        }
+      }
+      float f0 = (float)d0;
+      float f1 = (float)d1;
+      for (int i3=0; i3<n3; ++i3) {
+        for (int i2=0; i2<n2; ++i2) {
+          for (int i1=0; i1<n1; ++i1) {
+            x[i3][i2][i1] -= f0*_e0[i1];
+            x[i3][i2][i1] -= f1*_e1[i1];
+          }
+        }
+      }
+    }
   }
 
   // Smoothers for dimension 1.
@@ -904,5 +752,40 @@ public class FlattenerCg {
     for (int i3=0; i3<n3; ++i3)
       for (int i2=0; i2<n2; ++i2)
         invertShifts(ii,u,t,s[i3][i2]);
+  }
+
+  // Check for mean and linear trends in shifts.
+  private static void checkShifts(float[][] s) {
+    int n1 = s[0].length;
+    int n2 = s.length;
+    double s0 = 0.0;
+    double s1 = 0.0;
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        s0 += s[i2][i1];
+        s1 += s[i2][i1]*i1;
+      }
+    }
+    s0 = s0/n1/n2;
+    s1 = s1*0.5/(n1-1)/n1/n2;
+    System.out.println("s0="+s0+" s1="+s1);
+  }
+  private static void checkShifts(float[][][] s) {
+    int n1 = s[0][0].length;
+    int n2 = s[0].length;
+    int n3 = s.length;
+    double s0 = 0.0;
+    double s1 = 0.0;
+    for (int i3=0; i3<n3; ++i3) {
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          s0 += s[i3][i2][i1];
+          s1 += s[i3][i2][i1]*i1;
+        }
+      }
+    }
+    s0 = s0/n1/n2/n3;
+    s1 = s1*0.5/(n1-1)/n1/n2/n3;
+    System.out.println("s0="+s0+" s1="+s1);
   }
 }
