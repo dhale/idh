@@ -22,8 +22,22 @@ n1,n2 = s1.count,s2.count
 
 
 def main(args):
+  #slopes()
   flatten()
   #flattenTest()
+
+def slopes():
+  f = readImage(ffile)
+  pmax = 10.0
+  sigma1 = 20.0
+  sigma2 = 10.0
+  p2 = zerofloat(n1,n2)
+  el = zerofloat(n1,n2)
+  lsf = LocalSlopeFinderS(sigma1,sigma2,pmax)
+  lsf.findSlopes(f,p2,el)
+  plot(f)
+  plot(p2,jet)
+  plot(el,jet)
 
 def flatten():
   f = readImage(ffile)

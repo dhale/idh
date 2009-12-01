@@ -88,7 +88,8 @@ public class DiscreteTest {
   private static float[] interpolateSmooth(float[] d, float[] p) {
     int n1 = d.length;
     float[] q = new float[n1];
-    float[] s = pow(d,2.0f);
+    //float[] s = add(0.0f,pow(d,2.0f));
+    float[] s = add(64.0f,pow(d,2.0f));
     SimplePlot.asPoints(s);
     LocalSmoothingFilter lsf = new LocalSmoothingFilter();
     lsf.apply(0.5f,s,p,q);
@@ -623,9 +624,9 @@ public class DiscreteTest {
   public static void main(String[] args) {
     SwingUtilities.invokeLater(new Runnable() {
       public void run() {
-        //testInterpolation1();
+        testInterpolation1();
         //testRandom();
-        testSinSin();
+        //testSinSin();
         //testLinear();
         //testImpulse();
         //testCircle();

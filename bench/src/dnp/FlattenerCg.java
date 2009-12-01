@@ -6,7 +6,6 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package dnp;
 
-import java.util.logging.Logger;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import edu.mines.jtk.dsp.*;
@@ -65,7 +64,6 @@ public class FlattenerCg {
     s2.applyTranspose(r);
     cs.solve(a2,vr,vs);
     s2.apply(s);
-    checkShifts(s);
     invertShifts(s);
     return s;
   }
@@ -87,7 +85,6 @@ public class FlattenerCg {
     s3.applyTranspose(r);
     cs.solve(a3,vr,vs);
     s3.apply(s);
-    checkShifts(s);
     invertShifts(s);
     return s;
   }
@@ -226,36 +223,16 @@ public class FlattenerCg {
     public void apply(float[][] x) {
       smooth1(_sigma1,x);
       smooth2(_sigma2,_el,x);
-      subtract(x);
+      subtract(_e0,_e1,x);
     }
     public void applyTranspose(float[][] x) {
-      subtract(x);
+      subtract(_e0,_e1,x);
       smooth2(_sigma2,_el,x);
       smooth1(_sigma1,x);
     }
     private float _sigma1,_sigma2;
     private float[][] _el;
     private float[] _e0,_e1;
-    private void subtract(float[][] x) {
-      int n1 = x[0].length;
-      int n2 = x.length;
-      double d0 = 0.0;
-      double d1 = 0.0;
-      for (int i2=0; i2<n2; ++i2) {
-        for (int i1=0; i1<n1; ++i1) {
-          d0 += _e0[i1]*x[i2][i1];
-          d1 += _e1[i1]*x[i2][i1];
-        }
-      }
-      float f0 = (float)d0;
-      float f1 = (float)d1;
-      for (int i2=0; i2<n2; ++i2) {
-        for (int i1=0; i1<n1; ++i1) {
-          x[i2][i1] -= f0*_e0[i1];
-          x[i2][i1] -= f1*_e1[i1];
-        }
-      }
-    }
   }
   private static class Smoother3 {
     public Smoother3(
@@ -290,10 +267,10 @@ public class FlattenerCg {
       smooth1(_sigma1,x);
       smooth2(_sigma2,_ep,x);
       smooth3(_sigma3,_ep,x);
-      subtract(x);
+      subtract(_e0,_e1,x);
     }
     public void applyTranspose(float[][][] x) {
-      subtract(x);
+      subtract(_e0,_e1,x);
       smooth3(_sigma3,_ep,x);
       smooth2(_sigma2,_ep,x);
       smooth1(_sigma1,x);
@@ -301,56 +278,111 @@ public class FlattenerCg {
     private float _sigma1,_sigma2,_sigma3;
     private float[][][] _ep;
     private float[] _e0,_e1;
-    private void subtract(final float[][][] x) {
-      final int n1 = x[0][0].length;
-      final int n2 = x[0].length;
-      final int n3 = x.length;
-      Thread[] threads = Threads.makeArray();
-      final AtomicDouble ad0 = new AtomicDouble(0.0);
-      final AtomicDouble ad1 = new AtomicDouble(0.0);
-      final AtomicInteger ai = new AtomicInteger();
-      ai.set(0);
-      for (int ithread=0; ithread<threads.length; ++ithread) {
-        threads[ithread] = new Thread(new Runnable() {
-          public void run() {
-            double d0 = 0.0;
-            double d1 = 0.0;
-            for (int i3=ai.getAndIncrement(); i3<n3; i3=ai.getAndIncrement()) {
-              for (int i2=0; i2<n2; ++i2) {
-                for (int i1=0; i1<n1; ++i1) {
-                  d0 += _e0[i1]*x[i3][i2][i1];
-                  d1 += _e1[i1]*x[i3][i2][i1];
-                }
-              }
-            }
-            ad0.getAndAdd(d0);
-            ad1.getAndAdd(d1);
-          }
-        });
-      }
-      Threads.startAndJoin(threads);
-      final float f0 = (float)ad0.get();
-      final float f1 = (float)ad1.get();
-      ai.set(0);
-      for (int ithread=0; ithread<threads.length; ++ithread) {
-        threads[ithread] = new Thread(new Runnable() {
-          public void run() {
-            for (int i3=ai.getAndIncrement(); i3<n3; i3=ai.getAndIncrement()) {
-              for (int i2=0; i2<n2; ++i2) {
-                for (int i1=0; i1<n1; ++i1) {
-                  x[i3][i2][i1] -= f0*_e0[i1];
-                  x[i3][i2][i1] -= f1*_e1[i1];
-                }
-              }
-            }
-          }
-        });
-      }
-      Threads.startAndJoin(threads);
-    }
   }
 
-  // Smoothers for dimension 1.
+  // Subtraction of mean and linear trend in x1.
+  private static void subtract(float[] e0, float[] e1, float[][] x) {
+    int n1 = x[0].length;
+    int n2 = x.length;
+    double d0 = 0.0;
+    double d1 = 0.0;
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        d0 += e0[i1]*x[i2][i1];
+        d1 += e1[i1]*x[i2][i1];
+      }
+    }
+    float f0 = (float)d0;
+    float f1 = (float)d1;
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        x[i2][i1] -= f0*e0[i1];
+        x[i2][i1] -= f1*e1[i1];
+      }
+    }
+  }
+  private static void subtract(float[] e0, float[] e1, float[][][] x) {
+    if (PARALLEL) {
+    } else {
+      subtractS(e0,e1,x);
+    }
+  }
+  private static void subtractS(float[] e0, float[] e1, float[][][] x) {
+    int n1 = x[0][0].length;
+    int n2 = x[0].length;
+    int n3 = x.length;
+    double d0 = 0.0;
+    double d1 = 0.0;
+    for (int i3=0; i3<n3; ++i3) {
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          d0 += e0[i1]*x[i3][i2][i1];
+          d1 += e1[i1]*x[i3][i2][i1];
+        }
+      }
+    }
+    float f0 = (float)d0;
+    float f1 = (float)d1;
+    for (int i3=0; i3<n3; ++i3) {
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          x[i3][i2][i1] -= f0*e0[i1];
+          x[i3][i2][i1] -= f1*e1[i1];
+        }
+      }
+    }
+  }
+  private static void subtractP(
+    final float[] e0, final float[] e1, final float[][][] x) 
+  {
+    final int n1 = x[0][0].length;
+    final int n2 = x[0].length;
+    final int n3 = x.length;
+    Thread[] threads = Threads.makeArray();
+    final AtomicDouble ad0 = new AtomicDouble(0.0);
+    final AtomicDouble ad1 = new AtomicDouble(0.0);
+    final AtomicInteger ai = new AtomicInteger();
+    ai.set(0);
+    for (int ithread=0; ithread<threads.length; ++ithread) {
+      threads[ithread] = new Thread(new Runnable() {
+        public void run() {
+          double d0 = 0.0;
+          double d1 = 0.0;
+          for (int i3=ai.getAndIncrement(); i3<n3; i3=ai.getAndIncrement()) {
+            for (int i2=0; i2<n2; ++i2) {
+              for (int i1=0; i1<n1; ++i1) {
+                d0 += e0[i1]*x[i3][i2][i1];
+                d1 += e1[i1]*x[i3][i2][i1];
+              }
+            }
+          }
+          ad0.getAndAdd(d0);
+          ad1.getAndAdd(d1);
+        }
+      });
+    }
+    Threads.startAndJoin(threads);
+    final float f0 = (float)ad0.get();
+    final float f1 = (float)ad1.get();
+    ai.set(0);
+    for (int ithread=0; ithread<threads.length; ++ithread) {
+      threads[ithread] = new Thread(new Runnable() {
+        public void run() {
+          for (int i3=ai.getAndIncrement(); i3<n3; i3=ai.getAndIncrement()) {
+            for (int i2=0; i2<n2; ++i2) {
+              for (int i1=0; i1<n1; ++i1) {
+                x[i3][i2][i1] -= f0*e0[i1];
+                x[i3][i2][i1] -= f1*e1[i1];
+              }
+            }
+          }
+        }
+      });
+    }
+    Threads.startAndJoin(threads);
+  }
+
+  // Smoothing for dimension 1.
   private static void smooth1(float a, float[] x, float[] y) {
     int n1 = x.length;
     float s = (1.0f-a)/(1.0f+a);
@@ -417,7 +449,7 @@ public class FlattenerCg {
     Threads.startAndJoin(threads);
   }
 
-  // Smoothers for dimension 2.
+  // Smoothing for dimension 2.
   private static void smooth2(float sigma, float[][] s, float[][] x) {
     if (sigma<1.0f)
       return;
@@ -475,7 +507,7 @@ public class FlattenerCg {
     Threads.startAndJoin(threads);
   }
 
-  // Smoothers for dimension 3.
+  // Smoothing for dimension 3.
   private static void smooth3(float sigma, float[][][] s, float[][][] x) {
     if (PARALLEL) {
       smooth3P(sigma,s,x);
@@ -774,40 +806,5 @@ public class FlattenerCg {
     for (int i3=0; i3<n3; ++i3)
       for (int i2=0; i2<n2; ++i2)
         invertShifts(ii,u,t,s[i3][i2]);
-  }
-
-  // Check for mean and linear trends in shifts.
-  private static void checkShifts(float[][] s) {
-    int n1 = s[0].length;
-    int n2 = s.length;
-    double s0 = 0.0;
-    double s1 = 0.0;
-    for (int i2=0; i2<n2; ++i2) {
-      for (int i1=0; i1<n1; ++i1) {
-        s0 += s[i2][i1];
-        s1 += s[i2][i1]*i1;
-      }
-    }
-    s0 = s0/n1/n2;
-    s1 = s1*0.5/(n1-1)/n1/n2;
-    System.out.println("s0="+s0+" s1="+s1);
-  }
-  private static void checkShifts(float[][][] s) {
-    int n1 = s[0][0].length;
-    int n2 = s[0].length;
-    int n3 = s.length;
-    double s0 = 0.0;
-    double s1 = 0.0;
-    for (int i3=0; i3<n3; ++i3) {
-      for (int i2=0; i2<n2; ++i2) {
-        for (int i1=0; i1<n1; ++i1) {
-          s0 += s[i3][i2][i1];
-          s1 += s[i3][i2][i1]*i1;
-        }
-      }
-    }
-    s0 = s0/n1/n2/n3;
-    s1 = s1*0.5/(n1-1)/n1/n2/n3;
-    System.out.println("s0="+s0+" s1="+s1);
   }
 }

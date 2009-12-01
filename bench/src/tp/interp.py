@@ -20,17 +20,54 @@ pfile = "tpp"+logType+method # values of nearest known samples
 qfile = "tpq"+logType+method # output of blended gridder
 tfile = "tpt"+logType+method # times to nearest known samples
 
+horizons = ["CrowMountainCRMT"]
+"""
+horizons = [
+  "CrowMountainCRMT",
+  "TensleepASand",
+  "TensleepBbaseC1Dolo"]
+"""
+
+pngDir = "png/"
+
+smin,smax = -5.5,5.5
+vmin,vmax = 2.4,5.6
+#k1,k2,k3 = 228,170,74 # 2D displays
+#k1,k2,k3 = 228,170,106 # 2D displays
+#k1,k2,k3 = 228,170,96 # 2D displays
+k1,k2,k3 = 366,15,96 # 3D displays
+
 def main(args):
+  #goFigures()
+  goInterp()
+
+def goFigures():
+  global k1,k2,k3
+  k1,k2,k3 = 228,170,96 # intersect low-velocity layers
+  s = readImage(sfile); print "s min =",min(s)," max =",max(s)
+  p = readImage(pfile); print "p min =",min(p)," max =",max(p)
+  #q = readImage(qfile); print "q min =",min(q)," max =",max(q)
+  #display3(s,None,0.0,0.0,"tpsz")
+  display3(s,p,vmin,vmax,"tppvb")
+  #display3(s,q,vmin,vmax,"tpqvb")
+
+def goInterp():
+  global k1,k2,k3
+  k1,k2,k3 = 366,15,96
   #gridBlendedP()
   #gridBlendedQ()
   s = readImage(sfile); print "s min =",min(s)," max =",max(s)
+  #display1(s,False)
+  #display1(s,False,["CrowMountainCRMT","TensleepASand"])
+  #display1(s,True,["CrowMountainCRMT","TensleepASand"])
   p = readImage(pfile); print "p min =",min(p)," max =",max(p)
   #t = readImage(tfile); print "t min =",min(t)," max =",max(t)
   q = readImage(qfile); print "q min =",min(q)," max =",max(q)
-  #display1(s)
-  display(s,p,3.0,5.0)
+  display(s,p,vmin,vmax)
   #display(s,t,0.0,100.0)
-  display(s,q,3.0,5.0)
+  display(s,q,vmin,vmax)
+  #display(s,q,vmin,vmax,["CrowMountainCRMT"])
+  #display(s,q,vmin,vmax,["TensleepASand"])
 
 def gridBlendedP():
   e = getEigenTensors(0.01)
@@ -63,24 +100,85 @@ def getEigenTensors(eps):
   #writeTensors(esfile,e)
   return e
 
-def display1(s):
-  world = World()
-  ipg = addImageToWorld(world,s)
-  addLogsToWorld(world,logSet,logType)
-  #addHorizonToWorld(world,"CrowMountainCRMT")
-  #addHorizonToWorld(world,"TensleepASand")
-  addHorizonToWorld(world,"TensleepBbaseC1Dolo")
-  makeFrame(world)
-
-def display(s,g,cmin,cmax):
+def display(s,g,cmin,cmax,horizons=[]):
   world = World()
   ipg = addImage2ToWorld(world,s,g)
+  ipg.setClips1(smin,smax)
   ipg.setClips2(cmin,cmax)
+  ipg.setSlices(k1,k2,k3)
   addLogsToWorld(world,logSet,logType)
-  #addHorizonToWorld(world,"CrowMountainCRMT")
-  #addHorizonToWorld(world,"TensleepASand")
-  addHorizonToWorld(world,"TensleepBbaseC1Dolo")
+  for horizon in horizons:
+    addHorizonToWorld(world,horizon)
   makeFrame(world)
+
+def display1(s,wells=True,horizons=[]):
+  world = World()
+  ipg = addImageToWorld(world,s)
+  ipg.setClips(smin,smax)
+  ipg.setSlices(k1,k2,k3)
+  if wells:
+    addLogsToWorld(world,logSet,logType)
+  for horizon in horizons:
+    addHorizonToWorld(world,horizon)
+  makeFrame(world)
+
+def display2(s,g=None,cmin=0,cmax=0):
+  sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
+  sp.addColorBar()
+  sp.getPlotPanel().setColorBarWidthMinimum(80)
+  pv = sp.addPixels(s)
+  pv.setInterpolation(PixelsView.Interpolation.NEAREST)
+  if g!=None:
+    pv = sp.addPixels(g)
+    pv.setInterpolation(PixelsView.Interpolation.NEAREST)
+    pv.setColorModel(ColorMap.getJet(0.3))
+    if cmin!=cmax:
+      pv.setClips(cmin,cmax)
+
+def display3(s,g=None,cmin=0,cmax=0,png=None):
+  pp = PlotPanelPixels3(
+    PlotPanelPixels3.Orientation.X1DOWN_X2RIGHT,
+    PlotPanelPixels3.AxesPlacement.LEFT_BOTTOM,
+    s1,s2,s3,s)
+  pp.setSlices(k1,k2,k3)
+  pp.setLabel1("Depth (km)")
+  pp.setLabel2("Crossline (km)")
+  pp.setLabel3("Inline (km)")
+  pp.setClips(smin,smax)
+  if g:
+    pp.setLineColor(Color.BLACK)
+    cb = pp.addColorBar("Velocity (km/s)")
+    cb.setInterval(1.0)
+  else:
+    pp.setLineColor(Color.YELLOW)
+    cb = pp.addColorBar("Amplitude")
+    cb.setInterval(5.0)
+  pp.setColorBarWidthMinimum(100)
+  pp.setInterval1(0.5)
+  pp.setInterval2(2.0)
+  pp.setInterval3(2.0)
+  pp.mosaic.setHeightElastic(0,100)
+  pp.mosaic.setHeightElastic(1,200)
+  if g:
+    pv12 = PixelsView(s1,s2,slice12(k3,g))
+    pv12.setOrientation(PixelsView.Orientation.X1DOWN_X2RIGHT)
+    pv13 = PixelsView(s1,s3,slice13(k2,g))
+    pv13.setOrientation(PixelsView.Orientation.X1DOWN_X2RIGHT)
+    pv23 = PixelsView(s2,s3,slice23(k1,g))
+    pv23.setOrientation(PixelsView.Orientation.X1RIGHT_X2UP)
+    for pv in [pv12,pv13,pv23]:
+      pv.setColorModel(ColorMap.getJet(0.5))
+      if cmin!=cmax:
+        pv.setClips(cmin,cmax)
+    pp.pixelsView12.tile.addTiledView(pv12)
+    pp.pixelsView13.tile.addTiledView(pv13)
+    pp.pixelsView23.tile.addTiledView(pv23)
+  pf = PlotFrame(pp)
+  pf.setFontSizeForSlide(1.0,1.0)
+  pf.setSize(996,815)
+  pf.setVisible(True)
+  if png and pngDir:
+    pf.paintToPng(300,6,pngDir+png+".png")
 
 #############################################################################
 
@@ -144,18 +242,23 @@ def gridBlended2():
   #display2(s,p,cmin,cmax)
   display2(s,q,cmin,cmax)
 
-def display2(s,g=None,cmin=0,cmax=0):
-  sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
-  sp.addColorBar()
-  sp.getPlotPanel().setColorBarWidthMinimum(80)
-  pv = sp.addPixels(s)
-  pv.setInterpolation(PixelsView.Interpolation.NEAREST)
-  if g!=None:
-    pv = sp.addPixels(g)
-    pv.setInterpolation(PixelsView.Interpolation.NEAREST)
-    pv.setColorModel(ColorMap.getJet(0.3))
-    if cmin!=cmax:
-      pv.setClips(cmin,cmax)
+def slice12(k3,f):
+  n1,n2,n3 = len(f[0][0]),len(f[0]),len(f)
+  s = zerofloat(n1,n2)
+  SimpleFloat3(f).get12(n1,n2,0,0,k3,s)
+  return s
+
+def slice13(k2,f):
+  n1,n2,n3 = len(f[0][0]),len(f[0]),len(f)
+  s = zerofloat(n1,n3)
+  SimpleFloat3(f).get13(n1,n3,0,k2,0,s)
+  return s
+
+def slice23(k1,f):
+  n1,n2,n3 = len(f[0][0]),len(f[0]),len(f)
+  s = zerofloat(n2,n3)
+  SimpleFloat3(f).get23(n2,n3,k1,0,0,s)
+  return s
 
 #############################################################################
 run(main)

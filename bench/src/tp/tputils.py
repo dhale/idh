@@ -17,10 +17,10 @@ _seismiczDir = _csmDir+"seismicz/"
 _horizonColors = {
   "KF2F2WC":Color.RED,
   "FallRiverDKOT":Color.GREEN,
-  "CrowMountainCRMT":Color.BLUE,
-  "TensleepASand":Color.CYAN,
+  "CrowMountainCRMT":Color.CYAN,
+  "TensleepASand":Color.YELLOW,
   "TensleepBbaseC1Dolo":Color.MAGENTA,
-  #"BasementPC":Color.YELLOW
+  #"BasementPC":Color.BLUE
 }
 _horizonNames = _horizonColors.keys()
 
@@ -183,7 +183,7 @@ def addImageToWorld(world,image):
 def addImage2ToWorld(world,image1,image2):
   ipg = ImagePanelGroup2(s1,s2,s3,image1,image2)
   ipg.setColorModel1(ColorMap.getGray())
-  ipg.setColorModel2(ColorMap.getJet(0.3))
+  ipg.setColorModel2(ColorMap.getJet(0.5))
   world.addChild(ipg)
   return ipg
 
@@ -227,6 +227,7 @@ def makeLogPoints(samples,type):
 
 def addLogsToWorld(world,set,type):
   samples = readLogSamples(set,type)
+  #print "number of logs =",len(samples[0])
   lg = makeLogPoints(samples,type)
   states = StateSet()
   cs = ColorState()
@@ -243,7 +244,7 @@ def makePointGroup(x1,x2,x3):
   copy(n,0,1,x1,2,3,xyz)
   pg = PointGroup(xyz)
   ps = PointState()
-  ps.setSize(2)
+  ps.setSize(1)
   ps.setSmooth(True)
   ss = StateSet()
   ss.add(ps)
@@ -253,13 +254,17 @@ def makePointGroup(x1,x2,x3):
 def makeFrame(world):
   n1,n2,n3 = s1.count,s2.count,s3.count
   d1,d2,d3 = s1.delta,s2.delta,s3.delta
+  f1,f2,f3 = s1.first,s2.first,s3.first
+  l1,l2,l3 = s1.last,s2.last,s3.last
   frame = SimpleFrame(world)
   view = frame.getOrbitView()
   zscale = 0.75*max(n2*d2,n3*d3)/(n1*d1)
   view.setAxesScale(1.0,1.0,zscale)
-  view.setScale(2.0)
-  view.setAzimuth(-50.0)
-  frame.setSize(1200,900)
+  view.setScale(1.2)
+  #view.setAzimuth(75.0)
+  view.setAzimuth(-75.0)
+  view.setWorldSphere(BoundingSphere(BoundingBox(f3,f2,f1,l3,l2,l1)))
+  frame.setSize(1150,900)
   frame.setVisible(True)
   return frame
 

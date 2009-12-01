@@ -33,7 +33,7 @@ def main(args):
 def flatten():
   f = readImage("tpst")
   fl = FlattenerCg(6.0,6.0)
-  findShifts = True
+  findShifts = False
   if findShifts:
     p2 = readImage("tpp2")
     p3 = readImage("tpp3")
