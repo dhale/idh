@@ -1,0 +1,83 @@
+<h3>Painting images in 3D</h3>
+<p>January 9, 2010</p>
+<p>
+Decades ago geophysicists and geologists would use colored pencils to 
+paint seismic sections of the earth&apos;s subsurface. 
+Those sections were displayed on paper. 
+We would use different colors and shades to represent different 
+geologic layers. 
+Seismic horizons were then simply the boundaries between those colored layers.
+</p><p>
+So when painting software became widely available with personal computers 
+in the 1980s, it was obvious that we might use this software to interpret 
+seismic images. 
+Digital paint has advantages. 
+It can be applied in multiple overlays that we can easily turn off and on, 
+and mistakes are easy to undo. 
+Moreover, painting geology is simpler and more intuitive and direct than 
+picking seismic horizons. 
+Painted pixels directly represent a model of the subsurface. 
+If we had only 2D seismic sections, we might all be interpreting them 
+in this way.
+</p><p>
+But as painting software became commonplace, so did 3D seismic images, 
+and no one wants to paint the hundreds or even thousands of 2D seismic 
+sections in a 3D seismic image. 
+So today we pick horizons, the interfaces between geologic 
+entities, instead of painting geology directly.
+</p><p>
+<h4>Imagine that we could paint in 3D</h4>
+</p><p>
+What does this mean? 
+It does not mean painting with perspective on a 2D canvas. 
+That is what artists do. 
+They use perspective and other techniques to give the illusion of 3D. 
+We mean something different. 
+We want to paint voxels (3D pixels) in a 3D canvas (our subsurface model) 
+that coincides with a 3D seismic image.
+</p><p>
+At the Colorado School of Mines we are blending geophysical image 
+processing and interactive computer graphics to paint in 3D. 
+The key step is to make the orientation and shape of our digital 3D 
+paintbrush conform automatically to features apparent in 3D images. 
+Simple 3D brush shapes like spheres or cubes, analogous to circles and 
+squares found in 2D painting software, will not do. 
+</p><p>
+For as we move our paintbrush along slices of a 3D seismic image, we 
+are actually painting voxels in a 3D subsurface model of the earth. 
+In the example shown here, we are interactively painting all voxels 
+inside the red 3D paintbrush. 
+<dl class="img first">
+  <dt><img src="images/ImagePaint3A.png" width="320" alt=""/></dt>
+  <dd><em>
+    Painting a 3D seismic image with a 3D paintbrush.
+    As we move the red paintbrush interactively, ...
+  </em></dd>
+</dl>
+<dl class="img first">
+  <dt><img src="images/ImagePaint3B.png" width="320" alt=""/></dt>
+  <dd><em>
+    ... it's shape and size conform automatically to features
+    in the 3D image.
+  </em></dd>
+</dl>
+<dl class="img first">
+  <dt><img src="images/ImagePaint3C.png" width="320" alt=""/></dt>
+  <dd><em>
+    We paint all voxels within the 3D paintbrush, not only those 
+    voxels in the 2D slices displayed here.
+  </em></dd>
+</dl>
+<dl class="img first">
+  <dt><img src="images/ImagePaint3D.png" width="320" alt=""/></dt>
+  <dd><em>
+    Where no image is available, as on the left side here,
+    the default brush shape is spherical.
+  </em></dd>
+</dl>
+In this way we paint many slices from the 3D image simultaneously, not only 
+the 2D slices displayed here. 
+While we control the maximum size of the brush, it may shrink automatically, 
+say, near geologic faults. 
+Brush orientation and shape adapts automatically so that our painted 
+subsurface model remains consistent with the 3D seismic image.
