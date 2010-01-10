@@ -7,6 +7,7 @@ setupForSubset("subz_401_4_600")
 s1,s2,s3 = getSamplings()
 logSet = "d" # deep logs only
 logType = "v" # velocity
+logLabel = "Velocity (km/s)"
 method = "b" # blended
 
 sfile = "tpsz" # seismic image
@@ -57,13 +58,14 @@ def goInterp():
   #gridBlendedP()
   #gridBlendedQ()
   s = readImage(sfile); print "s min =",min(s)," max =",max(s)
+  #display1(s,True,cmin=vmin,cmax=vmax)
   #display1(s,False)
   #display1(s,False,["CrowMountainCRMT","TensleepASand"])
   #display1(s,True,["CrowMountainCRMT","TensleepASand"])
-  p = readImage(pfile); print "p min =",min(p)," max =",max(p)
+  #p = readImage(pfile); print "p min =",min(p)," max =",max(p)
   #t = readImage(tfile); print "t min =",min(t)," max =",max(t)
   q = readImage(qfile); print "q min =",min(q)," max =",max(q)
-  display(s,p,vmin,vmax)
+  #display(s,p,vmin,vmax)
   #display(s,t,0.0,100.0)
   display(s,q,vmin,vmax)
   #display(s,q,vmin,vmax,["CrowMountainCRMT"])
@@ -106,18 +108,22 @@ def display(s,g,cmin,cmax,horizons=[]):
   ipg.setClips1(smin,smax)
   ipg.setClips2(cmin,cmax)
   ipg.setSlices(k1,k2,k3)
-  addLogsToWorld(world,logSet,logType)
+  addLogsToWorld(world,logSet,logType,cmin,cmax)
   for horizon in horizons:
     addHorizonToWorld(world,horizon)
-  makeFrame(world)
+  frame = makeFrame(world)
+  cb = ColorBar(logLabel)
+  ipg.addColorMap2Listener(cb)
+  frame.add(cb,BorderLayout.EAST)
+  cb.setFont(cb.getFont().deriveFont(36.0))
 
-def display1(s,wells=True,horizons=[]):
+def display1(s,wells=True,horizons=[],cmin=0,cmax=0):
   world = World()
   ipg = addImageToWorld(world,s)
   ipg.setClips(smin,smax)
   ipg.setSlices(k1,k2,k3)
   if wells:
-    addLogsToWorld(world,logSet,logType)
+    addLogsToWorld(world,logSet,logType,cmin,cmax)
   for horizon in horizons:
     addHorizonToWorld(world,horizon)
   makeFrame(world)
@@ -147,7 +153,7 @@ def display3(s,g=None,cmin=0,cmax=0,png=None):
   pp.setClips(smin,smax)
   if g:
     pp.setLineColor(Color.BLACK)
-    cb = pp.addColorBar("Velocity (km/s)")
+    cb = pp.addColorBar(logLabel)
     cb.setInterval(1.0)
   else:
     pp.setLineColor(Color.YELLOW)

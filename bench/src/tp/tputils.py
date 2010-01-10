@@ -140,11 +140,13 @@ def readLogSamples(set,type):
   logs = wdata.getLogsWith(type)
   fl,x1l,x2l,x3l = [],[],[],[]
   for log in logs:
-    f,x1,x2,x3 = log.getSamples(type,s1,s2,s3)
-    fl.append(f)
-    x1l.append(x1)
-    x2l.append(x2)
-    x3l.append(x3)
+    samples = log.getSamples(type,s1,s2,s3)
+    if samples:
+      f,x1,x2,x3 = samples
+      fl.append(f)
+      x1l.append(x1)
+      x2l.append(x2)
+      x3l.append(x3)
   return fl,x1l,x2l,x3l
 
 def readLogSamplesMerged(set,type):
@@ -183,7 +185,7 @@ def addImageToWorld(world,image):
 def addImage2ToWorld(world,image1,image2):
   ipg = ImagePanelGroup2(s1,s2,s3,image1,image2)
   ipg.setColorModel1(ColorMap.getGray())
-  ipg.setColorModel2(ColorMap.getJet(0.5))
+  ipg.setColorModel2(ColorMap.getJet(0.2))
   world.addChild(ipg)
   return ipg
 
@@ -214,21 +216,11 @@ def addAllHorizonsToWorld(world):
   for name in _horizonNames:
     addHorizonToWorld(world,name)
 
-def makeLogPoints(samples,type):
-  lg = Group()
-  fl,x1l,x2l,x3l = samples
-  for i,f in enumerate(fl):
-    x1 = x1l[i]
-    x2 = x2l[i]
-    x3 = x3l[i]
-    pg = makePointGroup(x1,x2,x3)
-    lg.addChild(pg)
-  return lg
-
-def addLogsToWorld(world,set,type):
+def addLogsToWorld(world,set,type,cmin=0,cmax=0):
   samples = readLogSamples(set,type)
   #print "number of logs =",len(samples[0])
-  lg = makeLogPoints(samples,type)
+  lg = makeLogPoints(samples,type,cmin,cmax)
+  #lg = makeLogLines(samples,type,cmin,cmax)
   states = StateSet()
   cs = ColorState()
   cs.setColor(Color.YELLOW)
@@ -236,16 +228,62 @@ def addLogsToWorld(world,set,type):
   lg.setStates(states)
   world.addChild(lg)
 
-def makePointGroup(x1,x2,x3):
+def makeLogLines(samples,type,cmin,cmax):
+  llg = Group()
+  fl,x1l,x2l,x3l = samples
+  for i,f in enumerate(fl):
+    x1 = x1l[i]
+    x2 = x2l[i]
+    x3 = x3l[i]
+    lg = makeLineGroup(f,x1,x2,x3,cmin,cmax)
+    llg.addChild(lg)
+  return llg
+
+def makeLogPoints(samples,type,cmin,cmax):
+  lg = Group()
+  fl,x1l,x2l,x3l = samples
+  for i,f in enumerate(fl):
+    f = fl[i]
+    x1 = x1l[i]
+    x2 = x2l[i]
+    x3 = x3l[i]
+    pg = makePointGroup(f,x1,x2,x3,cmin,cmax)
+    lg.addChild(pg)
+  return lg
+
+def makeLineGroup(f,x1,x2,x3,cmin,cmax):
   n = len(x1)
   xyz = zerofloat(3*n)
   copy(n,0,1,x3,0,3,xyz)
   copy(n,0,1,x2,1,3,xyz)
   copy(n,0,1,x1,2,3,xyz)
-  pg = PointGroup(xyz)
+  rgb = None
+  if cmin<cmax:
+    cmap = ColorMap(cmin,cmax,ColorMap.JET)
+    rgb = cmap.getRgbFloats(f)
+  lg = LineGroup(xyz,rgb)
+  ls = LineState()
+  ls.setWidth(2)
+  ls.setSmooth(False)
+  ss = StateSet()
+  ss.add(ls)
+  lg.setStates(ss)
+  return lg
+
+def makePointGroup(f,x1,x2,x3,cmin,cmax):
+  n = len(x1)
+  xyz = zerofloat(3*n)
+  copy(n,0,1,x3,0,3,xyz)
+  copy(n,0,1,x2,1,3,xyz)
+  copy(n,0,1,x1,2,3,xyz)
+  rgb = None
+  if cmin<cmax:
+    cmap = ColorMap(cmin,cmax,ColorMap.JET)
+    rgb = cmap.getRgbFloats(f)
+  pg = PointGroup(xyz,rgb)
   ps = PointState()
-  ps.setSize(1)
-  ps.setSmooth(True)
+  ps.setSize(4)
+  ps.setSmooth(False)
   ss = StateSet()
   ss.add(ps)
   pg.setStates(ss)
@@ -260,11 +298,11 @@ def makeFrame(world):
   view = frame.getOrbitView()
   zscale = 0.75*max(n2*d2,n3*d3)/(n1*d1)
   view.setAxesScale(1.0,1.0,zscale)
-  view.setScale(1.2)
+  view.setScale(1.5)
   #view.setAzimuth(75.0)
   view.setAzimuth(-75.0)
   view.setWorldSphere(BoundingSphere(BoundingBox(f3,f2,f1,l3,l2,l1)))
-  frame.setSize(1150,900)
+  frame.setSize(1450,900)
   frame.setVisible(True)
   return frame
 

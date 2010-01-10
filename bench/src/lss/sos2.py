@@ -18,10 +18,10 @@ from lss import *
 #############################################################################
 # parameters
 
-smNone = LocalSemblanceFilter.Smoothing.NONE
-smBoxcar = LocalSemblanceFilter.Smoothing.BOXCAR
-smGaussian = LocalSemblanceFilter.Smoothing.GAUSSIAN
-smLaplacian = LocalSemblanceFilter.Smoothing.LAPLACIAN
+smNone = LocalSemblanceFilterX.Smoothing.NONE
+smBoxcar = LocalSemblanceFilterX.Smoothing.BOXCAR
+smGaussian = LocalSemblanceFilterX.Smoothing.GAUSSIAN
+smLaplacian = LocalSemblanceFilterX.Smoothing.LAPLACIAN
 
 d2U = LocalSemblanceFilter.Direction2.U
 d2V = LocalSemblanceFilter.Direction2.V
@@ -39,7 +39,7 @@ def setTpd(): # Teapot Dome slice vertical
   n1,n2 = 251,357
   fileName = "tp73.dat"
   plotPref = "tpd"
-  dataDir = "/data/seis/tp/"
+  dataDir = "/data/seis/tp/csm/oldslices/"
   hlabel = "crossline (samples)"
   vlabel = "depth (samples)"
   fScale = fClip/4.0
@@ -75,8 +75,8 @@ def setPlotWidthHeight():
   plotHeight += plotTitleBarHeight
 
 plotFontSize = 32
-plotPngDir = "./png/sos/"
-#plotPngDir = None
+#plotPngDir = "./png/sos/"
+plotPngDir = None
 
 gray = ColorMap.GRAY
 jet = ColorMap.JET
@@ -86,21 +86,22 @@ prism = ColorMap.PRISM
 # functions
 
 def main(args):
-  #setAtw(); goAll()
-  setTpd(); goAll()
+  setAtw(); goAll()
+  #setTpd(); goAll()
   return
 
 def goAll():
-  #goImage()
+  goImage()
   #goTensors()
-  #goSmoothGV()
+  goSmoothGV()
   goSmoothHV()
-  #goSmoothGSV()
-  #goSemblanceV()
+  goSmoothGSV()
+  goSemblanceV()
   #goSemblanceClassic()
 
 def goImage():
   f = readImage(n1,n2,fileName)
+  print "input: f min =",min(f)," max =",max(f)
   p = panel()
   pf = p.addPixels(f)
   pf.setClips(-fClip,fClip)
@@ -125,7 +126,7 @@ def goSmoothGV():
   #f = makeRandom(n1,n2)
   #for sm in [smBoxcar,smGaussian,smLaplacian]:
   for sm in [smLaplacian]:
-    lsf = LocalSemblanceFilter(sm,hw,sm,hw)
+    lsf = makeLocalSemblanceFilter(sm,hw,sm,hw)
     g = lsf.smooth1(d2V,t,f)
     p = panel()
     pf = p.addPixels(g)
@@ -139,7 +140,7 @@ def goSmoothGSV():
   sm = smLaplacian
   f = readImage(n1,n2,fileName)
   t = computeTensors(sigmaTensor,f)
-  lsf = LocalSemblanceFilter(sm,hw1,sm,hw2)
+  lsf = makeLocalSemblanceFilter(sm,hw1,sm,hw2)
   s = lsf.semblance(d2V,t,f)
   s = mul(s,s)
   s = mul(s,s)
@@ -159,7 +160,7 @@ def goSmoothGU():
   t = computeTensors(sigmaTensor,f)
   #f = makeRandom(n1,n2)
   for sm in [smBoxcar,smGaussian,smLaplacian]:
-    lsf = LocalSemblanceFilter(sm,hw,sm,hw)
+    lsf = makeLocalSemblanceFilter(sm,hw,sm,hw)
     g = lsf.smooth1(d2U,t,f)
     p = panel()
     pf = p.addPixels(g)
@@ -167,19 +168,19 @@ def goSmoothGU():
     frame(p,"gu"+smstr(sm)+str(hw))
 
 def goSmoothHV():
-  hw = 20
+  hw = 20 
   f = readImage(n1,n2,fileName)
   t = computeTensors(sigmaTensor,f)
-  f = makeImpulses(n1,n2,1+4*hw,1+4*hw)
+  f = makeImpulses(n1,n2,1+2*hw,1+2*hw)
   #f = mul(30*fClip,f)
   f = mul(100,f)
   for sm in [smLaplacian]:
-    lsf = LocalSemblanceFilter(sm,hw,sm,hw)
-    g = lsf.smooth2(d2V,t,f)
+    lsf = makeLocalSemblanceFilter(sm,hw,sm,hw)
+    g = lsf.smooth1(d2V,t,f)
     p = panel()
     pf = p.addPixels(g)
     #pf.setClips(-fClip,fClip)
-    pf.setClips(-5.0,5.0)
+    pf.setClips(-4.0,4.0)
     frame(p,"h2v"+smstr(sm)+str(hw))
     if n1>400:
       p = panel()
@@ -188,7 +189,7 @@ def goSmoothHV():
       p.setVInterval(50)
       pf = p.addPixels(g)
       #pf.setClips(-fClip,fClip)
-      pf.setClips(-5.0,5.0)
+      pf.setClips(-4.0,4.0)
       frame(p,"hvz"+smstr(sm)+str(hw))
 
 def goSemblanceV():
@@ -199,13 +200,20 @@ def goSemblanceV():
   #for sm1 in [smBoxcar,smGaussian,smLaplacian]:
   for sm1 in [smLaplacian]:
     sm2 = sm1
-    lsf = LocalSemblanceFilter(sm1,hw1,sm2,hw2)
+    lsf = makeLocalSemblanceFilter(sm1,hw1,sm2,hw2)
     s = lsf.semblance(d2V,t,f)
     print "s min =",min(s),"max =",max(s)
     p = panel()
     ps = p.addPixels(s)
     ps.setClips(0.0,1.0)
     frame(p,"sv"+smstr(sm1)+str(hw1)+"_"+str(hw2))
+
+def makeLocalSemblanceFilter(sm1,hw1,sm2,hw2):
+  if sm1==smLaplacian and sm2==smLaplacian:
+    lsf = LocalSemblanceFilter(hw1,hw2)
+  else:
+    lsf = LocalSemblanceFilterX(sm1,hw1,sm2,hw2)
+  return lsf
 
 def smstr(sm):
   if sm==smBoxcar:
@@ -221,7 +229,7 @@ def goSemblanceClassic():
   pmax = 10.0
   hw1 = halfWidth1
   hw2 = halfWidth2
-  s = LocalSemblanceFilter.semblanceForSlopes(pmax,hw1,hw2,t,f)
+  s = LocalSemblanceFilterX.semblanceForSlopes(pmax,hw1,hw2,t,f)
   p = panel()
   ps = p.addPixels(s)
   ps.setClips(0.0,1.0)
@@ -280,6 +288,13 @@ def makeTensorVectors(t):
       xv1[ll][1] = i1+v1*s1*el
       xv2[ll][1] = i2+v2*s2*el
   return xu1,xu2,xv1,xv2
+
+def applyBandPassFilter(f):
+  bpf = BandPassFilter(0.00,0.45,0.10,0.01)
+  bpf.setExtrapolation(BandPassFilter.Extrapolation.ZERO_SLOPE)
+  g = zerofloat(len(f[0]),len(f))
+  bpf.apply(f,g)
+  return g
 
 def smooth(x):
   n1 = len(x[0])

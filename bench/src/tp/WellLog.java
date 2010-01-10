@@ -603,15 +603,11 @@ public class WellLog {
     float[] f = getCurve(curve);
     if (f==null)
       return null;
-    int ns = 0;
-    for (int i=0; i<n; ++i)
-      if (f[i]!=NULL_VALUE)
-        ++ns;
-    float[] fs = new float[ns];
-    float[] x1s = new float[ns];
-    float[] x2s = new float[ns];
-    float[] x3s = new float[ns];
-    for (int i=0,is=0; i<n; ++i) {
+    FloatList fl = new FloatList();
+    FloatList x1l = new FloatList();
+    FloatList x2l = new FloatList();
+    FloatList x3l = new FloatList();
+    for (int i=0; i<n; ++i) {
       float fi = f[i];
       if (fi!=NULL_VALUE) {
         float x1i = x1[i];
@@ -620,14 +616,19 @@ public class WellLog {
         if (x1min<=x1i && x1i<=x1max && 
             x2min<=x2i && x2i<=x2max && 
             x3min<=x3i && x3i<=x3max) {
-          fs[is] = fi;
-          x1s[is] = x1i;
-          x2s[is] = x2i;
-          x3s[is] = x3i;
-          ++is;
+          fl.add(fi);
+          x1l.add(x1i);
+          x2l.add(x2i);
+          x3l.add(x3i);
         }
       }
     }
+    float[] fs = fl.trim();
+    float[] x1s = x1l.trim();
+    float[] x2s = x2l.trim();
+    float[] x3s = x3l.trim();
+    if (fs==null)
+      return null;
     return new float[][]{fs,x1s,x2s,x3s};
   }
 
