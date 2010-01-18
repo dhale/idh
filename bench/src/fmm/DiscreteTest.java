@@ -579,18 +579,18 @@ public class DiscreteTest {
     float[][][] dp = getDistanceNearest(f,g1,g2,x1,x2,n1,n2);
     float[][] d = dp[0];
     float[][] p = dp[1];
-    float[][] qf = (mode==0)?sinsin(n1,n2): zerofloat(n1,n2);
+    float[][] qf = (mode==0)?sinsin(n1,n2):zerofloat(n1,n2);
     //float[][] q0 = interpolateApproxSibson(d,p);
     //float[][] q1 = interpolateDiscrSibson(d,p);
-    float[][] q2 = interpolateExactSibson(d,p);
+    //float[][] q2 = interpolateExactSibson(d,p);
     float[][] q3 = interpolateSmooth(d,p);
     //float[][] q4 = interpolateLaplace(d,p);
     //float[][] q5 = interpolateBiLaplace(d,p);
     //plot3d(s,s1,s2,p);
-    plot3d(s,s1,s2,qf);
+    //plot3d(s,s1,s2,qf);
     //plot3d(s,s1,s2,q0);
     //plot3d(s,s1,s2,q1);
-    plot3d(s,s1,s2,q2);
+    //plot3d(s,s1,s2,q2);
     plot3d(s,s1,s2,q3);
     //plot3d(s,s1,s2,q4);
     //plot3d(s,s1,s2,q5);
@@ -624,10 +624,10 @@ public class DiscreteTest {
   public static void main(String[] args) {
     SwingUtilities.invokeLater(new Runnable() {
       public void run() {
-        testInterpolation1();
+        //testInterpolation1();
         //testRandom();
         //testSinSin();
-        //testLinear();
+        testLinear();
         //testImpulse();
         //testCircle();
       }

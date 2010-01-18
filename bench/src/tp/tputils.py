@@ -185,7 +185,7 @@ def addImageToWorld(world,image):
 def addImage2ToWorld(world,image1,image2):
   ipg = ImagePanelGroup2(s1,s2,s3,image1,image2)
   ipg.setColorModel1(ColorMap.getGray())
-  ipg.setColorModel2(ColorMap.getJet(0.2))
+  ipg.setColorModel2(ColorMap.getJet(0.3))
   world.addChild(ipg)
   return ipg
 
@@ -298,11 +298,11 @@ def makeFrame(world):
   view = frame.getOrbitView()
   zscale = 0.75*max(n2*d2,n3*d3)/(n1*d1)
   view.setAxesScale(1.0,1.0,zscale)
-  view.setScale(1.5)
+  view.setScale(1.3)
   #view.setAzimuth(75.0)
   view.setAzimuth(-75.0)
   view.setWorldSphere(BoundingSphere(BoundingBox(f3,f2,f1,l3,l2,l1)))
-  frame.setSize(1450,900)
+  frame.setSize(1250,900)
   frame.setVisible(True)
   return frame
 

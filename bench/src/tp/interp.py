@@ -112,6 +112,7 @@ def display(s,g,cmin,cmax,horizons=[]):
   for horizon in horizons:
     addHorizonToWorld(world,horizon)
   frame = makeFrame(world)
+  frame.viewCanvas.setBackground(frame.getBackground())
   cb = ColorBar(logLabel)
   ipg.addColorMap2Listener(cb)
   frame.add(cb,BorderLayout.EAST)
