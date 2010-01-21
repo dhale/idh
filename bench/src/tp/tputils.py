@@ -216,10 +216,10 @@ def addAllHorizonsToWorld(world):
   for name in _horizonNames:
     addHorizonToWorld(world,name)
 
-def addLogsToWorld(world,set,type,cmin=0,cmax=0):
+def addLogsToWorld(world,set,type,cmin=0,cmax=0,cbar=None):
   samples = readLogSamples(set,type)
   #print "number of logs =",len(samples[0])
-  lg = makeLogPoints(samples,type,cmin,cmax)
+  lg = makeLogPoints(samples,type,cmin,cmax,cbar)
   #lg = makeLogLines(samples,type,cmin,cmax)
   states = StateSet()
   cs = ColorState()
@@ -228,18 +228,7 @@ def addLogsToWorld(world,set,type,cmin=0,cmax=0):
   lg.setStates(states)
   world.addChild(lg)
 
-def makeLogLines(samples,type,cmin,cmax):
-  llg = Group()
-  fl,x1l,x2l,x3l = samples
-  for i,f in enumerate(fl):
-    x1 = x1l[i]
-    x2 = x2l[i]
-    x3 = x3l[i]
-    lg = makeLineGroup(f,x1,x2,x3,cmin,cmax)
-    llg.addChild(lg)
-  return llg
-
-def makeLogPoints(samples,type,cmin,cmax):
+def makeLogPoints(samples,type,cmin,cmax,cbar):
   lg = Group()
   fl,x1l,x2l,x3l = samples
   for i,f in enumerate(fl):
@@ -247,11 +236,11 @@ def makeLogPoints(samples,type,cmin,cmax):
     x1 = x1l[i]
     x2 = x2l[i]
     x3 = x3l[i]
-    pg = makePointGroup(f,x1,x2,x3,cmin,cmax)
+    pg = makePointGroup(f,x1,x2,x3,cmin,cmax,cbar)
     lg.addChild(pg)
   return lg
 
-def makeLineGroup(f,x1,x2,x3,cmin,cmax):
+def makePointGroup(f,x1,x2,x3,cmin,cmax,cbar):
   n = len(x1)
   xyz = zerofloat(3*n)
   copy(n,0,1,x3,0,3,xyz)
@@ -260,25 +249,8 @@ def makeLineGroup(f,x1,x2,x3,cmin,cmax):
   rgb = None
   if cmin<cmax:
     cmap = ColorMap(cmin,cmax,ColorMap.JET)
-    rgb = cmap.getRgbFloats(f)
-  lg = LineGroup(xyz,rgb)
-  ls = LineState()
-  ls.setWidth(2)
-  ls.setSmooth(False)
-  ss = StateSet()
-  ss.add(ls)
-  lg.setStates(ss)
-  return lg
-
-def makePointGroup(f,x1,x2,x3,cmin,cmax):
-  n = len(x1)
-  xyz = zerofloat(3*n)
-  copy(n,0,1,x3,0,3,xyz)
-  copy(n,0,1,x2,1,3,xyz)
-  copy(n,0,1,x1,2,3,xyz)
-  rgb = None
-  if cmin<cmax:
-    cmap = ColorMap(cmin,cmax,ColorMap.JET)
+    if cbar:
+      cmap.addListener(cbar)
     rgb = cmap.getRgbFloats(f)
   pg = PointGroup(xyz,rgb)
   ps = PointState()

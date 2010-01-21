@@ -58,8 +58,8 @@ def goInterp():
   #gridBlendedP()
   #gridBlendedQ()
   s = readImage(sfile); print "s min =",min(s)," max =",max(s)
-  #display1(s,True,cmin=vmin,cmax=vmax)
   #display1(s,False)
+  display1(s,True,cmin=vmin,cmax=vmax)
   #display1(s,False,["CrowMountainCRMT","TensleepASand"])
   #display1(s,True,["CrowMountainCRMT","TensleepASand"])
   #p = readImage(pfile); print "p min =",min(p)," max =",max(p)
@@ -112,22 +112,27 @@ def display(s,g,cmin,cmax,horizons=[]):
   for horizon in horizons:
     addHorizonToWorld(world,horizon)
   frame = makeFrame(world)
-  frame.viewCanvas.setBackground(frame.getBackground())
-  cb = ColorBar(logLabel)
-  ipg.addColorMap2Listener(cb)
-  frame.add(cb,BorderLayout.EAST)
-  cb.setFont(cb.getFont().deriveFont(36.0))
+  cbar = addColorBar(frame,logLabel)
+  ipg.addColorMap2Listener(cbar)
 
 def display1(s,wells=True,horizons=[],cmin=0,cmax=0):
   world = World()
   ipg = addImageToWorld(world,s)
   ipg.setClips(smin,smax)
   ipg.setSlices(k1,k2,k3)
+  frame = makeFrame(world)
   if wells:
-    addLogsToWorld(world,logSet,logType,cmin,cmax)
+    cbar = addColorBar(frame,logLabel)
+    addLogsToWorld(world,logSet,logType,cmin,cmax,cbar)
   for horizon in horizons:
     addHorizonToWorld(world,horizon)
-  makeFrame(world)
+
+def addColorBar(frame,label):
+  cbar = ColorBar(logLabel)
+  cbar.setFont(cbar.getFont().deriveFont(36.0))
+  frame.add(cbar,BorderLayout.EAST)
+  #frame.viewCanvas.setBackground(frame.getBackground())
+  return cbar
 
 def display2(s,g=None,cmin=0,cmax=0):
   sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
