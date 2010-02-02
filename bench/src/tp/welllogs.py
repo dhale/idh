@@ -22,6 +22,7 @@ def main(args):
   #viewWellsWithSeismic("all","gamma")
   #viewWellsWithSeismic("deep","gamma")
   #viewElevations("deep")
+  pass
 
 # Directories and files for well logs, headers, directional surveys
 tpDir = "/data/seis/tp/"
@@ -55,6 +56,7 @@ def setGlobals(what):
     csmWellLogs = csmWellLogsDir+"tpwt.dat"
 
 # Fix units for density logs; convert kg/m3 to g/cc.
+# This should be unnecessary with latest WellLog.java.
 def fixDensityLogs():
   for what in ["deep","shallow","all"]:
     print "fixing",what

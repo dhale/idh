@@ -6,8 +6,10 @@ from tputils import *
 setupForSubset("subz_401_4_600")
 s1,s2,s3 = getSamplings()
 logSet = "d" # deep logs only
-logType = "v" # velocity
-logLabel = "Velocity (km/s)"
+#logType = "v"; logLabel = "Velocity (km/s)"
+#logType = "d"; logLabel = "Density (g/cc)"
+#logType = "p"; logLabel = "Porosity"
+logType = "g"; logLabel = "Gamma ray (API units)"
 method = "b" # blended
 
 sfile = "tpsz" # seismic image
@@ -32,15 +34,38 @@ horizons = [
 pngDir = "png/"
 
 smin,smax = -5.5,5.5
-vmin,vmax = 2.4,5.6
+#vmin,vmax = 2.4,5.6 # Velocity (km/s)
+#vmin,vmax = 2.0,3.0 # Density (g/cc)
+#vmin,vmax = 0.0,0.4 # Porosity
+vmin,vmax = 0.0,200.0 # Gamma ray (API units)
 #k1,k2,k3 = 228,170,74 # 2D displays
 #k1,k2,k3 = 228,170,106 # 2D displays
 #k1,k2,k3 = 228,170,96 # 2D displays
 k1,k2,k3 = 366,15,96 # 3D displays
 
 def main(args):
-  #goFigures()
   goInterp()
+  #goFigures()
+  #goImpedance()
+
+def goInterp():
+  global k1,k2,k3
+  k1,k2,k3 = 366,15,96
+  gridBlendedP()
+  gridBlendedQ()
+  s = readImage(sfile); print "s min =",min(s)," max =",max(s)
+  display1(s,True,cmin=vmin,cmax=vmax)
+  #display1(s,False)
+  #display1(s,False,["CrowMountainCRMT","TensleepASand"])
+  #display1(s,True,["CrowMountainCRMT","TensleepASand"])
+  p = readImage(pfile); print "p min =",min(p)," max =",max(p)
+  q = readImage(qfile); print "q min =",min(q)," max =",max(q)
+  #t = readImage(tfile); print "t min =",min(t)," max =",max(t)
+  display(s,p,vmin,vmax,logType)
+  display(s,q,vmin,vmax,logType)
+  #display(s,t,0.0,100.0,logType)
+  #display(s,q,vmin,vmax,logType,["CrowMountainCRMT"])
+  #display(s,q,vmin,vmax,logType,["TensleepASand"])
 
 def goFigures():
   global k1,k2,k3
@@ -52,24 +77,20 @@ def goFigures():
   display3(s,p,vmin,vmax,"tppvb")
   #display3(s,q,vmin,vmax,"tpqvb")
 
-def goInterp():
-  global k1,k2,k3
+def goImpedance():
+  global k1,k2,k3,logLabel
   k1,k2,k3 = 366,15,96
-  #gridBlendedP()
-  #gridBlendedQ()
-  s = readImage(sfile); print "s min =",min(s)," max =",max(s)
-  #display1(s,False)
-  display1(s,True,cmin=vmin,cmax=vmax)
-  #display1(s,False,["CrowMountainCRMT","TensleepASand"])
-  #display1(s,True,["CrowMountainCRMT","TensleepASand"])
-  #p = readImage(pfile); print "p min =",min(p)," max =",max(p)
-  #t = readImage(tfile); print "t min =",min(t)," max =",max(t)
-  q = readImage(qfile); print "q min =",min(q)," max =",max(q)
-  #display(s,p,vmin,vmax)
-  #display(s,t,0.0,100.0)
-  display(s,q,vmin,vmax)
-  #display(s,q,vmin,vmax,["CrowMountainCRMT"])
-  #display(s,q,vmin,vmax,["TensleepASand"])
+  logType = None
+  logLabel = "Impedance (g/cc x km/s)"
+  d = readImage("tpqdb"); print "d min =",min(d)," max =",max(d)
+  v = readImage("tpqvb"); print "v min =",min(v)," max =",max(v)
+  s = readImage("tpsz"); print "s min =",min(s)," max =",max(s)
+  i = mul(d,v)
+  rgf = RecursiveGaussianFilter(1.0)
+  rgf.apply2XX(mul(0.5,log(i)),i)
+  #imin,imax = min(i),max(i)
+  imin,imax = -0.05,0.05
+  display2S(s,i,imin,imax,logType)
 
 def gridBlendedP():
   e = getEigenTensors(0.01)
@@ -88,7 +109,7 @@ def gridBlendedQ():
   t = clip(0.0,10.0,t)
   q = copy(p)
   bg.gridBlended(t,p,q)
-  #writeImage(qfile,q)
+  writeImage(qfile,q)
 
 def getEigenTensors(eps):
   e = readTensors(efile)
@@ -102,13 +123,28 @@ def getEigenTensors(eps):
   #writeTensors(esfile,e)
   return e
 
-def display(s,g,cmin,cmax,horizons=[]):
+def display2S(s,g,cmin,cmax,logType,horizons=[]):
+  world = World()
+  ipg = addImageToWorld(world,s)
+  ipg.setClips(smin,smax)
+  ipg.setSlices(k1,k2,k3)
+  ipg = addImageToWorld(world,g)
+  ipg.setClips(cmin,cmax)
+  ipg.setSlices(k1,k2,k3)
+  if logType:
+    addLogsToWorld(world,logSet,logType,cmin,cmax)
+  for horizon in horizons:
+    addHorizonToWorld(world,horizon)
+  frame = makeFrame(world)
+
+def display(s,g,cmin,cmax,logType,horizons=[]):
   world = World()
   ipg = addImage2ToWorld(world,s,g)
   ipg.setClips1(smin,smax)
   ipg.setClips2(cmin,cmax)
   ipg.setSlices(k1,k2,k3)
-  addLogsToWorld(world,logSet,logType,cmin,cmax)
+  if logType:
+    addLogsToWorld(world,logSet,logType,cmin,cmax)
   for horizon in horizons:
     addHorizonToWorld(world,horizon)
   frame = makeFrame(world)
