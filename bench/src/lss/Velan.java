@@ -27,21 +27,19 @@ public class Velan {
   {
     int nv = sv.getCount();
     float[][] s = new float[nv][];
-    RecursiveGaussianFilter tsmoother = new RecursiveGaussianFilter(tsigma);
     for (int iv=0; iv<nv; ++iv) {
       double v = sv.getValue(iv);
       float[][] q = nmo(v,st,sx,p);
       if (weighted)
-        s[iv] = semblance(tsmoother,st,sx,v,q);
+        s[iv] = semblance(st,sx,v,tsigma,q);
       else
-        s[iv] = semblance(tsmoother,q);
+        s[iv] = semblance(tsigma,q);
     }
     return s;
   }
 
   public static float[] semblance(
-    RecursiveGaussianFilter tsmoother, 
-    Sampling st, Sampling sx, double vnmo, float[][] q)
+    Sampling st, Sampling sx, double vnmo, double tsigma, float[][] q)
   {
     int nx = q.length;
     int nt = q[0].length;
@@ -79,12 +77,12 @@ public class Velan {
         bqq[it] += ui*qq;
       }
     }
-    tsmoother.apply0(arr,arr);
-    tsmoother.apply0(arq,arq);
-    tsmoother.apply0(aqq,aqq);
-    tsmoother.apply0(brr,brr);
-    tsmoother.apply0(brq,brq);
-    tsmoother.apply0(bqq,bqq);
+    esmooth(tsigma,arr,arr);
+    esmooth(tsigma,arq,arq);
+    esmooth(tsigma,aqq,aqq);
+    esmooth(tsigma,brr,brr);
+    esmooth(tsigma,brq,brq);
+    esmooth(tsigma,bqq,bqq);
     float[] s = new float[nt];
     for (int it=0; it<nt; ++it) {
       double arri = arr[it];
@@ -132,13 +130,7 @@ public class Velan {
     return s;
   }
 
-  private static void trace(String s) {
-    System.out.println(s);
-  }
-
-  public static float[] semblance(
-    RecursiveGaussianFilter tsmoother, float[][] q)
-  {
+  public static float[] semblance(double tsigma, float[][] q) {
     int nx = q.length;
     int nt = q[0].length;
     float[] sn = new float[nt];
@@ -151,8 +143,8 @@ public class Velan {
       }
     }
     mul(sn,sn,sn);
-    tsmoother.apply0(sn,sn);
-    tsmoother.apply0(sd,sd);
+    esmooth(tsigma,sn,sn);
+    esmooth(tsigma,sd,sd);
     float[] s = sn;
     for (int it=0; it<nt; ++it) {
       s[it] = (sd[it]>0.0)?sn[it]/(nx*sd[it]):0.0f;
@@ -313,11 +305,42 @@ public class Velan {
     return (float)((1.0-2.0*xx)*exp(-xx));
   }
 
+  /**
+   * Two-sided exponential smoothing with zero-slope boundary conditions.
+   * Zero-slope means that values off the ends of the input array are 
+   * assumed to equal the values at the ends. This boundary condition
+   * ensures that this filter does nothing to an array of constant values.
+   * <p>
+   * Input and output arrays may the same array.
+   * @param sigma filter half-width, in samples; approximating a Gaussian.
+   * @param p array of input samples.
+   * @param q array of output samples.
+   */
+  public static void esmooth(double sigma, float[] p, float[] q) {
+    if (p==q) p = copy(p);
+    float sigmas = (float)(sigma*sigma);
+    float a = (sigmas>0.0)?(1.0f+sigmas-sqrt(1.0f+2.0f*sigmas))/sigmas:0.0f;
+    float b = (1.0f-a)/(1.0f+a);
+    int n = p.length;
+    float qi = b/(1.0f-a)*p[0];
+    q[0] = qi;
+    for (int i=1; i<n; ++i) {
+      qi = a*qi+b*p[i];
+      q[i] = qi;
+    }
+    qi = a*b/(1.0f-a)*p[n-1];
+    q[n-1] += qi;
+    for (int i=n-2; i>=0; --i) {
+      qi = a*(qi+b*p[i+1]);
+      q[i] += qi;
+    }
+  }
+
   private static void testGather() {
     Sampling st = new Sampling(1001,0.004,0.000); 
     Sampling sx = new Sampling(50,0.050,0.050);
     Sampling sv = new Sampling(101,0.020,1.5,2.5);
-    double tsigma = 10.0;
+    double tsigma = 15.0;
     double fpeak = 25.0;
     float[] vp = makeLinearVelocity(2.00,3.00,st);
     float[][] p = makeSimpleGather(fpeak,vp,st,sx);
@@ -358,5 +381,8 @@ public class Velan {
         testGather();
       }
     });
+  }
+  private static void trace(String s) {
+    System.out.println(s);
   }
 }
