@@ -57,7 +57,7 @@ public class Velan {
     float[] brr = new float[nt];
     float[] brq = new float[nt];
     float[] bqq = new float[nt];
-    float gamma = (float)(1.0/vnmo*vnmo);
+    float gamma = (float)(1.0/(vnmo*vnmo));
     for (int ix=0; ix<nx; ++ix) {
       float x = (float)sx.getValue(ix);
       float xx = x*x;
@@ -126,6 +126,8 @@ public class Velan {
         double sden = srri*sqqi;
         s[it] = (sden>0.0)?(float)(snum/sden):0.0f;
       }
+      if (s[it]<0.0) s[it] = 0.0f;
+      if (s[it]>1.0) s[it] = 1.0f;
     }
     return s;
   }
@@ -153,7 +155,9 @@ public class Velan {
     tsmoother.apply0(sd,sd);
     float[] s = sn;
     for (int it=0; it<nt; ++it) {
-      s[it] = sn[it]/(nx*sd[it]);
+      s[it] = (sd[it]>0.0)?sn[it]/(nx*sd[it]):0.0f;
+      if (s[it]<0.0) s[it] = 0.0f;
+      if (s[it]>1.0) s[it] = 1.0f;
     }
     return s;
   }
@@ -246,6 +250,50 @@ public class Velan {
     return p;
   }
 
+  public static float[][] addRandomNoise(float r, float[][] p) {
+    int nt = p[0].length;
+    int nx = p.length;
+    float pmax = max(abs(p)); // peak signal
+    Random random = new Random(3);
+    float[][] s = sub(randfloat(random,nt,nx),0.5f);
+    RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(1.0);
+    rgf.apply0X(s,s); // noise, bandlimited in time only
+    float srms = sqrt(sum(mul(s,s))/nt/nx); // rms of noise
+    return add(mul(pmax/(srms*r),s),p); // r = peak-signal / rms-noise
+  }
+
+  public static float[][] makeSimpleGather(
+    double fpeak, float[] vnmo, Sampling st, Sampling sx) 
+  {
+    int nt = st.getCount();
+    double dt = st.getDelta();
+    double ft = st.getFirst();
+    double lt = st.getLast();
+    int nx = sx.getCount();
+    double dx = sx.getDelta();
+    double fx = sx.getFirst();
+    float[][] p = new float[nx][nt];
+    double thalf =  1.0/fpeak;
+    int kt = nt/8; // spacing between reflections, in samples
+    for (int jt=kt; jt<nt-1; jt+=kt) {
+      double t0 = st.getValue(jt);
+      double a0 = 1.0; // constant amplitude
+      double v0 = vnmo[st.indexOfNearest(t0)];
+      double gamma = 1.0/(v0*v0);
+      for (int ix=0; ix<nx; ++ix) {
+        double x = (float)sx.getValue(ix);
+        double t = sqrt(t0*t0+x*x*gamma);
+        int itlo = max(0,(int)((t-thalf-ft)/dt));
+        int ithi = min(nt-1,(int)((t+thalf-ft)/dt));
+        for (int it=itlo; it<=ithi; ++it) {
+          double twave = st.getValue(it)-t;
+          p[ix][it] += (float)(a0*ricker(fpeak,twave));
+        }
+      }
+    }
+    return p;
+  }
+
   private static float[] makeLinearVelocity(
     double vmin, double vmax, Sampling st) 
   {
@@ -269,12 +317,14 @@ public class Velan {
     Sampling st = new Sampling(1001,0.004,0.000); 
     Sampling sx = new Sampling(50,0.050,0.050);
     Sampling sv = new Sampling(101,0.020,1.5,2.5);
-    double tsigma = 4.0;
+    double tsigma = 10.0;
     double fpeak = 25.0;
     float[] vp = makeLinearVelocity(2.00,3.00,st);
-    float[][] p = makeRickerGather(fpeak,vp,st,sx);
-    float[] vm = makeLinearVelocity(1.98,2.70,st);
-    p = add(p,makeRickerGather(fpeak,vm,st,sx));
+    float[][] p = makeSimpleGather(fpeak,vp,st,sx);
+    float snratio = 2.0f; // = peak-signal / rms-noise
+    p = addRandomNoise(snratio,p); // add noise
+    float[] vm = makeLinearVelocity(1.98,2.70,st); // lower velocities
+    p = add(p,makeSimpleGather(fpeak,vm,st,sx)); // add multiples (sort of)
     float[][] q = nmo(vp,st,sx,p);
     SimplePlot spp = SimplePlot.asPixels(st,sx,p);
     spp.setHLabel("Offset (km)");
@@ -285,6 +335,7 @@ public class Velan {
     spq.setVLabel("Time (s)");
     spq.setSize(400,900);
     for (boolean weighted:new boolean[]{true,false}) {
+    //for (boolean weighted:new boolean[]{false}) {
       float[][] s = velocitySpectrum(st,sx,p,sv,tsigma,weighted);
       System.out.println("s min="+min(s)+" max="+max(s));
       SimplePlot spv = new SimplePlot(SimplePlot.Origin.UPPER_LEFT);
@@ -293,7 +344,7 @@ public class Velan {
       PixelsView pv = spv.addPixels(st,sv,s);
       pv.setColorModel(ColorMap.JET);
       pv.setInterpolation(PixelsView.Interpolation.NEAREST);
-      pv.setClips(0.0f,1.0f);
+      //pv.setClips(0.0f,1.0f);
       ContoursView cv = spv.addContours(st,sv,s);
       cv.setLineColor(Color.BLACK);
       cv.setContours(new Sampling(4,0.2,0.2));
