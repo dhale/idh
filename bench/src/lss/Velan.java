@@ -25,21 +25,36 @@ public class Velan {
     Sampling st, Sampling sx, float[][] p, 
     Sampling sv, double tsigma, boolean weighted)
   {
+    return velocitySpectrum(st,sx,p,sv,tsigma,weighted,null);
+  }
+  public static float[][] velocitySpectrum(
+    Sampling st, Sampling sx, float[][] p, 
+    Sampling sv, double tsigma, boolean weighted,
+    float[][] b)
+  {
     int nv = sv.getCount();
     float[][] s = new float[nv][];
     for (int iv=0; iv<nv; ++iv) {
       double v = sv.getValue(iv);
       float[][] q = nmo(v,st,sx,p);
-      if (weighted)
-        s[iv] = semblance(st,sx,v,tsigma,q);
-      else
+      if (weighted) {
+        float[] biv = (b!=null)?b[iv]:null;
+        s[iv] = semblance(st,sx,v,tsigma,q,biv);
+      } else {
         s[iv] = semblance(tsigma,q);
+      }
     }
     return s;
   }
 
   public static float[] semblance(
     Sampling st, Sampling sx, double vnmo, double tsigma, float[][] q)
+  {
+    return semblance(st,sx,vnmo,tsigma,q,null);
+  }
+  public static float[] semblance(
+    Sampling st, Sampling sx, double vnmo, double tsigma, float[][] q,
+    float[] bs)
   {
     int nx = q.length;
     int nt = q[0].length;
@@ -64,6 +79,7 @@ public class Velan {
         float t0 = (float)st.getValue(it);
         float ti = sqrt(t0*t0+xxg);
         float qi = q[ix][it];
+        if (qi==0.0f) continue;
         float ri = r[it];
         float ui = xx/ti;
         float rr = ri*ri;
@@ -114,8 +130,16 @@ public class Velan {
         double snumb = brqi*brqi;
         double sdenb = brri*bqqi;
         double sb = (sdenb>0.0)?(float)(snumb/sdenb):0.0f;
-        s[it] = (float)min(sa,sb);
+        if (sa<=sb) {
+          s[it] = (float)sa;
+          if (bs!=null) bs[it] = 0.0f;
+        } else {
+          s[it] = (float)sb;
+          if (bs!=null) bs[it] = 1.0f;
+        }
       } else {
+        if (b<0.0) b = 0.0;
+        if (b>1.0) b = 1.0;
         double a = 1.0-b;
         double srri = a*arri+b*brri;
         double srqi = a*arqi+b*brqi;
@@ -123,9 +147,8 @@ public class Velan {
         double snum = srqi*srqi;
         double sden = srri*sqqi;
         s[it] = (sden>0.0)?(float)(snum/sden):0.0f;
+        if (bs!=null) bs[it] = (float)b;
       }
-      if (s[it]<0.0) s[it] = 0.0f;
-      if (s[it]>1.0) s[it] = 1.0f;
     }
     return s;
   }
@@ -135,11 +158,14 @@ public class Velan {
     int nt = q[0].length;
     float[] sn = new float[nt];
     float[] sd = new float[nt];
+    float[] sx = new float[nt];
     for (int ix=0; ix<nx; ++ix) {
       for (int it=0; it<nt; ++it) {
         float qi = q[ix][it];
+        if (qi==0.0f) continue;
         sn[it] += qi;
         sd[it] += qi*qi;
+        sx[it] += 1.0f;
       }
     }
     mul(sn,sn,sn);
@@ -147,9 +173,7 @@ public class Velan {
     esmooth(tsigma,sd,sd);
     float[] s = sn;
     for (int it=0; it<nt; ++it) {
-      s[it] = (sd[it]>0.0)?sn[it]/(nx*sd[it]):0.0f;
-      if (s[it]<0.0) s[it] = 0.0f;
-      if (s[it]>1.0) s[it] = 1.0f;
+      s[it] = (sd[it]>0.0)?sn[it]/(sx[it]*sd[it]):0.0f;
     }
     return s;
   }
@@ -217,8 +241,8 @@ public class Velan {
     int nx = sx.getCount();
     double dx = sx.getDelta();
     double fx = sx.getFirst();
-    //Random random = new Random(314159);
-    Random random = new Random();
+    Random random = new Random(314159);
+    //Random random = new Random();
     float[][] p = new float[nx][nt];
     double thalf =  1.0/fpeak;
     for (int jt=0; jt<nt; ++jt) {
@@ -245,13 +269,14 @@ public class Velan {
   public static float[][] addRandomNoise(float r, float[][] p) {
     int nt = p[0].length;
     int nx = p.length;
-    float pmax = max(abs(p)); // peak signal
+    //float pmax = max(abs(p)); // peak signal
+    float prms = sqrt(sum(mul(p,p))/nt/nx); // rms of signal
     Random random = new Random(3);
     float[][] s = sub(randfloat(random,nt,nx),0.5f);
     RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(1.0);
     rgf.apply0X(s,s); // noise, bandlimited in time only
     float srms = sqrt(sum(mul(s,s))/nt/nx); // rms of noise
-    return add(mul(pmax/(srms*r),s),p); // r = peak-signal / rms-noise
+    return add(mul(prms/(srms*r),s),p); // r = rms-signal / rms-noise
   }
 
   public static float[][] makeSimpleGather(
@@ -338,40 +363,77 @@ public class Velan {
 
   private static void testGather() {
     Sampling st = new Sampling(1001,0.004,0.000); 
-    Sampling sx = new Sampling(50,0.050,0.050);
+    Sampling sx = new Sampling(60,0.050,0.050);
     Sampling sv = new Sampling(101,0.020,1.5,2.5);
-    double tsigma = 15.0;
+    int nv = sv.getCount();
+    int nt = st.getCount();
+    double tsigma = 5.0;
     double fpeak = 25.0;
-    float[] vp = makeLinearVelocity(2.00,3.00,st);
-    float[][] p = makeSimpleGather(fpeak,vp,st,sx);
-    float snratio = 2.0f; // = peak-signal / rms-noise
+    double[] vps = {2.00,3.00};
+    double[] vms = {1.98,2.65}; // lower velocities for multiples
+    double[] ts =  {0.00,4.00};
+    float[] vp = makeLinearVelocity(vps[0],vps[1],st);
+    //float[][] p = makeSimpleGather(fpeak,vp,st,sx);
+    float[][] p = makeRickerGather(fpeak,vp,st,sx);
+    float[] vm = makeLinearVelocity(vms[0],vms[1],st);
+    p = add(p,makeRickerGather(fpeak,vm,st,sx));
+    float snratio = 1.0e6f; // = rms-signal / rms-noise
     p = addRandomNoise(snratio,p); // add noise
-    float[] vm = makeLinearVelocity(1.98,2.70,st); // lower velocities
-    p = add(p,makeSimpleGather(fpeak,vm,st,sx)); // add multiples (sort of)
     float[][] q = nmo(vp,st,sx,p);
     SimplePlot spp = SimplePlot.asPixels(st,sx,p);
+    spp.setVLimits(1.0,3.0);
     spp.setHLabel("Offset (km)");
     spp.setVLabel("Time (s)");
-    spp.setSize(400,900);
+    spp.setSize(400,400);
+    /*
     SimplePlot spq = SimplePlot.asPixels(st,sx,q);
+    spq.setVLimits(1.0,3.0);
     spq.setHLabel("Offset (km)");
     spq.setVLabel("Time (s)");
-    spq.setSize(400,900);
+    spq.setSize(400,400);
+    */
     for (boolean weighted:new boolean[]{true,false}) {
-    //for (boolean weighted:new boolean[]{false}) {
-      float[][] s = velocitySpectrum(st,sx,p,sv,tsigma,weighted);
+      float[][] b = weighted?new float[nv][nt]:null;
+      float[][] s = velocitySpectrum(st,sx,p,sv,tsigma,weighted,b);
       System.out.println("s min="+min(s)+" max="+max(s));
       SimplePlot spv = new SimplePlot(SimplePlot.Origin.UPPER_LEFT);
+      spv.setHLimits(2.0,3.0);
+      spv.setVLimits(1.0,3.0);
       spv.setHLabel("Velocity (km/s)");
       spv.setVLabel("Time (km/s)");
       PixelsView pv = spv.addPixels(st,sv,s);
       pv.setColorModel(ColorMap.JET);
-      pv.setInterpolation(PixelsView.Interpolation.NEAREST);
-      //pv.setClips(0.0f,1.0f);
+      pv.setInterpolation(PixelsView.Interpolation.LINEAR);
+      pv.setClips(0.0f,1.0f);
       ContoursView cv = spv.addContours(st,sv,s);
       cv.setLineColor(Color.BLACK);
-      cv.setContours(new Sampling(4,0.2,0.2));
-      spv.setSize(400,900);
+      cv.setLineWidth(2.0f);
+      cv.setContours(new Sampling(1,0.5,0.2));
+      PointsView tvp = spv.addPoints(ts,vps);
+      tvp.setLineColor(Color.BLACK);
+      tvp.setLineWidth(2.0f);
+      PointsView tvm = spv.addPoints(ts,vms);
+      tvm.setLineColor(Color.BLACK);
+      tvm.setLineWidth(2.0f);
+      spv.setSize(400,400);
+      if (b!=null) {
+        SimplePlot spb = new SimplePlot(SimplePlot.Origin.UPPER_LEFT);
+        spb.setHLimits(2.0,3.0);
+        spb.setVLimits(1.0,3.0);
+        spb.setHLabel("Velocity (km/s)");
+        spb.setVLabel("Time (km/s)");
+        PixelsView pvb = spb.addPixels(st,sv,b);
+        pvb.setColorModel(ColorMap.JET);
+        pvb.setInterpolation(PixelsView.Interpolation.LINEAR);
+        pvb.setClips(0.0f,1.0f);
+        PointsView tvpb = spb.addPoints(ts,vps);
+        tvpb.setLineColor(Color.BLACK);
+        tvpb.setLineWidth(2.0f);
+        PointsView tvmb = spb.addPoints(ts,vms);
+        tvmb.setLineColor(Color.BLACK);
+        tvmb.setLineWidth(2.0f);
+        spb.setSize(400,400);
+      }
     }
   }
 
