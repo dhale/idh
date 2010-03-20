@@ -221,6 +221,36 @@ public class WellLog {
     }
 
     /**
+     * Gets intersections of boreholes with constant-x1 plane.
+     * @return array {x2,x3} of arrays of (x2,x3) coordinates.
+     */
+    public float[][] getIntersections(String curve, float x1) {
+      FloatList x2l = new FloatList();
+      FloatList x3l = new FloatList();
+      for (WellLog log:getAll()) {
+        float[] c = log.getCurve(curve);
+        if (c!=null) {
+          int n = log.n;
+          float[] x1s = log.x1;
+          float[] x2s = log.x2;
+          float[] x3s = log.x3;
+          for (int i=1; i<n; ++i) {
+            if ((x1-x1s[i])*(x1-x1s[i-1])<=0.0) {
+              float a = abs(x1-x1s[i-1])/abs(x1s[i]-x1s[i-1]);
+              float x2 = a*x2s[i]+(1.0f-a)*x2s[i-1];
+              float x3 = a*x3s[i]+(1.0f-a)*x3s[i-1];
+              x2l.add(x2);
+              x3l.add(x3);
+            }
+          }
+        }
+      }
+      float x2[] = x2l.trim();
+      float x3[] = x3l.trim();
+      return new float[][]{x2,x3};
+    }
+
+    /**
      * Rasterizes all logs that have the specified curve.
      * This method assumes that all well log curves are sampled
      * more finely than the returned raster image. Sample values
@@ -635,7 +665,7 @@ public class WellLog {
   /**
    * Returns an array of derivatives (1/0.0003048)*dx1/dz.
    * The scale factor 0.0003048 (km/ft) compensates for the difference 
-   * in units for dz1 (km) and dz (ft). This derivative should never 
+   * in units for dx1 (km) and dz (ft). This derivative should never 
    * exceed one, and for near-vertical wells it will be close to one.
    * @return array of derivatives.
    */

@@ -174,6 +174,12 @@ def readLogSamplesMerged(set,type):
     n += ni
   return f,x1,x2,x3
 
+def getWellIntersections(set,type,x1):
+  fileName = wellLogsDir+"tpw"+set[0]+".dat"
+  wdata = WellLog.Data.readBinary(fileName)
+  x2,x3 = wdata.getIntersections(type,x1)
+  return x2,x3
+
 #############################################################################
 # graphics
 
@@ -272,8 +278,10 @@ def makeFrame(world):
   view.setAxesScale(1.0,1.0,zscale)
   view.setScale(1.3)
   #view.setAzimuth(75.0)
-  view.setAzimuth(-75.0)
+  #view.setAzimuth(-75.0)
+  view.setAzimuth(-65.0)
   view.setWorldSphere(BoundingSphere(BoundingBox(f3,f2,f1,l3,l2,l1)))
+  frame.viewCanvas.setBackground(frame.getBackground())
   frame.setSize(1250,900)
   frame.setVisible(True)
   return frame

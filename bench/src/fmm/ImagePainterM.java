@@ -301,6 +301,7 @@ public class ImagePainterM {
             }
           }
         } else { // paintbrush size is 3x3 pixels
+          System.out.println("paintAt: ["+i1+","+i2+"]");
           for (int j2=i2-1; j2<=i2+1; ++j2) {
             for (int j1=i1-1; j1<=i1+1; ++j1) {
                if (0<i1 && i1<_n1-1 &&
@@ -628,7 +629,9 @@ public class ImagePainterM {
     float alpha = 1.0f;
     float beta = 1.0f;
     float gamma = 1.0f;
-    float[][] image = readImage(n1,n2,"/data/seis/tp/csm/oldslices/tp73.dat");
+    //float[][] image = readImage(n1,n2,"/data/seis/tp/csm/oldslices/tp73.dat");
+    float[][] image = readImage(n1,n2,
+      "/data/seis/tp/csm/seismict/subt_251_4_500/s3_73/tpst.dat");
     image = gain(image);
     ImagePainterM ip = new ImagePainterM(width,height,alpha,beta,gamma,image);
     ip.setValueRange(0.0,1.0);

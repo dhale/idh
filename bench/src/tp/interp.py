@@ -6,11 +6,16 @@ from tputils import *
 setupForSubset("subz_401_4_600")
 s1,s2,s3 = getSamplings()
 logSet = "d" # deep logs only
-#logType = "v"; logLabel = "Velocity (km/s)"
+logType = "v"; logLabel = "Velocity (km/s)"
 #logType = "d"; logLabel = "Density (g/cc)"
 #logType = "p"; logLabel = "Porosity"
-logType = "g"; logLabel = "Gamma ray (API units)"
+#logType = "g"; logLabel = "Gamma ray (API units)"
 method = "b" # blended
+smin,smax = -5.5,5.5
+vmin,vmax = 2.4,5.6 # Velocity (km/s)
+#vmin,vmax = 2.2,2.8 # Density (g/cc)
+#vmin,vmax = 0.0,0.4 # Porosity
+#vmin,vmax = 0.0,200.0 # Gamma ray (API units)
 
 sfile = "tpsz" # seismic image
 efile = "tpet" # eigen-tensors (structure tensors)
@@ -33,11 +38,6 @@ horizons = [
 
 pngDir = "png/"
 
-smin,smax = -5.5,5.5
-#vmin,vmax = 2.4,5.6 # Velocity (km/s)
-#vmin,vmax = 2.0,3.0 # Density (g/cc)
-#vmin,vmax = 0.0,0.4 # Porosity
-vmin,vmax = 0.0,200.0 # Gamma ray (API units)
 #k1,k2,k3 = 228,170,74 # 2D displays
 #k1,k2,k3 = 228,170,106 # 2D displays
 #k1,k2,k3 = 228,170,96 # 2D displays
@@ -51,31 +51,53 @@ def main(args):
 def goInterp():
   global k1,k2,k3
   k1,k2,k3 = 366,15,96
-  gridBlendedP()
-  gridBlendedQ()
+  #gridBlendedP()
+  #gridBlendedQ()
   s = readImage(sfile); print "s min =",min(s)," max =",max(s)
-  display1(s,True,cmin=vmin,cmax=vmax)
+  #display1(s,True,cmin=vmin,cmax=vmax)
   #display1(s,False)
+  display1(s,False,["CrowMountainCRMT"])
   #display1(s,False,["CrowMountainCRMT","TensleepASand"])
-  #display1(s,True,["CrowMountainCRMT","TensleepASand"])
-  p = readImage(pfile); print "p min =",min(p)," max =",max(p)
-  q = readImage(qfile); print "q min =",min(q)," max =",max(q)
+  #display1(s,True,["CrowMountainCRMT","TensleepASand"],vmin,vmax)
+  #p = readImage(pfile); print "p min =",min(p)," max =",max(p)
+  #q = readImage(qfile); print "q min =",min(q)," max =",max(q)
   #t = readImage(tfile); print "t min =",min(t)," max =",max(t)
-  display(s,p,vmin,vmax,logType)
-  display(s,q,vmin,vmax,logType)
-  #display(s,t,0.0,100.0,logType)
+  #display(s,p,vmin,vmax,logType)
+  #display(s,q,vmin,vmax,logType)
+  #display(s,t,0.0,200.0,logType)
   #display(s,q,vmin,vmax,logType,["CrowMountainCRMT"])
   #display(s,q,vmin,vmax,logType,["TensleepASand"])
 
 def goFigures():
   global k1,k2,k3
-  k1,k2,k3 = 228,170,96 # intersect low-velocity layers
-  s = readImage(sfile); print "s min =",min(s)," max =",max(s)
-  p = readImage(pfile); print "p min =",min(p)," max =",max(p)
-  #q = readImage(qfile); print "q min =",min(q)," max =",max(q)
-  #display3(s,None,0.0,0.0,"tpsz")
-  display3(s,p,vmin,vmax,"tppvb")
-  #display3(s,q,vmin,vmax,"tpqvb")
+  #k1,k2,k3 = 228,170,96 # intersect low-velocity layers
+  k1,k2,k3 = 225,170,96 # intersect low-velocity layers at 1.5 km
+  #k1,k2,k3 = 225,281,54 # depth = 1.5 km
+  #k1,k2,k3 = 110,170,96 # depth = 1.04 km - shallow low-gamma layer
+  #k1,k2,k3 = 100,246,54 # depth = 1.0 km - show bad logs; good deep fault
+  #k1,k2,k3 = 75,170,96 # depth = 0.9 km
+  s = readImage("tpsz")
+  """
+  display3(s,None,None,-5.0,5.0,2.0,"Amplitude","tpsz")
+  p = readImage("tppvb")
+  display3(s,p,"v",2.4,5.6,0.5,"Velocity (km/s)","tppvb")
+  q = readImage("tpqvb") 
+  display3(s,q,"v",2.4,5.6,0.5,"Velocity (km/s)","tpqvb")
+  """
+  p = readImage("tppdb") 
+  display3(s,p,"d",2.2,2.8,0.2,"Density (g/cc)","tppdb")
+  q = readImage("tpqdb") 
+  display3(s,q,"d",2.2,2.8,0.2,"Density (g/cc)","tpqdb")
+  """
+  p = readImage("tpppb") 
+  display3(s,p,"p",0.0,0.4,0.1,"Porosity","tpppb")
+  q = readImage("tpqpb") 
+  display3(s,q,"p",0.0,0.4,0.1,"Porosity","tpqpb")
+  p = readImage("tppgb") 
+  display3(s,p,"g",0,200,50,"Gamma ray (API units)","tppgb")
+  q = readImage("tpqgb") 
+  display3(s,q,"g",0,200,50,"Gamma ray (API units)","tpqgb")
+  """
 
 def goImpedance():
   global k1,k2,k3,logLabel
@@ -123,6 +145,7 @@ def getEigenTensors(eps):
   #writeTensors(esfile,e)
   return e
 
+background = Color(254,254,254)
 def display2S(s,g,cmin,cmax,logType,horizons=[]):
   world = World()
   ipg = addImageToWorld(world,s)
@@ -148,6 +171,9 @@ def display(s,g,cmin,cmax,logType,horizons=[]):
   for horizon in horizons:
     addHorizonToWorld(world,horizon)
   frame = makeFrame(world)
+  frame.setSize(1460,980)
+  frame.orbitView.setAzimuth(-65.0)
+  frame.viewCanvas.setBackground(background)
   cbar = addColorBar(frame,logLabel)
   ipg.addColorMap2Listener(cbar)
 
@@ -157,6 +183,9 @@ def display1(s,wells=True,horizons=[],cmin=0,cmax=0):
   ipg.setClips(smin,smax)
   ipg.setSlices(k1,k2,k3)
   frame = makeFrame(world)
+  frame.setSize(1460,980)
+  frame.viewCanvas.setBackground(background)
+  frame.orbitView.setAzimuth(-65.0)
   if wells:
     cbar = addColorBar(frame,logLabel)
     addLogsToWorld(world,logSet,logType,cmin,cmax,cbar)
@@ -165,9 +194,10 @@ def display1(s,wells=True,horizons=[],cmin=0,cmax=0):
 
 def addColorBar(frame,label):
   cbar = ColorBar(logLabel)
-  cbar.setFont(cbar.getFont().deriveFont(36.0))
+  cbar.setFont(Font("Arial",Font.PLAIN,48)) # ~ 8*1460/240 for one-column
+ 
+  cbar.setBackground(background)
   frame.add(cbar,BorderLayout.EAST)
-  #frame.viewCanvas.setBackground(frame.getBackground())
   return cbar
 
 def display2(s,g=None,cmin=0,cmax=0):
@@ -183,7 +213,7 @@ def display2(s,g=None,cmin=0,cmax=0):
     if cmin!=cmax:
       pv.setClips(cmin,cmax)
 
-def display3(s,g=None,cmin=0,cmax=0,png=None):
+def display3(s,g=None,type=None,cmin=0,cmax=0,cint=None,clab=None,png=None):
   pp = PlotPanelPixels3(
     PlotPanelPixels3.Orientation.X1DOWN_X2RIGHT,
     PlotPanelPixels3.AxesPlacement.LEFT_BOTTOM,
@@ -195,13 +225,14 @@ def display3(s,g=None,cmin=0,cmax=0,png=None):
   pp.setClips(smin,smax)
   if g:
     pp.setLineColor(Color.BLACK)
-    cb = pp.addColorBar(logLabel)
-    cb.setInterval(1.0)
+    cb = pp.addColorBar(clab)
+    if cint:
+      cb.setInterval(cint)
   else:
     pp.setLineColor(Color.YELLOW)
     cb = pp.addColorBar("Amplitude")
-    cb.setInterval(5.0)
-  pp.setColorBarWidthMinimum(100)
+    cb.setInterval(2.0)
+  pp.setColorBarWidthMinimum(125)
   pp.setInterval1(0.5)
   pp.setInterval2(2.0)
   pp.setInterval3(2.0)
@@ -221,12 +252,22 @@ def display3(s,g=None,cmin=0,cmax=0,png=None):
     pp.pixelsView12.tile.addTiledView(pv12)
     pp.pixelsView13.tile.addTiledView(pv13)
     pp.pixelsView23.tile.addTiledView(pv23)
+    if type:
+      x2,x3 = getWellIntersections(logSet,type,s1.getValue(k1))
+      pv23 = PointsView(x2,x3)
+      pv23.setOrientation(PointsView.Orientation.X1RIGHT_X2UP)
+      pv23.setLineStyle(PointsView.Line.NONE)
+      pv23.setMarkStyle(PointsView.Mark.FILLED_CIRCLE)
+      pv23.setMarkSize(6.0)
+      pp.pixelsView23.tile.addTiledView(pv23)
   pf = PlotFrame(pp)
-  pf.setFontSizeForSlide(1.0,1.0)
-  pf.setSize(996,815)
+  pf.setFontSizeForPrint(8,225)
+  pf.setSize(995,790)
+  #pf.setFontSizeForSlide(1.0,1.0)
+  #pf.setSize(996,815)
   pf.setVisible(True)
   if png and pngDir:
-    pf.paintToPng(300,6,pngDir+png+".png")
+    pf.paintToPng(400,3.3,pngDir+png+".png")
 
 #############################################################################
 

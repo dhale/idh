@@ -58,7 +58,8 @@ def readFieldBoundary():
 
 def display():
   sp = SimplePlot()
-  sp.setSize(626,875)
+  sp.setSize(623,875)
+  sp.setFontSizeForPrint(8,240)
   sp.setHLabel("Easting (km)")
   sp.setVLabel("Northing (km)")
   # DOE seismic image
@@ -69,12 +70,14 @@ def display():
   pv = sp.addPoints(xe,yn)
   pv.setLineColor(Color.GREEN)
   pv.setLineWidth(3.0)
+  pv.setLineStyle(PointsView.Line.DOT)
   # DOE seismic rectangle
   xe = [xll,xlr,xur,xul,xll]
   yn = [yll,ylr,yur,yul,yll]
   pv = sp.addPoints(xe,yn)
   pv.setLineColor(Color.BLUE)
-  pv.setLineWidth(5.0)
+  pv.setLineWidth(3.0)
+  pv.setLineStyle(PointsView.Line.DASH)
   # CSM seismic rectangle
   n2,d2,f2 = s2c.count,s2c.delta,s2c.first
   n3,d3,f3 = s3c.count,s3c.delta,s3c.first
@@ -91,6 +94,7 @@ def display():
   pv = sp.addPoints(xe,yn)
   pv.setLineColor(Color.RED)
   pv.setLineWidth(5.0)
+  sp.paintToPng(600,3.33,"coords.png")
 
 def makeSeismicSlice(i1):
   # DOE seismic image sampling
