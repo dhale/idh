@@ -138,8 +138,6 @@ public class Velan {
           if (bs!=null) bs[it] = 1.0f;
         }
       } else {
-        if (b<0.0) b = 0.0;
-        if (b>1.0) b = 1.0;
         double a = 1.0-b;
         double srri = a*arri+b*brri;
         double srqi = a*arqi+b*brqi;
