@@ -52,7 +52,7 @@ public class Velan {
   {
     return semblance(st,sx,vnmo,tsigma,q,null);
   }
-  public static float[] semblance(
+  public static float[] xsemblance(
     Sampling st, Sampling sx, double vnmo, double tsigma, float[][] q,
     float[] bs)
   {
@@ -113,8 +113,98 @@ public class Velan {
       double sabb = arri*brqi*bqqi;
       double sbab = brri*arqi*bqqi;
       double sbba = brri*brqi*aqqi;
-      double b = 0.0;
+      double b;
       if (sabb<sbab && sbab<sbba || sbba<sbab && sbab<sabb) {
+        double bnum = sbaa-2.0*saba+saab;
+        double bden = sabb-2.0*sbab+sbba;
+        b = (bden!=0.0)?bnum/bden:0.0;
+      } else {
+        double bnum = arqi;
+        double bden = -brqi;
+        b = (bden!=0.0)?bnum/bden:0.0;
+      }
+      if (b<0.0) b = 0.0;
+      double srri = arri+b*brri;
+      double srqi = arqi+b*brqi;
+      double sqqi = aqqi+b*bqqi;
+      double snum = srqi*srqi;
+      double sden = srri*sqqi;
+      s[it] = (sden>0.0)?(float)(snum/sden):0.0f;
+      if (bs!=null) bs[it] = (float)b;
+    }
+    return s;
+  }
+  public static float[] semblance(
+    Sampling st, Sampling sx, double vnmo, double tsigma, float[][] q,
+    float[] bs)
+  {
+    int nx = q.length;
+    int nt = q[0].length;
+    float[] r = new float[nt];
+    float xxsum = 0.0f;
+    for (int ix=0; ix<nx; ++ix) {
+      float x = (float)sx.getValue(ix);
+      xxsum += x*x;
+      for (int it=0; it<nt; ++it) {
+        r[it] += q[ix][it];
+      }
+    }
+    float xxscl = 0.1f*xxsum/nx;
+    float[] arr = new float[nt];
+    float[] arq = new float[nt];
+    float[] aqq = new float[nt];
+    float[] brr = new float[nt];
+    float[] brq = new float[nt];
+    float[] bqq = new float[nt];
+    float gamma = (float)(1.0/(vnmo*vnmo));
+    for (int ix=0; ix<nx; ++ix) {
+      float x = (float)sx.getValue(ix);
+      float xx = x*x;
+      float xxg = xx*gamma;
+      for (int it=0; it<nt; ++it) {
+        float t0 = (float)st.getValue(it);
+        float ti = sqrt(t0*t0+xxg);
+        float qi = q[ix][it];
+        if (qi==0.0f) continue;
+        float ri = r[it];
+        float ui = (xx*t0)/(ti*xxscl);
+        float rr = ri*ri;
+        float rq = ri*qi;
+        float qq = qi*qi;
+        arr[it] += rr;
+        arq[it] += rq;
+        aqq[it] += qq;
+        brr[it] += ui*rr;
+        brq[it] += ui*rq;
+        bqq[it] += ui*qq;
+      }
+    }
+    esmooth(tsigma,arr,arr);
+    esmooth(tsigma,arq,arq);
+    esmooth(tsigma,aqq,aqq);
+    esmooth(tsigma,brr,brr);
+    esmooth(tsigma,brq,brq);
+    esmooth(tsigma,bqq,bqq);
+    float[] s = new float[nt];
+    for (int it=0; it<nt; ++it) {
+      double arri = arr[it];
+      double arqi = arq[it];
+      double aqqi = aqq[it];
+      double brri = brr[it];
+      double brqi = brq[it];
+      double bqqi = bqq[it];
+      double saaa = arri*arqi*aqqi;
+      double saab = arri*arqi*bqqi;
+      double saba = arri*brqi*aqqi;
+      double sbaa = brri*arqi*aqqi;
+      double sabb = arri*brqi*bqqi;
+      double sbab = brri*arqi*bqqi;
+      double sbba = brri*brqi*aqqi;
+      double t0 = saaa-saba-saab+sabb;
+      double t1 = saaa-sbaa-saab+sbab;
+      double t2 = saaa-sbaa-saba+sbba;
+      double b = 0.0;
+      if (t0<t1 && t1<t2 || t2<t1 && t1<t0) {
         double bnum = sbaa-2.0*saba+saab;
         double bden = sabb-2.0*sbab+sbba+bnum;
         b = (bden!=0.0)?bnum/bden:1.0;
@@ -169,9 +259,11 @@ public class Velan {
     mul(sn,sn,sn);
     esmooth(tsigma,sn,sn);
     esmooth(tsigma,sd,sd);
+    esmooth(tsigma,sx,sx);
     float[] s = sn;
     for (int it=0; it<nt; ++it) {
       s[it] = (sd[it]>0.0)?sn[it]/(sx[it]*sd[it]):0.0f;
+      if (s[it]>1.0f) s[it] = 1.0f;
     }
     return s;
   }

@@ -49,11 +49,12 @@ def goInterp():
   k1,k2,k3 = 366,15,96
   #gridBlendedP()
   gridBlendedQ()
+  return
   s = readImage(sfile); print "s min =",min(s)," max =",max(s)
   display1(s,True,cmin=vmin,cmax=vmax)
   #display1(s,False)
   #display1(s,False,["CrowMountainCRMT","TensleepASand"])
-  #display1(s,True,["CrowMountainCRMT","TensleepASand"])
+  display1(s,True,["CrowMountainCRMT","TensleepASand"])
   p = readImage(pfile); print "p min =",min(p)," max =",max(p)
   q = readImage(qfile); print "q min =",min(q)," max =",max(q)
   #t = readImage(tfile); print "t min =",min(t)," max =",max(t)
@@ -83,11 +84,12 @@ def gridBlendedP():
 
 def gridBlendedQ():
   e = getEigenTensors(0.0001)
+  return
   bg = BlendedGridder3(e)
   bg.setSmoothness(1.0)
   p = readImage(pfile)
   t = readImage(tfile)
-  t = clip(0.0,50.0,t)
+  t = clip(0.0,10.0,t)
   q = copy(p)
   bg.gridBlended(t,p,q)
   writeImage(qfile,q)
@@ -100,10 +102,10 @@ def getEigenTensors(eps):
   s1 = clip(eps,1.0,s1)
   s2 = clip(eps,1.0,s2)
   s3 = clip(eps,1.0,s3)
-  n1,n2,n3 = len(s1[0][0]),len(s1[0]),len(s1)
-  s1 = fillfloat(1.0,n1,n2,n3)
-  s2 = fillfloat(1.0,n1,n2,n3)
-  s3 = fillfloat(0.0001,n1,n2,n3)
+  global smin,smax
+  smin,smax = 0.0,1.0
+  s = mul(0.5,add(s1,add(s2,s3)))
+  display1(s,False)
   e.setEigenvalues(s3,s2,s1)
   #writeTensors(esfile,e)
   return e
