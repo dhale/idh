@@ -3,15 +3,16 @@ Grids well log curves.
 """
 from tputils import *
 
-setupForSubset("subz_401_4_600")
+#setupForSubset("subz_401_4_600")
+setupForSubset("subz_51_4_1400")
 seismicFile = "tpsz"
 s1,s2,s3 = getSamplings()
 logSet = "deep" # use only deep logs
 
 def main(args):
-  #gridAll()
-  grid("density")
-  display("density")
+  gridAll()
+  #grid("density")
+  #display("density")
 
 def gridAll():
   for logType in ["velocity","density","porosity","gamma"]:

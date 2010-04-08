@@ -3,7 +3,8 @@ Interpolates scattered data, such as data from well logs.
 """
 from tputils import *
 
-setupForSubset("subz_401_4_600")
+#setupForSubset("subz_401_4_600")
+setupForSubset("subz_51_4_1400")
 s1,s2,s3 = getSamplings()
 method = "b" # blended
 logSet = "d" # deep logs only
@@ -47,19 +48,18 @@ def main(args):
 def goInterp():
   global k1,k2,k3
   k1,k2,k3 = 366,15,96
-  #gridBlendedP()
-  gridBlendedQ()
-  return
+  gridBlendedP()
+  #gridBlendedQ()
   s = readImage(sfile); print "s min =",min(s)," max =",max(s)
-  display1(s,True,cmin=vmin,cmax=vmax)
+  #display1(s,True,cmin=vmin,cmax=vmax)
   #display1(s,False)
   #display1(s,False,["CrowMountainCRMT","TensleepASand"])
-  display1(s,True,["CrowMountainCRMT","TensleepASand"])
+  #display1(s,True,["CrowMountainCRMT","TensleepASand"])
   p = readImage(pfile); print "p min =",min(p)," max =",max(p)
-  q = readImage(qfile); print "q min =",min(q)," max =",max(q)
+  #q = readImage(qfile); print "q min =",min(q)," max =",max(q)
   #t = readImage(tfile); print "t min =",min(t)," max =",max(t)
   display(s,p,vmin,vmax,logType)
-  display(s,q,vmin,vmax,logType)
+  #display(s,q,vmin,vmax,logType)
   #display(s,t,0.0,100.0,logType)
   #display(s,q,vmin,vmax,logType,["CrowMountainCRMT"])
   #display(s,q,vmin,vmax,logType,["TensleepASand"])
@@ -84,12 +84,11 @@ def gridBlendedP():
 
 def gridBlendedQ():
   e = getEigenTensors(0.0001)
-  return
   bg = BlendedGridder3(e)
   bg.setSmoothness(1.0)
   p = readImage(pfile)
   t = readImage(tfile)
-  t = clip(0.0,10.0,t)
+  t = clip(0.0,50.0,t)
   q = copy(p)
   bg.gridBlended(t,p,q)
   writeImage(qfile,q)
@@ -102,12 +101,8 @@ def getEigenTensors(eps):
   s1 = clip(eps,1.0,s1)
   s2 = clip(eps,1.0,s2)
   s3 = clip(eps,1.0,s3)
-  global smin,smax
-  smin,smax = 0.0,1.0
-  s = mul(0.5,add(s1,add(s2,s3)))
-  display1(s,False)
   e.setEigenvalues(s3,s2,s1)
-  #writeTensors(esfile,e)
+  writeTensors(esfile,e)
   return e
 
 def goImpedance():
