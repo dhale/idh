@@ -4,7 +4,8 @@ Computes semblance images.
 from tputils import *
 
 #setupForSubset("subz_401_4_600")
-setupForSubset("subz_51_4_1400")
+#setupForSubset("subz_51_4_1400")
+setupForSubset("subz_401_4_400")
 s1,s2,s3 = getSamplings()
 
 sfile = "tpsz" # seismic image
@@ -23,9 +24,9 @@ lsf3 = LocalSemblanceFilter(8,0)
 mask = ZeroMask(readImage(mfile))
 
 def main(args):
-  semblance1()
-  semblance2()
-  semblance3()
+  #semblance1()
+  #semblance2()
+  #semblance3()
   maskSemblance()
   display(sfile,s1file)
   display(sfile,s2file)
@@ -35,9 +36,9 @@ def maskSemblance():
   for smfile in [s1file,s2file,s3file]:
     sm = readImage(smfile)
     if sm==s3file:
-      mask.apply(0.0001,sm)
-    else:
       mask.apply(0.01,sm)
+    else:
+      mask.apply(1.00,sm)
     writeImage(smfile,sm)
 
 def semblance1():
@@ -66,7 +67,8 @@ def display(sfile,smfile):
   sm = readImage(smfile)
   print "semblance: min =",min(sm)," max =",max(sm)
   world = World()
-  addImage2ToWorld(world,s,sm)
+  ipg = addImage2ToWorld(world,s,sm)
+  ipg.setClips2(0,1)
   #addHorizonToWorld(world,"TensleepASand")
   makeFrame(world)
 

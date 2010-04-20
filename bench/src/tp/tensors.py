@@ -4,7 +4,8 @@ Computes structure eigen-tensors.
 from tputils import *
 
 #setupForSubset("subz_401_4_600")
-setupForSubset("subz_51_4_1400")
+#setupForSubset("subz_51_4_1400")
+setupForSubset("subz_401_4_400")
 s1,s2,s3 = getSamplings()
 n1,n2,n3 = s1.count,s2.count,s3.count
 
@@ -32,16 +33,17 @@ def makeStructureTensors():
 
 def display():
   s = readImage(sfile)
-  et = readTensors(esfile)
-  eu = zerofloat(n1,n2,n3)
-  ev = zerofloat(n1,n2,n3)
-  ew = zerofloat(n1,n2,n3)
-  et.getEigenvalues(eu,ev,ew)
+  et = readTensors(efile)
+  #et = readTensors(esfile)
+  #eu = zerofloat(n1,n2,n3)
+  #ev = zerofloat(n1,n2,n3)
+  #ew = zerofloat(n1,n2,n3)
+  #et.getEigenvalues(eu,ev,ew)
   #eu = mul(eu,eu)
   #ev = mul(ev,ev)
   #ev = mul(ev,ev)
   #ew = mul(ew,ew)
-  et.setEigenvalues(eu,ev,ew)
+  #et.setEigenvalues(eu,ev,ew)
   world = World()
   ipg = addImageToWorld(world,s)
   addTensorsInImage(ipg.getImagePanel(Axis.X),et,20)

@@ -5,7 +5,8 @@ from tputils import *
 
 #setupForSubset("subt_251_4_500")
 #setupForSubset("subz_401_4_600")
-setupForSubset("subz_51_4_1400")
+#setupForSubset("subz_51_4_1400")
+setupForSubset("subz_401_4_400")
 s1,s2,s3 = getSamplings()
 n1,n2,n3 = s1.count,s2.count,s3.count
 
