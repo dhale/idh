@@ -11,9 +11,9 @@ from imports import *
 #############################################################################
 def main(args):
   #makeSubset("st",st,Sampling(251,0.004,0.500))
-  #makeSubset("sz",sz,Sampling(401,0.004,0.600))
   #makeSubset("sz",sz,Sampling(51,0.004,1.400))
-  makeSubset("sz",sz,Sampling(401,0.004,0.400))
+  #makeSubset("sz",sz,Sampling(401,0.004,0.400))
+  makeSubset("sz",sz,Sampling(401,0.004,0.600))
 
 csmDir = "/data/seis/tp/csm/"
 seismictDir = csmDir+"seismict/"

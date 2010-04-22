@@ -3,16 +3,16 @@ Interpolates scattered data, such as data from well logs.
 """
 from tputils import *
 
-#setupForSubset("subz_401_4_600")
 #setupForSubset("subz_51_4_1400")
-setupForSubset("subz_401_4_400")
+#setupForSubset("subz_401_4_400")
+setupForSubset("subz_401_4_600")
 s1,s2,s3 = getSamplings()
 method = "b" # blended
 logSet = "d" # deep logs only
-logType = "v"; logLabel = "Velocity (km/s)"; vmin,vmax = 2.4,5.6
+#logType = "v"; logLabel = "Velocity (km/s)"; vmin,vmax = 2.4,5.6
 #logType = "d"; logLabel = "Density (g/cc)"; vmin,vmax = 2.0,3.0
 #logType = "p"; logLabel = "Porosity"; vmin,vmax = 0.0,0.4
-#logType = "g"; logLabel = "Gamma ray (API units)"; vmin,vmax = 0.0,200.0
+logType = "g"; logLabel = "Gamma ray (API units)"; vmin,vmax = 0.0,200.0
 smin,smax = -5.5,5.5
 
 sfile = "tpsz" # seismic image
@@ -56,11 +56,11 @@ def goInterp():
   #display1(s,False)
   #display1(s,False,["CrowMountainCRMT","TensleepASand"])
   #display1(s,True,["CrowMountainCRMT","TensleepASand"])
-  #p = readImage(pfile); print "p min =",min(p)," max =",max(p)
-  #q = readImage(qfile); print "q min =",min(q)," max =",max(q)
+  p = readImage(pfile); print "p min =",min(p)," max =",max(p)
+  q = readImage(qfile); print "q min =",min(q)," max =",max(q)
   #t = readImage(tfile); print "t min =",min(t)," max =",max(t)
-  #display(s,p,vmin,vmax,logType)
-  #display(s,q,vmin,vmax,logType)
+  display(s,p,vmin,vmax,logType)
+  display(s,q,vmin,vmax,logType)
   #display(s,t,0.0,100.0,logType)
   #display(s,q,vmin,vmax,logType,["CrowMountainCRMT"])
   #display(s,q,vmin,vmax,logType,["TensleepASand"])
@@ -99,6 +99,8 @@ def getEigenTensors(eps):
   s1 = readImage(s1file); print "s1 min =",min(s1)," max =",max(s1)
   s2 = readImage(s2file); print "s2 min =",min(s2)," max =",max(s2)
   s3 = readImage(s3file); print "s3 min =",min(s3)," max =",max(s3)
+  pow(s2,4.0,s2)
+  fill(eps,s3)
   s1 = clip(eps,1.0,s1)
   s2 = clip(eps,1.0,s2)
   s3 = clip(eps,1.0,s3)
