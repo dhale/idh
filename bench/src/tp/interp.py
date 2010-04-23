@@ -9,10 +9,10 @@ setupForSubset("subz_401_4_600")
 s1,s2,s3 = getSamplings()
 method = "b" # blended
 logSet = "d" # deep logs only
-#logType = "v"; logLabel = "Velocity (km/s)"; vmin,vmax = 2.4,5.6
+logType = "v"; logLabel = "Velocity (km/s)"; vmin,vmax = 2.4,5.6
 #logType = "d"; logLabel = "Density (g/cc)"; vmin,vmax = 2.0,3.0
 #logType = "p"; logLabel = "Porosity"; vmin,vmax = 0.0,0.4
-logType = "g"; logLabel = "Gamma ray (API units)"; vmin,vmax = 0.0,200.0
+#logType = "g"; logLabel = "Gamma ray (API units)"; vmin,vmax = 0.0,200.0
 smin,smax = -5.5,5.5
 
 sfile = "tpsz" # seismic image
@@ -22,8 +22,10 @@ s1file = "tps1" # semblance w,uv
 s2file = "tps2" # semblance vw,u
 s3file = "tps3" # semblance uvw,
 gfile = "tpg"+logType # simple gridding with null for unknown samples
-pfile = "tpp"+logType+method # values of nearest known samples
-qfile = "tpq"+logType+method # output of blended gridder
+#pfile = "tpp"+logType+method # values of nearest known samples
+#qfile = "tpq"+logType+method # output of blended gridder
+pfile = "tpp"+logType+method+"ii" # values of nearest known samples
+qfile = "tpq"+logType+method+"ii" # output of blended gridder
 tfile = "tpt"+logType+method # times to nearest known samples
 
 horizons = ["CrowMountainCRMT"]
