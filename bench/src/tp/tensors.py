@@ -32,25 +32,25 @@ def makeStructureTensors():
   writeTensors(efile,e)
 
 def display():
+  k1,k2,k3 = 366,15,96
   s = readImage(sfile)
   #et = readTensors(efile)
-  et = readTensors(esfile)
-  #eu = zerofloat(n1,n2,n3)
-  #ev = zerofloat(n1,n2,n3)
-  #ew = zerofloat(n1,n2,n3)
-  #et.getEigenvalues(eu,ev,ew)
-  #eu = mul(eu,eu)
-  #ev = mul(ev,ev)
-  #ev = mul(ev,ev)
-  #ew = mul(ew,ew)
-  #et.setEigenvalues(eu,ev,ew)
+  #et = readTensors(esfile)
   world = World()
   ipg = addImageToWorld(world,s)
+  ipg.setClips(-5.5,5.5)
+  ipg.setSlices(k1,k2,k3)
+  #et = readTensors("tpets")
+  et = readTensors("ig6/tpets")
   addTensorsInImage(ipg.getImagePanel(Axis.X),et,20)
   addTensorsInImage(ipg.getImagePanel(Axis.Y),et,20)
   addTensorsInImage(ipg.getImagePanel(Axis.Z),et,20)
-  makeFrame(world)
-
+  frame = makeFrame(world)
+  frame.setSize(1460,980)
+  frame.orbitView.setAzimuth(-65.0)
+  background = Color(254,254,254)
+  frame.viewCanvas.setBackground(background)
+ 
 def displayOld():
   s = readImage(sfile)
   e = readTensors(efile)
