@@ -14,7 +14,8 @@ from edu.mines.jtk.util.ArrayMath import *
 
 from dnp import *
 
-seismicDir = "/data/seis/tp/csm/oldslices/"
+#seismicDir = "/data/seis/tp/csm/oldslices/"
+seismicDir = "/Users/dhale/Home/box/jtk/trunk/data/"
 ffile = "tp73"
 s1 = Sampling(251,0.004,0.500)
 s2 = Sampling(357,0.025,0.000)
