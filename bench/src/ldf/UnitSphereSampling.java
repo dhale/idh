@@ -724,7 +724,7 @@ public class UnitSphereSampling {
     if (f<0.1f)            x = 0.0f;
     if (0.1f<=f && f<0.2f) y = 0.0f;
     if (0.2f<=f && f<0.3f) z = 0.0f;
-    float s = 1.0f/(float)sqrt(x*x+y*y+z*z);
+    float s = 1.0f/sqrt(x*x+y*y+z*z);
     return new float[]{x*s,y*s,z*s};
   }
 }
