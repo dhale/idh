@@ -158,6 +158,33 @@ public class LanguageHits {
   ///////////////////////////////////////////////////////////////////////////
   // Google SERP (scrapes the Search Engine Results Page)
   private static int countHitsGserp(String lang, String field) {
+    String COUNT_PREFIX = "resultStats>About ";
+    String COUNT_SUFFIX = " results";
+    URL url = makeUrlGserp(lang,field);
+    String pt = getPageText(url);
+    int i = pt.indexOf(COUNT_PREFIX)+COUNT_PREFIX.length();
+    int j = pt.indexOf(COUNT_SUFFIX,i);
+    if (i<0 || j<=i || j-i>20) 
+      throw new RuntimeException("cannot grok the search results");
+    String cs = pt.substring(i,j);
+    return Integer.parseInt(cs.replaceAll(",",""));
+  }
+  private static URL makeUrlGserp(String lang, String field) {
+    StringBuilder sb = new StringBuilder("http://www.google.com");
+    sb.append("/search?hl=en&q=%22");
+    sb.append(lang.replace("+","%2B").replace("#","%23"));
+    sb.append("+programming%22+%22");
+    sb.append(field.replace(" ","+"));
+    sb.append("%22&safe=off");
+    URL url = null;
+    try {
+      url = new URL(sb.toString());
+    } catch (MalformedURLException e) {
+      throw new RuntimeException(e);
+    }
+    return url;
+  }
+  private static int countHitsGserpOld(String lang, String field) {
     String COUNT_PREFIX = "> of about <b>";
     String COUNT_SUFFIX = "</b> for";
     URL url = makeUrlGserp(lang,field);
@@ -169,7 +196,7 @@ public class LanguageHits {
     String cs = pt.substring(i,j);
     return Integer.parseInt(cs.replaceAll(",",""));
   }
-  private static URL makeUrlGserp(String lang, String field) {
+  private static URL makeUrlGserpOld(String lang, String field) {
     StringBuilder sb = new StringBuilder("http://www.google.com");
     sb.append("/search?hl=en&q=%22");
     sb.append(lang.replace("+","%2B").replace("#","%23"));
