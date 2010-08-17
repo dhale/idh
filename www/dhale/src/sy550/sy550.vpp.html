@@ -31,7 +31,10 @@ The three-week data processing module that I lead is a hands-on
 </p>
 <ul>
   <li>Basic digital signal processing</li>
-  <li>Wiener and time-varying filters</li>
+  <li>Convolutional filters</li>
+  <li>Recursive filters</li>
+  <li>Fast Fourier transforms</li>
+  <li>Wiener filters</li>
   <li>Interpolation of scattered data</li>
 </ul>
 <p>
@@ -74,21 +77,11 @@ implementations and limitations in everything that you use.
 
 <h3>Text (for reference only)</h3>
 <p>
-<cite>Discrete-Time Signal Processing, 2nd or 3rd Edition</cite>,
+<cite>Discrete-Time Signal Processing, 3rd Edition</cite>,
 by Oppenheim and Schafer.
-Purchase of this text is not required for this module.
-However, if I could own only one book on digital signal processing, 
-this would be the one.
-</p>
-<p>
-The most recent
-<a
-href="http://www.amazon.com/Discrete-Time-Signal-Processing-Alan-Oppenheim/dp/0131988425">3rd edition</a> 
-is now available.
-Used copies of the
-<a href="http://www.amazon.com/Discrete-Time-Signal-Processing-2nd-Prentice-Hall/dp/0137549202">2nd edition</a>
-are also available, and two copies of it are on reserve in Arthur Lakes 
-Library.
+Available from 
+<a href="http://www.amazon.com/gp/product/0131988425">amazon.com</a>
+and other bookstores.
 </p>
 
 <h3>Time and place</h3>
@@ -98,33 +91,40 @@ Library.
 
 <!-- --------------------------------------------------------------------
 Day
-09/29  1 Basic digital signal processing
-           groking data
+09/28  1 Basic digital signal processing
+           grokking data
+           metadata (data about data)
            sampling and aliasing
-           finite differences
-           accumulators
+           finite differences and sums
+           the slow accumulator
+           despiking
+09/30  2 Convolutional filters
            shifting sequences
-10/01  2 Quick and useful digital filters
-           despiking 
            moving averages
+           Gaussian filters
+           sinc filters
+           windowing filters
+10/05  3 Recursive filters
+           recursive smoothing
            notch filters
-           resampling
-10/06  3 Fast Fourier transforms
-           sampling frequency
-           spectral analysis
-           filtering with FFTs
-10/08  4 Wiener filters
-           removing trends
-           cross-correlation
-           covariance
+10/07  4 Fast Fourier transforms
+           two important theorems
+           the discrete Fourier transform (DFT)
+           frequency sampling
+           the fast Fourier transform (FFT)
+           Gaussian filtering with FFTs
+           bandpass filtering with FFTs
+10/12  5 Wiener filters
+           shaping filters
+           normal equations
            Toeplitz equations
-10/13  5 Time-varying spectra and filters
-           time-varying spectra
-           time-varying filters
-10/15  6 Interpolation of scattered data
+           Wiener filters
+           prediction filters
+10/14  6 Interpolation of scattered data
+           kriging as spatial prediction
            distance-weighted averaging
-           kriging
            radial basis functions
+           nearest-neighbor interpolation (Voronoi diagrams)
            natural-neighbor interpolation
 -------------------------------------------------------------------- -->
 
@@ -137,36 +137,37 @@ Day
 </tr>
 <tr>
   <td>1</td>
-  <td>09/29</td>
+  <td>09/28</td>
   <td>Basic digital signal processing</td>
 </tr>
 <tr>
   <td>2</td>
-  <td>10/01</td>
-  <td>Quick and useful digital filters</td>
+  <td>09/30</td>
+  <td>Convolutional filters</td>
 </tr>
 <tr>
   <td>3</td>
-  <td>10/06</td>
-  <td>Fast Fourier transforms</td>
+  <td>10/05</td>
+  <td>Recursive filters</td>
 </tr>
 <tr>
   <td>4</td>
-  <td>10/08</td>
-  <td>Wiener filters</td>
+  <td>10/07</td>
+  <td>Fast Fourier transforms</td>
 </tr>
 <tr>
   <td>5</td>
-  <td>10/13</td>
-  <td>Time-varying spectra and filters</td>
+  <td>10/12</td>
+  <td>Wiener filters</td>
 </tr>
 <tr>
   <td>6</td>
-  <td>10/15</td>
+  <td>10/14</td>
   <td>Interpolation of scattered data</td>
 </tr>
 </table>
 
+<!--
 <h3 class="newpage">Student absences from class, labs, or exams</h3>
 All students are advised to be familiar with CSM’s policy regarding 
 the make-up of work missed due to excused absences.  
@@ -186,14 +187,17 @@ certification system, and strongly encourage students to use this system
 to automatically notify all of their instructors regarding their illness.  
 Here is a link to this 
 <a href="http://inside.mines.edu/Flu">web-based form.</a>
+-->
 
 #sidebar()
 
+<!--
 <h3>Course notes</h3>
 <p>
 My (mostly handwritten) notes for this course are
 <a href="notes/index.html">available online</a>.
 </p>
+-->
 
 <h3>SmartGeo</h3>
 <p>
