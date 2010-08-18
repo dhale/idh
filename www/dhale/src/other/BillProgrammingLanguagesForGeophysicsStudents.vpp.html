@@ -1,0 +1,124 @@
+#header( ".." "Bill's programming for geophysics students" "teaching" )
+
+<div id="title">
+  <div id="title-text">
+    <h1>Programming languages for geophysics students</h1>
+    <h2>
+      <a href="http://billharlan.com">Bill Harlan</a>, 2001
+    </h2>
+  </div>
+</div>
+
+#content()
+
+<p>
+I was recently asked which programming
+language a university should require their
+geophysics graduate students to learn.  Here
+was my reply.
+</p><p> 
+If I had to pick one language, I'd recommend
+Java.  For an excellent appreciation of Java
+as a teaching language, see 
+<a href="http://g.oswego.edu/dl/html/javaInCS.html">Doug Lea's web page</a>.
+</p><p> 
+A second-place choice would be C with some
+exposure to C++.  But if students know Java,
+they can pick up C/C++ on their own.
+</p><p> 
+If I were teaching programming to students
+that had never programmed before, I'd use
+Python as a learning language.  You won't
+waste time explaining tricky syntax.  Python
+supports both procedural and object-oriented
+approaches.  If I can get Java to compile, it
+usually does what I wants.  The same is true
+of Python, but it usually compiles the first
+time.
+</p><p> 
+Do not require Fortran.  I have not written
+Fortran on the job for ten years now.
+</p><p> 
+If a teacher is using Mathematica in class
+exercises, then teach what is needed to do
+the exercises, as you go.  Mathematica is a
+software application, not a language.  The
+same is true of Visual Basic and Perl.
+(Test: if only one "compiler" exists, then
+the language probably does not have a
+specification, or even a grammar.)
+</p><p> 
+If faculty do not consider programming
+languages worth learning, then students will
+probably follow their example.
+</p><p> 
+I now consider formal computer science to be
+essential training for any scientist who
+expects to program as a part of their career.
+Make them take courses on programming and
+read programming books.  They will not have
+time to learn by trial and error, as most of
+my generation did.  Students need courses in
+style, data structures, algorithms,
+encapsulation, object-oriented programming,
+functional/generic programming, and software
+patterns.  Students need concepts more than
+the mechanics of any single language.
+</p><p> 
+Do not choose a language because it is
+"realistic" for "real projects" in the "real
+world."  Those criteria change.  Teach them
+principles of programming that are likely to
+be around for a while.  The language is often
+unimportant.
+</p><p> 
+I personally wish I had been taught
+programming in Scheme (a Lisp dialect), using
+the freshman MIT book "Structure and
+Interpretation of Computer Programs," by
+Abelson and Sussman.  No language has given
+me more insight into what a compiler really
+does.
+</p><p> 
+Teaching C++ is tricky because you must
+identify a safe minimal subset.
+<!--
+<a href="Managing_Cpp_Objects.html">a safe minimal subset.</a> 
+-->
+The best way to improve one's style in
+C++ is to write more Java.
+</p><p> 
+Java is so easy to debug that I almost never
+use a debugger.  Memory management is the
+source of most bugs in C/C++.  Java prevents
+you from writing outside the bounds of an
+array, prevents you from casting a reference
+to the wrong type, prevents mischief with
+pointer arithmetic, prevents you from reading
+uninitialized variables, prevents you from
+allocating too little space for an object,
+prevents you from leaking unfreed memory,
+prevents bad assumptions about the size and
+byte order of primitive types, and so on.
+Those are the kind of problems that require a
+debugger and cost you days.  The hardest
+problems to debug in Java are concurrency and
+race conditions with threads.  Of course,
+most users of C/C++ never attempt threads.
+</p><p> 
+<!--
+<a href="A_Tirade_Against_the_Cult_of_Performance.html">Performance</a> 
+-->
+Performance should be for advanced
+students, not novices.  Two thirds of our new
+processing system is in Java.  We use C++ if
+we need "machine code," mostly legacy code.
+There is not a single line of Fortran.  We
+have seen Java code run 20% FASTER than
+equivalent C code.  The latest Java virtual
+machines from Sun and IBM profile, optimize,
+and recompile during runtime.
+
+#sidebar()
+
+#footer()
