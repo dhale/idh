@@ -26,7 +26,7 @@ def main(args):
 
 def gridOne(logType,k):
   p = readImage("ig6/tpp"+logType[0]+"b")
-  q = readImage("ig6/tpq"+logType[0]+"b")
+  q = readImage("tpq"+logType[0]+"b")
   fl,x1l,x2l,x3l = readLogSamples(logSet,logType)
   wlg = WellLogGridder(s1,s2,s3,0.0)
   fk,x1k,x2k,x3k = fl[k],x1l[k],x2l[k],x3l[k]
