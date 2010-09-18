@@ -2,6 +2,7 @@
 # Demo seismic data processing with Oz Yilmaz's common-source gathers.
 
 import sys
+from java.awt import *
 from java.lang import *
 from java.util import *
 from java.nio import *
@@ -62,10 +63,13 @@ def process(name):
   title = name+": "+source
   f = read(name)
   f = tpow(2.0,st,f)
-  f = nmo(3.0,st,sx,f)
-  plot(name+": before",st,sx,f,name)
-  f = align(f)
-  plot(name+": after",st,sx,f,name)
+  #f = nmo(3.0,st,sx,f)
+  #plot(name+": before",st,sx,f,name)
+  #f = align(f)
+  #plot(name+": after",st,sx,f,name)
+  g,t = alignWithTimes(st,f)
+  plotWithTimes(name+": before",st,sx,f,t,name)
+  plot(name+": after",st,sx,g,name)
 
 def read(name):
   """Reads gather with specified name."""
@@ -130,6 +134,26 @@ def align(f):
     lsf.shift1(du,ut,g[ix])
   return g
 
+def alignWithTimes(st,f):
+  """Scary alignment warps traces to flatten reflections."""
+  nt,nx = len(f[0]),len(f)
+  dt,ft = st.delta,st.first
+  s = stack(f)
+  g = zerofloat(nt,nx)
+  t = zerofloat(nt,nx)
+  tau = rampfloat(ft,dt,nt)
+  du = zerofloat(nt)
+  ut = zerofloat(nt)
+  sigma = 20 # Gaussian window half-width sigma = 20 samples
+  lsf = LocalShiftFinder(sigma)
+  for ix in range(nx):
+    lsf.find1(-20,20,s,f[ix],du)
+    copy(f[ix],g[ix])
+    lsf.shift1(du,ut,g[ix])
+    mul(dt,du,du)
+    sub(tau,du,t[ix])
+  return g,t
+
 def plot(title,st,sx,f,png=None):
   f = gpow(0.5,f)
   sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
@@ -139,8 +163,24 @@ def plot(title,st,sx,f,png=None):
   sp.setTitle(title)
   pv = sp.addPixels(st,sx,f)
   pv.setPercentiles(1.0,99.0)
-  pv.setColorModel(ColorMap.RED_WHITE_BLUE)
+  pv.setColorModel(ColorMap.GRAY)
   pv.setInterpolation(PixelsView.Interpolation.LINEAR)
+  if png and pngDir:
+    sp.paintToPng(100,6,pngDir+"/"+png+".png")
+
+def plotWithTimes(title,st,sx,f,t,png=None):
+  f = gpow(0.5,f)
+  sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
+  sp.setSize(500,900)
+  sp.setVLabel("Time (s)")
+  sp.setHLabel("Offset (km)")
+  sp.setTitle(title)
+  pv = sp.addPixels(st,sx,f)
+  pv.setPercentiles(1.0,99.0)
+  pv.setColorModel(ColorMap.GRAY)
+  pv.setInterpolation(PixelsView.Interpolation.LINEAR)
+  cv = sp.addContours(st,sx,t)
+  cv.setLineColor(Color.YELLOW)
   if png and pngDir:
     sp.paintToPng(100,6,pngDir+"/"+png+".png")
 

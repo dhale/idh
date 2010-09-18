@@ -24,8 +24,8 @@ n1,n2 = s1.count,s2.count
 
 def main(args):
   #slopes()
-  flatten()
-  #flattenTest()
+  #flatten()
+  flattenTest()
 
 def slopes():
   f = readImage(ffile)
@@ -76,7 +76,7 @@ def flattenTest():
   asinbx = mul(a,sinbx)
   p2 = div(mul(bt,acosbx),add(1,asinbx))
   el = fillfloat(1,n1,n2)
-  fl = FlattenerS(8.0,0.01)
+  fl = FlattenerCg(8.0,0.01)
   sf = fl.findShifts(p2,el) # found shifts
   se = neg(mul(t,asinbx)) # exact shifts
   plot(sf,jet,-smax,smax)

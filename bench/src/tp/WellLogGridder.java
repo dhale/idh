@@ -11,6 +11,13 @@ import static edu.mines.jtk.util.ArrayMath.*;
  */
 public class WellLogGridder {
 
+  /**
+   * Constructs a gridder for specified grid samplings and null value.
+   * @param s1 sampling of 1st dimension.
+   * @param s2 sampling of 2nd dimension.
+   * @param s3 sampling of 3rd dimension.
+   * @param fnull value to assign to samples without a value.
+   */
   public WellLogGridder(Sampling s1, Sampling s2, Sampling s3, float fnull) {
     _s1 = s1;
     _s2 = s2;
@@ -22,14 +29,59 @@ public class WellLogGridder {
   }
 
   /**
-   * Grids one well log with specified samples.
-   * Replaces any gridded values intersected by this log.
+   * Sets gridded values for one well log.
    * @param f array of log sample values f(x1,x2,x3).
    * @param x1 array of log sample x1 coordinates.
    * @param x2 array of log sample x2 coordinates.
    * @param x3 array of log sample x3 coordinates.
-    */
-  public void gridWellLog(float[] f, float[] x1, float[] x2, float[] x3) {
+   */
+  public void insertWellLog(float[] f, float[] x1, float[] x2, float[] x3) {
+    float[][] gs = getGriddedSamples(f,x1,x2,x3);
+    float[] fg = gs[0];
+    float[] x1g = gs[1];
+    float[] x2g = gs[2];
+    float[] x3g = gs[3];
+    int ng = fg.length;
+    for (int ig=0; ig<ng; ++ig) {
+      int i1 = _s1.indexOfNearest(x1g[ig]);
+      int i2 = _s2.indexOfNearest(x2g[ig]);
+      int i3 = _s3.indexOfNearest(x3g[ig]);
+      _g[i3][i2][i1] = fg[ig];
+    }
+  }
+
+  /**
+   * Sets to null gridded values for one well log.
+   * @param x1 array of log sample x1 coordinates.
+   * @param x2 array of log sample x2 coordinates.
+   * @param x3 array of log sample x3 coordinates.
+   */
+  public void removeWellLog(float[] x1, float[] x2, float[] x3) {
+    float[][] gs = getGriddedSamples(zerofloat(x1.length),x1,x2,x3);
+    float[] x1g = gs[1];
+    float[] x2g = gs[2];
+    float[] x3g = gs[3];
+    int ng = x1g.length;
+    for (int ig=0; ig<ng; ++ig) {
+      int i1 = _s1.indexOfNearest(x1g[ig]);
+      int i2 = _s2.indexOfNearest(x2g[ig]);
+      int i3 = _s3.indexOfNearest(x3g[ig]);
+      _g[i3][i2][i1] = _fnull;
+    }
+  }
+
+  /**
+   * Gets gridded sample values and coordinates for one well log.
+   * Does not modify any of the uniformly-sampled gridded values.
+   * @param f array of log sample values f(x1,x2,x3).
+   * @param x1 array of log sample x1 coordinates.
+   * @param x2 array of log sample x2 coordinates.
+   * @param x3 array of log sample x3 coordinates.
+   * @return array {f,x1,x2,x3} of arrays of gridded samples.
+   */
+  public float[][] getGriddedSamples(
+    float[] f, float[] x1, float[] x2, float[] x3) 
+  {
     int n = f.length;
     int n1 = _s1.getCount();
     int n2 = _s2.getCount();
@@ -76,8 +128,19 @@ public class WellLogGridder {
     if (nsum[n1-2]==0) 
       ignore[n1-1] = true;
 
-    // Assign averages to gridded samples.
+    // Count gridded samples.
+    int ng = 0;
     for (int i1=0; i1<n1; ++i1) {
+      if (!ignore[i1] && nsum[i1]>0)
+        ++ng;
+    }
+
+    // Copy averages to arrays of gridded samples.
+    float[] fg = new float[ng];
+    float[] x1g = new float[ng];
+    float[] x2g = new float[ng];
+    float[] x3g = new float[ng];
+    for (int i1=0,ig=0; i1<n1; ++i1) {
       if (!ignore[i1] && nsum[i1]>0) {
         double scale = 1.0/nsum[i1];
         double x2avg = x2sum[i1]*scale;
@@ -85,13 +148,18 @@ public class WellLogGridder {
         double favg = fsum[i1]*scale;
         int i2 = _s2.indexOfNearest(x2avg);
         int i3 = _s3.indexOfNearest(x3avg);
-        _g[i3][i2][i1] = (float)favg;
+        fg[ig] = (float)favg;
+        x1g[ig] = (float)_s1.getValue(i1);
+        x2g[ig] = (float)_s2.getValue(i2);
+        x3g[ig] = (float)_s3.getValue(i3);
+        ++ig;
       }
     }
+    return new float[][]{fg,x1g,x2g,x3g};
   }
 
   /**
-   * Gets the gridded values.
+   * Gets the 3D array of gridded values.
    * @return array of gridded values; by reference, not by copy.
    */
   public float[][][] getGriddedValues() {
@@ -99,10 +167,46 @@ public class WellLogGridder {
   }
 
   /**
-   * Gets the non-null samples from this gridder.
+   * Gets the gridded values for one well log.
+   * @param x1 array of log sample x1 coordinates.
+   * @param x2 array of log sample x2 coordinates.
+   * @param x3 array of log sample x3 coordinates.
+   * @return array of gridded values.
+   */
+  public float[] getGriddedValues(float[] x1, float[] x2, float[] x3) {
+    return getGriddedValues(x1,x2,x3,_g);
+  }
+
+  /**
+   * Gets the gridded values for one well log from the specified array.
+   * @param x1 array of log sample x1 coordinates.
+   * @param x2 array of log sample x2 coordinates.
+   * @param x3 array of log sample x3 coordinates.
+   * @return array of gridded values.
+   */
+  public float[] getGriddedValues(
+    float[] x1, float[] x2, float[] x3, float[][][] g) 
+  {
+    float[][] gs = getGriddedSamples(zerofloat(x1.length),x1,x2,x3);
+    float[] fg = gs[0];
+    float[] x1g = gs[1];
+    float[] x2g = gs[2];
+    float[] x3g = gs[3];
+    int ng = fg.length;
+    for (int ig=0; ig<ng; ++ig) {
+      int i1 = _s1.indexOfNearest(x1g[ig]);
+      int i2 = _s2.indexOfNearest(x2g[ig]);
+      int i3 = _s3.indexOfNearest(x3g[ig]);
+      fg[ig] = g[i3][i2][i1];
+    }
+    return fg;
+  }
+
+  /**
+   * Gets all non-null samples from this gridder.
    * @return array {f,x1,x2,x3} of arrays of non-null samples.
    */
-  public float[][] getGriddedSamples() {
+  public float[][] getNonNullSamples() {
     int n1 = _s1.getCount();
     int n2 = _s2.getCount();
     int n3 = _s3.getCount();

@@ -18,10 +18,11 @@ spfile = "tps2" # semblance vw,u
 sifile = "tps3" # semblance uvw,
 
 def main(args):
-  #makeStructureTensors()
+  #makeTensors()
+  #scaleTensors(0.001)
   display()
 
-def makeStructureTensors():
+def makeTensors():
   sigma = 8.0
   s = readImage(sfile)
   m = readImage(mfile)
@@ -30,6 +31,19 @@ def makeStructureTensors():
   e = lof.applyForTensors(s)
   mask.apply((1.0,0.0,0.0,1.0,0.0,1.0),e)
   writeTensors(efile,e)
+
+def scaleTensors(eps):
+  e = readTensors(efile)
+  s1 = readImage(s1file); print "s1 min =",min(s1)," max =",max(s1)
+  s2 = readImage(s2file); print "s2 min =",min(s2)," max =",max(s2)
+  s3 = readImage(s3file); print "s3 min =",min(s3)," max =",max(s3)
+  pow(s2,4.0,s2)
+  fill(eps,s3)
+  s1 = clip(eps,1.0,s1)
+  s2 = clip(eps,1.0,s2)
+  s3 = clip(eps,1.0,s3)
+  e.setEigenvalues(s3,s2,s1)
+  writeTensors(esfile,e)
 
 def display():
   k1,k2,k3 = 366,15,96

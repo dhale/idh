@@ -22,8 +22,6 @@ s1file = "tps1" # semblance w,uv
 s2file = "tps2" # semblance vw,u
 s3file = "tps3" # semblance uvw,
 gfile = "tpg"+logType # simple gridding with null for unknown samples
-#pfile = "tpp"+logType+method # values of nearest known samples
-#qfile = "tpq"+logType+method # output of blended gridder
 pfile = "tpp"+logType+method # values of nearest known samples
 qfile = "tpq"+logType+method # output of blended gridder
 tfile = "tpt"+logType+method # times to nearest known samples
@@ -78,7 +76,7 @@ def goFigures():
   #display3(s,q,vmin,vmax,"tpqvb")
 
 def gridBlendedP():
-  e = getEigenTensors(0.001)
+  e = getEigenTensors()
   bi = BlendedGridder3(e)
   p = readImage(gfile)
   t = bi.gridNearest(0.0,p)
@@ -86,7 +84,7 @@ def gridBlendedP():
   writeImage(tfile,t)
 
 def gridBlendedQ():
-  e = getEigenTensors(0.001)
+  e = getEigenTensors()
   bg = BlendedGridder3(e)
   bg.setSmoothness(1.0)
   p = readImage(pfile)
@@ -96,18 +94,8 @@ def gridBlendedQ():
   bg.gridBlended(t,p,q)
   writeImage(qfile,q)
 
-def getEigenTensors(eps):
-  e = readTensors(efile)
-  s1 = readImage(s1file); print "s1 min =",min(s1)," max =",max(s1)
-  s2 = readImage(s2file); print "s2 min =",min(s2)," max =",max(s2)
-  s3 = readImage(s3file); print "s3 min =",min(s3)," max =",max(s3)
-  pow(s2,4.0,s2)
-  fill(eps,s3)
-  s1 = clip(eps,1.0,s1)
-  s2 = clip(eps,1.0,s2)
-  s3 = clip(eps,1.0,s3)
-  e.setEigenvalues(s3,s2,s1)
-  writeTensors(esfile,e)
+def getEigenTensors():
+  e = readTensors(esfile)
   return e
 
 def goImpedance():
