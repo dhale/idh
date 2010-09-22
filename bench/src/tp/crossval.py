@@ -10,7 +10,8 @@ logType = "v"; logLabel = "Velocity (km/s)"; vmin,vmax = 2.4,5.6
 #logType = "d"; logLabel = "Density (g/cc)"; vmin,vmax = 2.0,3.0
 #logType = "p"; logLabel = "Porosity"; vmin,vmax = 0.0,0.4
 #logType = "g"; logLabel = "Gamma ray (API units)"; vmin,vmax = 0.0,200.0
-vomit = [5,6,7,9,19,24] # velocity logs to leave out (omit)
+vomit = [9,5,24,7,19,6] # velocity logs to leave out (omit)
+vlabel = {9:"A",5:"B",24:"C",7:"D",19:"E",6:"F"}
 smin,smax = -5.5,5.5
 sfile = "tpsz" # seismic image
 esfile = "tpets" # eigen-tensors scaled by semblances
@@ -18,17 +19,118 @@ s1file = "tps1" # semblance w,uv
 s2file = "tps2" # semblance vw,u
 s3file = "tps3" # semblance uvw,
 
+pngDir = "png/"
+
 def main(args):
-  goCrossVal()
+  #goCrossVal()
+  #goErrors()
+  goDisplay()
+
+def goErrors():
+  print "median absolute error"
+  print "log","  all "," shal "," deep "
+  for omit in vomit:
+    errors(omit,"mda")
+  print "root-mean-square error"
+  print "log","  all "," shal "," deep "
+  for omit in vomit:
+    errors(omit,"rms")
+
+def goDisplay():
+  displayWellPoints(1.0)
+  displayWellPoints(1.5)
+  for omit in vomit:
+    displayLogs(omit)
 
 def goCrossVal():
-  for omit in [5]:
-    crossval(omit)
+  for omit in vomit:
+    #crossVal(omit)
+    writeLogs(omit)
 
-def crossval(omit):
-  gridWellLogs(omit)
-  gridBlendedP(omit)
-  gridBlendedQ(omit)
+def crossVal(omit):
+  #gridWellLogs(omit)
+  #gridBlendedP(omit)
+  #gridBlendedQ(omit)
+  return
+
+def errors(ilog,type="mda"):
+  #fw,x1w,x2w,x3w = readLog(wellLog(ilog))
+  fg,x1g,x2g,x3g = readLog(griddedLog(ilog))
+  fs,x1s,x2s,x3s = smoothLog(fg),x1g,x2g,x3g
+  #fp,x1p,x2p,x3p = readLog(nearestLog(ilog))
+  fq,x1q,x2q,x3q = readLog(blendedLog(ilog))
+  #fgs,fgd = splitShallowDeep(x1g,fg)
+  fss,fsd = splitShallowDeep(x1s,fs)
+  fqs,fqd = splitShallowDeep(x1q,fq)
+  if type=="mda":
+    efunc = mdae
+  elif type=="rms":
+    efunc = rmse
+  aerr = efunc(fs, fq )
+  serr = efunc(fss,fqs)
+  derr = efunc(fsd,fqd)
+  print "%3d %6.3f %6.3f %6.3f" % (ilog,aerr,serr,derr)
+
+def splitShallowDeep(x1,f):
+  n = len(x1)
+  m = binarySearch(x1,1.3)
+  if m<0: m = -m-1
+  fs = copy(m,0,f)
+  fd = copy(n-m,m,f)
+  return fs,fd
+
+def mdae(x,y):
+  n = len(x)
+  e = abs(sub(x,y))
+  quickPartialSort(n/2,e)
+  return e[n/2]
+
+def rmse(x,y):
+  e = sub(x,y)
+  n = len(x)
+  return sqrt(sum(mul(e,e))/n)
+
+def writeLogs(ilog):
+  fw,x1w,x2w,x3w = readWellLog(logSet,logType,ilog)
+  print "log",ilog,": x1 =",x1w[0],"x2 =",x2w[0],"x3 =",x3w[0]
+  p = readImage(nearestOmit(ilog))
+  q = readImage(blendedOmit(ilog))
+  wlg = WellLogGridder(s1,s2,s3,0.0)
+  fg,x1g,x2g,x3g = wlg.getGriddedSamples(fw,x1w,x2w,x3w)
+  fp = wlg.getGriddedValues(x1g,x2g,x3g,p)
+  fq = wlg.getGriddedValues(x1g,x2g,x3g,q)
+  writeLog(wellLog(ilog),fw,x1w,x2w,x3w)
+  writeLog(griddedLog(ilog),fg,x1g,x2g,x3g)
+  writeLog(nearestLog(ilog),fp,x1g,x2g,x3g)
+  writeLog(blendedLog(ilog),fq,x1g,x2g,x3g)
+
+def writeLog(fileName,f,x1,x2,x3):
+  print "writeLog:",fileName," n =",len(f)
+  aos = ArrayOutputStream(getSeismicDir()+fileName+".dat")
+  aos.writeInt(len(f))
+  aos.writeFloats(f)
+  aos.writeFloats(x1)
+  aos.writeFloats(x2)
+  aos.writeFloats(x3)
+  aos.close()
+
+def readLog(fileName):
+  ais = ArrayInputStream(getSeismicDir()+fileName+".dat")
+  n = ais.readInt()
+  f = zerofloat(n)
+  x1 = zerofloat(n)
+  x2 = zerofloat(n)
+  x3 = zerofloat(n)
+  ais.readFloats(f)
+  ais.readFloats(x1)
+  ais.readFloats(x2)
+  ais.readFloats(x3)
+  ais.close()
+  return f,x1,x2,x3
+
+def readWellLog(set,type,index):
+  fl,x1l,x2l,x3l = readLogSamples(set,type)
+  return fl[index],x1l[index],x2l[index],x3l[index]
 
 def gridWellLogs(omit=-1):
   print "gridWellLogs:",logType,"without log",omit
@@ -40,109 +142,137 @@ def gridWellLogs(omit=-1):
     if i!=omit:
       wlg.insertWellLog(f,x1,x2,x3)
   g = wlg.getGriddedValues()
-  writeImage(griddedFile(omit),g)
+  writeImage(griddedOmit(omit),g)
   
 def gridBlendedP(omit=-1):
   print "gridBlendedP:",logType,"without log",omit
   e = getEigenTensors()
   bi = BlendedGridder3(e)
-  p = readImage(griddedFile(omit))
+  p = readImage(griddedOmit(omit))
   t = bi.gridNearest(0.0,p)
-  writeImage(nearestFile(omit),p)
-  writeImage(mintimeFile(omit),t)
+  writeImage(nearestOmit(omit),p)
+  writeImage(mintimeOmit(omit),t)
 
 def gridBlendedQ(omit=-1):
   print "gridBlendedQ:",logType,"without log",omit
   e = getEigenTensors()
   bg = BlendedGridder3(e)
   bg.setSmoothness(1.0)
-  p = readImage(griddedFile(omit))
-  t = readImage(mintimeFile(omit))
+  p = readImage(nearestOmit(omit))
+  t = readImage(mintimeOmit(omit))
   t = clip(0.0,50.0,t)
   q = copy(p)
   #bg.gridBlended(t,p,q)
-  writeImage(blendedFile(omit),q)
+  writeImage(blendedOmit(omit),q)
 
 def getEigenTensors():
   e = readTensors(esfile)
   return e
 
-def griddedFile(omit=-1):
-  if omit<0:
-    return "tpg"+logType[0]
-  elif omit<10:
-    return "tpg"+logType[0]+"o0"+str(omit)
-  else:
-    return "tpg"+logType[0]+"o"+str(omit)
+def smoothLog(f):
+  #sigma = 2.0*s1.delta/0.0001524 # 0.0001524 km = 6 inches
+  sigma = 2.5
+  lpad = int(3.0*sigma)
+  n = len(f)
+  npad = lpad+n+lpad
+  fpad = zerofloat(npad)
+  gpad = zerofloat(npad)
+  for i in range(lpad):
+    fpad[i] = f[0]
+  copy(n,0,f,lpad,fpad)
+  for i in range(lpad+n,npad):
+    fpad[i] = f[-1]
+  rgf = RecursiveGaussianFilter(sigma)
+  rgf.apply0(fpad,gpad)
+  g = copy(n,lpad,gpad)
+  return g 
 
-def nearestFile(omit=-1):
-  if omit<0:
-    return "tpp"+logType[0]
-  elif omit<10:
-    return "tpp"+logType[0]+"o0"+str(omit)
-  else:
-    return "tpp"+logType[0]+"o"+str(omit)
-
-def mintimeFile(omit=-1):
-  if omit<0:
-    return "tpt"+logType[0]
-  elif omit<10:
-    return "tpt"+logType[0]+"o0"+str(omit)
-  else:
-    return "tpt"+logType[0]+"o"+str(omit)
-
-def blendedFile(omit=-1):
-  if omit<0:
-    return "tpq"+logType[0]
-  elif omit<10:
-    return "tpq"+logType[0]+"o0"+str(omit)
-  else:
-    return "tpq"+logType[0]+"o"+str(omit)
-
-#############################################################################
-#############################################################################
-#############################################################################
-
-def gridOne(logType,k):
-  p = readImage("ig6/tpp"+logType[0]+"b")
-  q = readImage("tpq"+logType[0]+"b")
-  fl,x1l,x2l,x3l = readLogSamples(logSet,logType)
-  wlg = WellLogGridder(s1,s2,s3,0.0)
-  fk,x1k,x2k,x3k = fl[k],x1l[k],x2l[k],x3l[k]
-  fg,x1g,x2g,x3g = wlg.getGriddedSamples(fk,x1k,x2k,x3k)
-  fp = wlg.getGriddedValues(x1k,x2k,x3k,p)
-  fq = wlg.getGriddedValues(x1k,x2k,x3k,q)
-  print x2g[0],x3g[0]
+def displayLogs(k):
+  fw,x1w,x2w,x3w = readLog(wellLog(k))
+  fg,x1g,x2g,x3g = readLog(griddedLog(k))
+  fp,x1p,x2p,x3p = readLog(nearestLog(k))
+  fq,x1q,x2q,x3q = readLog(blendedLog(k))
+  fs,x1s,x2s,x3s = smoothLog(fg),x1g,x2g,x3g
   sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
-  sp.setSize(400,900)
-  sp.setTitle("Log "+str(k))
-  sp.setHLimits(2.0,7.0)
-  sp.setVLimits(0.6,2.0)
+  sp.setSize(450,900)
+  sp.setFontSizeForSlide(0.5,1.0)
+  #sp.setTitle("Log "+str(k))
+  sp.plotPanel.setHInterval(1.0)
+  sp.plotPanel.setVInterval(0.2)
+  sp.setHLimits(2.800,6.200)
+  sp.setVLimits(0.575,2.025)
   sp.setHLabel("Velocity (km/s)")
   sp.setVLabel("Depth (km)")
-  pv = sp.addPoints(x1k,fk)
+  pv = sp.addPoints(x1w,fw)
+  pv.setLineColor(Color.GRAY)
+  pv = sp.addPoints(x1s,fs)
   pv.setLineColor(Color.BLACK)
-  pv = sp.addPoints(x1g,fg)
-  pv.setLineColor(Color.LIGHT_GRAY)
-  pv.setLineWidth(5.0)
-  pv = sp.addPoints(x1g,fp)
+  pv.setLineWidth(4.0)
+  #pv = sp.addPoints(x1p,fp)
+  #pv.setLineColor(Color.RED)
+  #pv.setLineWidth(3.0)
+  pv = sp.addPoints(x1q,fq)
   pv.setLineColor(Color.RED)
-  pv.setLineWidth(5.0)
-  pv = sp.addPoints(x1g,fq)
-  pv.setLineColor(Color.BLUE)
-  pv.setLineWidth(5.0)
-  
-def gridAll():
-  for logType in ["velocity","density","porosity","gamma"]:
-    grid(logType)
+  pv.setLineWidth(4.0)
+  if pngDir:
+    png = pngDir+"tpwsqv"+vlabel[k]+".png"
+    sp.paintToPng(300,3,png)
 
-def displayAll():
-  for logType in ["velocity","density","porosity","gamma"]:
-    display(logType)
+def displayWellPoints(x1):
+  x2,x3 = getWellIntersections(logSet,logType,x1)
+  pv = PointsView(x2,x3)
+  pv.setLineStyle(PointsView.Line.NONE)
+  pv.setMarkStyle(PointsView.Mark.FILLED_CIRCLE)
+  pv.setMarkSize(8.0)
+  pp = PlotPanel(1,1,
+                 PlotPanel.Orientation.X1RIGHT_X2UP,
+                 PlotPanel.AxesPlacement.NONE)
+  pp.setHLimits(s2.first,s2.last)
+  pp.setVLimits(s3.first,s3.last)
+  pp.addTiledView(pv)
+  pf = PlotFrame(pp)
+  pf.setSize(600,293)
+  pf.setVisible(True)
+  if pngDir:
+    png = pngDir+"tpwp"+str(int(0.5+10*x1))+".png"
+    pf.paintToPng(300,3,png)
 
-def display(logType,omit=-1):
+def griddedOmit(omit):
+  return "tpg"+omitSuffix(omit)
+def nearestOmit(omit):
+  return "tpp"+omitSuffix(omit)
+def mintimeOmit(omit):
+  return "tpt"+omitSuffix(omit)
+def blendedOmit(omit):
+  return "tpq"+omitSuffix(omit)
+def wellLog(ilog):
+  return "tpw"+ilogSuffix(ilog)
+def griddedLog(ilog):
+  return "tpg"+ilogSuffix(ilog)
+def nearestLog(ilog):
+  return "tpp"+ilogSuffix(ilog)
+def mintimeLog(ilog):
+  return "tpt"+ilogSuffix(ilog)
+def blendedLog(ilog):
+  return "tpq"+ilogSuffix(ilog)
+def omitSuffix(omit): # suffix for image files with a log omitted
+  if omit<10:
+    return logType[0]+"o0"+str(omit)
+  else:
+    return logType[0]+"o"+str(omit)
+def ilogSuffix(ilog): # suffix for log files with specified index
+  if ilog<10:
+    return logType[0]+"l0"+str(ilog)
+  else:
+    return logType[0]+"l"+str(ilog)
+
+#############################################################################
+#############################################################################
+#############################################################################
+
+def display3d(logType,omit=-1):
   x = readImage(seismicFile)
-  g = readImage(griddedFile(omit))
+  g = readImage(griddedOmit(omit))
   world = World()
   addImage2ToWorld(world,x,g)
   #addLogsToWorld(world,logSet,logType)

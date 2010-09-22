@@ -1,0 +1,20 @@
+Interpolation processing flow
+  make zero mask: zeromask.py -> tpmz.dat
+  compute semblances: semblance.py -> tps1.dat, tps2.dat, tps3.dat
+  compute eigentensors: tensors.py -> tpet.dat, tpets.dat
+  for each log type:
+    grid all logs: gridlogs.py -> tpgv.dat, tpgd.dat, ...
+    interpolate: interp.py
+      interpolate p -> tppvb.dat, tppdb.dat, ...
+      interpolate q -> tpqvb.dat, tpqdb.dat, ...
+
+Leave-one-out cross-validation for log of one type (e.g., velocity)
+  for each log with index XX:
+    grid logs, but omitting this log -> tpgvoXX.dat
+    interpolate p -> tppvoXX.dat
+    interpolate q -> tpqvoXX.dat
+    get gridded samples for log -> tpgvlXX.dat
+    get gridded values from p -> tppvlXX.dat
+    get gridded values from q -> tpqvlXX.dat
+
+Number of deep velocity logs = 29

@@ -187,6 +187,19 @@ public class WellLogGridder {
   public float[] getGriddedValues(
     float[] x1, float[] x2, float[] x3, float[][][] g) 
   {
+    int n = x1.length;
+    float[] f = new float[n];
+    for (int i=0; i<n; ++i) {
+      int i1 = _s1.indexOfNearest(x1[i]);
+      int i2 = _s2.indexOfNearest(x2[i]);
+      int i3 = _s3.indexOfNearest(x3[i]);
+      f[i] = g[i3][i2][i1];
+    }
+    return f;
+  }
+  public float[] getGriddedValuesOld(
+    float[] x1, float[] x2, float[] x3, float[][][] g) 
+  {
     float[][] gs = getGriddedSamples(zerofloat(x1.length),x1,x2,x3);
     float[] fg = gs[0];
     float[] x1g = gs[1];

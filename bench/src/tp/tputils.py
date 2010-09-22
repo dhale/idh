@@ -33,7 +33,7 @@ def setupForSubset(name):
     time or depth flags
     seismic, horizon and well log directories
     samplings s1,s2,s3
-  Example: setupForDirectory("subt_251_4_500")
+  Example: setupForSubset("subt_251_4_500")
   """
   global _time,_depth,_tz
   global seismicDir,horizonDir,wellLogsDir

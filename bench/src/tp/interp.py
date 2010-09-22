@@ -25,6 +25,11 @@ gfile = "tpg"+logType # simple gridding with null for unknown samples
 pfile = "tpp"+logType+method # values of nearest known samples
 qfile = "tpq"+logType+method # output of blended gridder
 tfile = "tpt"+logType+method # times to nearest known samples
+omit = "o05"
+gfile = "tpg"+logType+omit # simple gridding with null for unknown samples
+pfile = "tpp"+logType+omit # values of nearest known samples
+qfile = "tpq"+logType+omit # output of blended gridder
+tfile = "tpt"+logType+omit # times to nearest known samples
 
 horizons = ["CrowMountainCRMT"]
 """
@@ -56,10 +61,10 @@ def goInterp():
   #display1(s,False)
   #display1(s,False,["CrowMountainCRMT","TensleepASand"])
   #display1(s,True,["CrowMountainCRMT","TensleepASand"])
-  #p = readImage(pfile); print "p min =",min(p)," max =",max(p)
+  p = readImage(pfile); print "p min =",min(p)," max =",max(p)
   q = readImage(qfile); print "q min =",min(q)," max =",max(q)
   #t = readImage(tfile); print "t min =",min(t)," max =",max(t)
-  #display(s,p,vmin,vmax,logType)
+  display(s,p,vmin,vmax,logType)
   display(s,q,vmin,vmax,logType)
   #display(s,t,0.0,100.0,logType)
   #display(s,q,vmin,vmax,logType,["CrowMountainCRMT"])
