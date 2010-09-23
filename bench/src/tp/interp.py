@@ -14,6 +14,7 @@ logType = "v"; logLabel = "Velocity (km/s)"; vmin,vmax = 2.4,5.6
 #logType = "p"; logLabel = "Porosity"; vmin,vmax = 0.0,0.4
 #logType = "g"; logLabel = "Gamma ray (API units)"; vmin,vmax = 0.0,200.0
 smin,smax = -5.5,5.5
+smooth = 25 # half-width of smoothing filter for logs
 
 sfile = "tpsz" # seismic image
 efile = "tpet" # eigen-tensors (structure tensors)
@@ -39,7 +40,8 @@ horizons = [
   "TensleepBbaseC1Dolo"]
 """
 
-pngDir = "png/"
+#pngDir = "png/"
+pngDir = None
 
 #k1,k2,k3 = 228,170,74 # 2D displays
 #k1,k2,k3 = 228,170,106 # 2D displays
@@ -61,11 +63,11 @@ def goInterp():
   #display1(s,False)
   #display1(s,False,["CrowMountainCRMT","TensleepASand"])
   #display1(s,True,["CrowMountainCRMT","TensleepASand"])
-  p = readImage(pfile); print "p min =",min(p)," max =",max(p)
-  q = readImage(qfile); print "q min =",min(q)," max =",max(q)
+  #p = readImage(pfile); print "p min =",min(p)," max =",max(p)
+  #q = readImage(qfile); print "q min =",min(q)," max =",max(q)
   #t = readImage(tfile); print "t min =",min(t)," max =",max(t)
-  display(s,p,vmin,vmax,logType)
-  display(s,q,vmin,vmax,logType)
+  #display(s,p,vmin,vmax,logType)
+  #display(s,q,vmin,vmax,logType)
   #display(s,t,0.0,100.0,logType)
   #display(s,q,vmin,vmax,logType,["CrowMountainCRMT"])
   #display(s,q,vmin,vmax,logType,["TensleepASand"])
@@ -74,11 +76,15 @@ def goFigures():
   global k1,k2,k3
   k1,k2,k3 = 228,170,96 # intersect low-velocity layers
   s = readImage(sfile); print "s min =",min(s)," max =",max(s)
-  p = readImage(pfile); print "p min =",min(p)," max =",max(p)
+  #p = readImage(pfile); print "p min =",min(p)," max =",max(p)
   #q = readImage(qfile); print "q min =",min(q)," max =",max(q)
   #display3(s,None,0.0,0.0,"tpsz")
-  display3(s,p,vmin,vmax,"tppvb")
+  #display3(s,p,vmin,vmax,"tppvb")
   #display3(s,q,vmin,vmax,"tpqvb")
+  p = readImage("ig6/tppvb"); print "p min =",min(p)," max =",max(p)
+  display3(s,p,vmin,vmax,"tppvb")
+  p = readImage("tppvo09"); print "p min =",min(p)," max =",max(p)
+  display3(s,p,vmin,vmax,"tppvb")
 
 def gridBlendedP():
   e = getEigenTensors()
@@ -127,7 +133,7 @@ def display2S(s,g,cmin,cmax,logType,horizons=[]):
   ipg.setClips(cmin,cmax)
   ipg.setSlices(k1,k2,k3)
   if logType:
-    addLogsToWorld(world,logSet,logType,cmin,cmax)
+    addLogsToWorld(world,logSet,logType,cmin,cmax,smooth=smooth)
   for horizon in horizons:
     addHorizonToWorld(world,horizon)
   frame = makeFrame(world)
@@ -139,7 +145,7 @@ def display(s,g,cmin,cmax,logType,horizons=[]):
   ipg.setClips2(cmin,cmax)
   ipg.setSlices(k1,k2,k3)
   if logType:
-    addLogsToWorld(world,logSet,logType,cmin,cmax)
+    addLogsToWorld(world,logSet,logType,cmin,cmax,smooth=smooth)
   for horizon in horizons:
     addHorizonToWorld(world,horizon)
   frame = makeFrame(world)
@@ -154,7 +160,7 @@ def display1(s,wells=True,horizons=[],cmin=0,cmax=0):
   frame = makeFrame(world)
   if wells:
     cbar = addColorBar(frame,logLabel)
-    addLogsToWorld(world,logSet,logType,cmin,cmax,cbar)
+    addLogsToWorld(world,logSet,logType,cmin,cmax,cbar,smooth=smooth)
   for horizon in horizons:
     addHorizonToWorld(world,horizon)
 

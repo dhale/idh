@@ -48,14 +48,11 @@ def scaleTensors(eps):
 def display():
   k1,k2,k3 = 366,15,96
   s = readImage(sfile)
-  #et = readTensors(efile)
-  #et = readTensors(esfile)
+  et = readTensors(esfile)
   world = World()
   ipg = addImageToWorld(world,s)
   ipg.setClips(-5.5,5.5)
   ipg.setSlices(k1,k2,k3)
-  #et = readTensors("tpets")
-  et = readTensors("ig6/tpets")
   addTensorsInImage(ipg.getImagePanel(Axis.X),et,20)
   addTensorsInImage(ipg.getImagePanel(Axis.Y),et,20)
   addTensorsInImage(ipg.getImagePanel(Axis.Z),et,20)
@@ -64,21 +61,6 @@ def display():
   frame.orbitView.setAzimuth(-65.0)
   background = Color(254,254,254)
   frame.viewCanvas.setBackground(background)
- 
-def displayOld():
-  s = readImage(sfile)
-  e = readTensors(efile)
-  eu = zerofloat(n1,n2,n3)
-  ev = zerofloat(n1,n2,n3)
-  ew = zerofloat(n1,n2,n3)
-  e.getEigenvalues(eu,ev,ew)
-  #e0 = div(ew/eu)         #  isotropy: e0 = (ew   )/eu
-  #e1 = div(sub(ev,ew)/eu) # linearity: e1 = (ev-ew)/eu
-  e2 = div(sub(eu,ev),eu) # planarity: e2 = (eu-ev)/eu
-  world = World()
-  addImage2ToWorld(world,s,e2)
-  addHorizonToWorld(world,"TensleepASand")
-  makeFrame(world)
 
 #############################################################################
 run(main)

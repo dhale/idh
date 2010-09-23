@@ -128,11 +128,12 @@ def readHorizon(name):
   fileName = horizonDir+"tph"+_tz+name+".dat"
   return Horizon.readBinary(fileName)
 
-def readLogSamples(set,type):
+def readLogSamples(set,type,smooth=0):
   """ 
   Reads log curves from the specified set that have the specified type.
   set: "s" for shallow, "d" for deep, or "a" for all
   type: "v" (velocity), "d" (density), "p" (porosity), or "g" (gamma)
+  smooth: half-width of Gaussian smoothing filter
   Returns a tuple (f,x1,x2,x3) of lists of arrays of samples f(x1,x2,x3)
   """
   fileName = wellLogsDir+"tpw"+set[0]+".dat"
@@ -140,6 +141,8 @@ def readLogSamples(set,type):
   logs = wdata.getLogsWith(type)
   fl,x1l,x2l,x3l = [],[],[],[]
   for log in logs:
+    if smooth: 
+      log.smooth(smooth)
     samples = log.getSamples(type,s1,s2,s3)
     if samples:
       f,x1,x2,x3 = samples
@@ -149,13 +152,13 @@ def readLogSamples(set,type):
       x3l.append(x3)
   return fl,x1l,x2l,x3l
 
-def readLogSamplesMerged(set,type):
+def readLogSamplesMerged(set,type,smooth=0):
   """ 
   Same as readLogSamples, except log sample values for all logs are
   merged into one array, so that this function returns four arrays 
   (f,x1,x2,x3) instead of four lists of arrays.
   """
-  fl,x1l,x2l,x3l = readLogSamples(set,type)
+  fl,x1l,x2l,x3l = readLogSamples(set,type,smooth)
   n = 0
   for f in fl:
     n += len(f)
@@ -222,8 +225,8 @@ def addAllHorizonsToWorld(world):
   for name in _horizonNames:
     addHorizonToWorld(world,name)
 
-def addLogsToWorld(world,set,type,cmin=0,cmax=0,cbar=None):
-  samples = readLogSamples(set,type)
+def addLogsToWorld(world,set,type,cmin=0,cmax=0,cbar=None,smooth=0):
+  samples = readLogSamples(set,type,smooth)
   #print "number of logs =",len(samples[0])
   lg = makeLogPoints(samples,type,cmin,cmax,cbar)
   #lg = makeLogLines(samples,type,cmin,cmax)

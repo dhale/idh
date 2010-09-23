@@ -13,7 +13,7 @@ def main(args):
   #makeBinaryWellLogs("shallow")
   #makeBinaryWellLogs("all")
   #viewWellCoordinates("deep")
-  #viewWellCurves("deep","velocity")
+  viewWellCurves("deep","velocity")
   #viewWellCurves("deep","density")
   #viewWellCurves("deep","gamma")
   #viewWellCurves("deep","porosity")
@@ -178,6 +178,8 @@ def viewWellCurves(what,curve):
   wldata = WellLog.Data.readBinary(csmWellLogs)
   flist,zlist = [],[]
   for log in wldata.getLogsWith(curve):
+    #log.despike(3)
+    log.smooth(25)
     f,z,y,x = log.getSamples(curve)
     flist.append(f)
     zlist.append(z)
@@ -191,7 +193,7 @@ def viewWellCurves(what,curve):
     sp.setVLabel("Gamma Ray")
   elif curve=="porosity":
     sp.setVLabel("Porosity")
-  tv = PointsView(flist,zlist)
+  tv = PointsView(zlist,flist)
   sp.add(tv)
 
 def viewWellsWithSeismic(what,curve):

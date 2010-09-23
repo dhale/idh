@@ -6,10 +6,12 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import edu.mines.jtk.dsp.RecursiveGaussianFilter;
 import edu.mines.jtk.dsp.Sampling;
 import edu.mines.jtk.io.ArrayInputStream;
 import edu.mines.jtk.io.ArrayOutputStream;
 import edu.mines.jtk.util.Check;
+import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
  * A well log from Teapot Dome.
@@ -585,6 +587,99 @@ public class WellLog {
     if (curve.startsWith("g")) return g;
     if (curve.startsWith("p")) return p;
     return null;
+  }
+
+  /**
+   * Applies a despking filter to all curves for this log.
+   * Any null values are ignored and remain null during despiking.
+   * @param nmed number of median-of-three filter passes.
+   */
+  public void despike(int nmed) {
+    for (int imed=0; imed<nmed; ++imed) {
+      despike(v);
+      despike(d);
+      despike(g);
+      despike(p);
+    }
+  }
+  private void despike(float[] f) {
+    if (f==null) 
+      return;
+    int n = f.length;
+    for (int i=1; i<n-1; ++i) {
+      float fa = f[i-1];
+      float fb = f[i  ];
+      float fc = f[i+1];
+      if (fa!=NULL_VALUE && fb!=NULL_VALUE && fc!=NULL_VALUE)
+        f[i] = med3(fa,fb,fc);
+    }
+  }
+  private float med3(float a, float b, float c) {
+    return a<b ? 
+           (b<c ? b : (a<c ? c : a)) : 
+           (b>c ? b : (a>c ? c : a));
+  }
+
+  /**
+   * Applies a Gaussian smoothing filter to all curves for this log.
+   * Any null values are ignored and remain null during smoothing.
+   * @param sigma the half-width of the Gaussian.
+   */
+  public void smooth(double sigma) {
+    int lpad = 1+(int)(3.0*sigma);
+    RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(sigma);
+    smooth(rgf,lpad,v);
+    smooth(rgf,lpad,d);
+    smooth(rgf,lpad,g);
+    smooth(rgf,lpad,p);
+  }
+  private void smooth(
+    RecursiveGaussianFilter rgf, int lpad, float[] f)
+  {
+    if (f==null) 
+      return;
+
+    // While more non-null samples may exist, ...
+    int n = f.length;
+    int j = 0;
+    while (j<n) {
+      
+      // Find index j of next non-null sample.
+      while (j<n && f[j]==NULL_VALUE)
+        ++j;
+
+      // If at least one more non-null sample, ...
+      if (j<n) {
+
+        // Find index k of next null sample.
+        int k = j;
+        while (k<n && f[k]!=NULL_VALUE)
+          ++k;
+
+        // Extract and pad sequence of non-null samples.
+        float[] fpad = pad(lpad,j,k,f);
+
+        // Apply the smoothing filter.
+        rgf.apply0(fpad,fpad);
+
+        // Replace input samples with smoothed samples.
+        copy(k-j,lpad,fpad,j,f);
+
+        // Index at which to begin next search.
+        j = k;
+      }
+    }
+  }
+  private float[] pad(int lpad, int j, int k, float[] f) {
+    int n = k-j;
+    int npad = lpad+n+lpad;
+    float[] fpad = new float[npad];
+    for (int i=0; i<lpad; ++i)
+      fpad[i] = f[j];
+    copy(n,j,f,lpad,fpad);
+    for (int i=lpad+n,l=k-1; i<npad; ++i)
+      fpad[i] = f[l];
+    return fpad;
   }
 
   /**
