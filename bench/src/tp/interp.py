@@ -14,7 +14,7 @@ logType = "v"; logLabel = "Velocity (km/s)"; vmin,vmax = 2.4,5.6
 #logType = "p"; logLabel = "Porosity"; vmin,vmax = 0.0,0.4
 #logType = "g"; logLabel = "Gamma ray (API units)"; vmin,vmax = 0.0,200.0
 smin,smax = -5.5,5.5
-smooth = 25 # half-width of smoothing filter for logs
+smooth = 50 # half-width of smoothing filter for logs
 
 sfile = "tpsz" # seismic image
 efile = "tpet" # eigen-tensors (structure tensors)
@@ -26,11 +26,6 @@ gfile = "tpg"+logType # simple gridding with null for unknown samples
 pfile = "tpp"+logType+method # values of nearest known samples
 qfile = "tpq"+logType+method # output of blended gridder
 tfile = "tpt"+logType+method # times to nearest known samples
-omit = "o05"
-gfile = "tpg"+logType+omit # simple gridding with null for unknown samples
-pfile = "tpp"+logType+omit # values of nearest known samples
-qfile = "tpq"+logType+omit # output of blended gridder
-tfile = "tpt"+logType+omit # times to nearest known samples
 
 horizons = ["CrowMountainCRMT"]
 """
@@ -56,8 +51,8 @@ def main(args):
 def goInterp():
   global k1,k2,k3
   k1,k2,k3 = 366,15,96
-  #gridBlendedP()
-  #gridBlendedQ()
+  gridBlendedP()
+  gridBlendedQ()
   s = readImage(sfile); print "s min =",min(s)," max =",max(s)
   display1(s,True,cmin=vmin,cmax=vmax)
   #display1(s,False)
@@ -66,8 +61,8 @@ def goInterp():
   #p = readImage(pfile); print "p min =",min(p)," max =",max(p)
   #q = readImage(qfile); print "q min =",min(q)," max =",max(q)
   #t = readImage(tfile); print "t min =",min(t)," max =",max(t)
-  #display(s,p,vmin,vmax,logType)
-  #display(s,q,vmin,vmax,logType)
+  display(s,p,vmin,vmax,logType)
+  display(s,q,vmin,vmax,logType)
   #display(s,t,0.0,100.0,logType)
   #display(s,q,vmin,vmax,logType,["CrowMountainCRMT"])
   #display(s,q,vmin,vmax,logType,["TensleepASand"])

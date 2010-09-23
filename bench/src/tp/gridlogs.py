@@ -9,13 +9,13 @@ setupForSubset("subz_401_4_600")
 seismicFile = "tpsz"
 s1,s2,s3 = getSamplings()
 logSet = "deep" # use only deep logs
-smooth = 25 # half-width of Gaussian smoothing filter
+smooth = 50 # half-width of Gaussian smoothing filter
 
 def main(args):
   gridAll()
-  displayAll()
+  #displayAll()
   #grid("velocity")
-  #display("velocity")
+  display("velocity")
   #display("density")
   #display("porosity")
   #display("gamma")

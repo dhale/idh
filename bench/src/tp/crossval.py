@@ -270,13 +270,13 @@ def ilogSuffix(ilog): # suffix for log files with specified index
 #############################################################################
 #############################################################################
 
-def display3d(logType,omit=-1):
-  x = readImage(seismicFile)
-  g = readImage(griddedOmit(omit))
+def display3d(omit=-1):
+  s = readImage(sfile)
+  q = readImage(blendedOmit(omit))
   world = World()
-  addImage2ToWorld(world,x,g)
-  #addLogsToWorld(world,logSet,logType)
-  addHorizonToWorld(world,"TensleepASand")
+  addImage2ToWorld(world,s,q)
+  addLogsToWorld(world,logSet,logType)
+  #addHorizonToWorld(world,"TensleepASand")
   makeFrame(world)
 
 #############################################################################
