@@ -18,33 +18,19 @@ esfile = "tpets" # eigen-tensors scaled by semblances
 s1file = "tps1" # semblance w,uv
 s2file = "tps2" # semblance vw,u
 s3file = "tps3" # semblance uvw,
+smooth = 50 # half-width of smoothing filter for logs
 
-pngDir = "png/"
+#pngDir = "png/"
+pngDir = None
 
 def main(args):
-  #goCrossVal()
-  #goErrors()
+  goCrossVal()
+  goErrors()
   goDisplay()
 
-def goErrors():
-  print "median absolute error"
-  print "log","  all "," shal "," deep "
-  for omit in vomit:
-    errors(omit,"mda")
-  print "root-mean-square error"
-  print "log","  all "," shal "," deep "
-  for omit in vomit:
-    errors(omit,"rms")
-
-def goDisplay():
-  displayWellPoints(1.0)
-  displayWellPoints(1.5)
-  for omit in vomit:
-    displayLogs(omit)
-
 def goCrossVal():
-  for omit in vomit:
-    #crossVal(omit)
+  for omit in [24,7]: #vomit:
+    crossVal(omit)
     writeLogs(omit)
 
 def crossVal(omit):
@@ -53,10 +39,27 @@ def crossVal(omit):
   #gridBlendedQ(omit)
   return
 
+def goErrors():
+  print "median absolute error"
+  print "log","  all "," shal "," deep "
+  for omit in [9,5,24,7]: #vomit:
+    errors(omit,"mda")
+  print "root-mean-square error"
+  print "log","  all "," shal "," deep "
+  for omit in [9,5,24,7]: #vomit:
+    errors(omit,"rms")
+
+def goDisplay():
+  displayWellPoints(1.0)
+  displayWellPoints(1.5)
+  for omit in [9,5,24,7]: #vomit:
+    displayLogs(omit)
+
 def errors(ilog,type="mda"):
   #fw,x1w,x2w,x3w = readLog(wellLog(ilog))
   fg,x1g,x2g,x3g = readLog(griddedLog(ilog))
-  fs,x1s,x2s,x3s = smoothLog(fg),x1g,x2g,x3g
+  #fs,x1s,x2s,x3s = smoothLog(fg),x1g,x2g,x3g
+  fs,x1s,x2s,x3s = fg,x1g,x2g,x3g
   #fp,x1p,x2p,x3p = readLog(nearestLog(ilog))
   fq,x1q,x2q,x3q = readLog(blendedLog(ilog))
   #fgs,fgd = splitShallowDeep(x1g,fg)
@@ -129,14 +132,14 @@ def readLog(fileName):
   return f,x1,x2,x3
 
 def readWellLog(set,type,index):
-  fl,x1l,x2l,x3l = readLogSamples(set,type)
+  fl,x1l,x2l,x3l = readLogSamples(set,type,smooth)
   return fl[index],x1l[index],x2l[index],x3l[index]
 
 def gridWellLogs(omit=-1):
   print "gridWellLogs:",logType,"without log",omit
   fnull = 0.0
   wlg = WellLogGridder(s1,s2,s3,fnull)
-  fl,x1l,x2l,x3l = readLogSamples(logSet,logType)
+  fl,x1l,x2l,x3l = readLogSamples(logSet,logType,smooth)
   for i in range(len(fl)):
     f,x1,x2,x3 = fl[i],x1l[i],x2l[i],x3l[i]
     if i!=omit:
@@ -162,7 +165,7 @@ def gridBlendedQ(omit=-1):
   t = readImage(mintimeOmit(omit))
   t = clip(0.0,50.0,t)
   q = copy(p)
-  #bg.gridBlended(t,p,q)
+  bg.gridBlended(t,p,q)
   writeImage(blendedOmit(omit),q)
 
 def getEigenTensors():
@@ -192,7 +195,8 @@ def displayLogs(k):
   fg,x1g,x2g,x3g = readLog(griddedLog(k))
   fp,x1p,x2p,x3p = readLog(nearestLog(k))
   fq,x1q,x2q,x3q = readLog(blendedLog(k))
-  fs,x1s,x2s,x3s = smoothLog(fg),x1g,x2g,x3g
+  #fs,x1s,x2s,x3s = smoothLog(fg),x1g,x2g,x3g
+  fs,x1s,x2s,x3s = fg,x1g,x2g,x3g
   sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
   sp.setSize(450,900)
   sp.setFontSizeForSlide(0.5,1.0)

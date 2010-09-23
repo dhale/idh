@@ -51,15 +51,15 @@ def main(args):
 def goInterp():
   global k1,k2,k3
   k1,k2,k3 = 366,15,96
-  gridBlendedP()
-  gridBlendedQ()
+  #gridBlendedP()
+  #gridBlendedQ()
   s = readImage(sfile); print "s min =",min(s)," max =",max(s)
   display1(s,True,cmin=vmin,cmax=vmax)
   #display1(s,False)
   #display1(s,False,["CrowMountainCRMT","TensleepASand"])
   #display1(s,True,["CrowMountainCRMT","TensleepASand"])
-  #p = readImage(pfile); print "p min =",min(p)," max =",max(p)
-  #q = readImage(qfile); print "q min =",min(q)," max =",max(q)
+  p = readImage(pfile); print "p min =",min(p)," max =",max(p)
+  q = readImage(qfile); print "q min =",min(q)," max =",max(q)
   #t = readImage(tfile); print "t min =",min(t)," max =",max(t)
   display(s,p,vmin,vmax,logType)
   display(s,q,vmin,vmax,logType)
