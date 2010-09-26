@@ -27,7 +27,7 @@ def main(args):
   #semblance1()
   #semblance2()
   #semblance3()
-  maskSemblance()
+  #maskSemblance()
   display(sfile,s1file)
   display(sfile,s2file)
   display(sfile,s3file)

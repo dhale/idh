@@ -13,9 +13,9 @@ sfile = "tpsz" # seismic image
 mfile = "tpmz" # image mask
 efile = "tpet" # eigen-tensors
 esfile = "tpets" # eigen-tensors scaled by semblance
-slfile = "tps1" # semblance w,uv
-spfile = "tps2" # semblance vw,u
-sifile = "tps3" # semblance uvw,
+s1file = "tps1" # semblance w,uv
+s2file = "tps2" # semblance vw,u
+s3file = "tps3" # semblance uvw,
 
 def main(args):
   #makeTensors()

@@ -24,12 +24,25 @@ smooth = 50 # half-width of smoothing filter for logs
 pngDir = None
 
 def main(args):
-  goCrossVal()
-  goErrors()
-  goDisplay()
+  #goCrossVal()
+  #goErrors()
+  #goDisplay()
+  goDisplayImages()
+
+def goDisplayImages():
+  def display3d(s,p,cmin,cmax):
+    world = World()
+    ipg = addImage2ToWorld(world,s,p)
+    ipg.setClips2(cmin,cmax)
+    makeFrame(world)
+  s = readImage("tpsz")
+  p07 = readImage("tppvo07"); print "p07 min =",min(p07),"max =",max(p07)
+  t07 = readImage("tptvo07"); print "t07 min =",min(t07),"max =",max(t07)
+  display3d(s,p07,vmin,vmax)
+  display3d(s,t07,0.0,50.0)
 
 def goCrossVal():
-  for omit in [24,7]: #vomit:
+  for omit in vomit:
     crossVal(omit)
     writeLogs(omit)
 
@@ -42,17 +55,17 @@ def crossVal(omit):
 def goErrors():
   print "median absolute error"
   print "log","  all "," shal "," deep "
-  for omit in [9,5,24,7]: #vomit:
+  for omit in vomit:
     errors(omit,"mda")
   print "root-mean-square error"
   print "log","  all "," shal "," deep "
-  for omit in [9,5,24,7]: #vomit:
+  for omit in vomit:
     errors(omit,"rms")
 
 def goDisplay():
   displayWellPoints(1.0)
   displayWellPoints(1.5)
-  for omit in [9,5,24,7]: #vomit:
+  for omit in vomit:
     displayLogs(omit)
 
 def errors(ilog,type="mda"):
@@ -269,19 +282,6 @@ def ilogSuffix(ilog): # suffix for log files with specified index
     return logType[0]+"l0"+str(ilog)
   else:
     return logType[0]+"l"+str(ilog)
-
-#############################################################################
-#############################################################################
-#############################################################################
-
-def display3d(omit=-1):
-  s = readImage(sfile)
-  q = readImage(blendedOmit(omit))
-  world = World()
-  addImage2ToWorld(world,s,q)
-  addLogsToWorld(world,logSet,logType)
-  #addHorizonToWorld(world,"TensleepASand")
-  makeFrame(world)
 
 #############################################################################
 run(main)
