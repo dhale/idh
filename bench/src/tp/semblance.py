@@ -24,13 +24,13 @@ lsf3 = LocalSemblanceFilter(16,0)
 mask = ZeroMask(readImage(mfile))
 
 def main(args):
-  #semblance1()
-  #semblance2()
-  #semblance3()
-  #maskSemblance()
-  display(sfile,s1file)
-  display(sfile,s2file)
-  display(sfile,s3file)
+  semblance1()
+  semblance2()
+  semblance3()
+  maskSemblance()
+  #display(sfile,s1file)
+  #display(sfile,s2file)
+  #display(sfile,s3file)
 
 def maskSemblance():
   for smfile in [s1file,s2file,s3file]:

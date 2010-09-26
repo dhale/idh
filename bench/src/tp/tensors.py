@@ -19,8 +19,8 @@ s3file = "tps3" # semblance uvw,
 
 def main(args):
   #makeTensors()
-  #scaleTensors(0.001)
-  display()
+  scaleTensors(0.001)
+  #display()
 
 def makeTensors():
   sigma = 8.0

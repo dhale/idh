@@ -16,7 +16,7 @@ def main(args):
   gridAll()
   #displayAll()
   #grid("velocity")
-  display("velocity")
+  #display("velocity")
   #display("density")
   #display("porosity")
   #display("gamma")

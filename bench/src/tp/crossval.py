@@ -18,38 +18,26 @@ esfile = "tpets" # eigen-tensors scaled by semblances
 s1file = "tps1" # semblance w,uv
 s2file = "tps2" # semblance vw,u
 s3file = "tps3" # semblance uvw,
-smooth = 50 # half-width of smoothing filter for logs
+#smooth = 50 # half-width of smoothing filter for logs
+smooth = 0 # no smoothing
 
 #pngDir = "png/"
 pngDir = None
 
 def main(args):
-  #goCrossVal()
+  goCrossVal()
   #goErrors()
   #goDisplay()
-  goDisplayImages()
-
-def goDisplayImages():
-  def display3d(s,p,cmin,cmax):
-    world = World()
-    ipg = addImage2ToWorld(world,s,p)
-    ipg.setClips2(cmin,cmax)
-    makeFrame(world)
-  s = readImage("tpsz")
-  p07 = readImage("tppvo07"); print "p07 min =",min(p07),"max =",max(p07)
-  t07 = readImage("tptvo07"); print "t07 min =",min(t07),"max =",max(t07)
-  display3d(s,p07,vmin,vmax)
-  display3d(s,t07,0.0,50.0)
 
 def goCrossVal():
-  for omit in vomit:
+  for omit in [6]: #vomit:
     crossVal(omit)
     writeLogs(omit)
 
 def crossVal(omit):
   #gridWellLogs(omit)
-  #gridBlendedP(omit)
-  #gridBlendedQ(omit)
+  gridBlendedP(omit)
+  gridBlendedQ(omit)
   return
 
 def goErrors():
@@ -71,8 +59,8 @@ def goDisplay():
 def errors(ilog,type="mda"):
   #fw,x1w,x2w,x3w = readLog(wellLog(ilog))
   fg,x1g,x2g,x3g = readLog(griddedLog(ilog))
-  #fs,x1s,x2s,x3s = smoothLog(fg),x1g,x2g,x3g
-  fs,x1s,x2s,x3s = fg,x1g,x2g,x3g
+  fs,x1s,x2s,x3s = smoothLog(fg),x1g,x2g,x3g
+  #fs,x1s,x2s,x3s = fg,x1g,x2g,x3g
   #fp,x1p,x2p,x3p = readLog(nearestLog(ilog))
   fq,x1q,x2q,x3q = readLog(blendedLog(ilog))
   #fgs,fgd = splitShallowDeep(x1g,fg)
@@ -208,8 +196,8 @@ def displayLogs(k):
   fg,x1g,x2g,x3g = readLog(griddedLog(k))
   fp,x1p,x2p,x3p = readLog(nearestLog(k))
   fq,x1q,x2q,x3q = readLog(blendedLog(k))
-  #fs,x1s,x2s,x3s = smoothLog(fg),x1g,x2g,x3g
-  fs,x1s,x2s,x3s = fg,x1g,x2g,x3g
+  fs,x1s,x2s,x3s = smoothLog(fg),x1g,x2g,x3g
+  #fs,x1s,x2s,x3s = fg,x1g,x2g,x3g
   sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
   sp.setSize(450,900)
   sp.setFontSizeForSlide(0.5,1.0)
@@ -282,6 +270,19 @@ def ilogSuffix(ilog): # suffix for log files with specified index
     return logType[0]+"l0"+str(ilog)
   else:
     return logType[0]+"l"+str(ilog)
+
+#############################################################################
+#############################################################################
+#############################################################################
+
+def display3d(omit=-1):
+  s = readImage(sfile)
+  q = readImage(blendedOmit(omit))
+  world = World()
+  addImage2ToWorld(world,s,q)
+  addLogsToWorld(world,logSet,logType)
+  #addHorizonToWorld(world,"TensleepASand")
+  makeFrame(world)
 
 #############################################################################
 run(main)
