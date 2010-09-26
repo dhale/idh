@@ -51,8 +51,8 @@ def main(args):
 def goInterp():
   global k1,k2,k3
   k1,k2,k3 = 366,15,96
-  #gridBlendedP()
-  #gridBlendedQ()
+  gridBlendedP()
+  gridBlendedQ()
   s = readImage(sfile); print "s min =",min(s)," max =",max(s)
   display1(s,True,cmin=vmin,cmax=vmax)
   #display1(s,False)
