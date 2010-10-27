@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import edu.mines.jtk.dsp.Tensors3;
 import edu.mines.jtk.sgl.ImagePanelGroup;
 import edu.mines.jtk.sgl.World;
-import edu.mines.jtk.sgl.test.TestFrame;
+import edu.mines.jtk.sgl.SimpleFrame;
 import static edu.mines.jtk.util.ArrayMath.*;
 import edu.mines.jtk.util.Stopwatch;
 
@@ -712,7 +712,7 @@ public class TimeSolver3 {
     ipg.setColorModel(cm);
     World world = new World();
     world.addChild(ipg);
-    TestFrame frame = new TestFrame(world);
+    SimpleFrame frame = new SimpleFrame(world);
     frame.setVisible(true);
   }
 

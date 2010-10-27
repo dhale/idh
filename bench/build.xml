@@ -39,9 +39,10 @@ available at http://www.eclipse.org/legal/cpl-v10.html
   <!-- Compile Java -->
   <target name="compile-java" depends="init">
     <javac srcdir="${src}" destdir="${build.cls}" 
-      compiler="javac1.5"
+      compiler="javac1.6"
       debug="on" 
-      deprecation="on">
+      deprecation="on"
+      includeantruntime="false">
       <compilerarg value="-Xlint:all,-serial"/>
       <classpath refid="classpath"/>
       <exclude name="**/old/**"/>

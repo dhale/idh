@@ -9,12 +9,13 @@ setupForSubset("subz_401_4_600")
 s1,s2,s3 = getSamplings()
 method = "b" # blended
 logSet = "d" # deep logs only
-logType = "v"; logLabel = "Velocity (km/s)"; vmin,vmax = 2.4,5.6
-#logType = "d"; logLabel = "Density (g/cc)"; vmin,vmax = 2.0,3.0
+#logType = "v"; logLabel = "Velocity (km/s)"; vmin,vmax = 2.4,5.6
+#logType = "d"; logLabel = "Density (g/cc)"; vmin,vmax = 2.0,2.8
 #logType = "p"; logLabel = "Porosity"; vmin,vmax = 0.0,0.4
-#logType = "g"; logLabel = "Gamma ray (API units)"; vmin,vmax = 0.0,200.0
+logType = "g"; logLabel = "Gamma ray (API units)"; vmin,vmax = 0.0,200.0
 smin,smax = -5.5,5.5
-smooth = 50 # half-width of smoothing filter for logs
+#smooth = 50 # half-width of smoothing filter for logs
+smooth = 0 # no smoothing
 
 sfile = "tpsz" # seismic image
 efile = "tpet" # eigen-tensors (structure tensors)
@@ -24,7 +25,7 @@ s2file = "tps2" # semblance vw,u
 s3file = "tps3" # semblance uvw,
 gfile = "tpg"+logType # simple gridding with null for unknown samples
 pfile = "tpp"+logType+method # values of nearest known samples
-qfile = "tpq"+logType+method # output of blended gridder
+qfile = "ig50/tpq"+logType+method # output of blended gridder
 tfile = "tpt"+logType+method # times to nearest known samples
 
 horizons = ["CrowMountainCRMT"]
@@ -51,10 +52,10 @@ def main(args):
 def goInterp():
   global k1,k2,k3
   k1,k2,k3 = 366,15,96
-  gridBlendedP()
-  gridBlendedQ()
+  #gridBlendedP()
+  #gridBlendedQ()
   s = readImage(sfile); print "s min =",min(s)," max =",max(s)
-  display1(s,True,cmin=vmin,cmax=vmax)
+  #display1(s,True,cmin=vmin,cmax=vmax)
   #display1(s,False)
   #display1(s,False,["CrowMountainCRMT","TensleepASand"])
   #display1(s,True,["CrowMountainCRMT","TensleepASand"])
@@ -226,15 +227,6 @@ def display3(s,g=None,cmin=0,cmax=0,png=None):
 
 #############################################################################
 
-def dumpTensors():
-  e = getEigenTensors()
-  d = zerofloat(6)
-  for i3 in range(14,17):
-    for i2 in range(110,113):
-      for i1 in range(249,252):
-        e.getTensor(i1,i2,i3,d)
-        dump(d)
-
 def getScatteredSamples():
   g = readImage(gfile)
   f,x1,x2,x3 = SimpleGridder3.getGriddedSamples(0.0,s1,s2,s3,g)
@@ -257,14 +249,6 @@ def gridSibson():
   g = si.grid(s1,s2,s3)
   print "gridding complete: min =",min(g)," max =",max(g)
   writeImage(gfile,g)
-
-def testSpd():
-  e = getEigenTensors()
-  lsf = LocalSmoothingFilter(0.01,10000)
-  t = readImage(tfile)
-  t = clip(0.0,10.0,t)
-  s = mul(t,t)
-  lsf.testSpd(e,0.5,s)
 
 def gridBlended2():
   sdir = "s3_84/"

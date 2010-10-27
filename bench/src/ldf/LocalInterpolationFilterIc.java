@@ -10,8 +10,8 @@ import edu.mines.jtk.awt.ColorMap;
 import edu.mines.jtk.mosaic.PixelsView;
 import edu.mines.jtk.mosaic.SimplePlot;
 import edu.mines.jtk.sgl.ImagePanelGroup;
+import edu.mines.jtk.sgl.SimpleFrame;
 import edu.mines.jtk.sgl.World;
-import edu.mines.jtk.sgl.test.TestFrame;
 import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
@@ -546,7 +546,7 @@ public class LocalInterpolationFilterIc {
     ipg.setColorModel(ColorMap.JET);
     World world = new World();
     world.addChild(ipg);
-    TestFrame frame = new TestFrame(world);
+    SimpleFrame frame = new SimpleFrame(world);
     frame.setVisible(true);
   }
 

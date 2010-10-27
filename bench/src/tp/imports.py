@@ -6,6 +6,7 @@ import sys
 from java.awt import *
 from java.io import *
 from java.lang import *
+from java.util import *
 from javax.swing import *
 
 from edu.mines.jtk.awt import *

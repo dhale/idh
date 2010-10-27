@@ -17,7 +17,7 @@ import edu.mines.jtk.mosaic.PlotPanel;
 import edu.mines.jtk.mosaic.SimplePlot;
 import static edu.mines.jtk.ogl.Gl.GL_AMBIENT_AND_DIFFUSE;
 import edu.mines.jtk.sgl.*;
-import edu.mines.jtk.sgl.test.TestFrame;
+import edu.mines.jtk.sgl.SimpleFrame;
 import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
@@ -265,7 +265,7 @@ public class SambridgeError {
     world.addChild(pg);
     world.addChild(tg);
     //System.out.println("bs = "+world.getBoundingSphere(true));
-    TestFrame frame = new TestFrame(world);
+    SimpleFrame frame = new SimpleFrame(world);
     OrbitView view = frame.getOrbitView();
     double xs = 0.5*(XMIN+XMAX);
     double ys = 0.5*(XMIN+XMAX);

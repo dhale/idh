@@ -15,7 +15,6 @@ import edu.mines.jtk.mesh.TriMesh;
 import edu.mines.jtk.mosaic.*;
 import static edu.mines.jtk.ogl.Gl.GL_AMBIENT_AND_DIFFUSE;
 import edu.mines.jtk.sgl.*;
-import edu.mines.jtk.sgl.test.TestFrame;
 import static edu.mines.jtk.util.ArrayMath.*;
 
 public class Mag {
@@ -277,7 +276,7 @@ public class Mag {
     World world = new World();
     world.addChild(pg);
     world.addChild(tg);
-    TestFrame frame = new TestFrame(world);
+    SimpleFrame frame = new SimpleFrame(world);
     OrbitView view = frame.getOrbitView();
     view.setAxesOrientation(AxesOrientation.XOUT_YRIGHT_ZUP);
     frame.setSize(new Dimension(1200,800));

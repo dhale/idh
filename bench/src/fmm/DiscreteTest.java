@@ -17,7 +17,6 @@ import edu.mines.jtk.mesh.TriMesh;
 import edu.mines.jtk.mosaic.*;
 import static edu.mines.jtk.ogl.Gl.GL_AMBIENT_AND_DIFFUSE;
 import edu.mines.jtk.sgl.*;
-import edu.mines.jtk.sgl.test.TestFrame;
 import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
@@ -550,7 +549,7 @@ public class DiscreteTest {
     World world = new World();
     world.addChild(pg);
     world.addChild(tg);
-    TestFrame frame = new TestFrame(world);
+    SimpleFrame frame = new SimpleFrame(world);
     OrbitView view = frame.getOrbitView();
     view.setScale(2.0f);
     view.setElevation(30.0f); // good for sinsin points

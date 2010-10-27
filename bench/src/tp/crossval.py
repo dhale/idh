@@ -25,18 +25,18 @@ smooth = 0 # no smoothing
 pngDir = None
 
 def main(args):
-  goCrossVal()
+  #goCrossVal()
   #goErrors()
-  #goDisplay()
+  goDisplay()
 
 def goCrossVal():
-  for omit in [6]: #vomit:
-    crossVal(omit)
+  for omit in vomit:
+    #crossVal(omit)
     writeLogs(omit)
 
 def crossVal(omit):
   #gridWellLogs(omit)
-  gridBlendedP(omit)
+  #gridBlendedP(omit)
   gridBlendedQ(omit)
   return
 
@@ -215,7 +215,7 @@ def displayLogs(k):
   pv.setLineWidth(4.0)
   #pv = sp.addPoints(x1p,fp)
   #pv.setLineColor(Color.RED)
-  #pv.setLineWidth(3.0)
+  #pv.setLineWidth(4.0)
   pv = sp.addPoints(x1q,fq)
   pv.setLineColor(Color.RED)
   pv.setLineWidth(4.0)
