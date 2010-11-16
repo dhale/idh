@@ -17,12 +17,38 @@ from ldf import *
 #############################################################################
 # functions
 
+def main(args):
+  goEdges()
+  #goFilter(True)
+
+def goEdges():
+  n1,n2 = 251,357
+  clip = 4.5
+  fileName = "/data/seis/tp/csm/oldslices/tp73.dat"
+  x = readImage(n1,n2,fileName)
+  t = makeImageTensors(x)
+  plot(x,clip)
+  sigma1 = 4.0; c1 = 0.5*sigma1*sigma1
+  sigma2 = 8.0; c2 = 0.5*sigma2*sigma2
+  sigma3 = 2.0; c3 = 0.5*sigma3*sigma3
+  lsf = LocalSmoothingFilter()
+  rgf = RecursiveGaussianFilter(sigma3)
+  y1 = copy(x)
+  y2 = copy(x)
+  lsf.apply(t,c1,x,y1)
+  lsf.apply(t,c2,x,y2)
+  #plot(y1)
+  #plot(y2)
+  y = sub(y2,y1)
+  plot(y)
+  z = mul(x,y)
+  plot(z)
+  rgf.apply00(z,z)
+  plot(z)
+
 gauss = BilateralFilter.Type.GAUSS
 huber = BilateralFilter.Type.HUBER
 tukey = BilateralFilter.Type.TUKEY
-
-def main(args):
-  goFilter(True)
 
 def goFilter(guided):
   n1,n2 = 251,357
@@ -40,11 +66,17 @@ def goFilter(guided):
     else: bf.apply(x,y)
     plot(y,clip)
   """
-  sigmaX = 50.0
+  sigmaX = 0.5
   for sigmaS in [20.0]: #[2.5,5.0,10.0,20.0]:
     bf = BilateralFilter(sigmaS,sigmaX)
-    if guided: bf.apply(t,x,y)
-    else: bf.apply(x,y)
+    if guided: 
+      bf.apply(t,x,y); plot(y,clip) 
+      bf.apply(t,copy(y),y); plot(y,clip) 
+      bf.apply(t,copy(y),y); plot(y,clip) 
+      bf.apply(t,copy(y),y); plot(y,clip) 
+      bf.apply(t,copy(y),y); plot(y,clip) 
+    else: 
+      bf.apply(x,y)
     plot(y,clip,"bly")
     plot(sub(x,y),0.1*clip,"bln")
 

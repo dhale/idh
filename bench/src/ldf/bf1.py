@@ -20,9 +20,36 @@ from ldf import *
 # functions
 
 def main(args):
+  goShowEdgeFilters()
   #goShowRangeFunctions()
-  goFilter()
+  #goFilter()
   return
+
+def goShowEdgeFilters():
+  n = 201
+  fft = Fft(n)
+  x = zerofloat(n)
+  x[n/2] = 1.0
+  lsf = LocalSmoothingFilter()
+  y1 = zerofloat(n)
+  y2 = zerofloat(n)
+  sigma1 = 1.0
+  sigma2 = 2.0
+  lsf.apply(0.5*sigma1*sigma1,x,y1)
+  lsf.apply(0.5*sigma2*sigma2,x,y2)
+  y = sub(y1,y2)
+  ay = cabs(fft.applyForward(y))
+  #sp = SimplePlot.asPoints(x)
+  #sp = SimplePlot.asPoints(y)
+  SimplePlot.asPoints(ay).setVLimits(0.0,0.8)
+  rgf1 = RecursiveGaussianFilter(sigma1)
+  rgf2 = RecursiveGaussianFilter(sigma2)
+  rgf1.apply0(x,y1)
+  rgf2.apply0(x,y2)
+  y = sub(y1,y2)
+  ay = cabs(fft.applyForward(y))
+  #sp = SimplePlot.asPoints(y)
+  SimplePlot.asPoints(ay).setVLimits(0.0,0.8)
 
 gauss = BilateralFilter.Type.GAUSS
 huber = BilateralFilter.Type.HUBER
