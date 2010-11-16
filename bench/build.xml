@@ -17,6 +17,12 @@ available at http://www.eclipse.org/legal/cpl-v10.html
   <property name="build.cls" value="${build}/cls"/>
   <property name="build.jar" value="${build}/jar"/>
 
+  <!-- Where is Scala? (Scala builds currently disabled) -->
+  <property environment="env"/>
+  <condition property="scala.home" value="${env}">
+    <isset property="env.CURRENTLY_DISABLED_SCALA_HOME"/>
+  </condition>
+
   <!-- Other global settings -->
   <property name="title" value="Dave Hale's Java"/>
   <property environment="env"/>
@@ -36,10 +42,12 @@ available at http://www.eclipse.org/legal/cpl-v10.html
     <mkdir dir="${build.jar}"/>
   </target>
 
-  <!-- Compile Java -->
+  <!-- Compile Java sources -->
   <target name="compile-java" depends="init">
     <javac srcdir="${src}" destdir="${build.cls}" 
       compiler="javac1.6"
+      memoryMaximumSize="500m"
+      fork="true"
       debug="on" 
       deprecation="on"
       includeantruntime="false">
@@ -50,8 +58,33 @@ available at http://www.eclipse.org/legal/cpl-v10.html
     </javac>
   </target>
 
+  <!-- Compile Scala sources (only if SCALA_HOME defined) -->
+  <target if="scala.home" name="compile-scala" depends="init,compile-java">
+    <path id="scala.tools.classpath">
+      <pathelement location="${scala.home}/lib/scala-compiler.jar"/>
+      <pathelement location="${scala.home}/lib/scala-library.jar"/>
+    </path>
+    <path id="scala.build.classpath">
+      <pathelement location="${build.cls}"/>
+      <fileset dir="${basedir}/../../../jtk/trunk">
+        <include name="jar/*.jar"/>
+        <include name="build/jar/edu_mines_jtk.jar"/>
+      </fileset>
+      <pathelement location="${scala.home}/lib/scala-library.jar"/>
+    </path>
+    <taskdef resource="scala/tools/ant/antlib.xml">
+      <classpath refid="scala.tools.classpath"/>
+    </taskdef>
+    <scalac srcdir="${src}" 
+      destdir="${build.cls}" 
+      deprecation="on">
+      <classpath refid="scala.build.classpath"/>
+      <include name="**/*.scala"/>
+    </scalac>
+  </target>
+
   <!-- Build Java archive -->
-  <target name="jar" depends="compile-java,copy-resources"
+  <target name="jar" depends="compile-java,compile-scala,copy-resources"
       description="build Java archive">
     <jar jarfile="${build.jar}/idh.jar" basedir="${build.cls}"/>
   </target>
