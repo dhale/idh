@@ -16,7 +16,8 @@ from edu.mines.jtk.mosaic import *
 from edu.mines.jtk.util import *
 from edu.mines.jtk.util.ArrayMath import *
 
-from fmm import *
+#from fmm import *
+from edu.mines.jtk.interp import TimeMarker2
 
 #############################################################################
 # global parameters
@@ -34,8 +35,8 @@ prism = ColorMap.PRISM
 
 def main(args):
   #testSimple()
-  testConstant()
-  #testSine()
+  #testConstant()
+  testSine()
   #testTsai()
   return
 
@@ -60,7 +61,8 @@ def testConstant():
   #testSolver(n1,n2,i1,i2,tensors)
  
 def testSine():
-  n1,n2 = 601,601
+  #n1,n2 = 601,601
+  n1,n2 = 2001,2001
   #i1 = [7*n1/8,3*n1/8,5*n1/8,2*n1/8]
   #i2 = [1*n2/8,4*n2/8,4*n2/8,6*n2/8]
   i1,i2 = randomSites(10,n1,n2)
@@ -77,19 +79,28 @@ def testTsai():
   testMarker(n1,n2,i1,i2,tensors)
 
 def testMarker(n1,n2,i1,i2,tensors):
-  times = fillfloat(Float.MAX_VALUE,n1,n2)
-  marks = zeroint(n1,n2)
-  for k in range(len(i1)):
-    k1,k2 = i1[k],i2[k]
-    times[k2][k1] = 0.0
-    marks[k2][k1] = 1+k
-  tm = TimeMarker2(n1,n2,tensors)
-  tm.apply(times,marks)
-  print "times min =",min(times),"max =",max(times)
-  print "marks min =",min(marks),"max =",max(marks)
-  marks = floatsFromInts(marks)
-  plot(times,0,0,prism)
-  plot(marks,0,0,jet)
+  sw = Stopwatch()
+  for trial in range(3):
+    for c in [TimeMarker2.Concurrency.SERIAL,
+              TimeMarker2.Concurrency.PARALLEL,
+              TimeMarker2.Concurrency.PARALLELX]:
+      times = fillfloat(Float.MAX_VALUE,n1,n2)
+      marks = zeroint(n1,n2)
+      for k in range(len(i1)):
+        k1,k2 = i1[k],i2[k]
+        times[k2][k1] = 0.0
+        marks[k2][k1] = 1+k
+      tm = TimeMarker2(n1,n2,tensors)
+      tm.setConcurrency(c)
+      sw.restart()
+      tm.apply(times,marks)
+      sw.stop()
+      print c,"sec =",sw.time()
+      #print c,"times min =",min(times),"max =",max(times)
+      #print c,"marks min =",min(marks),"max =",max(marks)
+      #marks = floatsFromInts(marks)
+      #plot(times,0,0,prism)
+      #plot(marks,0,0,jet)
 
 def testSolver(n1,n2,i1,i2,tensors):
   known = zerobyte(n1,n2)
