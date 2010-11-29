@@ -95,7 +95,7 @@ def testMarker(n1,n2,i1,i2,tensors):
       sw.restart()
       tm.apply(times,marks)
       sw.stop()
-      print c,"sec =",sw.time()
+      print c,"elapsed time =",sw.time()
       #print c,"times min =",min(times),"max =",max(times)
       #print c,"marks min =",min(marks),"max =",max(marks)
       #marks = floatsFromInts(marks)

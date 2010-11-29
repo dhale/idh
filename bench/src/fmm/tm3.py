@@ -13,11 +13,11 @@ from edu.mines.jtk.awt import *
 from edu.mines.jtk.dsp import *
 from edu.mines.jtk.io import *
 from edu.mines.jtk.sgl import *
-from edu.mines.jtk.sgl.test import *
 from edu.mines.jtk.util import *
 from edu.mines.jtk.util.ArrayMath import *
 
-from fmm import *
+#from fmm import *
+from edu.mines.jtk.interp import TimeMarker3
 
 #############################################################################
 # global parameters
@@ -35,7 +35,7 @@ def main(args):
   return
  
 def testConstant():
-  n1,n2,n3 = 101,101,101
+  n1,n2,n3 = 141,141,141
   d11 = 1.000;
   d12 = 0.900; d22 = 1.000;
   d13 = 0.900; d23 = 0.900; d33 = 1.000 
@@ -46,23 +46,28 @@ def testConstant():
   testMarker(n1,n2,n3,i1,i2,i3,tensors)
 
 def testMarker(n1,n2,n3,i1,i2,i3,tensors):
-  times = fillfloat(FLT_MAX,n1,n2,n3)
-  marks = zeroint(n1,n2,n3)
-  for k in range(len(i1)):
-    k1,k2,k3 = i1[k],i2[k],i3[k]
-    times[k3][k2][k1] = 0.0
-    marks[k3][k2][k1] = 1+k
-  tm = TimeMarker3(n1,n2,n3,tensors)
   sw = Stopwatch()
-  sw.start()
-  tm.apply(times,marks)
-  sw.stop()
-  print "elapsed time =",sw.time()
-  print "times: min =",min(times),"max =",max(times)
-  print "marks: min =",min(marks),"max =",max(marks)
-  marks = floatsFromInts(marks)
-  plot(times,prism)
-  plot(marks,jet)
+  for trial in range(3):
+    for c in [TimeMarker3.Concurrency.SERIAL,
+              TimeMarker3.Concurrency.PARALLEL,
+              TimeMarker3.Concurrency.PARALLELX]:
+      times = fillfloat(FLT_MAX,n1,n2,n3)
+      marks = zeroint(n1,n2,n3)
+      for k in range(len(i1)):
+        k1,k2,k3 = i1[k],i2[k],i3[k]
+        times[k3][k2][k1] = 0.0
+        marks[k3][k2][k1] = 1+k
+      tm = TimeMarker3(n1,n2,n3,tensors)
+      tm.setConcurrency(c)
+      sw.restart()
+      tm.apply(times,marks)
+      sw.stop()
+      print c,"elapsed time =",sw.time()
+      #print "times: min =",min(times),"max =",max(times)
+      #print "marks: min =",min(marks),"max =",max(marks)
+      #marks = floatsFromInts(marks)
+      #plot(times,prism)
+      #plot(marks,jet)
 
 #############################################################################
 # other functions
@@ -100,7 +105,7 @@ def plot(t,cm):
   ipg.setColorModel(cm)
   world = World()
   world.addChild(ipg)
-  frame = TestFrame(world)
+  frame = SimpleFrame(world)
   frame.setVisible(True)
 
 #############################################################################

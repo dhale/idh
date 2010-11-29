@@ -18,14 +18,47 @@ from ldf import *
 # functions
 
 def main(args):
-  goEdges()
-  #goFilter(True)
+  goFilter(True)
+  #goEdges()
+
+gauss = BilateralFilter.Type.GAUSS
+huber = BilateralFilter.Type.HUBER
+tukey = BilateralFilter.Type.TUKEY
+
+def goFilter(guided):
+  #n1,n2 = 251,357
+  #clip = 4.5
+  #fileName = "/data/seis/tp/csm/oldslices/tp73.dat"
+  n1,n2 = 462,951
+  clip = 5.0
+  fileName = "/data/seis/f3d/f3d75.dat"
+  x = readImage(fileName,n1,n2)
+  print "x min =",min(x)," max =",max(x)
+  t = makeImageTensors(x)
+  plot(x,clip)
+  #s = computeSigmaX(20.0,t,x)
+  #print "s min =",min(s)," max =",max(s)
+  #plot(s,clip)
+  y = zerofloat(n1,n2)
+  sigmaX = 1.0
+  for sigmaS in [20.0]: #[2.5,5.0,10.0,20.0]:
+    bf = BilateralFilter(sigmaS,sigmaX)
+    if guided: 
+      bf.apply(t,x,y)
+      plot(y,clip)
+      bf.apply(t,copy(y),y)
+      plot(y,clip)
+      bf.apply(t,copy(y),y)
+    else: 
+      bf.apply(x,y)
+    plot(y,clip)
+    plot(sub(x,y),0.5*clip)
 
 def goEdges():
   n1,n2 = 251,357
   clip = 4.5
   fileName = "/data/seis/tp/csm/oldslices/tp73.dat"
-  x = readImage(n1,n2,fileName)
+  x = readImage(fileName,n1,n2)
   t = makeImageTensors(x)
   plot(x,clip)
   sigma1 = 4.0; c1 = 0.5*sigma1*sigma1
@@ -46,51 +79,36 @@ def goEdges():
   rgf.apply00(z,z)
   plot(z)
 
-gauss = BilateralFilter.Type.GAUSS
-huber = BilateralFilter.Type.HUBER
-tukey = BilateralFilter.Type.TUKEY
-
-def goFilter(guided):
-  n1,n2 = 251,357
-  clip = 4.5
-  fileName = "/data/seis/tp/csm/oldslices/tp73.dat"
-  x = readImage(n1,n2,fileName)
-  t = makeImageTensors(x)
-  plot(x,clip,"blx")
-  y = zerofloat(n1,n2)
-  """
-  sigmaS = 5.0
-  for sigmaX in [0.25,0.5,1.0,2.0]:
-    bf = BilateralFilter(sigmaS,sigmaX)
-    if guided: bf.apply(t,x,y)
-    else: bf.apply(x,y)
-    plot(y,clip)
-  """
-  sigmaX = 0.5
-  for sigmaS in [20.0]: #[2.5,5.0,10.0,20.0]:
-    bf = BilateralFilter(sigmaS,sigmaX)
-    if guided: 
-      bf.apply(t,x,y); plot(y,clip) 
-      bf.apply(t,copy(y),y); plot(y,clip) 
-      bf.apply(t,copy(y),y); plot(y,clip) 
-      bf.apply(t,copy(y),y); plot(y,clip) 
-      bf.apply(t,copy(y),y); plot(y,clip) 
-    else: 
-      bf.apply(x,y)
-    plot(y,clip,"bly")
-    plot(sub(x,y),0.1*clip,"bln")
-
-def readImage(n1,n2,fileName):
+def readImage(fileName,n1,n2):
   x = zerofloat(n1,n2)
   ais = ArrayInputStream(fileName)
   ais.readFloats(x)
   ais.close()
   return x
 
+def powerGain(x,p):
+  return mul(sgn(x),pow(abs(x),p))
+
+def computeSigmaX(sigmaS,t,x):
+  n1,n2 = len(x[0]),len(x)
+  c = 0.5*sigmaS*sigmaS
+  lsf = LocalSmoothingFilter()
+  u = copy(x)
+  lsf.applySmoothS(x,u)
+  lsf.apply(t,c,copy(u),u) # u = <x>
+  plot(u,5.0)
+  sub(x,u,u) # u = x-<x>
+  mul(u,u,u) # u = (x-<x>)^2
+  v = copy(u)
+  lsf.applySmoothS(u,u)
+  lsf.apply(t,c,u,v)
+  sqrt(v,v)
+  return v
+
 def makeImageTensors(s):
   n1,n2 = len(s[0]),len(s)
-  sigma = 3.0
-  lof = LocalOrientFilter(sigma)
+  lof = LocalOrientFilter(8.0)
+  lof.setGradientSmoothing(2.0)
   t = lof.applyForTensors(s)
   t.setEigenvalues(0.001,1.000)
   #t.setEigenvalues(1.000,1.000)

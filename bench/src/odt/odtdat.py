@@ -27,15 +27,16 @@ from imports import *
 def main(args):
   for name in ["f3d"]: # ["f3d","pen"]:
     setGlobals(name)
-    #convertEndian(odtfile,datfile)
-    display3d(datfile)
+    convertEndianAndScale(odtfile,datfile)
+    #display3d(datfile)
     #displaySlice2(datfile)
 
 def setGlobals(what):
   global n1,n2,n3,d1,d2,d3,f1,f2,f3
   global datDir,datbase,datfile,odtfile
   global clip,scale,scale1
-  datDir = "/data/seis/odt/"
+  datDir = "/data/seis/"+what+"/"
+  odtDir = "/data/seis/odt/"
   clip = 5000.0
   if what=="f3d":
     n1,n2,n3 = 462,951,591 # time[4,1848], xline[100,690], iline[300,1250]
@@ -43,7 +44,7 @@ def setGlobals(what):
     f1,f2,f3 = 0.004,0.000,0.000 # s, km, km
     datbase = "f3d"
     datfile = datDir+"f3d.dat" # flat file of BIG_ENDIAN floats
-    odtfile = datDir+"f3dx.dat" # simple file exported from OpendTect
+    odtfile = odtDir+"f3dx.dat" # simple file exported from OpendTect
     scale,scale1 = 3.0,8.0
   if what=="pen":
     n1,n2,n3 = 1501,480,456 # time[0,6000] xline[1001,1480], iline[1075,1530]
@@ -51,14 +52,15 @@ def setGlobals(what):
     f1,f2,f3 = 0.000,0.000,0.000 # s, km, km
     datbase = "pen"
     datfile = datDir+"pen.dat" # flat file of BIG_ENDIAN floats
-    odtfile = datDir+"penx.dat" # simple file exported from OpendTect
+    odtfile = odtDir+"penx.dat" # simple file exported from OpendTect
     scale,scale1 = 2.0,2.0
 
-def convertEndian(infile,outfile):
+def convertEndianAndScale(infile,outfile):
   x = zerofloat(n1*n2*n3)
   ais = ArrayInputStream(infile,ByteOrder.LITTLE_ENDIAN)
   ais.readFloats(x)
   ais.close()
+  mul(0.001,x,x) # OpendTect images are shorts in [-32767,32767]
   aos = ArrayOutputStream(outfile)
   aos.writeFloats(x)
   aos.close()

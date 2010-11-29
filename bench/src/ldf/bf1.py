@@ -20,9 +20,9 @@ from ldf import *
 # functions
 
 def main(args):
-  goShowEdgeFilters()
+  #goShowEdgeFilters()
   #goShowRangeFunctions()
-  #goFilter()
+  goFilter()
   return
 
 def goShowEdgeFilters():

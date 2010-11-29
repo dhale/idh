@@ -279,7 +279,7 @@ public class BilateralFilter {
   private class Lsf extends SpatialFilter {
     public Lsf(double sigma) {
       super(sigma);
-      _lsf = new LocalSmoothingFilter();
+      _lsf = new LocalSmoothingFilter(0.01,200);
       _c = (float)(0.5*sigma*sigma);
     }
     public void setTensors(Tensors2 t2) {
@@ -356,7 +356,7 @@ public class BilateralFilter {
       scale(fx,xk,x,tn,td);
       f1.apply(copy(tn),tn);
       f1.apply(copy(td),td);
-      accum(dx,xk,x,tn,td,yn,yd);
+      accum(xk-dx,xk,xk+dx,dx,x,tn,td,yn,yd);
     }
     div(yn,yd,y);
   }
@@ -375,7 +375,7 @@ public class BilateralFilter {
       scale(fx,xk,x,tn,td);
       f2.apply(copy(tn),tn);
       f2.apply(copy(td),td);
-      accum(dx,xk,x,tn,td,yn,yd);
+      accum(xk-dx,xk,xk+dx,dx,x,tn,td,yn,yd);
     }
     div(yn,yd,y);
   }
@@ -395,7 +395,7 @@ public class BilateralFilter {
       scale(fx,xk,x,tn,td);
       f3.apply(copy(tn),tn);
       f3.apply(copy(td),td);
-      accum(dx,xk,x,tn,td,yn,yd);
+      accum(xk-dx,xk,xk+dx,dx,x,tn,td,yn,yd);
     }
     div(yn,yd,y);
   }
@@ -424,34 +424,38 @@ public class BilateralFilter {
     for (int i3=0; i3<n3; ++i3)
       scale(fx,xk,x[i3],tn[i3],td[i3]);
   }
-  private static void accum(float dx, float xk, float[] x,
+
+  // xa <= xb <= xc
+  private static void accum(
+    float xa, float xb, float xc, float dx, float[] x, 
     float[] tn, float[] td, float[] yn, float[] yd) 
   {
     int n1 = x.length;
-    float xlo = xk-dx;
-    float xhi = xk+dx;
-    float odx = 1.0f/dx;
+    float sab = 1.0f/max(dx,xb-xa);
+    float sbc = 1.0f/max(dx,xc-xb);
     for (int i1=0; i1<n1; ++i1) {
       float xi = x[i1];
-      if (xlo<xi && xi<xhi) {
-        float w = 1.0f-((xi<=xk)?(xk-xi)*odx:(xi-xk)*odx);
+      if (xa<xi && xi<xc) {
+        float w = 1.0f-((xi<=xb)?(xb-xi)*sab:(xi-xb)*sbc);
         yn[i1] += w*tn[i1];
         yd[i1] += w*td[i1]; 
       }
     }
   }
-  private static void accum(float dx, float xk, float[][] x,
+  private static void accum(
+    float xa, float xb, float xc, float dx, float[][] x, 
     float[][] tn, float[][] td, float[][] yn, float[][] yd) 
   {
     int n2 = x.length;
     for (int i2=0; i2<n2; ++i2)
-      accum(dx,xk,x[i2],tn[i2],td[i2],yn[i2],yd[i2]);
+      accum(xa,xb,xc,dx,x[i2],tn[i2],td[i2],yn[i2],yd[i2]);
   }
-  private static void accum(float dx, float xk, float[][][] x,
+  private static void accum(
+    float xa, float xb, float xc, float dx, float[][][] x, 
     float[][][] tn, float[][][] td, float[][][] yn, float[][][] yd) 
   {
     int n3 = x.length;
     for (int i3=0; i3<n3; ++i3)
-      accum(dx,xk,x[i3],tn[i3],td[i3],yn[i3],yd[i3]);
+      accum(xa,xb,xc,dx,x[i3],tn[i3],td[i3],yn[i3],yd[i3]);
   }
 }
