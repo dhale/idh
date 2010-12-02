@@ -24,25 +24,88 @@ TIME: 1501 samples  (6 sec, interval 4ms)
   nbytes = 69,479,807,644
   ntrace = (nbytes-nhead-nbhed)/(240+4*n1)
   """
+  nbytes = 69479807644
   n1 = 1501
   datdir = "/data/seis/nz/par/"
   sgyfile = datdir+"Parihaka3d_full.sgy"
   datfile = datdir+"par.dat"
+  mapfile = datdir+"map.dat"
+  makeMap(sgyfile,mapfile,nbytes,n1)
   #readFormat(sgyfile)
-  dumpTraceHeaders(sgyfile,n1)
+  #dumpTraceHeaders(sgyfile,n1)
   #testFormat(n1,n2,n3,sgyfile)
   #convert(n1,n2,n3,sgyfile,datfile)
   #display3d(n1,n2,n3,datfile,2.0e4)
 
+def makeMap(sgyfile,mapfile,nbytes,n1):
+  ntrace = (nbytes-nhead-nbhed)/(240+4*n1)
+  af = ArrayFile(sgyfile,"r")
+  af.skipBytes(nhead)
+  af.skipBytes(nbhed)
+  h = zeroint(nthed/4)
+  m2,m3 = 8000,16000
+  m = zerofloat(m2,m3)
+  i2min =  Integer.MAX_VALUE
+  i2max = -Integer.MAX_VALUE
+  i3min =  Integer.MAX_VALUE
+  i3max = -Integer.MAX_VALUE
+  for i in range(ntrace/100):
+    if i%100==0:
+      print "i =",i
+      print "i2:  min =",i2min," max =",i2max
+      print "i3:  min =",i3min," max =",i3max
+    af.readInts(h)
+    i2,i3 = h[49],h[50]
+    if i2<m2 and i3<m3:
+      m[i3][i2] = 1.0
+    #print "i =",i," i2 =",i2," i3 =",i3
+    if i2<i2min: i2min = i2
+    if i2>i2max: i2max = i2
+    if i3<i3min: i3min = i3
+    if i3>i3max: i3max = i3
+    af.skipBytes(4*n1)
+    af.seek(af.filePointer+100*(nthed+4*n1))
+  af.close()
+  print "i2:  min =",i2min," max =",i2max
+  print "i3:  min =",i3min," max =",i3max
+  sp = SimplePlot()
+  pv = sp.addPixels(m)
+  pv.setInterpolation(PixelsView.Interpolation.NEAREST)
+  aos = ArrayOutputStream(mapfile)
+  aos.writeFloats(m)
+  aos.close()
+
 def dumpTraceHeaders(sgyfile,n1):
+  af = ArrayFile(sgyfile,"r")
+  af.skipBytes(nhead)
+  af.skipBytes(nbhed)
+  hi = zeroint(nthed/4)
+  hs = zeroshort(nthed/2)
+  for i in range(5):
+    fp = af.getFilePointer()
+    af.readInts(hi)
+    af.seek(fp)
+    af.readShorts(hs)
+    print "ensemble number =",hi[5]
+    print "trace in ensemble =",hi[6]
+    print "coord scale factor =",hs[35]
+    print "x,y coord =",hi[45],hi[46]
+    print "iline,xline =",hi[47],hi[48]
+    print "iline,xline =",hi[49],hi[50]
+    #dump(hi)
+    #dump(hs)
+    af.skipBytes(4*n1)
+  af.close()
+
+def dumpTraceHeadersX(sgyfile,n1):
   ais = ArrayInputStream(sgyfile)
   ais.skipBytes(nhead)
   ais.skipBytes(nbhed)
   h = zeroint(nthed/4)
-  for i in range(2):
+  for i in range(10):
     ais.readInts(h)
     dump(h)
-    print "i =",i," iline =",h[47]," xline =",h[48]
+    print "i =",i," iline =",h[49]," xline =",h[50]
     ais.skipBytes(4*n1)
   ais.close()
 
