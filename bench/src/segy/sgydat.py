@@ -14,9 +14,25 @@ nthed=240 # number of bytes in trace header
 
 #############################################################################
 def main(args):
-  goParihaka()
+  goParihakaSubsets()
 
 def goParihaka():
+  """
+INLINES  : 1665 - 5599 (INC 1)   CROSSLINES : 2050 - 14026 (INC 2)
+TIME: 1501 samples  (6 sec, interval 4ms)
+  n1 = 1501
+  nbytes = 69,479,807,644
+  ntrace = (nbytes-nhead-nbhed)/(240+4*n1)
+  """
+  datdir = "/data/seis/nz/par/"
+  sgyfile = datdir+"Parihaka3d_full.sgy"
+  datfile = datdir+"par.dat"
+  readFormat(sgyfile)
+  #testFormat(n1,n2,n3,sgyfile)
+  #convert(n1,n2,n3,sgyfile,datfile)
+  #display3d(n1,n2,n3,datfile,2.0e4)
+
+def goParihakaSubsets():
   #n1,n2,n3 = 751,1501,701
   n1,n2,n3 = 751,1501,601
   datdir = "/data/seis/nz/par/"
@@ -28,7 +44,7 @@ def goParihaka():
   #convert(n1,n2,n3,sgyfile,datfile)
   #display3d(n1,n2,n3,datfile,2.0e4)
 
-def check(n1,n2,n3,sgyfile):
+def checkSubset(n1,n2,n3,sgyfile):
   print "checking",(n2*n3),"traces"
   nh = nthed/2
   nx = n1
