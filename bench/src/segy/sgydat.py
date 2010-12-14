@@ -18,24 +18,134 @@ def main(args):
 
 def goParihaka():
   """
-INLINES  : 1665 - 5599 (INC 1)   CROSSLINES : 2050 - 14026 (INC 2)
-TIME: 1501 samples  (6 sec, interval 4ms)
+  INLINES  : 1665 - 5599 (INC 1)   CROSSLINES : 2050 - 14026 (INC 2)
+  TIME: 1501 samples  (6 sec, interval 4ms)
   n1 = 1501
   nbytes = 69,479,807,644
   ntrace = (nbytes-nhead-nbhed)/(240+4*n1)
-  """
   nbytes = 69479807644
-  n1 = 1501
+  """
   datdir = "/data/seis/nz/par/"
-  sgyfile = datdir+"Parihaka3d_full.sgy"
-  datfile = datdir+"par.dat"
+  sgyfile = datdir+"Parihaka3d_raw.sgy"
   mapfile = datdir+"map.dat"
-  makeMap(sgyfile,mapfile,nbytes,n1)
+  datfile = datdir+"par11.dat"
+  displayParihaka(datfile)
+  #makeSubsetsParihaka(datdir)
+  #displaySubsetParihaka(datfile,0,500,500,751,501,501)
+  #bigSubsetParihaka(n1,sgyfile,datfile)
   #readFormat(sgyfile)
+  #makeMap(sgyfile,mapfile,nbytes,n1)
   #dumpTraceHeaders(sgyfile,n1)
   #testFormat(n1,n2,n3,sgyfile)
   #convert(n1,n2,n3,sgyfile,datfile)
-  #display3d(n1,n2,n3,datfile,2.0e4)
+
+def displayParihaka(datfile):
+  n1,n2,n3 = 751,1001,1001
+  x = readImage(datfile,n1,n2,n3)
+  display3d(x,1.0e5)
+
+def makeSubsetsParihaka(datdir):
+  m1,m2,m3 = 751,1001,1001
+  x = readParihaka(datdir+"parBig.dat",0,0,0,m1,m2,m3)
+  writeImage(datdir+"par00.dat",x)
+  x = None
+  x = readParihaka(datdir+"parBig.dat",0,1000,0,m1,m2,m3)
+  writeImage(datdir+"par01.dat",x)
+  x = None
+  x = readParihaka(datdir+"parBig.dat",0,0,1000,m1,m2,m3)
+  writeImage(datdir+"par10.dat",x)
+  x = None
+  x = readParihaka(datdir+"parBig.dat",0,1000,1000,m1,m2,m3)
+  writeImage(datdir+"par11.dat",x)
+  display3d(x,1.0e5)
+
+def displaySubsetParihaka(datfile,j1,j2,j3,m1,m2,m3):
+  x = readSubsetParihaka(datfile,j1,j2,j3,m1,m2,m3)
+  display3d(x,1.0e5)
+
+def readImage(datfile,n1,n2,n3):
+  x = zerofloat(n1,n2,n3)
+  ais = ArrayInputStream(datfile)
+  ais.readFloats(x)
+  ais.close()
+  return x
+
+def writeImage(datfile,x):
+  aos = ArrayOutputStream(datfile)
+  aos.writeFloats(x)
+  aos.close()
+
+def readParihaka(datfile,j1,j2,j3,m1,m2,m3):
+  n1,n2,n3 = 1501,2001,2001
+  m1 = min(m1,n1)
+  m2 = min(m2,n2)
+  m3 = min(m3,n3)
+  j1 = min(j1,n1-m1)
+  j2 = min(j2,n2-m2)
+  j3 = min(j3,n3-m3)
+  x = zerofloat(m1,m2,m3)
+  ais = ArrayInputStream(datfile)
+  for i3 in range(j3):
+    ais.skipBytes(4*n1*n2)
+  ais.skipBytes(4*(j1+n1*j2))
+  for i3 in range(m3):
+    if i3%10==0: 
+      print "i3 =",i3
+    for i2 in range(m2):
+      ais.readFloats(x[i3][i2])
+      ais.skipBytes(4*(n1-m1))
+    ais.skipBytes(4*n1*(n2-m2))
+  return x
+
+def bigSubsetParihaka(n1,sgyfile,datfile):
+  """ big subset 1501x2001x2001 ~ 24 GB
+  i1min,i1max =    0, 1500 # time samples
+  i2min,i2max = 6500,10500 # increment by 2
+  i3min,i3max = 2100, 4100 # increment by 1
+  """
+  """ A: small subset 501x501x501 ~ 500 MB
+  i1min,i1max =    0, 500 # time samples
+  i2min,i2max = 7500,8500 # increment by 2
+  i3min,i3max = 2500,3000 # increment by 1
+  """
+  """ B: subset 751x1001x1001 ~ 500 MB
+  i1min,i1max =    0, 750 # time samples
+  i2min,i2max = 7000,9000 # increment by 2
+  i3min,i3max = 3000,4000 # increment by 1
+  """
+  i1min,i1max =    0, 1500 # time samples
+  i2min,i2max = 6500,10500 # increment by 2
+  i3min,i3max = 2100, 4100 # increment by 1
+  m1 = 1+i1max-i1min
+  m2 = 1+(i2max-i2min)/2
+  m3 = 1+i3max-i3min
+  m23 = m2*m3
+  ais = ArrayInputStream(sgyfile)
+  aos = ArrayOutputStream(datfile)
+  ais.skipBytes(nhead)
+  ais.skipBytes(nbhed)
+  h = zeroint(nthed/4)
+  x = zeroint(n1)
+  y = zeroint(m1)
+  z = zerofloat(m1)
+  nread = 0
+  i23 = 0
+  while i23<m23:
+    nread += 1
+    ais.readInts(h)
+    i3,i2 = h[49],h[50]
+    if i2min<=i2 and i2<=i2max and i3min<=i3 and i3<=i3max:
+      i23 += 1
+      if i2==i2min:
+        print "nread =",nread," i3min =",i3min," i3 =",i3," i3max =",i3max
+      ais.readInts(x) # read trace samples
+      copy(m1,x,y) # keep only m1 samples
+      IbmIeee.ibmToFloat(y,z) # ibm to ieee
+      aos.writeFloats(z) # write trace samples
+    else:
+      ais.skipBytes(4*n1)
+  ais.close()
+  aos.close()
 
 def makeMap(sgyfile,mapfile,nbytes,n1):
   ntrace = (nbytes-nhead-nbhed)/(240+4*n1)
@@ -74,6 +184,7 @@ def makeMap(sgyfile,mapfile,nbytes,n1):
   aos = ArrayOutputStream(mapfile)
   aos.writeFloats(m)
   aos.close()
+
 
 def dumpTraceHeaders(sgyfile,n1):
   af = ArrayFile(sgyfile,"r")
@@ -159,11 +270,8 @@ def convert(n1,n2,n3,sgyfile,datfile):
   ais.close()
   aos.close()
 
-def display3d(n1,n2,n3,datfile,clip=0):
-  ais = ArrayInputStream(datfile)
-  x = zerofloat(n1,n2,n3)
-  ais.readFloats(x)
-  ais.close()
+def display3d(x,clip=0):
+  n1,n2,n3 = len(x[0][0]),len(x[0]),len(x)
   print "x min =",min(x)," max =",max(x)
   s1,s2,s3 = Sampling(n1),Sampling(n2),Sampling(n3)
   frame = SimpleFrame()
@@ -171,6 +279,13 @@ def display3d(n1,n2,n3,datfile,clip=0):
   if clip>0.0:
     ipg.setClips(-clip,clip)
   frame.setVisible(True)
+
+def displayFile3d(datfile,n1,n2,n3,clip=0):
+  x = zerofloat(n1,n2,n3)
+  ais = ArrayInputStream(datfile)
+  ais.readFloats(x)
+  ais.close()
+  display3d(x,clip)
 
 def readFormat(sgyfile):
   ais = ArrayInputStream(sgyfile)

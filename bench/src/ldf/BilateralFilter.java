@@ -279,7 +279,7 @@ public class BilateralFilter {
   private class Lsf extends SpatialFilter {
     public Lsf(double sigma) {
       super(sigma);
-      _lsf = new LocalSmoothingFilter(0.01,200);
+      _lsf = new LocalSmoothingFilter(0.001,(int)(10*sigma));
       _c = (float)(0.5*sigma*sigma);
     }
     public void setTensors(Tensors2 t2) {

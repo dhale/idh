@@ -12,47 +12,76 @@ from edu.mines.jtk.mosaic import *
 from edu.mines.jtk.util import *
 from edu.mines.jtk.util.ArrayMath import *
 
-from ldf import *
-
-#############################################################################
-# functions
-
-def main(args):
-  goFilter(True)
-  #goEdges()
+from ldf import BilateralFilter
 
 gauss = BilateralFilter.Type.GAUSS
 huber = BilateralFilter.Type.HUBER
 tukey = BilateralFilter.Type.TUKEY
 
-def goFilter(guided):
-  #n1,n2 = 251,357
-  #clip = 4.5
-  #fileName = "/data/seis/tp/csm/oldslices/tp73.dat"
+#############################################################################
+
+def main(args):
+  goFilter()
+  goSmooth()
+  #goSemblance()
+  #goNormalize()
+
+def getImage():
   n1,n2 = 462,951
-  clip = 5.0
   fileName = "/data/seis/f3d/f3d75.dat"
-  x = readImage(fileName,n1,n2)
-  print "x min =",min(x)," max =",max(x)
-  t = makeImageTensors(x)
-  plot(x,clip)
-  #s = computeSigmaX(20.0,t,x)
-  #print "s min =",min(s)," max =",max(s)
-  #plot(s,clip)
-  y = zerofloat(n1,n2)
-  sigmaX = 1.0
-  for sigmaS in [20.0]: #[2.5,5.0,10.0,20.0]:
-    bf = BilateralFilter(sigmaS,sigmaX)
-    if guided: 
-      bf.apply(t,x,y)
-      plot(y,clip)
-      bf.apply(t,copy(y),y)
-      plot(y,clip)
-      bf.apply(t,copy(y),y)
-    else: 
-      bf.apply(x,y)
-    plot(y,clip)
-    plot(sub(x,y),0.5*clip)
+  return readImage(fileName,n1,n2),6.0
+
+def goFilter():
+  x,xclip = getImage()
+  plot(x,xclip)
+  t = imageTensors(2.0,0.0001,x)
+  #c = semblance(2.0,t,x)
+  #c = pow(c,8.0)
+  #plot(c,1.0)
+  #eu = mul(0.0001,c)
+  #ev = mul(1.0000,c)
+  #t.setEigenvalues(eu,ev)
+  s = localScale(3.0,x)
+  x = div(x,s)
+  #plot(x,2.0)
+  y = bilateralFilter(30.0,1.0,t,x)
+  #plot(y,2.0)
+  y = mul(s,y)
+  plot(y,xclip)
+
+def goSmooth():
+  x,xclip = getImage()
+  plot(x,xclip)
+  t = imageTensors(2.0,0.0001,x)
+  c = semblance(2.0,t,x)
+  c = pow(c,8.0)
+  #plot(c,1.0)
+  eu = mul(0.0001,c)
+  ev = mul(1.0000,c)
+  t.setEigenvalues(eu,ev)
+  y = smooth(30.0,t,x)
+  plot(y,xclip)
+
+def goSemblance():
+  x,xclip = getImage()
+  plot(x,xclip)
+  t = imageTensors(2.0,0.001,x)
+  u,s,y = normalize(80.0,t,x)
+  s = semblance(2.0,t,y)
+  plot(s,1.0)
+
+def goNormalize():
+  x,xclip = getImage()
+  t = imageTensors(2.0,0.001,x)
+  u,s,y = normalize(80.0,t,x)
+  print "x: min =",min(x)," max =",max(x)
+  print "u: min =",min(u)," max =",max(u)
+  print "s: min =",min(s)," max =",max(s)
+  print "y: min =",min(y)," max =",max(y)
+  plot(x,xclip)
+  plot(u,xclip)
+  plot(s,xclip)
+  plot(y,2.0)
 
 def goEdges():
   n1,n2 = 251,357
@@ -86,37 +115,82 @@ def readImage(fileName,n1,n2):
   ais.close()
   return x
 
+def imageTensors(sigma,eu,x):
+  n1,n2 = len(x[0]),len(x)
+  lof = LocalOrientFilter(2.0*sigma,2.0)
+  lof.setGradientSmoothing(sigma)
+  t = lof.applyForTensors(x)
+  t.setEigenvalues(eu,1.000)
+  return t
+
+def bilateralFilter(sigmaS,sigmaX,t,x):
+  y = like(x)
+  bf = BilateralFilter(sigmaS,sigmaX)
+  bf.apply(t,x,y)
+  return y
+
+def smoothS(x):
+  y = like(x)
+  lsf = LocalSmoothingFilter()
+  lsf.applySmoothS(x,y)
+  return y
+
+def smooth(sigma,t,x):
+  z = copy(x)
+  if t==None:
+    rgf = RecursiveGaussianFilter(sigma)
+    rgf.apply00(x,z)
+  else:
+    ldk = LocalDiffusionKernel(LocalDiffusionKernel.Stencil.D71)
+    lsf = LocalSmoothingFilter(0.001,1000,ldk)
+    y = copy(x)
+    #lsf.applySmoothS(y,y)
+    #lsf.applySmoothL(kmax,y,y)
+    lsf.apply(t,0.5*sigma*sigma,y,z)
+  return z
+
+def localScale(sigma,x):
+  s = mul(x,x)
+  rgf = RecursiveGaussianFilter(sigma)
+  rgf.apply00(copy(s),s)
+  smax = max(s)
+  smin = 1.0e-6*smax
+  clip(smin,smax,s,s)
+  sqrt(s,s)
+  return s
+
+def localMuSigma(sigma,t,x):
+  u = smooth(sigma,t,x) # u = <x>
+  zero(u)
+  s = sub(x,u) # s = x-u
+  mul(s,s,s) # s = (x-u)^2
+  s = smooth(sigma,t,s) # s = <(x-<x>)^2>
+  s = smooth(2.0,None,s)
+  clip(0,max(s),s,s) # 0 <= s
+  sqrt(s,s) # s = sqrt(<(x-<x>)^2>)
+  return u,s
+
+def clipSmall(small,s):
+  smax = max(s)
+  smin = small*smax
+  return clip(smin,smax,s)
+
+def normalize(sigma,t,x):
+  u,s = localMuSigma(sigma,t,x)
+  s = clipSmall(0.0001,s)
+  return u,s,div(x,s)
+  #return u,s,div(sub(x,u),s)
+
 def powerGain(x,p):
   return mul(sgn(x),pow(abs(x),p))
 
-def computeSigmaX(sigmaS,t,x):
-  n1,n2 = len(x[0]),len(x)
-  c = 0.5*sigmaS*sigmaS
-  lsf = LocalSmoothingFilter()
-  u = copy(x)
-  lsf.applySmoothS(x,u)
-  lsf.apply(t,c,copy(u),u) # u = <x>
-  plot(u,5.0)
-  sub(x,u,u) # u = x-<x>
-  mul(u,u,u) # u = (x-<x>)^2
-  v = copy(u)
-  lsf.applySmoothS(u,u)
-  lsf.apply(t,c,u,v)
-  sqrt(v,v)
-  return v
-
-def makeImageTensors(s):
-  n1,n2 = len(s[0]),len(s)
-  lof = LocalOrientFilter(8.0)
-  lof.setGradientSmoothing(2.0)
-  t = lof.applyForTensors(s)
-  t.setEigenvalues(0.001,1.000)
-  #t.setEigenvalues(1.000,1.000)
-  return t
-
-def coherence(sigma,t,s):
-  lsf = LocalSemblanceFilter(int(sigma),4*int(sigma))
+def semblance(sigma,t,s):
+  lsf = LocalSemblanceFilter(int(sigma),2*int(sigma))
   return lsf.semblance(LocalSemblanceFilter.Direction2.V,t,s)
+
+def like(x):
+  n1,n2 = len(x[0]),len(x)
+  return zerofloat(n1,n2)
 
 #############################################################################
 # plot
@@ -131,8 +205,13 @@ def plot(f,clip=0.0,png=None):
   sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
   pv = sp.addPixels(s1,s2,f)
   if clip!=0.0:
-    pv.setClips(-clip,clip)
+    if clip==1.0:
+      pv.setClips(0.0,clip)
+    else:
+      pv.setClips(-clip,clip)
   pv.setInterpolation(PixelsView.Interpolation.NEAREST)
+  #if clip==1.0:
+  #  pv.setColorModel(ColorMap.JET)
   #sp.setFontSizeForSlide(1.0,1.0)
   sp.setSize(1192,863)
   sp.setVisible(True)
