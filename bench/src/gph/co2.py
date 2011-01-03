@@ -34,7 +34,7 @@ def goCo2Table(fy,ly,ky):
       plot2(eimage,f,u1,u2,g,s1,s2,d,
             mv=True,cv=True,tv=True,
             title=title,png="co2U")
-      if iy==iyl and False:
+      if iy==iyl:
         cmap = ColorMap(cmin,cmax,ColorMap.JET)
         cimage = SampledImage.fromFloats(s1,s2,g,cmap)
         cimage.setAlpha(0.8)
@@ -83,8 +83,9 @@ def periodic(f,x1,x2):
 
 def gridBlended(scale,f,x1,x2):
   fp,x1p,x2p = periodic(f,x1,x2)
-  n1,n2 = 180,90
-  d1,d2 = 2.0,2.0
+  #n1,n2 = 180,90
+  n1,n2 = 360,180
+  d1,d2 = 360.0/n1,180.0/n2
   f1,f2 = -180.0+0.5*d1,-90.0+0.5*d2
   n1p,f1p = 2*n1,f1-180.0
   s1 = Sampling(n1,d1,f1)
@@ -171,8 +172,8 @@ def plot2(image,f,u1,u2,g,s1,s2,d,mv=False,cv=False,tv=False,
   if axes: ppa = PlotPanel.AxesPlacement.LEFT_BOTTOM
   else: ppa = PlotPanel.AxesPlacement.NONE
   pp = PlotPanel(1,1,ppo,ppa)
-  pp.setHLimits(-183,183)
-  pp.setVLimits( -93, 93)
+  pp.setHLimits(-181,181)
+  pp.setVLimits( -91, 91)
   tile = pp.getTile(0,0)
   slon,slat = image.samplingX,image.samplingY
   rgba = image.getFloatsRGBA(False)
@@ -206,10 +207,10 @@ def plot2(image,f,u1,u2,g,s1,s2,d,mv=False,cv=False,tv=False,
   if tv:
     gwidth = 1
     tv = TensorsView(s1,s2,d)
-    tv.setScale(15.0)
+    tv.setScale(22.0)
     tv.setLineColor(Color.BLACK)
     tv.setLineWidth(2)
-    tv.setEllipsesDisplayed(15)
+    tv.setEllipsesDisplayed(11)
     tile.addTiledView(tv)
   if mv:
     gwidth = 1
