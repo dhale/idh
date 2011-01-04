@@ -4,11 +4,10 @@
 from shared import *
 
 def main(args):
-  goCo2Table(2009.9,2010,1)
+  printStats()
+  #goCo2Table(2009,2010,12)
   #goPlotCo2Table2()
   #printCo2Table()
-  #goPlotCo2Fields2()
-  #goPlotCo2Fields3()
   #goPlotEarth2()
   #goPlotEarth3()
   #goPlotBoard3()
@@ -17,106 +16,37 @@ def main(args):
 def goCo2Table(fy,ly,ky):
   eimage = readWaterImage()
   names,lats,lons,co2s = readCo2Table()
-  sy = yearsCo2Table()
+  sy = yearsSamplingCo2Table()
   ny = sy.count
   iyf = max(sy.indexOfNearest(fy)-1,0)
   iyl = min(sy.indexOfNearest(ly)+1,ny-1)
+  while sy.getValue(iyf)<fy:
+    iyf += 1
+  while sy.getValue(iyl)>ly:
+    iyl -= 1
   for iy in range(iyf,iyl+1,ky):
     y = sy.getValue(iy)
-    if y<fy or y>ly:
+    laty,lony,co2y = getGoodData(iy,lats,lons,co2s)
+    if not laty:
       continue
-    laty,lony,co2y = getValidLatLonCo2s(iy,lats,lons,co2s)
     for scale in [1.0,4.0]:
       f,u1,u2 = co2y,lony,laty
       g,s1,s2 = gridBlended(scale,f,u1,u2)
       d = makeTensors(scale,s1,s2)
       title = strMonthYear(y)
       plot2(eimage,f,u1,u2,g,s1,s2,d,
-            mv=True,cv=True,tv=True,
-            title=title,png="co2U")
-      if iy==iyl:
+            mv=True,cv=True,tv=False,
+            year=y,title=title,png="co2U")
+      if iy+ky>iyl:
+        cmin,cmax = clipsForYear(y)
         cmap = ColorMap(cmin,cmax,ColorMap.JET)
         cimage = SampledImage.fromFloats(s1,s2,g,cmap)
         cimage.setAlpha(0.8)
         plot3(eimage,cimage)
 
-def strMonthYear(y):
-  mmap = {1:"Jan", 2:"Feb", 3:"Mar", 4:"Apr", 5:"May", 6:"Jun",
-          7:"Jul", 8:"Aug", 9:"Sep",10:"Oct",11:"Nov",12:"Dec"}
-  year = int(y)
-  month = mmap[int(1.0+(y-year)*12.0)]
-  return month+", "+str(year)
-
-def makeTensors(scale,slon,slat):
-  nlon,nlat = slon.count,slat.count
-  au = zerofloat(nlon,nlat)
-  av = fillfloat(1.0,nlon,nlat)
-  u1 = fillfloat(1.0,nlon,nlat)
-  u2 = fillfloat(0.0,nlon,nlat)
-  for ilat in range(nlat):
-    lati = slat.getValue(ilat)
-    cosl = cos(lati*PI/180)
-    auc = scale*scale/(cosl*cosl)
-    for ilon in range(nlon):
-      au[ilat][ilon] = auc
-  return EigenTensors2(u1,u2,au,av)
-
-def gridSimple(f,x1,x2):
-  #s1 = Sampling(360,1.0,-179.5)
-  #s2 = Sampling(180,1.0, -89.5)
-  s1 = Sampling(180,2.0,-179.0)
-  s2 = Sampling( 90,2.0, -89.0)
-  sg = SimpleGridder2(f,x1,x2)
-  g = sg.grid(s1,s2)
-  return g,s1,s2
-
-def periodic(f,x1,x2):
-  n = len(f)
-  for i in range(n):
-    if x1[i]<0.0:
-      x1.append(x1[i]+360.0)
-    else:
-      x1.append(x1[i]-360.0)
-    f.append(f[i])
-    x2.append(x2[i])
-  return f,x1,x2
-
-def gridBlended(scale,f,x1,x2):
-  fp,x1p,x2p = periodic(f,x1,x2)
-  #n1,n2 = 180,90
-  n1,n2 = 360,180
-  d1,d2 = 360.0/n1,180.0/n2
-  f1,f2 = -180.0+0.5*d1,-90.0+0.5*d2
-  n1p,f1p = 2*n1,f1-180.0
-  s1 = Sampling(n1,d1,f1)
-  s2 = Sampling(n2,d2,f2)
-  s1p = Sampling(n1p,d1,f1p)
-  n1,n2,n1p = s1.count,s2.count,s1p.count
-  d = makeTensors(scale,s1p,s2)
-  bg = BlendedGridder2(d,fp,x1p,x2p)
-  #bg.setBlending(False)
-  gp = bg.grid(s1p,s2)
-  g = copy(n1,n2,n1/2,0,gp)
-  return g,s1,s2
-
-def goPlotCo2Fields2():
-  image = readWaterImage()
-  f,u1,u2 = readCo2Fields()
-  g,s1,s2 = readCo2FieldsTrue()
-  d = None
-  plot2(image,f,u1,u2,g,s1,s2,cv=True,png="co2U")
-
-def goPlotCo2Fields3():
-  eimage = readWaterImage()
-  cimage = readCo2FieldsImage()
-  plot3(eimage,cimage)
-
 def goPlotEarth2():
   image = readEarthImage()
-  f,u1,u2 = None,None,None
-  g,s1,s2 = None,None,None
-  d = None
-  plot2(image,f,u1,u2,g,s1,s2,d,png="earthU")
+  plot2(image,png="earthU")
 
 def goPlotEarth3():
   eimage = readEarthImage()
@@ -164,10 +94,13 @@ pngDir = None
 backgroundColor = Color(0xfd,0xfe,0xff) # easy to make transparent
 #cmin,cmax = 374.0,379.0 # clips for fields CO2 plots
 #cmin,cmax = 320.0,400.0 # clips for ESRL table CO2 plots
-cmin,cmax = 378.0,402.0 # clips for ESRL table CO2 plots, last 2 years
+#cmin,cmax = 378.0,402.0 # clips for ESRL table CO2 plots, 2009
 
-def plot2(image,f,u1,u2,g,s1,s2,d,mv=False,cv=False,tv=False,
-          axes=False,title=None,png=None):
+def plot2(image,
+          f=None,u1=None,u2=None,
+          g=None,s1=None,s2=None,d=None,
+          mv=False,cv=False,tv=False,
+          year=0,axes=False,title=None,png=None):
   ppo = PlotPanel.Orientation.X1RIGHT_X2UP
   if axes: ppa = PlotPanel.AxesPlacement.LEFT_BOTTOM
   else: ppa = PlotPanel.AxesPlacement.NONE
@@ -182,7 +115,11 @@ def plot2(image,f,u1,u2,g,s1,s2,d,mv=False,cv=False,tv=False,
   pv.setInterpolation(PixelsView.Interpolation.NEAREST)
   tile.addTiledView(pv)
   gwidth = 3
-  if cv:
+  if cv and g and s1 and s2:
+    if year!=0:
+      cmin,cmax = clipsForYear(year)
+    else:
+      cmin,cmax = min(g),max(g)
     gwidth = 1
     cv = PixelsView(s1,s2,g)
     cv.setInterpolation(PixelsView.Interpolation.NEAREST)
@@ -192,19 +129,9 @@ def plot2(image,f,u1,u2,g,s1,s2,d,mv=False,cv=False,tv=False,
     cv.setColorModel(ColorMap.getJet(0.8))
     cv.setClips(cmin,cmax)
     tile.addTiledView(cv)
-    #cv = ContoursView(s1,s2,g)
-    #cv.setContours([380,385,390,395,400])
-    #cv.setLineColor(Color.BLACK)
-    #cv.setLineWidth(3)
-    #tile.addTiledView(cv)
     cb = pp.addColorBar("CO2 (ppm)")
-    if cmax-cmin<6:
-      cb.setInterval(1)
-    elif cmax-cmin<10:
-      cb.setInterval(2)
-    else:
-      cb.setInterval(5)
-  if tv:
+    cb.setInterval(5)
+  if tv and d and s1 and s2:
     gwidth = 1
     tv = TensorsView(s1,s2,d)
     tv.setScale(22.0)
@@ -212,7 +139,7 @@ def plot2(image,f,u1,u2,g,s1,s2,d,mv=False,cv=False,tv=False,
     tv.setLineWidth(2)
     tv.setEllipsesDisplayed(11)
     tile.addTiledView(tv)
-  if mv:
+  if mv and f and u1 and u2:
     gwidth = 1
     mv = PointsView(u1,u2)
     mv.setLineStyle(PointsView.Line.NONE)
@@ -240,7 +167,8 @@ def plot2(image,f,u1,u2,g,s1,s2,d,mv=False,cv=False,tv=False,
     else: 
       pf.setSize(1078,562)
   pf.setVisible(True)
-  if png and pngDir: pf.paintToPng(600,3,pngDir+png+".png")
+  if png and pngDir: 
+    pf.paintToPng(600,3,pngDir+png+".png")
 
 def plot3(eimage,cimage=None):
   model = OblateModel.forWGS84()
@@ -377,7 +305,7 @@ def readCo2Table():
   s.close()
   return names,lats,lons,co2s
 
-def getValidLatLonCo2s(iy,lats,lons,co2s):
+def getGoodData(iy,lats,lons,co2s):
   laty,lony,co2y = [],[],[]
   co2i = co2s[iy]
   ns = len(co2i)
@@ -386,7 +314,10 @@ def getValidLatLonCo2s(iy,lats,lons,co2s):
       laty.append(lats[js])
       lony.append(lons[js])
       co2y.append(co2i[js])
-  return laty,lony,co2y
+  if len(laty)>0:
+    return laty,lony,co2y
+  else:
+    return None,None,None
 
 co2TableHeader = """###
 # Table of monthly averages of atmospheric CO2 concentations (ppm mol ratios) 
@@ -412,16 +343,29 @@ co2TableHeader = """###
 # Compiled by Dave Hale, Colorado School of Mines, 2001.01.02
 ###"""
 
-def yearsCo2Table():
+def yearsSamplingCo2Table():
   dy = 1.0/12.0 # sampling interval, in years
   fy = 1960+ 0.5*dy # first year
   ly = 2009+11.5*dy # last year
   ny = int((ly-fy)/dy+1.5) # number of years
   return Sampling(ny,dy,fy)
 
+def readCo2Yearly():
+  fileName = "co2yearly.txt"
+  years,co2s = [],[]
+  s = Scanner(FileInputStream(dataDir+fileName))
+  while s.hasNextLine():
+    line = s.nextLine()
+    if line[0]!="#":
+      data = line.split()
+      years.append(float(data[0]))
+      co2s.append(float(data[1]))
+  s.close()
+  return years,co2s
+
 def printCo2Table():
   print co2TableHeader
-  sy = yearsCo2Table()
+  sy = yearsSamplingCo2Table()
   ny = sy.count
   sll = readCo2Stations() # map: station name -> lat,lon
   scs = {} # map: station name -> array of co2s
@@ -477,25 +421,6 @@ def readCo2Stations():
   s.close()
   return sll
 
-def xreadCo2Stations():
-  fileName = "co2stations.txt"
-  sll = {}
-  s = Scanner(FileInputStream(dataDir+fileName))
-  s.useDelimiter("\t")
-  s.nextLine(); s.nextLine(); s.nextLine()
-  while s.hasNextLine():
-    line = s.nextLine()
-    data = line.split("\t")
-    station = data[0]
-    temp = String(data[0])
-    if temp.endsWith(" *"):
-      station = station[:-2]
-    lat = float(data[2])
-    lon = float(data[3])
-    sll[station] = (lon,lat)
-  s.close()
-  return sll
-
 def readCo2s(station,sy):
   ny,dy,fy,ly = sy.count,sy.delta,sy.first,sy.last
   co2s = zerofloat(ny)
@@ -531,50 +456,81 @@ def readCo2s(station,sy):
   else: return None
 
 #############################################################################
-# CO2 data provided with the fields package of "R"
+# Other stuff
 
-def readCo2FieldsImage():
-  f,sx,sy = readCo2FieldsTrue()
-  #f,sx,sy = wrapLon(f,sx,sy) # replicate first longitude?
-  cmap = ColorMap(cmin,cmax,ColorMap.JET)
-  image = SampledImage.fromFloats(sx,sy,f,cmap)
-  image.setAlpha(0.8)
-  return image
+def strMonthYear(y):
+  mmap = {1:"Jan", 2:"Feb", 3:"Mar", 4:"Apr", 5:"May", 6:"Jun",
+          7:"Jul", 8:"Aug", 9:"Sep",10:"Oct",11:"Nov",12:"Dec"}
+  year = int(y)
+  month = mmap[int(1.0+(y-year)*12.0)]
+  return month+", "+str(year)
 
-def readCo2Fields():
-  s = Scanner(FileInputStream(dataDir+"fields/co2.txt"))
-  s.nextLine() # skip headings
-  n = 26633
-  f = zerofloat(n)
-  u1 = zerofloat(n)
-  u2 = zerofloat(n)
-  for i in range(n):
-    s.next()
-    u1[i] = s.nextFloat()
-    u2[i] = s.nextFloat()
-    f[i] = s.nextFloat()
-  s.close()
-  print "f min =",min(f)," max =",max(f)
-  print "u1 min =",min(u1)," max =",max(u1)
-  print "u2 min =",min(u2)," max =",max(u2)
-  return f,u1,u2
+co2YearlyAverage = None
+def clipsForYear(y):
+  global co2YearlyAverage
+  if not co2YearlyAverage:
+    years,co2s = readCo2Yearly()
+    n = len(years)
+    method = CubicInterpolator.Method.LINEAR
+    co2YearlyAverage = CubicInterpolator(method,n,years,co2s)
+  co2 = co2YearlyAverage.interpolate(y)
+  cmin = co2-10.0
+  cmax = co2+10.0
+  return cmin,cmax
 
-def readCo2FieldsTrue():
-  s = Scanner(FileInputStream(dataDir+"fields/co2true.txt"))
-  s.nextLine() # skip
-  s.nextLine() # header
-  n1 = 288 # nlon
-  n2 = 181 # nlat
-  g = zerofloat(n1,n2)
-  for i1 in range(n1):
-    s.next()
-    for i2 in range(n2):
-      g[i2][i1] = s.nextFloat()
-  s.close()
-  s1 = Sampling(n1,1.25,-179.375)
-  s2 = Sampling(n2,1.00, -90.000)
-  print "g min =",min(g)," max =",max(g)
+def makeTensors(scale,slon,slat):
+  nlon,nlat = slon.count,slat.count
+  au = zerofloat(nlon,nlat)
+  av = fillfloat(1.0,nlon,nlat)
+  u1 = fillfloat(1.0,nlon,nlat)
+  u2 = fillfloat(0.0,nlon,nlat)
+  for ilat in range(nlat):
+    lati = slat.getValue(ilat)
+    cosl = cos(lati*PI/180)
+    auc = scale*scale/(cosl*cosl)
+    for ilon in range(nlon):
+      au[ilat][ilon] = auc
+  return EigenTensors2(u1,u2,au,av)
+
+def gridSamplings():
+  #n1,n2 = 360,180
+  n1,n2 = 180,90
+  d1,d2 = 360.0/n1,180.0/n2
+  f1,f2 = -180.0+0.5*d1,-90.0+0.5*d2
+  s1 = Sampling(n1,d1,f1)
+  s2 = Sampling(n2,d2,f2)
+  return s1,s2
+
+def gridSimple(f,x1,x2):
+  s1,s2 = gridSamplings()
+  sg = SimpleGridder2(f,x1,x2)
+  g = sg.grid(s1,s2)
   return g,s1,s2
+
+def gridBlended(scale,f,x1,x2):
+  fp,x1p,x2p = padLongitude(f,x1,x2)
+  s1,s2 = gridSamplings()
+  n1,f1 = s1.count,s1.first
+  n1p,f1p = 2*n1,f1-180.0
+  s1p = Sampling(n1p,d1,f1p)
+  n1p,n2,n1p = s1p.count,s2.count
+  d = makeTensors(scale,s1p,s2)
+  bg = BlendedGridder2(d,fp,x1p,x2p)
+  #bg.setBlending(False)
+  gp = bg.grid(s1p,s2)
+  g = copy(n1,n2,n1/2,0,gp)
+  return g,s1,s2
+
+def padLongitude(f,x1,x2):
+  n = len(f)
+  for i in range(n):
+    if x1[i]<0.0:
+      x1.append(x1[i]+360.0)
+    else:
+      x1.append(x1[i]-360.0)
+    f.append(f[i])
+    x2.append(x2[i])
+  return f,x1,x2
 
 def wrapLon(f,sx,sy):
   nx,ny = sx.count,sy.count
@@ -584,11 +540,66 @@ def wrapLon(f,sx,sy):
   sx = Sampling(nx+1,sx.delta,sx.first)
   return g,sx,sy
 
-#############################################################################
-# Utilities
-
 def printf(fmt,*varargs):
   sys.stdout.write(fmt % varargs)
+
+def printStats():
+  names,lats,lons,co2s = readCo2Table()
+  sy = yearsSamplingCo2Table()
+  ny = sy.count
+  slat = Sampling(180,1.0, -79.5)
+  slon = Sampling(360,1.0,-179.5)
+  nlat,nlon = slat.count,slon.count
+  alat,alon = zerofloat(nlat),zerofloat(nlon)
+  clat,clon = zerofloat(nlat),zerofloat(nlon)
+  for iy in range(ny-1,ny):
+    laty,lony,co2y = getGoodData(iy,lats,lons,co2s)
+    if not laty:
+      continue
+    ns = len(laty)
+    for js in range(ns):
+      latj = laty[js]
+      lonj = lony[js]
+      co2j = co2y[js]
+      jlat = slat.indexOfNearest(latj)
+      jlon = slon.indexOfNearest(lonj)
+      alat[jlat] += co2j
+      clat[jlat] += 1.0
+      alon[jlon] += co2j
+      clon[jlon] += 1.0
+  SimplePlot.asSequence(slat,alat)
+  SimplePlot.asSequence(slon,alon)
+  mlat = sum(alat)/sum(clat)
+  mlon = sum(alon)/sum(clon)
+  print "mlat =",mlat," mlon =",mlon
+  vlat = 0.0
+  for jlat in range(nlat):
+    if clat[jlat]>0:
+      dlat = alat[jlat]/clat[jlat]-mlat
+      vlat += dlat*dlat
+  vlat /= nlat
+  vlon = 0.0
+  for jlon in range(nlon):
+    if clon[jlon]>0:
+      dlon = alon[jlon]/clon[jlon]-mlon
+      vlon += dlon*dlon
+  vlon /= nlon
+  print "vlat =",vlat," vlon =",vlon
+
+
+      
+
+"""
+count co2(lat) for 10-degree lat bins
+count co2(lon) for 10-degree lon bins
+compute avglat = sum(co2(lat))/sum(lat)
+compute varlat = sum((co2(lat)-avglat)^2)/sum(lat)
+"""
+
+
+  
+  
+  
 
 #############################################################################
 if __name__ == "__main__":
