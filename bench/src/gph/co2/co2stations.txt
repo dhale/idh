@@ -1,0 +1,130 @@
+From http://www.esrl.noaa.gov/gmd/dv/site/site_table.html
+(* denotes discontinued site)
+Code	Name	Latitude	Longitude	Elevation (Meters)	Country
+ABP	Arembepe, Bahia	-12.77	-38.17	1.0	Brazil
+ALT	Alert, Nunavut	82.45	-62.51	200.0	Canada
+AMS *	Amsterdam Island	-37.95	77.53	150.0	France
+AMT	Argyle, Maine	45.03	-68.68	50.0	United States
+ASC	Ascension Island	-7.92	-14.42	54.0	United Kingdom
+ASK	Assekrem	23.18	5.42	2728.0	Algeria
+AVI *	St. Croix, Virgin Islands	17.75	-64.75	3.0	United States
+AZR	Terceira Island, Azores	38.77	-27.38	40.0	Portugal
+BAL	Baltic Sea	55.35	17.22	3.0	Poland
+BAO	Boulder Atmospheric Observatory, Colorado	40.05	-105.00	1584.0	United States
+BKT	Bukit Kototabang	-0.20	100.32	864.5	Indonesia
+BME *	St. Davids Head, Bermuda	32.37	-64.65	30.0	United Kingdom
+BMW	Tudor Hill, Bermuda	32.27	-64.88	30.0	United Kingdom
+BRW	Barrow, Alaska	71.32	-156.61	11.0	United States
+BSC	Black Sea, Constanta	44.17	28.68	3.0	Romania
+CBA	Cold Bay, Alaska	55.21	-162.72	21.3	United States
+CGO	Cape Grim, Tasmania	-40.68	144.69	94.0	Australia
+CHR	Christmas Island	1.70	-157.17	3.0	Republic of Kiribati
+CIB	Centro de Investigacion de la Baja Atmosfera (CIBA)	41.81	-4.93	845.0	Spain
+CMO *	Cape Meares, Oregon	45.48	-123.97	30.0	United States
+CPT	Cape Point	-34.35	18.49	230.0	South Africa
+CRZ	Crozet Island	-46.45	51.85	120.0	France
+DRP	Drake Passage	-59.00	-64.69	10.0	N/A
+DSI	Dongsha Island	20.70	116.73	3.0	Taiwan
+EIC	Easter Island	-27.15	-109.45	50.0	Chile
+GLF	Conejo	18.72	-95.63	113.0	Mexico
+GMI	Mariana Islands	13.43	144.78	1.0	Guam
+GOZ *	Dwejra Point, Gozo	36.05	14.18	30.0	Malta
+HBA	Halley Station, Antarctica	-75.58	-26.50	30.0	United Kingdom
+HPB	Hohenpeissenberg	47.80	11.01	985.0	Germany
+HSU	Humboldt State University	41.06	-124.75	0.0	United States
+HUN	Hegyhatsal	46.95	16.65	248.0	Hungary
+ICE	Storhofdi, Vestmannaeyjar	63.40	-20.29	118.0	Iceland
+INX	INFLUX (Indiana Flux Experiment)	39.80	-86.02	240.0	United States
+ITN *	Grifton, North Carolina	35.35	-77.38	9.0	United States
+IZO	Tenerife, Canary Islands	28.31	-16.50	2360.0	Spain
+KCO *	Kaashidhoo	4.97	73.47	1.0	Republic of Maldives
+KEY	Key Biscayne, Florida	25.67	-80.16	3.0	United States
+KUM	Cape Kumukahi, Hawaii	19.52	-154.82	3.0	United States
+KZD *	Sary Taukum	44.06	76.82	601.0	Kazakhstan
+KZM *	Plateau Assy	43.25	77.88	2519.0	Kazakhstan
+LEF	Park Falls, Wisconsin	45.95	-90.27	472.0	United States
+LLB	Lac La Biche, Alberta	54.95	-112.45	540.0	Canada
+LLN	Lulin	23.47	120.87	2862.0	Taiwan
+LMP	Lampedusa	35.52	12.62	45.0	Italy
+MBC *	Mould Bay, Nunavut	76.25	-119.35	58.0	Canada
+MCM *	McMurdo Station, Antarctica	-77.83	166.60	11.0	United States
+MEX	Mex High Altitude Global Climate Observation Center	19.98	-97.17	4560.0	Mexico
+MHD	Mace Head, County Galway	53.33	-9.90	25.0	Ireland
+MID	Sand Island, Midway	28.21	-177.38	3.7	United States
+MKN	Mt. Kenya	-0.05	37.30	3897.0	Kenya
+MLO	Mauna Loa, Hawaii	19.54	-155.58	3397.0	United States
+MVY	Marthas Vineyard, Massachusetts	41.33	-70.52	0.0	United States
+MWO	Mt. Wilson Observatory	34.22	-118.06	1728.0	United States
+NMB	Gobabeb	-23.58	15.03	456.0	Namibia
+NWF *	Niwot Ridge Forest, Colorado	40.03	-105.55	3050.0	United States
+NWR	Niwot Ridge, Colorado	40.05	-105.58	3523.0	United States
+OBN	Obninsk	55.11	36.60	183.0	Russia
+OPW *	Olympic Peninsula, Washington	48.25	-124.42	488.0	United States
+OXK	Ochsenkopf	50.03	11.80	1022.0	Germany
+PAL	Pallas-Sammaltunturi, GAW Station	67.97	24.12	560.0	Finland
+PCO	Pico, Azores	38.47	-28.40	2225.0	Portugal
+POC000	Pacific Ocean (0 N)	0.00	-155.00	10.0	N/A
+POCN05	Pacific Ocean (5 N)	5.00	-151.00	10.0	N/A
+POCN10	Pacific Ocean (10 N)	10.00	-149.00	10.0	N/A
+POCN15	Pacific Ocean (15 N)	15.00	-145.00	10.0	N/A
+POCN20	Pacific Ocean (20 N)	20.00	-141.00	10.0	N/A
+POCN25	Pacific Ocean (25 N)	25.00	-139.00	10.0	N/A
+POCN30	Pacific Ocean (30 N)	30.00	-135.00	10.0	N/A
+POCN35 *	Pacific Ocean (35 N)	35.00	-137.00	10.0	N/A
+POCN40 *	Pacific Ocean (40 N)	40.00	-136.00	10.0	N/A
+POCN45 *	Pacific Ocean (45 N)	45.00	-131.00	10.0	N/A
+POCS05	Pacific Ocean (5 S)	-5.00	-159.00	10.0	N/A
+POCS10	Pacific Ocean (10 S)	-10.00	-161.00	10.0	N/A
+POCS15	Pacific Ocean (15 S)	-15.00	-171.00	10.0	N/A
+POCS20	Pacific Ocean (20 S)	-20.00	-174.00	10.0	N/A
+POCS25	Pacific Ocean (25 S)	-25.00	-171.00	10.0	N/A
+POCS30	Pacific Ocean (30 S)	-30.00	-176.00	10.0	N/A
+POCS35	Pacific Ocean (35 S)	-35.00	180.00	10.0	N/A
+PSA	Palmer Station, Antarctica	-64.92	-64.00	10.0	United States
+PTA	Point Arena, California	38.95	-123.74	17.0	United States
+RPB	Ragged Point	13.17	-59.43	45.0	Barbados
+SCSN03 *	South China Sea (3 N)	3.00	105.00	15.0	N/A
+SCSN06 *	South China Sea (6 N)	6.00	107.00	15.0	N/A
+SCSN09 *	South China Sea (9 N)	9.00	109.00	15.0	N/A
+SCSN12 *	South China Sea (12 N)	12.00	111.00	15.0	N/A
+SCSN15 *	South China Sea (15 N)	15.00	113.00	15.0	N/A
+SCSN18 *	South China Sea (18 N)	18.00	113.50	15.0	N/A
+SCSN21 *	South China Sea (21 N)	21.00	114.00	15.0	N/A
+SCT	Beech Island, South Carolina	33.41	-81.83	115.2	United States
+SDZ	Shangdianzi	40.65	117.12	293.0	Peoples Republic of China
+SEY	Mahe Island	-4.67	55.17	3.0	Seychelles
+SGI *	Bird Island, South Georgia	-54.00	-38.05	30.0	United Kingdom
+SGP	Southern Great Plains, Oklahoma	36.80	-97.50	314.0	United States
+SHM	Shemya Island, Alaska	52.72	174.10	40.0	United States
+SMO	Tutuila	-14.25	-170.56	42.0	American Samoa
+SPO	South Pole, Antarctica	-89.98	-24.80	2810.0	United States
+STC *	Ocean Station C	54.00	-35.00	6.0	United States
+STM *	Ocean Station M	66.00	2.00	0.0	Norway
+STR	Sutro Tower, San Francisco, California	37.76	-122.45	254.0	United States
+SUM	Summit	72.58	-38.48	3238.0	Greenland
+SYO	Syowa Station, Antarctica	-69.00	39.58	11.0	Japan
+TAP	Tae-ahn Peninsula	36.73	126.13	20.0	Republic of Korea
+TDF	Tierra Del Fuego, Ushuaia	-54.87	-68.48	20.0	Argentina
+THD	Trinidad Head, California	41.05	-124.15	107.0	United States
+TIK	Hydrometeorological Observatory of Tiksi	71.60	128.90	0.0	Russia
+UTA	Wendover, Utah	39.90	-113.72	1320.0	United States
+UUM	Ulaan Uul	44.45	111.10	914.0	Mongolia
+WBI	West Branch, Iowa	41.73	-91.35	241.7	United States
+WGC	Walnut Grove, California	38.27	-121.49	0.0	United States
+WIS	WIS Station, Negev Desert	31.13	34.88	400.0	Israel
+WKT	Moody, Texas	31.32	-97.33	251.0	United States
+WLG	Mt. Waliguan	36.29	100.90	3810.0	Peoples Republic of China
+WPCN00	Western Pacific Cruise (0 N)	0.00	151.10	0.0	N/A
+WPCN05	Western Pacific Cruise (5 N)	5.00	149.10	0.0	N/A
+WPCN10	Western Pacific Cruise (10 N)	10.00	148.00	0.0	N/A
+WPCN15	Western Pacific Cruise (15 N)	15.00	145.00	0.0	N/A
+WPCN20	Western Pacific Cruise (20 N)	20.00	142.00	0.0	N/A
+WPCN25	Western Pacific Cruise (25 N)	25.00	140.00	0.0	N/A
+WPCN30	Western Pacific Cruise (30 N)	30.00	136.80	0.0	N/A
+WPCS05	Western Pacific Cruise (5 S)	-5.00	153.70	0.0	N/A
+WPCS10	Western Pacific Cruise (10 S)	-10.00	156.80	0.0	N/A
+WPCS15	Western Pacific Cruise (15 S)	-15.00	159.30	0.0	N/A
+WPCS20	Western Pacific Cruise (20 S)	-20.00	161.10	0.0	N/A
+WPCS25	Western Pacific Cruise (25 S)	-25.00	165.50	0.0	N/A
+WPCS30	Western Pacific Cruise (30 S)	-30.00	168.00	0.0	N/A
+ZEP	Ny-Alesund, Svalbard	78.90	11.88	475.0	Norway and Sweden

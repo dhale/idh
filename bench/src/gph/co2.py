@@ -4,7 +4,9 @@
 from shared import *
 
 def main(args):
-  printStats()
+  for y in [2009,2009.2,2009.4,2009.6,2009.8]:
+    makeVariogram(y)
+  #printStats()
   #goCo2Table(2009,2010,12)
   #goPlotCo2Table2()
   #printCo2Table()
@@ -586,20 +588,64 @@ def printStats():
   vlon /= nlon
   print "vlat =",vlat," vlon =",vlon
 
+def getDistanceAndBearing(lat1,lon1,lat2,lon2):
+  lat1,lon1 = toRadians(lat1),toRadians(lon1)
+  lat2,lon2 = toRadians(lat2),toRadians(lon2)
+  dlat,dlon = lat2-lat1,lon2-lon1
+  dphi = log(tan(0.5*(lat2+0.5*PI))/tan(0.5*(lat1+0.5*PI)))
+  if dphi!=0.0:
+    q = dlat/dphi
+  else:
+    q = cos(lat1)
+  if dlon>PI:
+    dlon -= 2.0*PI
+  elif dlon<-PI:
+    dlon += 2.0*PI
+  d = sqrt(dlat*dlat+q*q*dlon*dlon)
+  b = toDegrees(atan2(dlon,dphi))
+  return d,b
 
-      
-
-"""
-count co2(lat) for 10-degree lat bins
-count co2(lon) for 10-degree lon bins
-compute avglat = sum(co2(lat))/sum(lat)
-compute varlat = sum((co2(lat)-avglat)^2)/sum(lat)
-"""
-
-
-  
-  
-  
+def makeVariogram(year):
+  names,lats,lons,co2s = readCo2Table()
+  sy = yearsSamplingCo2Table()
+  iy = sy.indexOfNearest(year)
+  laty,lony,co2y = getGoodData(iy,lats,lons,co2s)
+  n = len(laty)
+  x,y,g = [],[],[]
+  for i in range(n):
+    lati,loni,co2i = laty[i],lony[i],co2y[i]
+    for j in range(i+1,n):
+      latj,lonj,co2j = laty[j],lony[j],co2y[j]
+      d,b = getDistanceAndBearing(lati,loni,latj,lonj)
+      b = toRadians(b)
+      gamma = 0.5*(co2i-co2j)**2
+      x.append(d*sin(b))
+      y.append(d*cos(b))
+      g.append(sqrt(gamma))
+  nx = ny = 51
+  sx = sy = Sampling(nx,2*PI/(nx-1),-PI)
+  bg = BlendedGridder2(g,x,y)
+  v = bg.grid(sx,sy)
+  """
+  v = zerofloat(nx,ny)
+  n = len(x)
+  for i in range(n):
+    ix = sx.indexOfNearest(x[i])
+    iy = sy.indexOfNearest(y[i])
+    v[iy][ix] = g[i]
+  """
+  sp = SimplePlot()
+  pv = sp.addPixels(sx,sy,v)
+  pv.setColorModel(ColorMap.JET)
+  pv.setInterpolation(PixelsView.Interpolation.NEAREST)
+  sp.addColorBar()
+  sp.setSize(800,718)
+  """
+  pv = sp.addPoints(x,y)
+  pv.setLineStyle(PointsView.Line.NONE)
+  pv.setMarkStyle(PointsView.Mark.FILLED_CIRCLE)
+  pv.setMarkSize(2)
+  """
 
 #############################################################################
 if __name__ == "__main__":
