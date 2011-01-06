@@ -142,7 +142,7 @@ public class SampledImage {
         rb[i][j] = (byte)icm.getRed(kf);
         gb[i][j] = (byte)icm.getGreen(kf);
         bb[i][j] = (byte)icm.getBlue(kf);
-        ab[i][j] = BYTE255;
+        ab[i][j] = (byte)icm.getAlpha(kf);
       }
     }
     return new SampledImage(sx,sy,rb,gb,bb,ab);

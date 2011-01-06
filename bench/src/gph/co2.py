@@ -4,10 +4,11 @@
 from shared import *
 
 def main(args):
-  for y in [2009,2009.2,2009.4,2009.6,2009.8]:
-    makeVariogram(y)
-  #printStats()
-  #goCo2Table(2009,2010,12)
+  #goVariogram(2009.00,2010,12)
+  #goVariogram(1970.28,2010,12)
+  #goGridding(2009.28,2010,12,sg=True,p3=True)
+  goGridding(2009.28,2010,12,p3=True)
+  #goGridding(2009.28,2010,12)
   #goPlotCo2Table2()
   #printCo2Table()
   #goPlotEarth2()
@@ -15,36 +16,60 @@ def main(args):
   #goPlotBoard3()
   #goDemo()
 
-def goCo2Table(fy,ly,ky):
+def goVariogram(fy,ly,ky):
+  names,lats,lons,co2s = readCo2Table()
+  sy = yearsSamplingCo2Table()
+  for iy in yearIndicesCo2Table(fy,ly,ky):
+    laty,lony,co2y = getGoodData(iy,lats,lons,co2s)
+    n = len(laty)
+    x,y,s = [],[],[]
+    for i in range(n):
+      lati,loni,co2i = laty[i],lony[i],co2y[i]
+      for j in range(n):
+        latj,lonj,co2j = laty[j],lony[j],co2y[j]
+        d,b = getDistanceAndBearing(lati,loni,latj,lonj)
+        b = toRadians(b)
+        ss = (co2i-co2j)**2
+        x.append(toDegrees(d*sin(b)))
+        y.append(toDegrees(d*cos(b)))
+        s.append(ss)
+    title = strMonthYear(sy.getValue(iy))
+    plotVariogram(s,x,y,title=title,png="co2V")
+  
+def goGridding(fy,ly,ky,sg=False,tv=False,p3=False):
   eimage = readWaterImage()
   names,lats,lons,co2s = readCo2Table()
   sy = yearsSamplingCo2Table()
-  ny = sy.count
-  iyf = max(sy.indexOfNearest(fy)-1,0)
-  iyl = min(sy.indexOfNearest(ly)+1,ny-1)
-  while sy.getValue(iyf)<fy:
-    iyf += 1
-  while sy.getValue(iyl)>ly:
-    iyl -= 1
-  for iy in range(iyf,iyl+1,ky):
+  for iy in yearIndicesCo2Table(fy,ly,ky):
     y = sy.getValue(iy)
     laty,lony,co2y = getGoodData(iy,lats,lons,co2s)
     if not laty:
       continue
-    for scale in [1.0,4.0]:
+    for scale in [1.0,5.0]:
       f,u1,u2 = co2y,lony,laty
-      g,s1,s2 = gridBlended(scale,f,u1,u2)
+      if sg:
+        g,s1,s2 = gridSimple(f,u1,u2)
+      else:
+        g,s1,s2 = gridBlended(scale,f,u1,u2)
       d = makeTensors(scale,s1,s2)
       title = strMonthYear(y)
       plot2(eimage,f,u1,u2,g,s1,s2,d,
-            mv=True,cv=True,tv=False,
+            mv=not sg,cv=True,tv=tv,
             year=y,title=title,png="co2U")
-      if iy+ky>iyl:
+      if p3:
         cmin,cmax = clipsForYear(y)
-        cmap = ColorMap(cmin,cmax,ColorMap.JET)
+        cmin += (cmax-cmin)*1.1/256 # make null (zero) values transparent
+        cmod = makeTransparentColorModel(0.8)
+        cmap = ColorMap(cmin,cmax,cmod)
         cimage = SampledImage.fromFloats(s1,s2,g,cmap)
-        cimage.setAlpha(0.8)
-        plot3(eimage,cimage)
+        #cimage.setAlpha(0.8)
+        #plot3(eimage,cimage,az=-120)
+        #plot3(eimage,cimage,az=  60)
+        plot3(eimage,cimage,lats=u2,lons=u1,az=-100)
+        plot3(eimage,cimage,lats=u2,lons=u1,az=  80)
+        #plot3(eimage,cimage,az= 45)
+      if sg:
+        break
 
 def goPlotEarth2():
   image = readEarthImage()
@@ -52,7 +77,8 @@ def goPlotEarth2():
 
 def goPlotEarth3():
   eimage = readEarthImage()
-  plot3(eimage,None)
+  plot3(eimage,None,-90)
+  plot3(eimage,None, 45)
 
 def goPlotBoard3():
   eimage = makeBoardImage()
@@ -125,11 +151,10 @@ def plot2(image,
     gwidth = 1
     cv = PixelsView(s1,s2,g)
     cv.setInterpolation(PixelsView.Interpolation.NEAREST)
-    #cmin,cmax = min(f),max(f)
-    #cmin -= 1.1*(cmax-cmin)/256 # make null values transparent
-    #cv.setColorModel(makeTransparentColorModel(0.8))
-    cv.setColorModel(ColorMap.getJet(0.8))
     cv.setClips(cmin,cmax)
+    cmin += 1.1*(cmax-cmin)/256 # make null (zero) values transparent
+    cv.setColorModel(makeTransparentColorModel(0.8))
+    #cv.setColorModel(ColorMap.getJet(0.8))
     tile.addTiledView(cv)
     cb = pp.addColorBar("CO2 (ppm)")
     cb.setInterval(5)
@@ -172,7 +197,7 @@ def plot2(image,
   if png and pngDir: 
     pf.paintToPng(600,3,pngDir+png+".png")
 
-def plot3(eimage,cimage=None):
+def plot3(eimage,cimage=None,lats=None,lons=None,az=45):
   model = OblateModel.forWGS84()
   group = OblateImageGroup(model)
   group.addImage(eimage,0.999)
@@ -186,10 +211,80 @@ def plot3(eimage,cimage=None):
   frame.setSize(1000,1000)
   world = frame.getWorld()
   world.addChild(group)
+  bs = world.getBoundingSphere(True)
+  if lats:
+    xyz = xyzFromLatsLons(model,lats,lons)
+    xyz = mul(1.002,xyz)
+    rgb = fillfloat(1.0,3*len(xyz))
+    group = PointGroup(80,xyz,rgb)
+    world.addChild(group)
   view = frame.getOrbitView()
-  #view.setAzimuth(-90.0) # good for US
-  view.setAzimuth(45.0) # good for showing axes
-  view.setWorldSphere(world.getBoundingSphere(True))
+  view.setProjection(OrbitView.Projection.ORTHOGRAPHIC)
+  view.setAzimuth(az)
+  if az==-120 or az==60:
+    view.setElevation(0)
+  view.setWorldSphere(bs)
+
+def xyzFromLatsLons(model,lats,lons):
+  n = len(lats)
+  xyz = zerofloat(3*n)
+  j = 0
+  for i in range(n):
+    lati = lats[i]
+    loni = lons[i]
+    xyzi = model.xyz(lati,loni,0.0)
+    xyz[j] = xyzi[0]; j += 1
+    xyz[j] = xyzi[1]; j += 1
+    xyz[j] = xyzi[2]; j += 1
+  return xyz
+
+def plotVariogram(s,x,y,title=None,png=None):
+  #sp = SimplePlot()
+  #pv = sp.addPoints(x,y)
+  #pv.setLineStyle(PointsView.Line.NONE)
+  #pv.setMarkStyle(PointsView.Mark.FILLED_CIRCLE)
+  #pv.setMarkSize(2)
+  nx = ny = 37 # for 10-degree increments
+  sx = sy = Sampling(nx,360/(nx-1),-180)
+  #gridder = BlendedGridder2(s,x,y)
+  gridder = SimpleGridder2(s,x,y)
+  sg = gridder.grid(sx,sy)
+  sg = sqrt(sg)
+  #sg = clip(max(sg)/255,max(sg),sg)
+  sp = SimplePlot()
+  sp.setHLimits(-180.0,180.0)
+  sp.setVLimits(-180.0,180.0)
+  sp.setHLabel("East-west distance (degrees)")
+  sp.setVLabel("North-south distance (degrees)")
+  pv = sp.addPixels(sx,sy,sg)
+  pv.setClips(19/255.0,19)
+  pv.setColorModel(makeTransparentColorModel(1.0))
+  #pv.setColorModel(ColorMap.JET)
+  pv.setInterpolation(PixelsView.Interpolation.NEAREST)
+  x,y = makeEllipse(150,30)
+  pv = sp.addPoints(x,y)
+  pv.setLineColor(Color.RED)
+  pv.setLineWidth(5)
+  sp.addColorBar("Standard deviation (ppm)")
+  sp.setFontSizeForPrint(8,240)
+  if title:
+    sp.setTitle(title)
+    sp.setSize(800,718)
+  else:
+    sp.setSize(800,660)
+  if png and pngDir: 
+    sp.paintToPng(600,3,pngDir+png+".png")
+
+def makeEllipse(a,b):
+  nt = 101
+  dt = 2.0*PI/(nt-1)
+  ft = 0.0
+  x,y = [],[]
+  for it in range(nt):
+    t = ft+it*dt
+    x.append(a*cos(t))
+    y.append(b*sin(t))
+  return x,y
 
 def gridLines2(slon,slat,color,width):
   nlon,nlat = slon.count,slat.count
@@ -344,6 +439,17 @@ co2TableHeader = """###
 #
 # Compiled by Dave Hale, Colorado School of Mines, 2001.01.02
 ###"""
+
+def yearIndicesCo2Table(fy,ly,ky):
+  sy = yearsSamplingCo2Table()
+  ny = sy.count
+  iyf = max(sy.indexOfNearest(fy)-1,0)
+  iyl = min(sy.indexOfNearest(ly)+1,ny-1)
+  while sy.getValue(iyf)<fy:
+    iyf += 1
+  while sy.getValue(iyl)>ly:
+    iyl -= 1
+  return range(iyf,iyl+1,ky)
 
 def yearsSamplingCo2Table():
   dy = 1.0/12.0 # sampling interval, in years
@@ -512,10 +618,10 @@ def gridSimple(f,x1,x2):
 def gridBlended(scale,f,x1,x2):
   fp,x1p,x2p = padLongitude(f,x1,x2)
   s1,s2 = gridSamplings()
-  n1,f1 = s1.count,s1.first
+  n1,d1,f1 = s1.count,s1.delta,s1.first
   n1p,f1p = 2*n1,f1-180.0
   s1p = Sampling(n1p,d1,f1p)
-  n1p,n2,n1p = s1p.count,s2.count
+  n1p,n2 = s1p.count,s2.count
   d = makeTensors(scale,s1p,s2)
   bg = BlendedGridder2(d,fp,x1p,x2p)
   #bg.setBlending(False)
@@ -542,52 +648,6 @@ def wrapLon(f,sx,sy):
   sx = Sampling(nx+1,sx.delta,sx.first)
   return g,sx,sy
 
-def printf(fmt,*varargs):
-  sys.stdout.write(fmt % varargs)
-
-def printStats():
-  names,lats,lons,co2s = readCo2Table()
-  sy = yearsSamplingCo2Table()
-  ny = sy.count
-  slat = Sampling(180,1.0, -79.5)
-  slon = Sampling(360,1.0,-179.5)
-  nlat,nlon = slat.count,slon.count
-  alat,alon = zerofloat(nlat),zerofloat(nlon)
-  clat,clon = zerofloat(nlat),zerofloat(nlon)
-  for iy in range(ny-1,ny):
-    laty,lony,co2y = getGoodData(iy,lats,lons,co2s)
-    if not laty:
-      continue
-    ns = len(laty)
-    for js in range(ns):
-      latj = laty[js]
-      lonj = lony[js]
-      co2j = co2y[js]
-      jlat = slat.indexOfNearest(latj)
-      jlon = slon.indexOfNearest(lonj)
-      alat[jlat] += co2j
-      clat[jlat] += 1.0
-      alon[jlon] += co2j
-      clon[jlon] += 1.0
-  SimplePlot.asSequence(slat,alat)
-  SimplePlot.asSequence(slon,alon)
-  mlat = sum(alat)/sum(clat)
-  mlon = sum(alon)/sum(clon)
-  print "mlat =",mlat," mlon =",mlon
-  vlat = 0.0
-  for jlat in range(nlat):
-    if clat[jlat]>0:
-      dlat = alat[jlat]/clat[jlat]-mlat
-      vlat += dlat*dlat
-  vlat /= nlat
-  vlon = 0.0
-  for jlon in range(nlon):
-    if clon[jlon]>0:
-      dlon = alon[jlon]/clon[jlon]-mlon
-      vlon += dlon*dlon
-  vlon /= nlon
-  print "vlat =",vlat," vlon =",vlon
-
 def getDistanceAndBearing(lat1,lon1,lat2,lon2):
   lat1,lon1 = toRadians(lat1),toRadians(lon1)
   lat2,lon2 = toRadians(lat2),toRadians(lon2)
@@ -601,51 +661,12 @@ def getDistanceAndBearing(lat1,lon1,lat2,lon2):
     dlon -= 2.0*PI
   elif dlon<-PI:
     dlon += 2.0*PI
-  d = sqrt(dlat*dlat+q*q*dlon*dlon)
-  b = toDegrees(atan2(dlon,dphi))
+  d = sqrt(dlat*dlat+q*q*dlon*dlon) # rhumb-line distance
+  b = toDegrees(atan2(dlon,dphi)) # so bearing is constant
   return d,b
 
-def makeVariogram(year):
-  names,lats,lons,co2s = readCo2Table()
-  sy = yearsSamplingCo2Table()
-  iy = sy.indexOfNearest(year)
-  laty,lony,co2y = getGoodData(iy,lats,lons,co2s)
-  n = len(laty)
-  x,y,g = [],[],[]
-  for i in range(n):
-    lati,loni,co2i = laty[i],lony[i],co2y[i]
-    for j in range(i+1,n):
-      latj,lonj,co2j = laty[j],lony[j],co2y[j]
-      d,b = getDistanceAndBearing(lati,loni,latj,lonj)
-      b = toRadians(b)
-      gamma = 0.5*(co2i-co2j)**2
-      x.append(d*sin(b))
-      y.append(d*cos(b))
-      g.append(sqrt(gamma))
-  nx = ny = 51
-  sx = sy = Sampling(nx,2*PI/(nx-1),-PI)
-  bg = BlendedGridder2(g,x,y)
-  v = bg.grid(sx,sy)
-  """
-  v = zerofloat(nx,ny)
-  n = len(x)
-  for i in range(n):
-    ix = sx.indexOfNearest(x[i])
-    iy = sy.indexOfNearest(y[i])
-    v[iy][ix] = g[i]
-  """
-  sp = SimplePlot()
-  pv = sp.addPixels(sx,sy,v)
-  pv.setColorModel(ColorMap.JET)
-  pv.setInterpolation(PixelsView.Interpolation.NEAREST)
-  sp.addColorBar()
-  sp.setSize(800,718)
-  """
-  pv = sp.addPoints(x,y)
-  pv.setLineStyle(PointsView.Line.NONE)
-  pv.setMarkStyle(PointsView.Mark.FILLED_CIRCLE)
-  pv.setMarkSize(2)
-  """
+def printf(fmt,*varargs):
+  sys.stdout.write(fmt % varargs)
 
 #############################################################################
 if __name__ == "__main__":
