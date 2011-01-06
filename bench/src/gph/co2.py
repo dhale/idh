@@ -4,10 +4,10 @@
 from shared import *
 
 def main(args):
-  #goVariogram(2009.00,2010,12)
+  goVariogram(2009.28,2010,12)
   #goVariogram(1970.28,2010,12)
   #goGridding(2009.28,2010,12,sg=True,p3=True)
-  goGridding(2009.28,2010,12,p3=True)
+  #goGridding(2009.28,2010,12,p3=True)
   #goGridding(2009.28,2010,12)
   #goPlotCo2Table2()
   #printCo2Table()

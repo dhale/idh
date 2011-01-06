@@ -1,59 +1,146 @@
 from shared import *
 
-def main(args):
-  goFirst()
+pngDir = None # for no PNG files
+#pngDir = "png/vs30/"
 
-def goFirst():
-  s1 = Sampling(310,0.00833333333,119.7-360.0)
-  s2 = Sampling(490,0.00833333333,21.75)
-  n1,n2 = s1.count,s2.count
+def main(args):
+  goGeology()
+  #goSlopes()
+
+def goGeology():
+  n1,n2 = 351,456
+  s1 = Sampling(n1,0.01,118.93-360.0)
+  s2 = Sampling(n2,0.01,21.24)
+  f,x1,x2 = readScattered("vs30MeasuredTaiwan.txt",s1,s2)
+  g = readImage("vs30GeologyTaiwan.dat",n1,n2)
+  cleanGeologyImage(g)
+  mask = makeMask(g)
+  d = makeTensors(mask,g)
+  dmask = makeTensors(mask,g)
+  maskTensors(mask,dmask)
+  g = mul(mask,g)
+  plot(f,x1,x2,g,s1,s2,png="vs30g")
+  plot(None,None,None,g,s1,s2,dmask,png="vs30ge")
+  return
+  for tensors in [d,None]:
+    if tensors:
+      gridder = BlendedGridder2(tensors,f,x1,x2)
+      namet = "vs30t"
+    else:
+      gridder = BlendedGridder2(f,x1,x2)
+      namet = "vs30i"
+    for blending in [False,True]:
+      if blending: 
+        name = namet+"q"
+      else: 
+        name = namet+"p"
+      gridder.setBlending(blending)
+      q = gridder.grid(s1,s2)
+      q = mul(mask,q)
+      print name
+      plot(f,x1,x2,q,s1,s2,png=name)
+
+def cleanGeologyImage(g):
+  n1,n2 = len(g[0]),len(g)
+  for i2 in range(n2):
+    for i1 in range(n1):
+      gi = g[i2][i1]
+      bad = gi<149.0 or gi>151.0
+      bad = bad and gi<269.0 or gi>271.0
+      bad = bad and gi<559.0 or gi>561.0
+      bad = bad and gi<1129.0 or gi>1131.0
+      if bad:
+        g[i2][i1] = 0.0
+
+def goSlopes():
+  n1,n2 = 310,490
+  s1 = Sampling(n1,0.00833333333,119.7-360.0)
+  s2 = Sampling(n2,0.00833333333,21.75)
+  f,x1,x2 = readScattered("vs30MeasuredTaiwan.txt",s1,s2)
   g = readImage("vs30SlopesTaiwan.dat",n1,n2)
   mask = makeMask(g)
-  f,x1,x2 = readScattered("vs30MeasuredTaiwan.txt",s1,s2)
-  d = makeTensors(g)
-  v = gridBlended(d,f,x1,x2,s1,s2)
-  v = mul(mask,v)
+  d = makeTensors(mask,g)
+  dmask = makeTensors(mask,g)
+  maskTensors(mask,dmask)
+  g = mul(mask,g)
+  plot(f,x1,x2,g,s1,s2,png="vs30s")
+  plot(None,None,None,g,s1,s2,dmask,png="vs30se")
+  for tensors in [d,None]:
+    if tensors:
+      gridder = BlendedGridder2(tensors,f,x1,x2)
+      namet = "vs30t"
+    else:
+      gridder = BlendedGridder2(f,x1,x2)
+      namet = "vs30i"
+    for blending in [False,True]:
+      if blending: 
+        name = namet+"q"
+      else: 
+        name = namet+"p"
+      gridder.setBlending(blending)
+      q = gridder.grid(s1,s2)
+      q = mul(mask,q)
+      print name
+      plot(f,x1,x2,q,s1,s2,png=name)
+
+def makeTensors(mask,f):
+  lof = LocalOrientFilter(3.0)
+  d = lof.applyForTensors(f)
+  n1,n2 = d.n1,d.n2
+  au = zerofloat(n1,n2)
+  av = zerofloat(n1,n2)
+  d.getEigenvalues(au,av)
+  au = div(av,au) # isotropy
+  av = sub(1.0,au) # linearity
+  am = mul(sub(1.0,mask),fillfloat(1.0,n1,n2))
+  au = add(mul(mask,au),am)
+  av = add(mul(mask,av),am)
+  au = pow(au,2.0)
+  d.setEigenvalues(au,av)
+  return d
+
+def maskTensors(mask,d):
+  n1,n2 = d.n1,d.n2
+  au = zerofloat(n1,n2)
+  av = zerofloat(n1,n2)
+  d.getEigenvalues(au,av)
+  au = mul(mask,au)
+  av = mul(mask,av)
+  d.setEigenvalues(au,av)
+
+def plot(f,x1,x2,g,s1,s2,d=None,png=None):
   sp = SimplePlot()
   sp.setHLabel("Longitude (degrees)")
   sp.setVLabel("Latitude (degrees)")
+  sp.plotPanel.setHInterval(1.0)
+  sp.plotPanel.setVInterval(1.0)
   sp.setFontSizeForPrint(8,240)
-  sp.setSize(866,1044)
+  #sp.setSize(670,1000) # without colorbar
+  #sp.setSize(866,1044) # for slopes
+  sp.setSize(865,920) # for geology
   sp.addColorBar("Vs30 (m/s)")
   pv = sp.addPixels(s1,s2,g)
-  pv.setColorModel(ColorMap.getGray(0.45,0.55))
+  pv.setColorModel(ColorMap.JET)
   pv.setInterpolation(PixelsView.Interpolation.NEAREST)
-  pv = sp.addPixels(s1,s2,v)
-  pv.setColorModel(makeTransparentColorModel(0.8))
-  pv.setInterpolation(PixelsView.Interpolation.NEAREST)
-  pv.setClips(10.0,760.0)
-  """
-  tv = TensorsView(s1,s2,d)
-  tv.setLineColor(Color.RED)
-  tv.setLineWidth(3)
-  tv.setEllipsesDisplayed(30)
-  tile = sp.plotPanel.getTile(0,0)
-  tile.addTiledView(tv)
-  """
-  mv = sp.addPoints(x1,x2)
-  mv.setLineStyle(PointsView.Line.NONE)
-  mv.setMarkStyle(PointsView.Mark.FILLED_CIRCLE)
-  mv.setMarkColor(Color.WHITE)
-  mv.setMarkSize(4)
-  sp.paintToPng(600,3,"junk.png")
-
+  pv.setClips(0.0,760.0)
+  if d:
+    tv = TensorsView(s1,s2,d)
+    tv.setLineColor(Color.WHITE)
+    tv.setLineWidth(3)
+    tv.setEllipsesDisplayed(30)
+    tile = sp.plotPanel.getTile(0,0)
+    tile.addTiledView(tv)
+  if f and x1 and x2:
+    mv = sp.addPoints(x1,x2)
+    mv.setLineStyle(PointsView.Line.NONE)
+    mv.setMarkStyle(PointsView.Mark.FILLED_CIRCLE)
+    mv.setMarkColor(Color.WHITE)
+    mv.setMarkSize(4)
+  if pngDir and png:
+    sp.paintToPng(600,3,pngDir+png+".png")
 
 #############################################################################
 dataDir = "/data/earth/vs30/"
-
-def gridBlended(d,f,x1,x2,s1,s2):
-  #bg = BlendedGridder2(f,x1,x2)
-  bg = BlendedGridder2(d,f,x1,x2)
-  #bg.setBlending(False)
-  #bg.setSmoothness(1.0)
-  g = bg.grid(s1,s2)
-  lsf = LocalSmoothingFilter()
-  lsf.applySmoothS(g,g)
-  return g
 
 def makeMask(g):
   gnull = min(g)
@@ -64,55 +151,6 @@ def makeMask(g):
       if g[i2][i1]!=gnull:
         m[i2][i1] = 1.0
   return m
-
-def makeTensors(g):
-  mask = makeMask(g)
-  g = sub(g,min(g))
-  g = sin(mul(2.0*PI/max(g),g))
-  lof = LocalOrientFilter(4.0)
-  d = lof.applyForTensors(g)
-  #invertEigenvalues(mask,d)
-  lsf = LocalSemblanceFilter(2,2)
-  s1 = lsf.semblance(LocalSemblanceFilter.Direction2.V,d,g)
-  s2 = lsf.semblance(LocalSemblanceFilter.Direction2.UV,d,g)
-  s2 = pow(s2,3.0)
-  s1 = mul(mask,s1)
-  s2 = mul(mask,s2)
-  s1 = clip(0.001,1.0,s1)
-  s2 = clip(0.001,1.0,s2)
-  d.setEigenvalues(s2,s1)
-  return d
-
-def invertEigenvalues(mask,d):
-  n1,n2 = d.n1,d.n2
-  au = zerofloat(n1,n2)
-  av = zerofloat(n1,n2)
-  d.getEigenvalues(au,av)
-  for i2 in range(n2):
-    for i1 in range(n1):
-      if mask[i2][i1]>0.0:
-        au[i2][i1] = 1.0/au[i2][i1]
-        av[i2][i1] = 1.0/av[i2][i1]
-      else:
-        au[i2][i1] = 1.0
-        av[i2][i1] = 1.0
-  aumax = max(au)
-  avmax = max(av)
-  amax = max(aumax,avmax)
-  au = mul(1.0/amax,au)
-  av = mul(1.0/amax,av)
-  au = pow(au,2.0)
-  av = pow(av,2.0)
-  au = clip(0.001,1.0,au)
-  av = clip(0.001,1.0,av)
-  d.setEigenvalues(au,av)
-
-def subLocalMean(x):
-  y = copy(x)
-  rgf = RecursiveGaussianFilter(20.0)
-  rgf.apply00(x,y)
-  y = sub(x,y)
-  return y
 
 def readImage(fileName,n1,n2):
   x = zerofloat(n1,n2)
