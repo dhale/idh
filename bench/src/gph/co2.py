@@ -3,12 +3,15 @@
 
 from shared import *
 
+#pngDir = None
+pngDir = "png/co2/"
+
 def main(args):
-  goVariogram(2009.28,2010,12)
+  #goVariogram(2009.28,2010,2)
   #goVariogram(1970.28,2010,12)
   #goGridding(2009.28,2010,12,sg=True,p3=True)
   #goGridding(2009.28,2010,12,p3=True)
-  #goGridding(2009.28,2010,12)
+  goGridding(2007.28,2010,12)
   #goPlotCo2Table2()
   #printCo2Table()
   #goPlotEarth2()
@@ -27,7 +30,7 @@ def goVariogram(fy,ly,ky):
       lati,loni,co2i = laty[i],lony[i],co2y[i]
       for j in range(n):
         latj,lonj,co2j = laty[j],lony[j],co2y[j]
-        d,b = getDistanceAndBearing(lati,loni,latj,lonj)
+        d,b = getDistanceAndBearingGreatCircle(lati,loni,latj,lonj)
         b = toRadians(b)
         ss = (co2i-co2j)**2
         x.append(toDegrees(d*sin(b)))
@@ -35,6 +38,12 @@ def goVariogram(fy,ly,ky):
         s.append(ss)
     title = strMonthYear(sy.getValue(iy))
     plotVariogram(s,x,y,title=title,png="co2V")
+
+def yearIndexString(iy):
+  if iy<10:
+    return "0"+str(iy)
+  else:
+    return str(iy)
   
 def goGridding(fy,ly,ky,sg=False,tv=False,p3=False):
   eimage = readWaterImage()
@@ -45,7 +54,8 @@ def goGridding(fy,ly,ky,sg=False,tv=False,p3=False):
     laty,lony,co2y = getGoodData(iy,lats,lons,co2s)
     if not laty:
       continue
-    for scale in [1.0,5.0]:
+    #for scale in [1.0,4.0]:
+    for scale in [4.0]:
       f,u1,u2 = co2y,lony,laty
       if sg:
         g,s1,s2 = gridSimple(f,u1,u2)
@@ -53,9 +63,10 @@ def goGridding(fy,ly,ky,sg=False,tv=False,p3=False):
         g,s1,s2 = gridBlended(scale,f,u1,u2)
       d = makeTensors(scale,s1,s2)
       title = strMonthYear(y)
+      pngName = "co2Us"+str(int(scale))+"y"+yearIndexString(iy)
       plot2(eimage,f,u1,u2,g,s1,s2,d,
             mv=not sg,cv=True,tv=tv,
-            year=y,title=title,png="co2U")
+            year=y,title=title,png=pngName)
       if p3:
         cmin,cmax = clipsForYear(y)
         cmin += (cmax-cmin)*1.1/256 # make null (zero) values transparent
@@ -117,8 +128,6 @@ def makeDemoEarthGroup():
 #############################################################################
 # Plot
 
-pngDir = None
-#pngDir = "png/"
 backgroundColor = Color(0xfd,0xfe,0xff) # easy to make transparent
 #cmin,cmax = 374.0,379.0 # clips for fields CO2 plots
 #cmin,cmax = 320.0,400.0 # clips for ESRL table CO2 plots
@@ -261,7 +270,7 @@ def plotVariogram(s,x,y,title=None,png=None):
   pv.setColorModel(makeTransparentColorModel(1.0))
   #pv.setColorModel(ColorMap.JET)
   pv.setInterpolation(PixelsView.Interpolation.NEAREST)
-  x,y = makeEllipse(150,30)
+  x,y = makeEllipse(120,30)
   pv = sp.addPoints(x,y)
   pv.setLineColor(Color.RED)
   pv.setLineWidth(5)
@@ -648,7 +657,43 @@ def wrapLon(f,sx,sy):
   sx = Sampling(nx+1,sx.delta,sx.first)
   return g,sx,sy
 
-def getDistanceAndBearing(lat1,lon1,lat2,lon2):
+"""
+def testDB():
+  getDistanceAndBearingGreatCircle(0,0,0,180)
+  getDistanceAndBearingGreatCircle(0,180,0,0)
+  getDistanceAndBearingGreatCircle( 90,  0,-90,  0)
+  getDistanceAndBearingGreatCircle(-90,  0, 90,  0)
+  getDistanceAndBearingGreatCircle( 90, 90,-90, 90)
+  getDistanceAndBearingGreatCircle(-90, 90, 90, 90)
+  getDistanceAndBearingGreatCircle( 90,  0,  0, 90)
+  getDistanceAndBearingGreatCircle(  0, 90, 90,  0)
+def main(args):
+  testDB()
+"""
+
+def getDistanceAndBearingGreatCircle(lat1,lon1,lat2,lon2):
+  d12,b12 = getDistanceAndBearingGC(lat1,lon1,lat2,lon2)
+  d21,b21 = getDistanceAndBearingGC(lat2,lon2,lat1,lon1)
+  if b21<0.0:
+    b21 += 180.0
+  else:
+    b21 -= 180.0
+  d = 0.5*(d12+d21)
+  b = 0.5*(b12+b21)
+  #print "b12 =",b12," b21 =",b21," b =",b
+  return d,b
+
+def getDistanceAndBearingGC(lat1,lon1,lat2,lon2):
+  lat1,lon1 = toRadians(lat1),toRadians(lon1)
+  lat2,lon2 = toRadians(lat2),toRadians(lon2)
+  dlon = lon2-lon1
+  d = acos(sin(lat1)*sin(lat2)+cos(lat1)*cos(lat2)*cos(lon2-lon1))
+  y = sin(dlon)*cos(lat2)
+  x = cos(lat1)*sin(lat2)-sin(lat1)*cos(lat2)*cos(dlon)
+  b = toDegrees(atan2(y,x))
+  return d,b
+
+def getDistanceAndBearingRhumbLine(lat1,lon1,lat2,lon2):
   lat1,lon1 = toRadians(lat1),toRadians(lon1)
   lat2,lon2 = toRadians(lat2),toRadians(lon2)
   dlat,dlon = lat2-lat1,lon2-lon1

@@ -4,8 +4,8 @@ pngDir = None # for no PNG files
 #pngDir = "png/vs30/"
 
 def main(args):
-  goGeology()
-  #goSlopes()
+  #goGeology()
+  goSlopes()
 
 def goGeology():
   n1,n2 = 351,456
@@ -53,11 +53,15 @@ def cleanGeologyImage(g):
         g[i2][i1] = 0.0
 
 def goSlopes():
-  n1,n2 = 310,490
-  s1 = Sampling(n1,0.00833333333,119.7-360.0)
-  s2 = Sampling(n2,0.00833333333,21.75)
-  f,x1,x2 = readScattered("vs30MeasuredTaiwan.txt",s1,s2)
+  #n1,n2 = 310,490
+  #g = readImage("vs30SlopesTaiwanFromDaveWald.dat",n1,n2)
+  #s1 = Sampling(n1,0.00833333333,119.7-360.0)
+  #s2 = Sampling(n2,0.00833333333,21.75)
+  n1,n2 = 312,418
   g = readImage("vs30SlopesTaiwan.dat",n1,n2)
+  s1 = Sampling(n1,0.00833333333333,119.6-360.0)
+  s2 = Sampling(n2,0.00832535885167,21.85)
+  f,x1,x2 = readScattered("vs30MeasuredTaiwan.txt",s1,s2)
   mask = makeMask(g)
   d = makeTensors(mask,g)
   dmask = makeTensors(mask,g)
@@ -78,9 +82,9 @@ def goSlopes():
       else: 
         name = namet+"p"
       gridder.setBlending(blending)
+      gridder.setSmoothness(1.0)
       q = gridder.grid(s1,s2)
       q = mul(mask,q)
-      print name
       plot(f,x1,x2,q,s1,s2,png=name)
 
 def makeTensors(mask,f):
@@ -115,17 +119,17 @@ def plot(f,x1,x2,g,s1,s2,d=None,png=None):
   sp.plotPanel.setHInterval(1.0)
   sp.plotPanel.setVInterval(1.0)
   sp.setFontSizeForPrint(8,240)
-  #sp.setSize(670,1000) # without colorbar
-  #sp.setSize(866,1044) # for slopes
-  sp.setSize(865,920) # for geology
+  sp.setSize(865,930) # for slopes (grd file from Hazards web site)
+  #sp.setSize(866,1044) # for slopes (grd file from Dave Wald)
+  #sp.setSize(865,920) # for geology
   sp.addColorBar("Vs30 (m/s)")
   pv = sp.addPixels(s1,s2,g)
-  pv.setColorModel(ColorMap.JET)
+  pv.setColorModel(ColorMap.GRAY)
   pv.setInterpolation(PixelsView.Interpolation.NEAREST)
   pv.setClips(0.0,760.0)
   if d:
     tv = TensorsView(s1,s2,d)
-    tv.setLineColor(Color.WHITE)
+    tv.setLineColor(Color.RED)
     tv.setLineWidth(3)
     tv.setEllipsesDisplayed(30)
     tile = sp.plotPanel.getTile(0,0)
@@ -134,7 +138,7 @@ def plot(f,x1,x2,g,s1,s2,d=None,png=None):
     mv = sp.addPoints(x1,x2)
     mv.setLineStyle(PointsView.Line.NONE)
     mv.setMarkStyle(PointsView.Mark.FILLED_CIRCLE)
-    mv.setMarkColor(Color.WHITE)
+    mv.setMarkColor(Color.RED)
     mv.setMarkSize(4)
   if pngDir and png:
     sp.paintToPng(600,3,pngDir+png+".png")
