@@ -1,0 +1,256 @@
+<h3>Parallel loops with fork-join</h3>
+<p>November 28, 2010</p>
+<p>
+Almost five years ago I described a 
+<a href="notebook.html#2006_07_29">
+template for implementing parallel loops
+</a> 
+in Java using the standard Java class <code>AtomicInteger</code>.
+I have used that template to enhance the performance on multicore
+systems of about a dozen loops within the
+<a href="jtk/index.html">Mines Java Toolkit</a>.
+In doing so I encountered three shortcomings.
+</p><p>
+First, the boilerplate code required to construct and synchronize
+threads was lengthy. 
+A loop had to be really important for me to spend the effort writing 
+&mdash; usually, I copied, pasted, and modified &mdash; that code.
+Second, it was difficult for me to know how many threads to create
+in my methods because I could not know how many threads would be
+created in the methods that called mine.
+And third, as the number of cores grew &mdash; my current workstation 
+has 12 cores, each capable of executing two threads concurrently &mdash;
+the performance of the atomic integer template did not keep up for 
+some loops, especially those with smaller bits of computation inside.
+</p><p>
+I recently addressed these shortcomings by adding a new class 
+<code>Parallel</code> to the package <code>edu.mines.jtk.util</code>.
+The 
+<a href="http://boole.mines.edu/doc/api/edu/mines/jtk/util/Parallel.html">
+online documentation
+</a>for <code>Parallel</code> provides some simple examples of 
+using it to implement parallel loops.
+These examples look more or less like this:
+</p><pre><code>
+Parallel.loop(begin,end,step,new Parallel.LoopInt() {
+  public void compute(int i) {
+    // some computation that depends on index i
+  }
+});
+</code></pre><p>
+Assuming that computations for different loop indices <code>i</code>
+are independent, this parallel loop is equivalent to
+</p><pre><code>
+for (int i=begin; i&lt;end; i+=step) {
+  // some computation that depends on index i
+}
+</code></pre><p>
+Here let's use a different example to highlight advantages in 
+using the new class <code>Parallel</code> for parallel loops.
+</p>
+
+<h4>The matrix multiplication example</h4><p>
+To understand the class <code>Parallel</code> and the problems that 
+it solves, let's consider the following method that computes the 
+<code>j</code>'th column in a matrix product C = A&times;B:
+</p><pre><code>
+static void computeColumn(
+  int j, float[][] a, float[][] b, float[][] c) 
+{
+  int ni = c.length;
+  int nk = b.length;
+  for (int i=0; i&lt;ni; ++i) {
+    float cij = 0.0f;
+    for (int k=0; k&lt;nk; ++k)
+      cij += a[i][k]*b[k][j];
+    c[i][j] = cij;
+  }
+}
+</code></pre><p>
+For clarity let's ignore various optimizations that we would 
+normally make within this method, and instead focus on the
+method that will call this one, the method with the loop over 
+<code>j</code> that will compute all of the columns of the 
+matrix product C.
+</p><p>
+The simplest loop computes columns of C serially, that is, one
+after the other:
+</p><pre><code>
+int nj = c[0].length;
+for (int j=0; j&lt;nj; ++j)
+  computeColumn(j,a,b,c);
+</code></pre><p>
+Of course, this single-threaded loop will run no faster on a 
+multi-core system than on a single-core system.
+</p>
+
+<h4>Multithreading with <code>AtomicInteger</code></h4><p>
+One way to speed up this computation on multi-core systems is to 
+execute multiple threads that compute columns of C in parallel.
+Little synchronization between threads is required, because each 
+column of the matrix product C can be computed <em>independently</em>.
+</p><pre><code>
+int nthread = numberOfCores();
+final int nj = c[0].length;
+final AtomicInteger aj = new AtomicInteger();
+Thread[] threads = new Thread[nthread];
+for (int ithread=0; ithread&lt;nthread; ++ithread) {
+  threads[ithread] = new Thread(new Runnable() {
+    public void run() {
+      for (int j=aj.getAndIncrement(); j&lt;nj; 
+               j=aj.getAndIncrement())
+        computeColumn(j,a,b,c);
+    }
+  });
+}
+startAndJoin(threads);
+</code></pre><p>
+The loop over column index <code>j</code> is almost concealed by the 
+numerous lines of code required to construct and synchronize threads.
+I have reduced the number of lines somewhat by assuming the 
+existence of some utility methods <code>numberOfCores</code> and 
+<code>startAndJoin</code>, but this multi-threaded loop is still 
+much more complex than the serial loop above.
+</p><p>
+Another complication lies in the use of the standard Java class
+<code>AtomicInteger</code> which ensures that only one thread at a
+time can get and increment the column index <code>j</code>.
+Access to this index is <em>synchronized</em>; and although 
+<code>AtomicInteger</code> is designed to be fast, this 
+synchronized access will eventually become a bottleneck for 
+parallel loops, as the number of threads (cores) increases.
+This bottleneck will be most noticeable for small matrices,
+for which synchronization time may be a significant fraction
+of the time required for multiplication.
+</p><p>
+Yet another potential source of inefficiency lies in our choice for
+the number of threads.
+Suppose that some users of our method for matrix multiplication
+have many matrix products to compute, and that they are unaware
+that our method is implemented with multi-threading.
+They might then call our method in an outer parallel loop over 
+matrix products that is implemented much like our example above.
+They too will execute multiple threads for their outer loop.
+If they choose N = number of threads = number of cores, then the 
+composite program will be executing at least N&times;N threads, 
+all fighting each other for time and memory on N cores.
+</p><p>
+One solution to this problem of <em>nested parallelism</em> 
+would be to clearly document the fact that our method for
+matrix multiplication is multi-threaded.
+This documentation would then serve as a warning to others to not 
+execute threads in outer loops that would compete with ours.
+Alternatively, we could implement both serial and parallel methods
+for matrix multiplication, and let users decide which method to use.
+</p><p>
+Neither solution works well for a toolkit like ours, in which
+ignorance of implementation is a desirable feature of reusable
+software components.
+Although our source code is freely available, we must be able to 
+change the implementation of our methods without causing users of 
+those methods to change their programs.
+</p>
+
+<h4>Multitasking with fork-join</h4><p>
+In summary, the three problems I encountered with the atomic 
+integer multi-threading template listed above are (1) software 
+complexity, (2) performance degradation caused by synchronized 
+access to a shared loop index, and (3) excessive thread 
+construction due to nested parallelism.
+</p><p>
+All three problems are addressed by the new class <code>Parallel</code>.
+Using one method and an interface defined within this class, our loop
+for matrix multiplication becomes:
+</p><pre><code>
+int nj = c[0].length;
+Parallel.loop(nj,new Parallel.LoopInt() {
+  public void compute(int j) {
+    computeColumn(j,a,b,c);
+  }
+});
+</code></pre><p>
+The method <code>Parallel.loop</code> is overloaded to accept
+multiple parameters that describe the indices to be passed to
+the method <code>compute</code> defined by the interface
+<code>Parallel.LoopInt</code>.
+Here, we use the default begin index 0 and the default step 1,
+and specify only the end index <code>nj</code>, so that values 
+<code>j = 0, 1, 2, ..., nj-1</code> (not necessarily in that order)
+will be passed to the method <code>compute</code>.
+That method implements the computation performed by the body of 
+our parallel loop.
+</p><p>
+<em>
+In hindsight, I should have written a class like <code>Parallel</code> 
+long ago to simplify the lengthy atomic integer template listed above.
+</em>
+</p><p>
+The method <code>loop</code> in such a class would construct and
+synchronize all of the threads, and an internal hidden implemention of
+<code>Thread.run</code> would simply pass the atomic integer loop 
+index <code>j</code> to the user's method <code>compute</code>.
+However, the method <code>Parallel.loop</code> does not work this way.
+</p><p>
+Instead, this method recursively subdivides the specified set of 
+loop indices into two subsets of indices.
+Each subset is represented by a task (not a thread) that is either
+split again into two tasks or performed immediately by calling
+the user's implementation of <code>compute</code> for each
+index within its set.
+This recursive subdivision of tasks creates a binary tree of
+computation that can be performed efficiently by a 
+<em>fork-join framework</em>.
+</p><p>
+That fork-join framework was developed by Doug Lea (1999, Concurrent
+Programming in Java: Design Principles and Patterns, Addison Wesley;
+see also
+<a href="http://gee.cs.oswego.edu/dl/papers/fj.pdf">
+A Java Fork/Join Framework
+</a>)
+and is scheduled to be included with Java 7 in 2011.
+This framework assigns tasks to a pool of threads in a clever way 
+that is designed to keep all threads busy executing the user's 
+compute method, while minimizing overhead and synchronization.
+Neither threads nor tasks share the loop index, so no 
+synchronized access to an atomic integer is required.
+</p><p>
+Moreover, before a task splits itself into two smaller tasks, it
+first queries the framework for an estimate of the number of excess 
+tasks already constructed and for which no threads are currently 
+available to execute them.
+If that number exceeds a threshold (say, 6), the task does not split; 
+rather, it simply performs its computation serially by calling the 
+user's method <code>compute</code> for each of its loop indices. 
+</p><p>
+This query-before-splitting tactic solves neatly the problem of 
+nested parallelism.
+Tasks for inner loops will rarely be split when executed by
+tasks constructed for outer loops, because the outer loops
+provide sufficient tasks to keep all threads busy.
+</p>
+
+<h4>If not Java, ...</h4><p>
+The key to performance in the class <code>Parallel</code> 
+lies in its focus on tasks instead of threads.
+<code>Parallel</code> lets a (soon-to-be standard) Java fork-join 
+framework construct a shared pool of threads in which tasks can be 
+executed in parallel.
+The same task-based parallelism can be found in frameworks developed 
+for other programming languages.
+</p><p>
+For example, the <a href="http://openmp.org/">OpenMP</a> standard 
+specifies task-based parallelism via language extensions for 
+C/C++ and Fortran.
+OpenMP requires a compiler that supports the extensions, but the 
+free GCC (GNU Compiler Collection) does so, as do commercial 
+compilers available from Intel and others.
+</p><p>
+For C++, Intel provides the
+<a href="http://www.threadingbuildingblocks.org/">
+Threading Building Blocks (TBB)
+</a> 
+library that is based, in part, on task-based fork-join parallelism. 
+The TBB library also supports more general patterns beyond loops
+for parallel computing, and some of these may be added to the class 
+<code>Parallel</code> in the future.
+</p>
