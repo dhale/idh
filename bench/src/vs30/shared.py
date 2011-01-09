@@ -14,12 +14,13 @@ from edu.mines.jtk.awt import *
 from edu.mines.jtk.dsp import *
 from edu.mines.jtk.interp import *
 from edu.mines.jtk.io import *
-#from edu.mines.jtk.la import *
 from edu.mines.jtk.lapack import *
 from edu.mines.jtk.mosaic import *
 from edu.mines.jtk.sgl import *
 from edu.mines.jtk.util import *
 from edu.mines.jtk.util.ArrayMath import *
+
+from vs30 import *
   
 #############################################################################
 # Run the function main on the Swing thread

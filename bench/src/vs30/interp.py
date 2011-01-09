@@ -4,8 +4,71 @@ pngDir = None # for no PNG files
 #pngDir = "png/vs30/"
 
 def main(args):
-  #goGeology()
   goSlopes()
+  #goGeology()
+
+def goSlopes():
+  #n1,n2 = 310,490
+  #g = readImage("vs30SlopesTaiwanFromDaveWald.dat",n1,n2)
+  #s1 = Sampling(n1,0.00833333333,119.7-360.0)
+  #s2 = Sampling(n2,0.00833333333,21.75)
+  n1,n2 = 312,418
+  g = readImage("vs30SlopesTaiwan.dat",n1,n2)
+  cleanSlopesImage(g)
+  s1 = Sampling(n1,0.00833333333333,119.6-360.0)
+  s2 = Sampling(n2,0.00832535885167,21.85)
+  f,x1,x2 = readScattered("vs30MeasuredTaiwan.txt",s1,s2)
+  mask = makeMask(g)
+  d = makeTensors(mask,g)
+  dmask = makeTensors(mask,g)
+  maskTensors(mask,dmask)
+  g = mul(mask,g)
+  plot(f,x1,x2,g,s1,s2,png="vs30s")
+  plot(None,None,None,g,s1,s2,dmask,png="vs30se")
+  for tensors in [d,None]:
+    if tensors:
+      gridder = BlendedGridder2(tensors,f,x1,x2)
+      namet = "vs30t"
+    else:
+      gridder = BlendedGridder2(f,x1,x2)
+      namet = "vs30i"
+    for blending in [False,True]:
+      if blending: 
+        name = namet+"q"
+      else: 
+        name = namet+"p"
+      gridder.setBlending(blending)
+      gridder.setSmoothness(1.0)
+      q = gridder.grid(s1,s2)
+      q = mul(mask,q)
+      plot(f,x1,x2,q,s1,s2,png=name)
+
+def cleanSlopesImage(g):
+  n1,n2 = len(g[0]),len(g)
+  gnull = min(g) # assume min value denotes missing sample
+  npass = 0
+  nfill = 1
+  while nfill>0 and npass<5:
+    nfill = 0
+    for i2 in range(1,n2-1):
+      for i1 in range(1,n1-1):
+        gi = g[i2][i1]
+        if gi==gnull:
+          gw = g[i2  ][i1-1]
+          ge = g[i2  ][i1+1]
+          gs = g[i2-1][i1  ]
+          gn = g[i2+1][i1  ]
+          gsum = 0.0
+          nsum = 0.0
+          if gw!=gnull and ge!=gnull:
+            gsum += gw+ge; nsum += 2.0
+          if gs!=gnull and gn!=gnull:
+            gsum += gs+gn; nsum += 2.0
+          if nsum>0.0:
+            g[i2][i1] = gsum/nsum
+            nfill += 1
+    npass += 1
+    print "cleaning slopes image: pass",npass," nfill =",nfill
 
 def goGeology():
   n1,n2 = 351,456
@@ -39,7 +102,6 @@ def goGeology():
       q = mul(mask,q)
       print name
       plot(f,x1,x2,q,s1,s2,png=name)
-
 def cleanGeologyImage(g):
   n1,n2 = len(g[0]),len(g)
   for i2 in range(n2):
@@ -51,41 +113,6 @@ def cleanGeologyImage(g):
       bad = bad and gi<1129.0 or gi>1131.0
       if bad:
         g[i2][i1] = 0.0
-
-def goSlopes():
-  #n1,n2 = 310,490
-  #g = readImage("vs30SlopesTaiwanFromDaveWald.dat",n1,n2)
-  #s1 = Sampling(n1,0.00833333333,119.7-360.0)
-  #s2 = Sampling(n2,0.00833333333,21.75)
-  n1,n2 = 312,418
-  g = readImage("vs30SlopesTaiwan.dat",n1,n2)
-  s1 = Sampling(n1,0.00833333333333,119.6-360.0)
-  s2 = Sampling(n2,0.00832535885167,21.85)
-  f,x1,x2 = readScattered("vs30MeasuredTaiwan.txt",s1,s2)
-  mask = makeMask(g)
-  d = makeTensors(mask,g)
-  dmask = makeTensors(mask,g)
-  maskTensors(mask,dmask)
-  g = mul(mask,g)
-  plot(f,x1,x2,g,s1,s2,png="vs30s")
-  plot(None,None,None,g,s1,s2,dmask,png="vs30se")
-  for tensors in [d,None]:
-    if tensors:
-      gridder = BlendedGridder2(tensors,f,x1,x2)
-      namet = "vs30t"
-    else:
-      gridder = BlendedGridder2(f,x1,x2)
-      namet = "vs30i"
-    for blending in [False,True]:
-      if blending: 
-        name = namet+"q"
-      else: 
-        name = namet+"p"
-      gridder.setBlending(blending)
-      gridder.setSmoothness(1.0)
-      q = gridder.grid(s1,s2)
-      q = mul(mask,q)
-      plot(f,x1,x2,q,s1,s2,png=name)
 
 def makeTensors(mask,f):
   lof = LocalOrientFilter(3.0)
@@ -124,12 +151,12 @@ def plot(f,x1,x2,g,s1,s2,d=None,png=None):
   #sp.setSize(865,920) # for geology
   sp.addColorBar("Vs30 (m/s)")
   pv = sp.addPixels(s1,s2,g)
-  pv.setColorModel(ColorMap.GRAY)
+  pv.setColorModel(ColorMap.JET)
   pv.setInterpolation(PixelsView.Interpolation.NEAREST)
   pv.setClips(0.0,760.0)
   if d:
     tv = TensorsView(s1,s2,d)
-    tv.setLineColor(Color.RED)
+    tv.setLineColor(Color.WHITE)
     tv.setLineWidth(3)
     tv.setEllipsesDisplayed(30)
     tile = sp.plotPanel.getTile(0,0)
@@ -138,8 +165,8 @@ def plot(f,x1,x2,g,s1,s2,d=None,png=None):
     mv = sp.addPoints(x1,x2)
     mv.setLineStyle(PointsView.Line.NONE)
     mv.setMarkStyle(PointsView.Mark.FILLED_CIRCLE)
-    mv.setMarkColor(Color.RED)
-    mv.setMarkSize(4)
+    mv.setMarkColor(Color.WHITE)
+    mv.setMarkSize(8)
   if pngDir and png:
     sp.paintToPng(600,3,pngDir+png+".png")
 
