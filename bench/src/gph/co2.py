@@ -6,12 +6,34 @@ from shared import *
 #pngDir = None
 pngDir = "png/co2/"
 
+"""
+Jun, 1997
+Jul, 1993, 1995
+Aug, 1979, 1982, 1983, 1986, 1987, 1988, 1989, ...
+Sep, 1983, 1987, ...
+Oct, 2007, 2009
+Nov
+Dec, 2008
+"""
 def main(args):
+  #goVariogram(1971.95,1972,1)
   #goVariogram(2009.28,2010,2)
-  #goVariogram(1970.28,2010,12)
+  goVariogram(1970.28,2010,12)
   #goGridding(2009.28,2010,12,sg=True,p3=True)
   #goGridding(2009.28,2010,12,p3=True)
-  goGridding(2007.28,2010,12)
+  #goGridding(1970,2010,1) # Jan-Dec
+  #goGridding(1970.04,2010,12) # Jan
+  #goGridding(1970.12,2010,12) # Feb
+  #goGridding(1970.20,2010,12) # Mar
+  #goGridding(1970.29,2010,12) # Apr
+  #goGridding(1970.38,2010,12) # May
+  #goGridding(1970.46,2010,12) # Jun
+  #goGridding(1970.54,2010,12) # Jul
+  #goGridding(1970.62,2010,12) # Aug
+  #goGridding(1970.70,2010,12) # Sep
+  #goGridding(1970.78,2010,12) # Oct
+  #goGridding(1970.87,2010,12) # Nov
+  #goGridding(1970.95,2010,12) # Dec
   #goPlotCo2Table2()
   #printCo2Table()
   #goPlotEarth2()
@@ -29,21 +51,17 @@ def goVariogram(fy,ly,ky):
     for i in range(n):
       lati,loni,co2i = laty[i],lony[i],co2y[i]
       for j in range(n):
+        if j==i:
+          continue
         latj,lonj,co2j = laty[j],lony[j],co2y[j]
         d,b = getDistanceAndBearingGreatCircle(lati,loni,latj,lonj)
         b = toRadians(b)
         ss = (co2i-co2j)**2
-        x.append(toDegrees(d*sin(b)))
-        y.append(toDegrees(d*cos(b)))
+        x.append(d*sin(b))
+        y.append(d*cos(b))
         s.append(ss)
-    title = strMonthYear(sy.getValue(iy))
+    title = monthYearString(sy.getValue(iy))
     plotVariogram(s,x,y,title=title,png="co2V")
-
-def yearIndexString(iy):
-  if iy<10:
-    return "0"+str(iy)
-  else:
-    return str(iy)
   
 def goGridding(fy,ly,ky,sg=False,tv=False,p3=False):
   eimage = readWaterImage()
@@ -62,8 +80,9 @@ def goGridding(fy,ly,ky,sg=False,tv=False,p3=False):
       else:
         g,s1,s2 = gridBlended(scale,f,u1,u2)
       d = makeTensors(scale,s1,s2)
-      title = strMonthYear(y)
+      title = monthYearString(y)
       pngName = "co2Us"+str(int(scale))+"y"+yearIndexString(iy)
+      print pngName
       plot2(eimage,f,u1,u2,g,s1,s2,d,
             mv=not sg,cv=True,tv=tv,
             year=y,title=title,png=pngName)
@@ -161,9 +180,9 @@ def plot2(image,
     cv = PixelsView(s1,s2,g)
     cv.setInterpolation(PixelsView.Interpolation.NEAREST)
     cv.setClips(cmin,cmax)
-    cmin += 1.1*(cmax-cmin)/256 # make null (zero) values transparent
-    cv.setColorModel(makeTransparentColorModel(0.8))
-    #cv.setColorModel(ColorMap.getJet(0.8))
+    #cmin += 1.1*(cmax-cmin)/256 # make null (zero) values transparent
+    #cv.setColorModel(makeTransparentColorModel(0.8))
+    cv.setColorModel(ColorMap.getJet(0.8))
     tile.addTiledView(cv)
     cb = pp.addColorBar("CO2 (ppm)")
     cb.setInterval(5)
@@ -205,6 +224,12 @@ def plot2(image,
   pf.setVisible(True)
   if png and pngDir: 
     pf.paintToPng(600,3,pngDir+png+".png")
+  runFunc(disposePlotFrame,pf)
+
+def disposePlotFrame(pf):
+  print "closing ",pf[0]
+  pf[0].setVisible(False)
+  pf[0].dispose()
 
 def plot3(eimage,cimage=None,lats=None,lons=None,az=45):
   model = OblateModel.forWGS84()
@@ -575,12 +600,18 @@ def readCo2s(station,sy):
 #############################################################################
 # Other stuff
 
-def strMonthYear(y):
+def monthYearString(y):
   mmap = {1:"Jan", 2:"Feb", 3:"Mar", 4:"Apr", 5:"May", 6:"Jun",
           7:"Jul", 8:"Aug", 9:"Sep",10:"Oct",11:"Nov",12:"Dec"}
   year = int(y)
   month = mmap[int(1.0+(y-year)*12.0)]
   return month+", "+str(year)
+
+def yearIndexString(iy):
+  if iy<10:
+    return "0"+str(iy)
+  else:
+    return str(iy)
 
 co2YearlyAverage = None
 def clipsForYear(y):
@@ -659,14 +690,12 @@ def wrapLon(f,sx,sy):
 
 """
 def testDB():
-  getDistanceAndBearingGreatCircle(0,0,0,180)
-  getDistanceAndBearingGreatCircle(0,180,0,0)
-  getDistanceAndBearingGreatCircle( 90,  0,-90,  0)
-  getDistanceAndBearingGreatCircle(-90,  0, 90,  0)
-  getDistanceAndBearingGreatCircle( 90, 90,-90, 90)
-  getDistanceAndBearingGreatCircle(-90, 90, 90, 90)
-  getDistanceAndBearingGreatCircle( 90,  0,  0, 90)
-  getDistanceAndBearingGreatCircle(  0, 90, 90,  0)
+  #getDistanceAndBearingGreatCircle(0,-45,0,45)
+  #getDistanceAndBearingGreatCirclM(0,-45,0,45)
+  #getDistanceAndBearingGreatCircle(30,-45,30,45)
+  #getDistanceAndBearingGreatCirclM(30,-45,30,45)
+  getDistanceAndBearingGreatCircle(30,-45,60,45)
+  getDistanceAndBearingGreatCirclM(30,-45,60,45)
 def main(args):
   testDB()
 """
@@ -681,6 +710,7 @@ def getDistanceAndBearingGreatCircle(lat1,lon1,lat2,lon2):
   d = 0.5*(d12+d21)
   b = 0.5*(b12+b21)
   #print "b12 =",b12," b21 =",b21," b =",b
+  #print "d =",d," b =",b
   return d,b
 
 def getDistanceAndBearingGC(lat1,lon1,lat2,lon2):
@@ -690,8 +720,25 @@ def getDistanceAndBearingGC(lat1,lon1,lat2,lon2):
   d = acos(sin(lat1)*sin(lat2)+cos(lat1)*cos(lat2)*cos(lon2-lon1))
   y = sin(dlon)*cos(lat2)
   x = cos(lat1)*sin(lat2)-sin(lat1)*cos(lat2)*cos(dlon)
-  b = toDegrees(atan2(y,x))
+  b = atan2(y,x)
+  return toDegrees(d),toDegrees(b)
+
+def getDistanceAndBearingGreatCirclM(lat1,lon1,lat2,lon2):
+  latm,lonm = getMidpoint(lat1,lon1,lat2,lon2)
+  d,b = getDistanceAndBearingGC(latm,lonm,lat2,lon2)
+  d *= 2.0
+  #print "d =",d," b =",b
   return d,b
+
+def getMidpoint(lat1,lon1,lat2,lon2):
+  lat1,lon1 = toRadians(lat1),toRadians(lon1)
+  lat2,lon2 = toRadians(lat2),toRadians(lon2)
+  dlon = lon2-lon1
+  bx = cos(lat2)*cos(dlon)
+  by = cos(lat2)*sin(dlon)
+  latm = atan2(sin(lat1)+sin(lat2),sqrt((cos(lat1)+bx)*(cos(lat1)+bx)+by*by)) 
+  lonm = lon1+atan2(by,cos(lat1)+bx)
+  return toDegrees(latm),toDegrees(lonm)
 
 def getDistanceAndBearingRhumbLine(lat1,lon1,lat2,lon2):
   lat1,lon1 = toRadians(lat1),toRadians(lon1)

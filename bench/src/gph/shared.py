@@ -34,3 +34,12 @@ class _RunMain(Runnable):
     self.main(sys.argv)
 def run(main):
   SwingUtilities.invokeLater(_RunMain(main)) 
+
+class _RunFunc(Runnable):
+  def __init__(self,func,varargs):
+    self.func = func
+    self.varargs = varargs
+  def run(self):
+    self.func(self.varargs)
+def runFunc(func,*varargs):
+  SwingUtilities.invokeLater(_RunFunc(func,varargs)) 

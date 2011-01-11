@@ -21,7 +21,7 @@ def goTaiwanTopo():
   z,s1,s2 = readTile("e100n40") # elev z, lon sampling s1, lat sampling s2
   plot(z,s1,s2,width=670,height=830)
   j1,j2 = s1.indexOfNearest(f1),s2.indexOfNearest(f2)
-  z,s1,s2 = subsetForIndices(z,s1,s2,n1,n2,j1,j2)
+  z,s1,s2 = subsetImage(z,s1,s2,n1,n2,j1,j2)
   writeImage("TaiwanTopo",z)
   print "Taiwan:"
   print "  nlon =",s1.count," dlon =",s1.delta," flon =",s1.first
@@ -171,7 +171,7 @@ def readTile(tileName):
   z = flip2(z) # flip array so first sample is in lower-left corner
   return z,slon,slat
 
-def subsetForIndices(z,s1,s2,n1,n2,j1,j2):
+def subsetImage(z,s1,s2,n1,n2,j1,j2):
   """
   Returns a subset of the specified array z and samplings s1 and s2.
   n1 and n2 are output numbers of samples in 1st and 2nd dimensions.
