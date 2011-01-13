@@ -100,7 +100,6 @@ def makeTensors(g,mask):
   d.setEigenvalues(au,av)
   return d
 
-
 def xmakeTensors(g,mask):
   lof = LocalOrientFilter(4.0)
   d = lof.applyForTensors(g)

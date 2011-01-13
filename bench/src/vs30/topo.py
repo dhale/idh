@@ -5,8 +5,6 @@
 # To use this program, download at least one tile from the GTOPO30 database.
 # The files for the tile should be in directory with a name like "e100n40". 
 # Modify the topoDir directory in the data input/output section below.
-#
-# program as necessary to extract and process the elevation data.
 #############################################################################
 from shared import *
 
