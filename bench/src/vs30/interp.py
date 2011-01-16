@@ -61,7 +61,7 @@ def plot(f,x1,x2,g,s1,s2,d=None,cbar=None,cmin=0,cmax=0,png=None):
     tv.setLineColor(Color.BLACK)
     tv.setLineWidth(3)
     tv.setEllipsesDisplayed(30)
-    tv.setScale(100)
+    tv.setScale(300)
     tile = sp.plotPanel.getTile(0,0)
     tile.addTiledView(tv)
   if f and x1 and x2:
@@ -79,43 +79,11 @@ def plot(f,x1,x2,g,s1,s2,d=None,cbar=None,cmin=0,cmax=0,png=None):
 def makeTensors(g,mask):
   lof = LocalOrientFilter(4.0)
   d = lof.applyForTensors(g)
+  d.invertStructure(1.0,2.0)
   n1,n2 = d.n1,d.n2
   au = zerofloat(n1,n2)
   av = zerofloat(n1,n2)
   d.getEigenvalues(au,av) # eigenvalues are gradients squared; au >= av
-  amax = max(au) # largest eigenvalue
-  aeps = 0.000001*amax # a relatively small eigenvalue
-  au = add(aeps,au) # avoid divide by zero
-  av = add(aeps,av) # avoid divide by zero
-  amin = min(av) # smallest eigenvalue
-  aiso = div(av,au) # isotropy
-  au = div(amin,au) # au <= av <= 1
-  av = div(amin,av) # au <= av <= 1
-  au = mul(aiso,au) # scale by isotropy
-  au = mul(au,mask) # au on land, zero on water
-  av = mul(av,mask) # av on land, zero on water
-  am = sub(1.0,mask) # zero on land, one on water
-  au = add(au,am) # merge tensors for land and water
-  av = add(av,am) # merge tensors for land and water
-  d.setEigenvalues(au,av)
-  return d
-
-def xmakeTensors(g,mask):
-  lof = LocalOrientFilter(4.0)
-  d = lof.applyForTensors(g)
-  n1,n2 = d.n1,d.n2
-  au = zerofloat(n1,n2)
-  av = zerofloat(n1,n2)
-  d.getEigenvalues(au,av) # eigenvalues are gradients squared; au >= av
-  au = pow(au,2.0) # amplify gradients to emphasize edges in image
-  av = pow(av,2.0) # amplify gradients to emphasize edges in image
-  amax = max(au) # largest eigenvalue
-  aeps = 0.000001*amax # a relatively small eigenvalue
-  au = add(aeps,au) # avoid divide by zero
-  av = add(aeps,av) # avoid divide by zero
-  amin = min(av) # smallest eigenvalue
-  au = div(amin,au) # au <= av <= 1
-  av = div(amin,av) # au <= av <= 1
   au = mul(au,mask) # au on land, zero on water
   av = mul(av,mask) # av on land, zero on water
   am = sub(1.0,mask) # zero on land, one on water
