@@ -3,8 +3,8 @@
 
 from shared import *
 
-#pngDir = None
-pngDir = "png/co2/"
+pngDir = None
+#pngDir = "png/co2/"
 
 """
 Jun, 1997
@@ -47,6 +47,7 @@ def goVariogram(fy,ly,ky):
   for iy in yearIndicesCo2Table(fy,ly,ky):
     laty,lony,co2y = getGoodData(iy,lats,lons,co2s)
     n = len(laty)
+    #co2y = mul(20.0,randfloat(n))
     x,y,s = [],[],[]
     for i in range(n):
       lati,loni,co2i = laty[i],lony[i],co2y[i]
@@ -288,8 +289,8 @@ def plotVariogram(s,x,y,title=None,png=None):
   sp = SimplePlot()
   sp.setHLimits(-180.0,180.0)
   sp.setVLimits(-180.0,180.0)
-  sp.setHLabel("East-west distance (degrees)")
-  sp.setVLabel("North-south distance (degrees)")
+  sp.setHLabel("Great circle east-west distance (degrees)")
+  sp.setVLabel("Great circle north-south distance (degrees)")
   pv = sp.addPixels(sx,sy,sg)
   pv.setClips(19/255.0,19)
   pv.setColorModel(makeTransparentColorModel(1.0))

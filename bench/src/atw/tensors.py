@@ -12,14 +12,6 @@ from edu.mines.jtk.mosaic import *
 from edu.mines.jtk.util import *
 from edu.mines.jtk.util.ArrayMath import *
 
-# John Mathewson's subsets, resampled to 20 x 20 m trace spacing
-# atwj1.dat = John's area1 file
-# atwj1s.dat = horizontal slice of John's atwj1 for i1=40
-# atwj3.dat = John's area3 file
-#n1= 129; d1=0.0040; f1=0.0000
-#n2= 500; d2=0.0200; f2=0.0000
-#n3= 500; d3=0.0200; f3=0.0000
-
 def main(args):
   goTensors()
 
@@ -100,6 +92,14 @@ def plotTp(g,s1,s2,d=None,dscale=1,cmin=0,cmax=0,png=None):
 
 #############################################################################
 # data input/output
+
+# John Mathewson's subsets, resampled to 20 x 20 m trace spacing
+# atwj1.dat = John's area1 file
+# atwj1s.dat = horizontal slice of John's atwj1 for i1=40
+# atwj3.dat = John's area3 file
+#n1= 129; d1=0.0040; f1=0.0000
+#n2= 500; d2=0.0200; f2=0.0000
+#n3= 500; d3=0.0200; f3=0.0000
 
 def readAwImage():
   s1 = Sampling(500,0.02,0.0)

@@ -9,18 +9,18 @@
 from shared import *
 
 def main(args):
-  #goTaiwanTopo()
-  goTaiwanSlope()
+  goTaiwanTopo()
+  #goTaiwanSlope()
 
 def goTaiwanTopo():
   s1,s2 = getTaiwanSamplings()
   n1,n2 = s1.count,s2.count
   f1,f2 = s1.first,s2.first
   z,s1,s2 = readTile("e100n40") # elev z, lon sampling s1, lat sampling s2
-  plot(z,s1,s2,width=670,height=830)
+  #plot(z,s1,s2,width=670,height=830)
   j1,j2 = s1.indexOfNearest(f1),s2.indexOfNearest(f2)
   z,s1,s2 = subsetImage(z,s1,s2,n1,n2,j1,j2)
-  writeImage("TaiwanTopo",z)
+  #writeImage("TaiwanTopo",z)
   print "Taiwan:"
   print "  nlon =",s1.count," dlon =",s1.delta," flon =",s1.first
   print "  nlat =",s2.count," dlat =",s2.delta," flat =",s2.first
