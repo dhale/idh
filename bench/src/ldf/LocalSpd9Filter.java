@@ -486,7 +486,7 @@ public class LocalSpd9Filter {
     float[][] v1 = fillfloat(sin(theta),n1,n2);
     LocalDiffusionTensors2 ldt = 
       new LocalDiffusionTensors2(0.0,1.0,d0,d1,v1);
-    LocalDiffusionKernel ldk = new LocalDiffusionKernel();
+    LocalDiffusionKernelX ldk = new LocalDiffusionKernelX();
     float[][][] s = ldk.getCoefficients(ldt);
     float[][] s00 = s[0], s0p = s[1], spm = s[2], sp0 = s[3], spp = s[4];
     int k1 = 1;
@@ -526,7 +526,7 @@ public class LocalSpd9Filter {
     float[][] v1 = fillfloat(sqrt(0.5f),n1,n2);
     LocalDiffusionTensors2 ldt = 
       new LocalDiffusionTensors2(0.0,1.0,d0,d1,v1);
-    LocalDiffusionKernel ldk = new LocalDiffusionKernel();
+    LocalDiffusionKernelX ldk = new LocalDiffusionKernelX();
     float[][][] s = ldk.getCoefficients(ldt);
     add(0.1f,s[0],s[0]);
     LocalSpd9Filter lsf = new LocalSpd9Filter(s);

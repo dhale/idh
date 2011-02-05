@@ -1,5 +1,6 @@
 import sys
-from math import *
+#from math import *
+from java.awt import *
 from java.lang import *
 from java.util import *
 from java.nio import *
@@ -21,92 +22,128 @@ tukey = BilateralFilter.Type.TUKEY
 #############################################################################
 
 def main(args):
+  #goFilterImpulses()
+  #goFilterRandom()
+  goImage()
   goFilter()
   goSmooth()
   #goSemblance()
   #goNormalize()
 
-def getImage():
-  n1,n2 = 462,951
-  fileName = "/data/seis/f3d/f3d75.dat"
-  return readImage(fileName,n1,n2),6.0
-
 def goFilter():
-  x,xclip = getImage()
-  plot(x,xclip)
-  t = imageTensors(2.0,0.0001,x)
-  #c = semblance(2.0,t,x)
-  #c = pow(c,8.0)
-  #plot(c,1.0)
-  #eu = mul(0.0001,c)
-  #ev = mul(1.0000,c)
-  #t.setEigenvalues(eu,ev)
-  s = localScale(3.0,x)
-  x = div(x,s)
-  #plot(x,2.0)
-  y = bilateralFilter(30.0,1.0,t,x)
-  #plot(y,2.0)
-  y = mul(s,y)
-  plot(y,xclip)
+  x,s1,s2,clip = getImage()
+  n1,n2 = len(x[0]),len(x)
+  #for c in [False,True]:
+  for c in [False]:
+    t = imageTensors(2.0,x)
+    if c:
+      t.scale(coherence(2.0,t,x))
+    xqqd = qqd(x)
+    y = bilateralFilter(15.0,xqqd,t,x)
+    plot(y,s1,s2,clip)
+    #plot(sub(x,y),s1,s2,clip*0.5)
 
 def goSmooth():
-  x,xclip = getImage()
-  plot(x,xclip)
-  t = imageTensors(2.0,0.0001,x)
-  c = semblance(2.0,t,x)
-  c = pow(c,8.0)
-  #plot(c,1.0)
-  eu = mul(0.0001,c)
-  ev = mul(1.0000,c)
-  t.setEigenvalues(eu,ev)
-  y = smooth(30.0,t,x)
-  plot(y,xclip)
+  x,s1,s2,clip = getImage()
+  #plot(x,s1,s2,clip)
+  #for c in [False,True]:
+  for c in [True]:
+    t = imageTensors(2.0,x)
+    if c:
+      t.scale(coherence(2.0,t,x))
+    #plot(x,s1,s2,clip,t=t)
+    #plot(c,s1,s2,clip=1.0,cbar="Semblance")
+    y = smooth(15.0,t,x)
+    plot(y,s1,s2,clip)
+    #plot(sub(x,y),s1,s2,clip*0.5)
 
-def goSemblance():
-  x,xclip = getImage()
-  plot(x,xclip)
-  t = imageTensors(2.0,0.001,x)
-  u,s,y = normalize(80.0,t,x)
-  s = semblance(2.0,t,y)
-  plot(s,1.0)
+def goFilterImpulses():
+  xa,s1,s2,clip = getImage()
+  xb = makeImpulses(12,len(xa[0]),len(xa))
+  t = imageTensors(2.0,xa)
+  #t.scale(coherence(2.0,t,xa))
+  #s = BilateralFilter.rmsScales(4.0,xa)
+  #xa = div(xa,s)
+  plot(xa,s1,s2,1.3)
+  #plot(xb,s1,s2,0.9)
+  for sigmaR in [0.1,1.0,100.0]:
+  #for sigmaR in [100.0]:
+    y = like(xa)
+    bf = BilateralFilter(30.0,sigmaR)
+    bf.setType(BilateralFilter.Type.TUKEY)
+    bf.applyAB(t,xa,xb,y)
+    y = smoothS(y)
+    #plot(y,s1,s2,0.5*max(y))
+    plot(y,s1,s2,0.1)
 
-def goNormalize():
-  x,xclip = getImage()
-  t = imageTensors(2.0,0.001,x)
-  u,s,y = normalize(80.0,t,x)
-  print "x: min =",min(x)," max =",max(x)
-  print "u: min =",min(u)," max =",max(u)
-  print "s: min =",min(s)," max =",max(s)
-  print "y: min =",min(y)," max =",max(y)
-  plot(x,xclip)
-  plot(u,xclip)
-  plot(s,xclip)
-  plot(y,2.0)
+def goFilterRandom():
+  xa,s1,s2,clip = getImage()
+  plot(xa,s1,s2,clip)
+  n1,n2 = len(xa[0]),len(xa)
+  xb = makeRandom(n1,n2)
+  t = imageTensors(2.0,xa)
+  #t.scale(coherence(2.0,t,xa))
+  s = BilateralFilter.rmsScales(4.0,xa)
+  xa = div(xa,s)
+  #plot(xa,s1,s2,1.3)
+  #plot(xb,s1,s2,0.5)
+  #for sigmaR in [0.1,1.0,100.0]:
+  for sigmaR in [0.7]:
+    y = like(xa)
+    bf = BilateralFilter(30.0,sigmaR)
+    bf.setType(BilateralFilter.Type.TUKEY)
+    bf.applyAB(t,xa,xb,y)
+    #y = smoothS(y)
+    plot(y,s1,s2,0.1)
+    bf.apply(t,xa,y)
+    y = mul(y,s)
+    #y = smoothS(y)
+    plot(y,s1,s2,clip)
 
-def goEdges():
+def goImage():
+  x,s1,s2,clip = getImage()
+  plot(x,s1,s2,clip)
+
+def getImage():
+  return getImageF3d()
+  #return getImageTpd()
+  #return getImageSyn()
+
+def getImageF3d():
+  n1,n2 = 462,951
+  d1,d2 = 0.004,0.025
+  f1,f2 = 0.004,0.000
+  fileName = "/data/seis/f3d/f3d75.dat"
+  x = readImage(fileName,n1,n2)
+  j1,j2 = 240,0
+  n1,n2 = n1-j1,440
+  f1,f2 = f1+j1*d1,f2+j2*d2
+  x = copy(n1,n2,j1,j2,x)
+  s1,s2 = Sampling(n1,d1,f1),Sampling(n2,d2,f2)
+  return x,s1,s2,5.0
+
+def getImageTpd():
   n1,n2 = 251,357
-  clip = 4.5
+  d1,d2 = 0.004,0.025
+  f1,f2 = 0.500,0.000
   fileName = "/data/seis/tp/csm/oldslices/tp73.dat"
   x = readImage(fileName,n1,n2)
-  t = makeImageTensors(x)
-  plot(x,clip)
-  sigma1 = 4.0; c1 = 0.5*sigma1*sigma1
-  sigma2 = 8.0; c2 = 0.5*sigma2*sigma2
-  sigma3 = 2.0; c3 = 0.5*sigma3*sigma3
-  lsf = LocalSmoothingFilter()
-  rgf = RecursiveGaussianFilter(sigma3)
-  y1 = copy(x)
-  y2 = copy(x)
-  lsf.apply(t,c1,x,y1)
-  lsf.apply(t,c2,x,y2)
-  #plot(y1)
-  #plot(y2)
-  y = sub(y2,y1)
-  plot(y)
-  z = mul(x,y)
-  plot(z)
-  rgf.apply00(z,z)
-  plot(z)
+  s1,s2 = Sampling(n1,d1,f1),Sampling(n2,d2,f2)
+  return x,s1,s2,2.0
+
+def getImageSyn():
+  n1,n2 = 251,357
+  d1,d2 = 1.0,1.0
+  f1,f2 = 0.0,0.0
+  s1,s2 = Sampling(n1,d1,f1),Sampling(n2,d2,f2)
+  x = zerofloat(n1,n2)
+  for i2 in range(n2):
+    if i2<n2/2:
+      x[i2] = sin(rampfloat(0.00,0.1,n1))
+    else:
+      x[i2] = sin(rampfloat(3.14,0.1,n1))
+    x[i2] = mul(1.4,x[i2])
+  return x,s1,s2,1.4
 
 def readImage(fileName,n1,n2):
   x = zerofloat(n1,n2)
@@ -115,12 +152,18 @@ def readImage(fileName,n1,n2):
   ais.close()
   return x
 
-def imageTensors(sigma,eu,x):
+def imageTensors(sigma,x):
+  """ 
+  Returns tensors for guiding filters along features in specified image.
+  """
   n1,n2 = len(x[0]),len(x)
   lof = LocalOrientFilter(2.0*sigma,2.0)
   lof.setGradientSmoothing(sigma)
-  t = lof.applyForTensors(x)
-  t.setEigenvalues(eu,1.000)
+  t = lof.applyForTensors(x) # structure tensors
+  t.invertStructure(0.0,4.0) # inverted with ev = 1.0, eu = small
+  #eu = fillfloat(0.0001,n1,n2)
+  #ev = fillfloat(1.0000,n1,n2)
+  #t.setEigenvalues(eu,ev)
   return t
 
 def bilateralFilter(sigmaS,sigmaX,t,x):
@@ -141,79 +184,83 @@ def smooth(sigma,t,x):
     rgf = RecursiveGaussianFilter(sigma)
     rgf.apply00(x,z)
   else:
-    ldk = LocalDiffusionKernel(LocalDiffusionKernel.Stencil.D71)
-    lsf = LocalSmoothingFilter(0.001,1000,ldk)
+    lsf = LocalSmoothingFilter(0.001,int(10*sigma))
     y = copy(x)
     #lsf.applySmoothS(y,y)
     #lsf.applySmoothL(kmax,y,y)
     lsf.apply(t,0.5*sigma*sigma,y,z)
   return z
 
-def localScale(sigma,x):
-  s = mul(x,x)
-  rgf = RecursiveGaussianFilter(sigma)
-  rgf.apply00(copy(s),s)
-  smax = max(s)
-  smin = 1.0e-6*smax
-  clip(smin,smax,s,s)
-  sqrt(s,s)
+def coherence(sigma,t,x):
+  s = semblance(sigma,t,x) # structure-oriented semblance s
+  s = pow(s,16.0) # make smaller sembances in [0,1] much smaller
   return s
 
-def localMuSigma(sigma,t,x):
-  u = smooth(sigma,t,x) # u = <x>
-  zero(u)
-  s = sub(x,u) # s = x-u
-  mul(s,s,s) # s = (x-u)^2
-  s = smooth(sigma,t,s) # s = <(x-<x>)^2>
-  s = smooth(2.0,None,s)
-  clip(0,max(s),s,s) # 0 <= s
-  sqrt(s,s) # s = sqrt(<(x-<x>)^2>)
-  return u,s
-
-def clipSmall(small,s):
-  smax = max(s)
-  smin = small*smax
-  return clip(smin,smax,s)
-
-def normalize(sigma,t,x):
-  u,s = localMuSigma(sigma,t,x)
-  s = clipSmall(0.0001,s)
-  return u,s,div(x,s)
-  #return u,s,div(sub(x,u),s)
-
-def powerGain(x,p):
-  return mul(sgn(x),pow(abs(x),p))
-
 def semblance(sigma,t,s):
-  lsf = LocalSemblanceFilter(int(sigma),2*int(sigma))
+  lsf = LocalSemblanceFilter(int(sigma),4*int(sigma))
   return lsf.semblance(LocalSemblanceFilter.Direction2.V,t,s)
 
 def like(x):
   n1,n2 = len(x[0]),len(x)
   return zerofloat(n1,n2)
 
+def makeImpulses(ni,n1,n2):
+  x = zerofloat(n1,n2)
+  ns = max(n1/ni,n2/ni)
+  m1 = (n1-1)/ns
+  m2 = (n2-1)/ns
+  j1 = (n1-1-(m1-1)*ns)/2
+  j2 = (n2-1-(m2-1)*ns)/2
+  for i2 in range(j2,n2,ns):
+    for i1 in range(j1,n1,ns):
+      x[i2][i1] = 1.0
+  return x
+
+def makeRandom(n1,n2):
+  x = mul(2.0,sub(randfloat(n1,n2),0.5))
+  return smooth(1.0,None,x)
+
+def qqd(x):
+  return 0.5*(Quantiler.estimate(0.75,x)-Quantiler.estimate(0.25,x))
+
 #############################################################################
 # plot
 
-pngDir = "./png"
-#pngDir = None
+pngDir = None
+#pngDir = "./png"
 
-def plot(f,clip=0.0,png=None):
+def plot(f,s1,s2,clip=0.0,t=None,cbar="Amplitude",png=None):
   n1,n2 = len(f[0]),len(f)
-  s1 = Sampling(n1,1.0,0.0)
-  s2 = Sampling(n2,1.0,0.0)
   sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
+  sp.setHLabel("Inline (km)")
+  sp.setVLabel("Time (s)")
+  if cbar!=None:
+    sp.addColorBar(cbar)
+  sp.plotPanel.setColorBarWidthMinimum(130)
   pv = sp.addPixels(s1,s2,f)
   if clip!=0.0:
     if clip==1.0:
       pv.setClips(0.0,clip)
     else:
       pv.setClips(-clip,clip)
-  pv.setInterpolation(PixelsView.Interpolation.NEAREST)
-  #if clip==1.0:
-  #  pv.setColorModel(ColorMap.JET)
-  #sp.setFontSizeForSlide(1.0,1.0)
-  sp.setSize(1192,863)
+  #pv.setInterpolation(PixelsView.Interpolation.NEAREST)
+  if clip==1.0:
+    #pv.setColorModel(ColorMap.JET)
+    pv.setColorModel(ColorMap.GRAY)
+  else:
+    #pv.setColorModel(ColorMap.GRAY_YELLOW_RED)
+    pv.setColorModel(ColorMap.GRAY)
+  if t:
+    tv = TensorsView(s1,s2,t)
+    tv.setOrientation(TensorsView.Orientation.X1DOWN_X2RIGHT)
+    tv.setLineColor(Color.YELLOW)
+    tv.setLineWidth(3)
+    tv.setEllipsesDisplayed(30)
+    #tv.setScale(3)
+    tile = sp.plotPanel.getTile(0,0)
+    tile.addTiledView(tv)
+  sp.setFontSizeForPrint(8.0,240)
+  sp.setSize(1090,800)
   sp.setVisible(True)
   if png and pngDir:
     sp.paintToPng(100,6,pngDir+"/"+png+".png")

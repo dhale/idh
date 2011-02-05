@@ -1,5 +1,8 @@
 from shared import *
 
+pngDir = None # for no PNG images
+#pngDir = "png/vs30/" # where to put PNG images of plots
+
 def main(args):
   #goCrossPlot()
   goAnalyzeErrors()
@@ -9,9 +12,9 @@ def main(args):
 def goCrossPlot():
   s1,s2 = getTaiwanSamplings()
   g = readImage("TaiwanSlope",s1,s2)
-  g = log10(add(0.00001,g)) # log(Vs30) ~linear function of log(slope)
   f,x1,x2 = readVs30s("TaiwanVs30s",s1,s2)
-  f = log10(f)
+  g = safeLog10(g) # log(Vs30) ~linear function of log(slope)
+  f = safeLog10(f)
   n = len(f)
   h = zerofloat(n)
   for i in range(n):
@@ -25,102 +28,128 @@ def goCrossPlot():
   sp.setVLabel("Log10[Vs30 (m/s)]")
   sp.setHLimits(-3.7,0.2)
   sp.setVLimits( 1.9,3.3)
+  #sp.setHLimits(0,0.1)
+  #sp.setVLimits(0,810)
   sp.addGrid("HV--")
+  h1,f1 = -3.7,AFIT-BFIT*3.7
+  h2,f2 =  0.2,AFIT+BFIT*0.2
+  pv = sp.addPoints([h1,h2],[f1,f2])
+  pv.setLineColor(Color.GRAY)
+  pv.setLineWidth(5)
+  pv.setLineStyle(PointsView.Line.DASH)
   pv = sp.addPoints(h,f)
   pv.setLineStyle(PointsView.Line.NONE)
   pv.setMarkStyle(PointsView.Mark.FILLED_CIRCLE)
   pv.setMarkSize(8)
-  sp.paintToPng(720,3.3,"png/vs30/vs30sVsSlope.png")
+  if pngDir:
+    sp.paintToPng(720,3.3,pngDir+"/vs30sVsSlope.png")
 
 def goInterp():
   s1,s2 = getTaiwanSamplings()
-  g = readImage("TaiwanSlope",s1,s2)
-  f,x1,x2 = readVs30s("TaiwanVs30s",s1,s2)
-  mask = makeMask(g)
-  h = log10(add(0.0001,g)) # log(Vs30) ~linear function of log(slope)
-  plot(f,x1,x2,h,s1,s2,cbar="Log10[slope (m/m)]",png="vs30s")
-  f = log(f)
-  tests = [(0,0,1),(0,1,1),(0,2,1),(1,1,300),(1,2,300)]
+  v,x1,x2 = readVs30s("TaiwanVs30s",s1,s2)
+  vmin,vmax = min(v),max(v)
+  s = readImage("TaiwanSlope",s1,s2) # slope
+  mask = makeMask(s)
+  logs = safeLog10(s)
+  plot(v,x1,x2,logs,s1,s2,cbar="Log10[slope (m/m)]",png="vs30s")
+  vmod = getVs30Modeled(logs)
+  vmod = clip(vmin,vmax,vmod)
+  vmod = maskImage(vmod,mask)
+  plot(v,x1,x2,vmod,s1,s2,
+       cmin=0,cmax=810,cbar="Vs30 from slope (m/s)",png="vs30vm")
+  #tests = [(0,0,1),(0,1,1),(0,2,1),(1,1,300),(1,2,300)]
+  tests = [(0,0,1),(0,2,1),(1,1,300)]
+  #tests = [(0,0,1)]
   ntest = len(tests)
   for i in range(ntest):
     p0,p1,es = tests[i]
     name = "vs30bg"+str(p0)+str(p1)
-    d = makeTensors(h,mask,p0,p1)
-    dm = EigenTensors2(d)
-    maskTensors(dm,mask)
-    plot(None,x1,x2,h,s1,s2,dm,es=es,cbar="Log10[slope (m/m)]",png=name+"d")
-    gridder = BlendedGridder2(d,f,x1,x2)
-    for blending in [False,True]:
+    d = makeTensors(logs,mask,p0,p1)
+    dm = EigenTensors2(d); maskTensors(dm,mask)
+    plot(None,x1,x2,logs,s1,s2,dm,es=es,
+      cbar="Log10[slope (m/m)]",png=name+"d")
+    r = subtractVs30Modeled(v,x1,x2,logs,s1,s2)
+    gridder = BlendedGridder2(d,r,x1,x2)
+    for blending in [True]:
       if blending: png = name+"q"
       else:        png = name+"p"
       gridder.setBlending(blending)
-      #gridder.setSmoothness(1.0)
       q = gridder.grid(s1,s2)
-      q = exp(q)
+      #plot(v,x1,x2,q,s1,s2,cmin=-405,cmax=405,
+      #  cbar="Vs30 interpolated residual (m/s)",png=png)
+      q = addVs30Modeled(q,logs)
+      q = clip(vmin,vmax,q)
       q = maskImage(q,mask)
-      plot(f,x1,x2,q,s1,s2,cmin=0.0,cmax=760.0,cbar="Vs30 (m/s)",png=png)
+      plot(v,x1,x2,q,s1,s2,cmin=0.0,cmax=810.0,
+        cbar="Vs30 interpolated (m/s)",png=png)
+
+def goCrossValidate():
+  s1,s2 = getTaiwanSamplings()
+  v,x1,x2 = readVs30s("TaiwanVs30s",s1,s2)
+  vmin,vmax = min(v),max(v)
+  s = readImage("TaiwanSlope",s1,s2) # slope
+  mask = makeMask(s)
+  logs = safeLog10(s)
+  vmod = getVs30Modeled(logs)
+  vmod = clip(vmin,vmax,vmod)
+  vmod = maskImage(vmod,mask)
+  r = subtractVs30Modeled(v,x1,x2,logs,s1,s2)
+  n = len(v)
+  d = makeTensors(logs,mask,1.0,1.0)
+  gridder = BlendedGridder2(d)
+  gridder.setBlending(True)
+  rm,x1m,x2m = zerofloat(n-1),zerofloat(n-1),zerofloat(n-1)
+  pw = PrintWriter(FileOutputStream("TaiwanVs30e.txt"))
+  for i in range(n):
+    ri,vi,x1i,x2i = r[i],v[i],x1[i],x2[i]
+    i1 = s1.indexOfNearest(x1i)
+    i2 = s2.indexOfNearest(x2i)
+    copy(i, r, rm); copy(n-i-1,i+1, r,i, rm)
+    copy(i,x1,x1m); copy(n-i-1,i+1,x1,i,x1m)
+    copy(i,x2,x2m); copy(n-i-1,i+1,x2,i,x2m)
+    gridder.setScattered(rm,x1m,x2m)
+    q = gridder.grid(s1,s2)
+    q = addVs30Modeled(q,logs)
+    q = clip(vmin,vmax,q)
+    q = maskImage(q,mask)
+    e = q[i2][i1]-vi
+    print "i =",i,"x1 =",x1i,"x2 =",x2i,"e =",e
+    #plot(rm,x1m,x2m,q,s1,s2,cmin=0.0,cmax=810.0,cbar="Vs30 (m/s)")
+    pw.printf("%10.4f %10.4f %10.2f %10.2f%n",(x1i,x2i,vi,e))
+    pw.flush()
+  pw.close()
+
+def printErrorStats():
+  print "        emin   eq25   eq50   eq75   emax   eavg   erms   eaad   emad"
+  for name in ["00d","01d","02d","11d","12d","00e","02e","11e"]:
+    fileName = "TaiwanVs30ErrorBg"+name
+    e,f,x1,x2 = readErrors(fileName)
+    n = len(f)
+    kmin = 0
+    kq25 = int(0.25*n+0.5)
+    kq50 = int(0.50*n+0.5)
+    kq75 = int(0.75*n+0.5)
+    kmax = n-1
+    quickSort(e)
+    emin = e[kmin]
+    eq25 = e[kq25]
+    eq50 = e[kq50]
+    eq75 = e[kq75]
+    emax = e[kmax]
+    eavg = sum(e)/n
+    erms = sqrt(sum(mul(e,e))/n)
+    e = abs(e)
+    quickSort(e)
+    eaad = sum(e)/n
+    emad = e[kq50]
+    fmt = name+": %6.1f %6.1f %6.1f %6.1f %6.1f %6.1f %6.1f %6.1f %6.1f"
+    print fmt % (emin,eq25,eq50,eq75,emax,eavg,erms,eaad,emad)
 
 def goAnalyzeErrors():
-  s1,s2 = getTaiwanSamplings()
-  g = readImage("TaiwanSlope",s1,s2)
-  mask = makeMask(g)
-  e00,f,x1,x2 = readErrors("TaiwanVs30ErrorBg00.txt")
-  e01,f,x1,x2 = readErrors("TaiwanVs30ErrorBg01a.txt")
-  e02,f,x1,x2 = readErrors("TaiwanVs30ErrorBg02d.txt")
-  e11,f,x1,x2 = readErrors("TaiwanVs30ErrorBg11d.txt")
-  e12,f,x1,x2 = readErrors("TaiwanVs30ErrorBg12d.txt")
-  e13,f,x1,x2 = readErrors("TaiwanVs30ErrorBg13c.txt")
+  printErrorStats()
+  e1,f,x1,x2 = readErrors("TaiwanVs30ErrorBg11d")
+  e2,f,x1,x2 = readErrors("TaiwanVs30ErrorBg00d")
   n = len(f)
-  emin00 = min(e00)
-  emin01 = min(e01)
-  emin02 = min(e02)
-  emin11 = min(e11)
-  emin12 = min(e12)
-  emin13 = min(e13)
-  emax00 = max(e00)
-  emax01 = max(e01)
-  emax02 = max(e02)
-  emax11 = max(e11)
-  emax12 = max(e12)
-  emax13 = max(e13)
-  emed00 = median(e00)
-  emed01 = median(e01)
-  emed02 = median(e02)
-  emed11 = median(e11)
-  emed12 = median(e12)
-  emed13 = median(e13)
-  eavg00 = sum(e00)/n
-  eavg01 = sum(e01)/n
-  eavg02 = sum(e02)/n
-  eavg11 = sum(e11)/n
-  eavg12 = sum(e12)/n
-  eavg13 = sum(e13)/n
-  erms00 = sqrt(sum(mul(e00,e00))/n)
-  erms01 = sqrt(sum(mul(e01,e01))/n)
-  erms02 = sqrt(sum(mul(e02,e02))/n)
-  erms11 = sqrt(sum(mul(e11,e11))/n)
-  erms12 = sqrt(sum(mul(e12,e12))/n)
-  erms13 = sqrt(sum(mul(e13,e13))/n)
-  eaad00 = sum(abs(e00))/n
-  eaad01 = sum(abs(e01))/n
-  eaad02 = sum(abs(e02))/n
-  eaad11 = sum(abs(e11))/n
-  eaad12 = sum(abs(e12))/n
-  eaad13 = sum(abs(e13))/n
-  emad00 = median(abs(e00))
-  emad01 = median(abs(e01))
-  emad02 = median(abs(e02))
-  emad11 = median(abs(e11))
-  emad12 = median(abs(e12))
-  emad13 = median(abs(e13))
-  fmt = "%6.1f %6.1f %6.1f %6.1f %6.1f %6.1f %6.1f"
-  print "      emin   emax   emed   eavg   erms   eaad   emad"
-  print "00: "+fmt % (emin00,emax00,emed00,eavg00,erms00,eaad00,emad00)
-  print "01: "+fmt % (emin01,emax01,emed01,eavg01,erms01,eaad01,emad01)
-  print "02: "+fmt % (emin02,emax02,emed02,eavg02,erms02,eaad02,emad02)
-  print "11: "+fmt % (emin11,emax11,emed11,eavg11,erms11,eaad11,emad11)
-  print "12: "+fmt % (emin12,emax12,emed12,eavg12,erms12,eaad12,emad12)
-  print "13: "+fmt % (emin13,emax13,emed13,eavg13,erms13,eaad13,emad13)
   sp = SimplePlot()
   sp.setFontSizeForPrint(8,240)
   sp.setHLabel("Vs30 (m/s)")
@@ -131,7 +160,7 @@ def goAnalyzeErrors():
   styles = [PointsView.Line.SOLID,PointsView.Line.DASH]
   colors = [Color.BLACK,Color.RED]
   widths = [5,5]
-  errors = [e02,e00]
+  errors = [e1,e2]
   for i in range(len(errors)):
     e = errors[i]
     #h = Histogram(e,-500.0,500.0,41)
@@ -146,45 +175,11 @@ def goAnalyzeErrors():
     #q = gridder.grid(s1,s2)
     #q = maskImage(q,mask)
     #plot(e,x1,x2,q,s1,s2,cmin=-500.0,cmax=500.0,cbar="delta Vs30 (m/s)")
-  sp.paintToPng(720,3.3,"png/vs30/vs30sErrorsBg.png")
-
-def goCrossValidate():
-  s1,s2 = getTaiwanSamplings()
-  g = readImage("TaiwanSlope",s1,s2)
-  f,x1,x2 = readVs30s("TaiwanVs30s",s1,s2)
-  n = len(f)
-  mask = makeMask(g)
-  h = log10(add(0.0001,g)) # log(Vs30) ~linear function of log(slope)
-  d = makeTensors(h,mask,0.0,2.0)
-  gridder = BlendedGridder2(d)
-  #gridder = BlendedGridder2()
-  gridder.setBlending(True)
-  fm,x1m,x2m = zerofloat(n-1),zerofloat(n-1),zerofloat(n-1)
-  pw = PrintWriter(FileOutputStream("TaiwanVs30e.txt"))
-  for i in range(n):
-    copy(i, f, fm); copy(n-i-1,i+1, f,i, fm)
-    copy(i,x1,x1m); copy(n-i-1,i+1,x1,i,x1m)
-    copy(i,x2,x2m); copy(n-i-1,i+1,x2,i,x2m)
-    fm = log(fm)
-    gridder.setScattered(fm,x1m,x2m)
-    q = gridder.grid(s1,s2)
-    q = exp(q)
-    #q = maskImage(q,mask)
-    fi,x1i,x2i = f[i],x1[i],x2[i]
-    i1 = s1.indexOfNearest(x1i)
-    i2 = s2.indexOfNearest(x2i)
-    e = q[i2][i1]-fi
-    print "i =",i,"x1 =",x1i,"x2 =",x2i," e =",e
-    #plot(fm,x1m,x2m,q,s1,s2,cmin=0.0,cmax=760.0,cbar="Vs30 (m/s)")
-    pw.printf("%10.4f %10.4f %10.2f %10.2f%n",(x1i,x2i,fi,e))
-    pw.flush()
-  pw.close()
+  if pngDir:
+    sp.paintToPng(720,3.3,pngDir+"vs30sErrorsBg.png")
 
 #############################################################################
 # plotting
-
-pngDir = "png/vs30/" # where to put PNG images of plots
-#pngDir = None # for no PNG images
 
 def plot(f,x1,x2,g,s1,s2,d=None,es=1,cbar=None,cmin=0,cmax=0,png=None):
   sp = SimplePlot()
@@ -221,6 +216,42 @@ def plot(f,x1,x2,g,s1,s2,d=None,es=1,cbar=None,cmin=0,cmax=0,png=None):
 
 #############################################################################
 # processing
+
+"""
+Logs: x = 10^log10(x), ln(x) = ln(10)*log10(x), log10(x) = ln(x)/ln(10)
+Eyeball fit of line in crossplot of log10(vs30) versus log10(slope):
+log10(v) ~ 2.10 + (0.7/3.0)*(log10(s)+3.5) 
+         ~ 2.92 + 0.23*log10(s)
+"""
+def exp10(x):
+  return exp(mul(log(10.0),x))
+def safeLog10(x):
+  return log10(add(0.0001,x))
+def safeExp10(x):
+  return sub(exp(mul(log(10.0),x)),0.0001)
+AFIT,BFIT = 3.00,0.26
+def getVs30Modeled(logs):
+  return safeExp10(add(AFIT,mul(BFIT,logs)))
+def addVs30Modeled(q,logs):
+  return add(q,getVs30Modeled(logs))
+def subtractVs30Modeled(v,x1,x2,logs,s1,s2):
+  n = len(v)
+  logv = zerofloat(n)
+  for i in range(n):
+    i1 = s1.indexOfNearest(x1[i])
+    i2 = s2.indexOfNearest(x2[i])
+    logv[i] = AFIT+BFIT*logs[i2][i1]
+  return sub(v,safeExp10(logv))
+def addLogVs30Modeled(logv,logs):
+  return add(logv,add(AFIT,mul(BFIT,logs)))
+def subtractLogVs30Modeled(logv,x1,x2,logs,s1,s2):
+  n = len(logv)
+  r = zerofloat(n)
+  for i in range(n):
+    i1 = s1.indexOfNearest(x1[i])
+    i2 = s2.indexOfNearest(x2[i])
+    r[i] = logv[i]-(AFIT+BFIT*logs[i2][i1])
+  return r
 
 def extrapSlopes(g,mask):
   n1,n2 = len(g[0]),len(g)
@@ -259,6 +290,28 @@ def makeTensors(g,mask,p0,p1):
   av = add(mul(av,mask),ab)
   d.setEigenvalues(au,av)
   d.invertStructure(p0,p1)
+  return d
+
+def makeTensorsGeodetic(e,s1,s2,mask):
+  lof = LocalOrientFilter(0.0)
+  d = lof.applyForTensors(e)
+  n1,n2 = s1.count,s2.count
+  d1,d2 = s1.delta,s2.delta
+  # m/m = m/sample * sample/deg * deg/m
+  #     = m/sample * sample/deg * deg/rad * rad/m
+  #     = m/sample * 1.0/(deg/sample*rad/deg*m/rad)
+  scale = pow(d1*PI/180.0*6378137.0,-2.0) # for gradient-squared
+  au = zerofloat(n1,n2)
+  av = zerofloat(n1,n2)
+  d.getEigenvalues(au,av)
+  au = add(1.0,mul(scale,au))
+  av = add(1.0,mul(scale,av))
+  aw = sub(1.0,mask) # one on water, zero on land
+  ab = mul(max(au),aw) # big on water, zero on land
+  au = add(mul(au,mask),ab)
+  av = add(mul(av,mask),ab)
+  d.setEigenvalues(au,av)
+  d.invert()
   return d
 
 def makeMask(z):
@@ -383,7 +436,7 @@ def writeImage(fileName,z):
   aos.close()
 
 def readErrors(fileName):
-  s = Scanner(FileInputStream(fileName))
+  s = Scanner(FileInputStream(dataDir+"errors/"+fileName+".txt"))
   e,f,x1,x2 = [],[],[],[]
   while s.hasNextLine():
     line = s.nextLine()

@@ -16,26 +16,24 @@ def main(args):
   goTensors()
 
 def goTensors():
-  reads = [readAwImage,readTpImage]
+  reads = [readAwImage]
   plots = [plotAw,plotTp]
   for i,read in enumerate(reads):
     plot = plots[i]
     g,s1,s2 = read()
     lof = LocalOrientFilter(4.0)
     s = lof.applyForTensors(g)
-    d1 = EigenTensors2(s); d1.invertStructure(1.0,1.0)
-    d2 = EigenTensors2(s); d2.invertStructure(1.0,2.0)
-    d3 = EigenTensors2(s); d3.invertStructure(0.0,2.0)
+    d11 = EigenTensors2(s); d11.invertStructure(1.0,1.0)
+    d12 = EigenTensors2(s); d12.invertStructure(1.0,2.0)
     plot(g,s1,s2)
-    plot(g,s1,s2,d1,dscale=2)
-    plot(g,s1,s2,d2,dscale=2)
-    #plot(g,s1,s2,d3,dscale=1)
+    plot(g,s1,s2,d11,dscale=2,png="awe11")
+    plot(g,s1,s2,d12,dscale=2,png="awe12")
 
 #############################################################################
 # plotting
 
-#pngDir = "png/" # where to put PNG images of plots
-pngDir = None # for no PNG images
+pngDir = "png/" # where to put PNG images of plots
+#pngDir = None # for no PNG images
 
 def plotAw(g,s1,s2,d=None,dscale=1,cmin=0,cmax=0,png=None):
   sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)

@@ -53,8 +53,8 @@ public class LocalInterpolationFilterIc {
   ///////////////////////////////////////////////////////////////////////////
   // private
 
-  private static final LocalDiffusionKernel _ldk = 
-    new LocalDiffusionKernel(1.0/12.0);
+  private static final LocalDiffusionKernelX _ldk = 
+    new LocalDiffusionKernelX(1.0/12.0);
 
   private float _small; // stop iterations when residuals are small
   private int _niter; // number of iterations
@@ -668,7 +668,7 @@ public class LocalInterpolationFilterIc {
     lif.apply(ldt,f,x);
     trace("x min="+ min(x)+" max="+ max(x));
     plotPixels(x);
-    //LocalDiffusionKernel ldk = new LocalDiffusionKernel(1.0/12.0);
+    //LocalDiffusionKernelX ldk = new LocalDiffusionKernelX(1.0/12.0);
     //float[][] y = zerofloat(n1,n2);
     //ldk.apply(ldt,x,y);
     //plotPixels(y);
@@ -706,7 +706,7 @@ public class LocalInterpolationFilterIc {
     lif.apply(ldt,f,x);
     trace("x min="+min(x)+" max="+max(x));
     plot3d(x);
-    LocalDiffusionKernel ldk = new LocalDiffusionKernel();
+    LocalDiffusionKernelX ldk = new LocalDiffusionKernelX();
     float[][][] y = zerofloat(n1,n2,n3);
     ldk.apply(ldt,x,y);
     plot3d(y);

@@ -9,23 +9,43 @@
 from shared import *
 
 def main(args):
-  goTaiwanTopo()
+  goTaiwanShow()
+  #goTaiwanTopo()
   #goTaiwanSlope()
+
+def goTaiwanShow():
+  s1,s2 = getTaiwanSamplings()
+  z = readImage("TaiwanTopo",s1,s2)
+  s = readImage("TaiwanSlope",s1,s2)
+  print "Taiwan:"
+  print "  nlon =",s1.count," dlon =",s1.delta," flon =",s1.first
+  print "  nlat =",s2.count," dlat =",s2.delta," flat =",s2.first
+  z = log10(add(0.0001,z))
+  s = log10(add(0.0001,s))
+  plot(z,s1,s2,
+       cbar="Log10[Elevation (m)]",cmin=0,cmax=3.5,
+       contours=0,htic=1.0,vtic=1.0,width=825,height=900)
+  plot(s,s1,s2,
+       cbar="Log10[Slope (m/m)]",cmin=0,cmax=0,
+       contours=0,htic=1.0,vtic=1.0,width=825,height=900)
 
 def goTaiwanTopo():
   s1,s2 = getTaiwanSamplings()
   n1,n2 = s1.count,s2.count
   f1,f2 = s1.first,s2.first
   z,s1,s2 = readTile("e100n40") # elev z, lon sampling s1, lat sampling s2
-  #plot(z,s1,s2,width=670,height=830)
+  plot(z,s1,s2,width=670,height=830)
   j1,j2 = s1.indexOfNearest(f1),s2.indexOfNearest(f2)
   z,s1,s2 = subsetImage(z,s1,s2,n1,n2,j1,j2)
-  #writeImage("TaiwanTopo",z)
+  writeImage("TaiwanTopo",z)
   print "Taiwan:"
   print "  nlon =",s1.count," dlon =",s1.delta," flon =",s1.first
   print "  nlat =",s2.count," dlat =",s2.delta," flat =",s2.first
   z = log10(add(0.0001,z))
-  plot(z,s1,s2,cv=True,htic=1.0,vtic=1.0,width=670,height=900)
+  plot(z,s1,s2,contours=True,htic=1.0,vtic=1.0,width=670,height=900)
+  plot(z,s1,s2,
+       cbar="Log10[Elevation (m)]",cmin=0,cmax=3.5,
+       contours=10,htic=1.0,vtic=1.0,width=825,height=900)
 
 def goTaiwanSlope():
   s1,s2 = getTaiwanSamplings()
@@ -91,11 +111,12 @@ def applyMask(z,m):
 pngDir = None # for no PNG images
 
 def plot(z,s1,s2,
-         cbar=None,png=None,cv=False,
+         cbar=None,cmin=0,cmax=0,png=None,contours=0,
          htic=0,vtic=0,width=0,height=0):
   sp = SimplePlot(SimplePlot.Origin.LOWER_LEFT)
   sp.setHLabel("Longitude (degrees)")
   sp.setVLabel("Latitude (degrees)")
+  sp.plotPanel.setColorBarWidthMinimum(110)
   if htic>0: 
     sp.setHInterval(htic)
   if vtic>0: 
@@ -113,10 +134,12 @@ def plot(z,s1,s2,
     sp.addColorBar(cbar)
   pv = sp.addPixels(s1,s2,z)
   pv.setColorModel(ColorMap.JET)
+  if cmin<cmax:
+    pv.setClips(cmin,cmax)
   pv.setInterpolation(PixelsView.Interpolation.NEAREST)
-  if cv:
+  if contours>0:
     cv = sp.addContours(s1,s2,z)
-    cv.setContours(10)
+    cv.setContours(contours)
     cv.setLineColor(Color.BLACK)
   if pngDir and png:
     sp.paintToPng(600,3,pngDir+png+".png") # 600 dpi, 3 inches wide

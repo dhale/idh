@@ -26,8 +26,8 @@ s3 = Sampling(n3,d3,f3)
 
 def main(args):
   #convert()
-  #threshold()
-  slice2()
+  threshold()
+  #slice2()
 
 def slice2():
   x = readImage("ct")

@@ -6,20 +6,14 @@ from shared import *
 pngDir = None
 #pngDir = "png/co2/"
 
-"""
-Jun, 1997
-Jul, 1993, 1995
-Aug, 1979, 1982, 1983, 1986, 1987, 1988, 1989, ...
-Sep, 1983, 1987, ...
-Oct, 2007, 2009
-Nov
-Dec, 2008
-"""
 def main(args):
   #goVariogram(1971.95,1972,1)
-  #goVariogram(2009.28,2010,2)
-  goVariogram(1970.28,2010,12)
+  #goVariogram(2009.28,2010,1)
+  goVariogram(2009.28,2010,12,random=True)
+  goVariogram(2009.28,2010,12,random=False)
+  #goVariogram(1970.28,2010,12)
   #goGridding(2009.28,2010,12,sg=True,p3=True)
+  #goGridding(2009.28,2010,12,sg=False,p3=True)
   #goGridding(2009.28,2010,12,p3=True)
   #goGridding(1970,2010,1) # Jan-Dec
   #goGridding(1970.04,2010,12) # Jan
@@ -38,16 +32,26 @@ def main(args):
   #printCo2Table()
   #goPlotEarth2()
   #goPlotEarth3()
+  #goTensors()
   #goPlotBoard3()
   #goDemo()
 
-def goVariogram(fy,ly,ky):
+def goTensors():
+  eimage = readEarthImage()
+  s1,s2 = gridSamplings()
+  for scale in [1,4]:
+    d = makeTensors(scale,s1,s2)
+    plot2(eimage,None,None,None,None,s1,s2,d,
+          mv=False,cv=False,tv=True,png="earthte"+str(scale))
+
+def goVariogram(fy,ly,ky,random=False):
   names,lats,lons,co2s = readCo2Table()
   sy = yearsSamplingCo2Table()
   for iy in yearIndicesCo2Table(fy,ly,ky):
     laty,lony,co2y = getGoodData(iy,lats,lons,co2s)
     n = len(laty)
-    #co2y = mul(20.0,randfloat(n))
+    if random:
+      co2y = permute(co2y)
     x,y,s = [],[],[]
     for i in range(n):
       lati,loni,co2i = laty[i],lony[i],co2y[i]
@@ -62,10 +66,16 @@ def goVariogram(fy,ly,ky):
         y.append(d*cos(b))
         s.append(ss)
     title = monthYearString(sy.getValue(iy))
-    plotVariogram(s,x,y,title=title,png="co2V")
+    png = "co2V"
+    if random:
+      png += "r"
+    plotVariogram(s,x,y,title=title,png=png)
   
 def goGridding(fy,ly,ky,sg=False,tv=False,p3=False):
-  eimage = readWaterImage()
+  if sg:
+    eimage = readEarthImage()
+  else:
+    eimage = readWaterImage()
   names,lats,lons,co2s = readCo2Table()
   sy = yearsSamplingCo2Table()
   for iy in yearIndicesCo2Table(fy,ly,ky):
@@ -81,24 +91,37 @@ def goGridding(fy,ly,ky,sg=False,tv=False,p3=False):
       else:
         g,s1,s2 = gridBlended(scale,f,u1,u2)
       d = makeTensors(scale,s1,s2)
-      title = monthYearString(y)
+      #title = monthYearString(y)
+      title = None
       pngName = "co2Us"+str(int(scale))+"y"+yearIndexString(iy)
-      print pngName
+      print pngName," # values =",len(f)
+      mv = not sg
       plot2(eimage,f,u1,u2,g,s1,s2,d,
-            mv=not sg,cv=True,tv=tv,
+            mv=mv,cv=True,tv=tv,
             year=y,title=title,png=pngName)
       if p3:
         cmin,cmax = clipsForYear(y)
         cmin += (cmax-cmin)*1.1/256 # make null (zero) values transparent
-        cmod = makeTransparentColorModel(0.8)
+        if sg:
+          cmod = makeTransparentColorModel(1.0)
+        else:
+          cmod = makeTransparentColorModel(0.7)
         cmap = ColorMap(cmin,cmax,cmod)
         cimage = SampledImage.fromFloats(s1,s2,g,cmap)
         #cimage.setAlpha(0.8)
+        #plot3(eimage,cimage,az= 45)
         #plot3(eimage,cimage,az=-120)
         #plot3(eimage,cimage,az=  60)
-        plot3(eimage,cimage,lats=u2,lons=u1,az=-100)
-        plot3(eimage,cimage,lats=u2,lons=u1,az=  80)
-        #plot3(eimage,cimage,az= 45)
+        plot3(eimage,cimage,az=-100)
+        #plot3(eimage,cimage,az=  80)
+        """
+        if sg:
+          plot3(eimage,cimage,az=-100)
+          plot3(eimage,cimage,az=  80)
+        else:
+          plot3(eimage,cimage,lats=u2,lons=u1,az=-100)
+          plot3(eimage,cimage,lats=u2,lons=u1,az=  80)
+        """
       if sg:
         break
 
@@ -108,8 +131,8 @@ def goPlotEarth2():
 
 def goPlotEarth3():
   eimage = readEarthImage()
-  plot3(eimage,None,-90)
-  plot3(eimage,None, 45)
+  plot3(eimage,az=-90)
+  plot3(eimage,az= 45)
 
 def goPlotBoard3():
   eimage = makeBoardImage()
@@ -181,9 +204,12 @@ def plot2(image,
     cv = PixelsView(s1,s2,g)
     cv.setInterpolation(PixelsView.Interpolation.NEAREST)
     cv.setClips(cmin,cmax)
-    #cmin += 1.1*(cmax-cmin)/256 # make null (zero) values transparent
-    #cv.setColorModel(makeTransparentColorModel(0.8))
-    cv.setColorModel(ColorMap.getJet(0.8))
+    cmin += 1.1*(cmax-cmin)/256 # make null (zero) values transparent
+    if mv:
+      cv.setColorModel(makeTransparentColorModel(0.7))
+    else:
+      cv.setColorModel(makeTransparentColorModel(1.0))
+    #cv.setColorModel(ColorMap.getJet(0.8))
     tile.addTiledView(cv)
     cb = pp.addColorBar("CO2 (ppm)")
     cb.setInterval(5)
@@ -224,8 +250,8 @@ def plot2(image,
       pf.setSize(1078,562)
   pf.setVisible(True)
   if png and pngDir: 
-    pf.paintToPng(600,3,pngDir+png+".png")
-  runFunc(disposePlotFrame,pf)
+    pf.paintToPng(720,3.3,pngDir+png+".png")
+  #runFunc(disposePlotFrame,pf)
 
 def disposePlotFrame(pf):
   print "closing ",pf[0]
@@ -243,7 +269,7 @@ def plot3(eimage,cimage=None,lats=None,lons=None,az=45):
   group.addGrid(Color.BLACK,gwidth,1.001)
   frame = SimpleFrame(AxesOrientation.XOUT_YRIGHT_ZUP)
   frame.viewCanvas.setBackground(backgroundColor)
-  frame.setSize(1000,1000)
+  frame.setSize(1100,1100)
   world = frame.getWorld()
   world.addChild(group)
   bs = world.getBoundingSphere(True)
@@ -280,6 +306,7 @@ def plotVariogram(s,x,y,title=None,png=None):
   #pv.setMarkStyle(PointsView.Mark.FILLED_CIRCLE)
   #pv.setMarkSize(2)
   nx = ny = 37 # for 10-degree increments
+  #nx = ny = 73 # for 5-degree increments
   sx = sy = Sampling(nx,360/(nx-1),-180)
   #gridder = BlendedGridder2(s,x,y)
   gridder = SimpleGridder2(s,x,y)
@@ -287,12 +314,17 @@ def plotVariogram(s,x,y,title=None,png=None):
   sg = sqrt(sg)
   #sg = clip(max(sg)/255,max(sg),sg)
   sp = SimplePlot()
-  sp.setHLimits(-180.0,180.0)
-  sp.setVLimits(-180.0,180.0)
-  sp.setHLabel("Great circle east-west distance (degrees)")
-  sp.setVLabel("Great circle north-south distance (degrees)")
+  #sp.setHLimits(-180.0,180.0)
+  #sp.setVLimits(-180.0,180.0)
+  sp.setHLimits(-125.0,125.0)
+  sp.setVLimits(-125.0,125.0)
+  #sp.setHLimits(-90.0,90.0)
+  #sp.setVLimits(-90.0,90.0)
+  sp.setHLabel("Geodesic east-west distance (degrees)")
+  sp.setVLabel("Geodesic north-south distance (degrees)")
   pv = sp.addPixels(sx,sy,sg)
-  pv.setClips(19/255.0,19)
+  #pv.setClips(19/255.0,19)
+  pv.setClips(13/255.0,13)
   pv.setColorModel(makeTransparentColorModel(1.0))
   #pv.setColorModel(ColorMap.JET)
   pv.setInterpolation(PixelsView.Interpolation.NEAREST)
@@ -308,7 +340,7 @@ def plotVariogram(s,x,y,title=None,png=None):
   else:
     sp.setSize(800,660)
   if png and pngDir: 
-    sp.paintToPng(600,3,pngDir+png+".png")
+    sp.paintToPng(720,3.3,pngDir+png+".png")
 
 def makeEllipse(a,b):
   nt = 101
@@ -627,6 +659,15 @@ def clipsForYear(y):
   cmax = co2+10.0
   return cmin,cmax
 
+def permute(x):
+  n = len(x)
+  y = zerofloat(n)
+  r = Random(314159)
+  for i in range(n):
+    j = i+r.nextInt(n-i)
+    y[i] = x[j]
+  return y
+
 def makeTensors(scale,slon,slat):
   nlon,nlat = slon.count,slat.count
   au = zerofloat(nlon,nlat)
@@ -671,6 +712,7 @@ def gridBlended(scale,f,x1,x2):
   return g,s1,s2
 
 def padLongitude(f,x1,x2):
+  f,x1,x2 = f[:],x1[:],x2[:]
   n = len(f)
   for i in range(n):
     if x1[i]<0.0:

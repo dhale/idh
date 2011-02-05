@@ -34,12 +34,12 @@ import static edu.mines.jtk.util.ArrayMath.*;
  * @author Dave Hale, Colorado School of Mines
  * @version 2007.11.10
  */
-public class LocalDiffusionKernel {
+public class LocalDiffusionKernelX {
 
   /**
    * Constructs a local diffusion kernel.
    */
-  public LocalDiffusionKernel() {
+  public LocalDiffusionKernelX() {
     this(1.0/12.0);
   }
 
@@ -47,7 +47,7 @@ public class LocalDiffusionKernel {
    * Constructs a local diffusion kernel with an experimental factor.
    * @param rs the experimental factor for tuning gradient approximations.
    */
-  public LocalDiffusionKernel(double rs) {
+  public LocalDiffusionKernelX(double rs) {
     _rs = (float)rs;
     _ers = _rs;
     _frs = 1.0f-2.0f*_rs;
@@ -913,7 +913,7 @@ public class LocalDiffusionKernel {
     float[][] v1 = fillfloat(sin(theta),n1,n2);
     LocalDiffusionTensors2 ldt = new LocalDiffusionTensors2(0.0,1.0,d0,d1,v1);
     float rs = 3.0f/12.0f;
-    LocalDiffusionKernel ldk = new LocalDiffusionKernel(rs);
+    LocalDiffusionKernelX ldk = new LocalDiffusionKernelX(rs);
     LocalSpd9Filter lsf = new LocalSpd9Filter(ldk.getCoefficients(ldt));
     ldk.apply(ldt,x,y);
     lsf.apply(x,z);
@@ -939,7 +939,7 @@ public class LocalDiffusionKernel {
     float phi = FLT_PI*0.0f/8.0f;
     //DiffusionTensors3 ldt = makePlanarDiffusionTensors3(n1,n2,n3,theta,phi);
     DiffusionTensors3 ldt = makeLinearDiffusionTensors3(n1,n2,n3,theta,phi);
-    LocalDiffusionKernel ldk = new LocalDiffusionKernel();
+    LocalDiffusionKernelX ldk = new LocalDiffusionKernelX();
     LocalSpd27Filter lsf = new LocalSpd27Filter(ldk.getCoefficients(ldt));
     ldk.apply(ldt,x,y);
     lsf.apply(x,z);
