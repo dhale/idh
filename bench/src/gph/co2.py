@@ -7,13 +7,16 @@ pngDir = None
 #pngDir = "png/co2/"
 
 def main(args):
+  #goCrossValidate(2009.28)
+  goAnalyzeErrors()
   #goVariogram(1971.95,1972,1)
   #goVariogram(2009.28,2010,1)
-  goVariogram(2009.28,2010,12,random=True)
-  goVariogram(2009.28,2010,12,random=False)
+  #goVariogram(2009.28,2010,12,random=True)
+  #goVariogram(2009.28,2010,12,random=False)
   #goVariogram(1970.28,2010,12)
   #goGridding(2009.28,2010,12,sg=True,p3=True)
   #goGridding(2009.28,2010,12,sg=False,p3=True)
+  #goGridding(2009.28,2010,12,sg=False,p3=False)
   #goGridding(2009.28,2010,12,p3=True)
   #goGridding(1970,2010,1) # Jan-Dec
   #goGridding(1970.04,2010,12) # Jan
@@ -65,12 +68,97 @@ def goVariogram(fy,ly,ky,random=False):
         x.append(d*sin(b))
         y.append(d*cos(b))
         s.append(ss)
-    title = monthYearString(sy.getValue(iy))
+    if random:
+      title = "Random permutation"
+    else:
+      title = monthYearString(sy.getValue(iy))
     png = "co2V"
     if random:
       png += "r"
     plotVariogram(s,x,y,title=title,png=png)
   
+def goCrossValidate(y):
+  eimage = readWaterImage()
+  names,lats,lons,co2s = readCo2Table()
+  sy = yearsSamplingCo2Table()
+  iy = sy.indexOfNearest(y)
+  laty,lony,co2y = getGoodData(iy,lats,lons,co2s)
+  for scale in [8.0,16.0]:
+    pw = PrintWriter(FileOutputStream("Co2e"+str(int(scale))+".txt"))
+    f,u1,u2 = co2y,lony,laty
+    n = len(f)
+    fm,u1m,u2m = zerofloat(n-1),zerofloat(n-1),zerofloat(n-1)
+    for i in range(n):
+      fi,u1i,u2i = f[i],u1[i],u2[i]
+      copy(i, f, fm); copy(n-i-1,i+1, f,i, fm)
+      copy(i,u1,u1m); copy(n-i-1,i+1,u1,i,u1m)
+      copy(i,u2,u2m); copy(n-i-1,i+1,u2,i,u2m)
+      g,s1,s2 = gridBlended(scale,fm,u1m,u2m)
+      i1 = s1.indexOfNearest(u1i)
+      i2 = s2.indexOfNearest(u2i)
+      e = g[i2][i1]-fi
+      print "i =",i,"u1 =",u1i,"u2 =",u2i,"e =",e
+      pw.printf("%10.4f %10.4f %10.2f %10.2f%n",(u1i,u2i,fi,e))
+      pw.flush()
+      #plot2(eimage,f,u1,u2,g,s1,s2,None,mv=True,cv=True,tv=False,year=y)
+    pw.close()
+
+def printErrorStats():
+  print "     emin   eq25   eq50   eq75   emax   eavg   erms   eaad   emad"
+  for name in ["1","2","4","8","16"]:
+    fileName = "Co2e"+name
+    e,f,x1,x2 = readErrors(fileName)
+    n = len(f)
+    kmin = 0
+    kq25 = int(0.25*n+0.5)
+    kq50 = int(0.50*n+0.5)
+    kq75 = int(0.75*n+0.5)
+    kmax = n-1
+    quickSort(e)
+    emin = e[kmin]
+    eq25 = e[kq25]
+    eq50 = e[kq50]
+    eq75 = e[kq75]
+    emax = e[kmax]
+    eavg = sum(e)/n
+    erms = sqrt(sum(mul(e,e))/n)
+    e = abs(e)
+    quickSort(e)
+    eaad = sum(e)/n
+    emad = e[kq50]
+    fmt = name+": %6.1f %6.1f %6.1f %6.1f %6.1f %6.1f %6.1f %6.1f %6.1f"
+    print fmt % (emin,eq25,eq50,eq75,emax,eavg,erms,eaad,emad)
+
+def goAnalyzeErrors():
+  printErrorStats()
+  e1,f,x1,x2 = readErrors("Co2e1")
+  e2,f,x1,x2 = readErrors("Co2e4")
+  n = len(f)
+  sp = SimplePlot()
+  sp.setFontSizeForPrint(8,240)
+  sp.setHLabel("CO2 error (ppm)")
+  sp.setVLabel("Frequency")
+  sp.setHInterval(2)
+  #sp.setVLimits(0,0.35)
+  #sp.setHLimits(-450,450)
+  sp.addGrid("HV--")
+  styles = [PointsView.Line.SOLID,PointsView.Line.DOT]
+  colors = [Color.BLACK,Color.RED]
+  widths = [5,5]
+  errors = [e2,e1]
+  for i in range(len(errors)):
+    e = errors[i]
+    h = Histogram(e,-10.0,10.0,21)
+    #h = Histogram(e)
+    sh = h.getBinSampling()
+    #print "h # bins =",sh.count
+    sv = sp.addPoints(sh,h.getDensities())
+    sv.setLineColor(colors[i])
+    sv.setLineWidth(widths[i])
+    sv.setLineStyle(styles[i])
+  if pngDir:
+    sp.paintToPng(720,3.3,pngDir+"Co2Error14.png")
+
 def goGridding(fy,ly,ky,sg=False,tv=False,p3=False):
   if sg:
     eimage = readEarthImage()
@@ -209,17 +297,19 @@ def plot2(image,
       cv.setColorModel(makeTransparentColorModel(0.7))
     else:
       cv.setColorModel(makeTransparentColorModel(1.0))
-    #cv.setColorModel(ColorMap.getJet(0.8))
+    cv.setColorModel(ColorMap.getJet(0.8))
     tile.addTiledView(cv)
     cb = pp.addColorBar("CO2 (ppm)")
     cb.setInterval(5)
+  gv = gridLines2(Sampling(13,30,-180),Sampling(7,30,-90),Color.BLACK,gwidth)
+  tile.addTiledView(gv)
   if tv and d and s1 and s2:
     gwidth = 1
     tv = TensorsView(s1,s2,d)
     tv.setScale(22.0)
     tv.setLineColor(Color.BLACK)
     tv.setLineWidth(2)
-    tv.setEllipsesDisplayed(11)
+    tv.setEllipsesDisplayed(Sampling(11,30,-150),Sampling(5,30,-60))
     tile.addTiledView(tv)
   if mv and f and u1 and u2:
     gwidth = 1
@@ -229,8 +319,6 @@ def plot2(image,
     mv.setMarkColor(Color.WHITE)
     mv.setMarkSize(8)
     tile.addTiledView(mv)
-  gv = gridLines2(Sampling(13,30,-180),Sampling(7,30,-90),Color.BLACK,gwidth)
-  tile.addTiledView(gv)
   pf = PlotFrame(pp)
   pf.setBackground(backgroundColor)
   pf.setFontSizeForPrint(8,240)
@@ -314,6 +402,13 @@ def plotVariogram(s,x,y,title=None,png=None):
   sg = sqrt(sg)
   #sg = clip(max(sg)/255,max(sg),sg)
   sp = SimplePlot()
+  sp.setFontSizeForPrint(8,240)
+  if title:
+    sp.setTitle(title)
+    sp.setSize(800,718)
+  else:
+    sp.setSize(800,660)
+  sp.addColorBar("Standard deviation (ppm)")
   #sp.setHLimits(-180.0,180.0)
   #sp.setVLimits(-180.0,180.0)
   sp.setHLimits(-125.0,125.0)
@@ -332,13 +427,6 @@ def plotVariogram(s,x,y,title=None,png=None):
   pv = sp.addPoints(x,y)
   pv.setLineColor(Color.RED)
   pv.setLineWidth(5)
-  sp.addColorBar("Standard deviation (ppm)")
-  sp.setFontSizeForPrint(8,240)
-  if title:
-    sp.setTitle(title)
-    sp.setSize(800,718)
-  else:
-    sp.setSize(800,660)
   if png and pngDir: 
     sp.paintToPng(720,3.3,pngDir+png+".png")
 
@@ -630,6 +718,27 @@ def readCo2s(station,sy):
   if nco2>0: return co2s
   else: return None
 
+def readErrors(fileName):
+  s = Scanner(FileInputStream(fileName+".txt"))
+  e,f,x1,x2 = [],[],[],[]
+  while s.hasNextLine():
+    line = s.nextLine()
+    data = line.split()
+    x1.append(float(data[0]))
+    x2.append(float(data[1]))
+    f.append(float(data[2]))
+    e.append(float(data[3]))
+  s.close()
+  e = floatsFromList(e)
+  f = floatsFromList(f)
+  x1 = floatsFromList(x1)
+  x2 = floatsFromList(x2)
+  return e,f,x1,x2
+def floatsFromList(a):
+  b = zerofloat(len(a))
+  copy(len(a),a,b)
+  return b
+
 #############################################################################
 # Other stuff
 
@@ -706,7 +815,7 @@ def gridBlended(scale,f,x1,x2):
   n1p,n2 = s1p.count,s2.count
   d = makeTensors(scale,s1p,s2)
   bg = BlendedGridder2(d,fp,x1p,x2p)
-  #bg.setBlending(False)
+  bg.setBlending(False)
   gp = bg.grid(s1p,s2)
   g = copy(n1,n2,n1/2,0,gp)
   return g,s1,s2
@@ -721,6 +830,9 @@ def padLongitude(f,x1,x2):
       x1.append(x1[i]-360.0)
     f.append(f[i])
     x2.append(x2[i])
+  f = floatsFromList(f)
+  x1 = floatsFromList(x1)
+  x2 = floatsFromList(x2)
   return f,x1,x2
 
 def wrapLon(f,sx,sy):

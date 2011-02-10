@@ -19,51 +19,49 @@ gauss = BilateralFilter.Type.GAUSS
 huber = BilateralFilter.Type.HUBER
 tukey = BilateralFilter.Type.TUKEY
 
+#pngDir = None
+pngDir = "png/blf/"
+
 #############################################################################
 
 def main(args):
+  #goImage()
+  goFilter()
   #goFilterImpulses()
   #goFilterRandom()
-  goImage()
-  goFilter()
-  goSmooth()
-  #goSemblance()
-  #goNormalize()
 
 def goFilter():
-  x,s1,s2,clip = getImage()
-  n1,n2 = len(x[0]),len(x)
-  #for c in [False,True]:
-  for c in [False]:
-    t = imageTensors(2.0,x)
-    if c:
-      t.scale(coherence(2.0,t,x))
-    xqqd = qqd(x)
-    y = bilateralFilter(15.0,xqqd,t,x)
-    plot(y,s1,s2,clip)
-    #plot(sub(x,y),s1,s2,clip*0.5)
+  #lim = (2.1,1.4,7.9,1.85)
+  lim = (2.3,0.98,7.7,1.42)
+  #x,s1,s2,clip = getImageF3d(); png = "f3d_"
+  x,s1,s2,clip = getImageTpd(); png = "tpd_"
+  plot(x,s1,s2,clip,png=png+"input")
+  #plot(x,s1,s2,clip,limits=lim,png=png+"inputz")
+  sigmaS = 16.0
+  sigmaR = qqd(x); print "sigmaS =",sigmaS," sigmaR =",sigmaR
+  doFilter(sigmaS,sigmaR,False,False,x,s1,s2,clip,png=png+"blf")
+  doFilter(sigmaS,sigmaR,True,False,x,s1,s2,clip,png=png+"blft")
+  #doFilter(sigmaS,sigmaR,True,False,x,s1,s2,clip,limits=lim,png=png+"blftz")
+  doFilter(sigmaS,sigmaR,True,True,x,s1,s2,clip,png=png+"blftc")
+  doFilter(sigmaS,100.0*sigmaR,True,False,x,s1,s2,clip,png=png+"lsft")
+  doFilter(sigmaS,100.0*sigmaR,True,True,x,s1,s2,clip,png=png+"lsftc")
 
-def goSmooth():
-  x,s1,s2,clip = getImage()
-  #plot(x,s1,s2,clip)
-  #for c in [False,True]:
-  for c in [True]:
+def doFilter(sigmaS,sigmaR,useT,useC,x,s1,s2,clip,limits=None,png=None):
+  if useT:
     t = imageTensors(2.0,x)
-    if c:
+    if useC:
       t.scale(coherence(2.0,t,x))
-    #plot(x,s1,s2,clip,t=t)
-    #plot(c,s1,s2,clip=1.0,cbar="Semblance")
-    y = smooth(15.0,t,x)
-    plot(y,s1,s2,clip)
-    #plot(sub(x,y),s1,s2,clip*0.5)
+  else:
+    t = None
+  y = bilateralFilter(sigmaS,sigmaR,t,x)
+  plot(y,s1,s2,clip,limits=limits,png=png)
+  plot(sub(x,y),s1,s2,clip*0.251,limits=limits,png=png+"d")
 
 def goFilterImpulses():
   xa,s1,s2,clip = getImage()
   xb = makeImpulses(12,len(xa[0]),len(xa))
   t = imageTensors(2.0,xa)
   #t.scale(coherence(2.0,t,xa))
-  #s = BilateralFilter.rmsScales(4.0,xa)
-  #xa = div(xa,s)
   plot(xa,s1,s2,1.3)
   #plot(xb,s1,s2,0.9)
   for sigmaR in [0.1,1.0,100.0]:
@@ -83,21 +81,16 @@ def goFilterRandom():
   xb = makeRandom(n1,n2)
   t = imageTensors(2.0,xa)
   #t.scale(coherence(2.0,t,xa))
-  s = BilateralFilter.rmsScales(4.0,xa)
-  xa = div(xa,s)
   #plot(xa,s1,s2,1.3)
   #plot(xb,s1,s2,0.5)
-  #for sigmaR in [0.1,1.0,100.0]:
-  for sigmaR in [0.7]:
+  xqqd = qqd(x)
+  for sigmaR in [xqqd,100*xqqd]:
     y = like(xa)
     bf = BilateralFilter(30.0,sigmaR)
     bf.setType(BilateralFilter.Type.TUKEY)
     bf.applyAB(t,xa,xb,y)
-    #y = smoothS(y)
     plot(y,s1,s2,0.1)
     bf.apply(t,xa,y)
-    y = mul(y,s)
-    #y = smoothS(y)
     plot(y,s1,s2,clip)
 
 def goImage():
@@ -115,10 +108,12 @@ def getImageF3d():
   f1,f2 = 0.004,0.000
   fileName = "/data/seis/f3d/f3d75.dat"
   x = readImage(fileName,n1,n2)
-  j1,j2 = 240,0
-  n1,n2 = n1-j1,440
-  f1,f2 = f1+j1*d1,f2+j2*d2
-  x = copy(n1,n2,j1,j2,x)
+  subset = True
+  if subset:
+    j1,j2 = 240,0
+    n1,n2 = n1-j1,440
+    f1,f2 = f1+j1*d1,f2+j2*d2
+    x = copy(n1,n2,j1,j2,x)
   s1,s2 = Sampling(n1,d1,f1),Sampling(n2,d2,f2)
   return x,s1,s2,5.0
 
@@ -169,7 +164,10 @@ def imageTensors(sigma,x):
 def bilateralFilter(sigmaS,sigmaX,t,x):
   y = like(x)
   bf = BilateralFilter(sigmaS,sigmaX)
-  bf.apply(t,x,y)
+  if t:
+    bf.apply(t,x,y)
+  else:
+    bf.apply(x,y)
   return y
 
 def smoothS(x):
@@ -200,6 +198,9 @@ def semblance(sigma,t,s):
   lsf = LocalSemblanceFilter(int(sigma),4*int(sigma))
   return lsf.semblance(LocalSemblanceFilter.Direction2.V,t,s)
 
+def qqd(x):
+  return 0.5*(Quantiler.estimate(0.75,x)-Quantiler.estimate(0.25,x))
+
 def like(x):
   n1,n2 = len(x[0]),len(x)
   return zerofloat(n1,n2)
@@ -220,23 +221,34 @@ def makeRandom(n1,n2):
   x = mul(2.0,sub(randfloat(n1,n2),0.5))
   return smooth(1.0,None,x)
 
-def qqd(x):
-  return 0.5*(Quantiler.estimate(0.75,x)-Quantiler.estimate(0.25,x))
-
 #############################################################################
 # plot
 
-pngDir = None
-#pngDir = "./png"
-
-def plot(f,s1,s2,clip=0.0,t=None,cbar="Amplitude",png=None):
+def plot(f,s1,s2,clip=0.0,t=None,cbar="",limits=None,png=None):
   n1,n2 = len(f[0]),len(f)
   sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
+  sp.setFontSizeForPrint(8.0,240)
+  sp.setSize(1020,750)
+  #sp.setSize(1090,760)
+  #sp.setSize(1090,800)
+  if limits:
+    sp.setHInterval(1.0)
+    sp.setVInterval(0.1)
+  else:
+    sp.setHInterval(2.0)
+    sp.setVInterval(0.2)
   sp.setHLabel("Inline (km)")
   sp.setVLabel("Time (s)")
+  if limits:
+    sp.setLimits(limits[0],limits[1],limits[2],limits[3])
   if cbar!=None:
-    sp.addColorBar(cbar)
-  sp.plotPanel.setColorBarWidthMinimum(130)
+    if len(cbar)>0:
+      cbar = sp.addColorBar(cbar)
+    else:
+      cbar = sp.addColorBar()
+    if clip==2.0:
+      cbar.setInterval(1.0)
+  sp.plotPanel.setColorBarWidthMinimum(90)
   pv = sp.addPixels(s1,s2,f)
   if clip!=0.0:
     if clip==1.0:
@@ -259,11 +271,8 @@ def plot(f,s1,s2,clip=0.0,t=None,cbar="Amplitude",png=None):
     #tv.setScale(3)
     tile = sp.plotPanel.getTile(0,0)
     tile.addTiledView(tv)
-  sp.setFontSizeForPrint(8.0,240)
-  sp.setSize(1090,800)
-  sp.setVisible(True)
   if png and pngDir:
-    sp.paintToPng(100,6,pngDir+"/"+png+".png")
+    sp.paintToPng(720,3.3,pngDir+png+".png")
 
 #############################################################################
 # Do everything on Swing thread.

@@ -212,7 +212,7 @@ def plot(f,x1,x2,g,s1,s2,d=None,es=1,cbar=None,cmin=0,cmax=0,png=None):
     mv.setMarkColor(Color.WHITE)
     mv.setMarkSize(6)
   if pngDir and png:
-    sp.paintToPng(600,3,pngDir+png+".png")
+    sp.paintToPng(720,3.3,pngDir+png+".png")
 
 #############################################################################
 # processing

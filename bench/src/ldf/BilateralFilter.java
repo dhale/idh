@@ -24,6 +24,10 @@ import static edu.mines.jtk.util.ArrayMath.*;
  * <p>
  * Different types of range functions r(x) may be specified, though 
  * the default Tukey's biweight function works well in most cases.
+ * Each range function r(x) is symmetric with half-width sigmaRange.
+ * A robust choice for sigmaRange that has worked well in practice
+ * is half the difference between the third and first quartiles
+ * (the 75th and 25th percentiles).
  * <p>
  * A straightforward implementation of the bilateral filter would be
  * too slow to be useful in practice. This implementation computes 
@@ -35,13 +39,6 @@ import static edu.mines.jtk.util.ArrayMath.*;
  * (xmax-xmin)/sigmaRange, where [xmin,xmax] is the range of input 
  * samples x, and sigmaRange is the half-width of the range function 
  * r(x).
- * <p>
- * To improve the accuracy of the linear interpolation approximation,
- * input samples should be locally normalized so that rms sample values
- * computed within local windows do not vary significantly from one
- * window to the next. This class provides methods to compute the scale 
- * factors that can be used to normalize input samples and denormalize
- * output samples.
  * <p>
  * The bilateral filter is widely used in image processing. A useful
  * general reference is Paris, Kornprobst, Tumblin and Durand, 2007, 
@@ -236,63 +233,6 @@ public class BilateralFilter {
     _lsf.setTensors(d);
     _lsf.setFactors(s);
     apply(_lsf,_fx,x,y);
-  }
-
-  /**
-   * Returns normalizing scale factors for a specified array of samples.
-   * After division by these factors, rms values within local Gaussian
-   * windows of samples will equal one.
-   * @param sigma half-width of the Gaussian windows.
-   * @param x array of input samples.
-   * @return array of scale factors.
-   */
-  public static float[] rmsScales(double sigma, float[] x) {
-    float[] s = mul(x,x);
-    RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(sigma);
-    rgf.apply0(s,s);
-    float smax = max(s);
-    float smin = FLT_EPSILON*smax;
-    clip(smin,smax,s,s);
-    sqrt(s,s);
-    return s;
-  }
-
-  /**
-   * Returns normalizing scale factors for a specified array of samples.
-   * After division by these factors, rms values within local Gaussian
-   * windows of samples will equal one.
-   * @param sigma half-width of the Gaussian windows.
-   * @param x array of input samples.
-   * @return array of scale factors.
-   */
-  public static float[][] rmsScales(double sigma, float[][] x) {
-    float[][] s = mul(x,x);
-    RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(sigma);
-    rgf.apply00(s,s);
-    float smax = max(s);
-    float smin = FLT_EPSILON*smax;
-    clip(smin,smax,s,s);
-    sqrt(s,s);
-    return s;
-  }
-
-  /**
-   * Returns normalizing scale factors for a specified array of samples.
-   * After division by these factors, rms values within local Gaussian
-   * windows of samples will equal one.
-   * @param sigma half-width of the Gaussian windows.
-   * @param x array of input samples.
-   * @return array of scale factors.
-   */
-  public static float[][][] rmsScales(double sigma, float[][][] x) {
-    float[][][] s = mul(x,x);
-    RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(sigma);
-    rgf.apply000(s,s);
-    float smax = max(s);
-    float smin = FLT_EPSILON*smax;
-    clip(smin,smax,s,s);
-    sqrt(s,s);
-    return s;
   }
 
   /**
@@ -522,7 +462,7 @@ public class BilateralFilter {
       scale(fx,xk,x,tn,td);
       copy(tn,tt); f1.apply(tt,tn);
       copy(td,tt); f1.apply(tt,td);
-      accum(xk-dx,xk,xk+dx,dx,x,tn,td,yn,yd);
+      accum(xk,dx,x,tn,td,yn,yd);
     }
     div(yn,yd,y);
   }
@@ -542,7 +482,7 @@ public class BilateralFilter {
       scale(fx,xk,x,tn,td);
       copy(tn,tt); f2.apply(tt,tn);
       copy(td,tt); f2.apply(tt,td);
-      accum(xk-dx,xk,xk+dx,dx,x,tn,td,yn,yd);
+      accum(xk,dx,x,tn,td,yn,yd);
     }
     div(yn,yd,y);
   }
@@ -564,7 +504,7 @@ public class BilateralFilter {
       scale(fx,xk,xa,xb,tn,td);
       copy(tn,tt); f2.apply(tt,tn);
       copy(td,tt); f2.apply(tt,td);
-      accum(xk-dx,xk,xk+dx,dx,xa,tn,td,yn,yd);
+      accum(xk,dx,xa,tn,td,yn,yd);
     }
     div(yn,yd,y);
   }
@@ -585,7 +525,7 @@ public class BilateralFilter {
       scale(fx,xk,x,tn,td);
       copy(tn,tt); f3.apply(tt,tn);
       copy(td,tt); f3.apply(tt,td);
-      accum(xk-dx,xk,xk+dx,dx,x,tn,td,yn,yd);
+      accum(xk,dx,x,tn,td,yn,yd);
     }
     div(yn,yd,y);
   }
@@ -607,12 +547,15 @@ public class BilateralFilter {
     for (int i2=0; i2<n2; ++i2)
       scale(fx,xk,x[i2],tn[i2],td[i2]);
   }
-  private static void scale(Fx fx, float xk, 
-    float[][][] x, float[][][] tn, float[][][] td)
+  private static void scale(final Fx fx, final float xk, 
+    final float[][][] x, final float[][][] tn, final float[][][] td)
   {
     int n3 = x.length;
-    for (int i3=0; i3<n3; ++i3)
-      scale(fx,xk,x[i3],tn[i3],td[i3]);
+    Parallel.loop(n3,new Parallel.LoopInt() {
+      public void compute(int i3) {
+        scale(fx,xk,x[i3],tn[i3],td[i3]);
+      }
+    });
   }
   private static void scale(Fx fx, float xk, 
     float[] xa, float[] xb, float[] tn, float[] td) 
@@ -633,45 +576,53 @@ public class BilateralFilter {
     for (int i2=0; i2<n2; ++i2)
       scale(fx,xk,xa[i2],xb[i2],tn[i2],td[i2]);
   }
-  private static void scale(Fx fx, float xk, 
-    float[][][] xa, float[][][] xb, float[][][] tn, float[][][] td)
+  private static void scale(final Fx fx, final float xk, 
+    final float[][][] xa, final float[][][] xb, 
+    final float[][][] tn, final float[][][] td)
   {
     int n3 = xa.length;
-    for (int i3=0; i3<n3; ++i3)
-      scale(fx,xk,xa[i3],xb[i3],tn[i3],td[i3]);
+    Parallel.loop(n3,new Parallel.LoopInt() {
+      public void compute(int i3) {
+        scale(fx,xk,xa[i3],xb[i3],tn[i3],td[i3]);
+      }
+    });
   }
 
-  // xa <= xb <= xc
   private static void accum(
-    float xa, float xb, float xc, float dx, float[] x, 
+    float xk, float dx, float[] x, 
     float[] tn, float[] td, float[] yn, float[] yd) 
   {
     int n1 = x.length;
-    float sab = 1.0f/max(dx,xb-xa);
-    float sbc = 1.0f/max(dx,xc-xb);
+    float odx = 1.0f/dx;
+    float xlo = xk-dx;
+    float xhi = xk+dx;
     for (int i1=0; i1<n1; ++i1) {
       float xi = x[i1];
-      if (xa<xi && xi<xc) {
-        float w = 1.0f-((xi<=xb)?(xb-xi)*sab:(xi-xb)*sbc);
+      if (xlo<xi && xi<xhi) {
+        float w = 1.0f-(xi<=xk?(xk-xi)*odx:(xi-xk)*odx);
         yn[i1] += w*tn[i1];
         yd[i1] += w*td[i1]; 
       }
     }
   }
   private static void accum(
-    float xa, float xb, float xc, float dx, float[][] x, 
+    float xk, float dx, float[][] x, 
     float[][] tn, float[][] td, float[][] yn, float[][] yd) 
   {
     int n2 = x.length;
     for (int i2=0; i2<n2; ++i2)
-      accum(xa,xb,xc,dx,x[i2],tn[i2],td[i2],yn[i2],yd[i2]);
+      accum(xk,dx,x[i2],tn[i2],td[i2],yn[i2],yd[i2]);
   }
   private static void accum(
-    float xa, float xb, float xc, float dx, float[][][] x, 
-    float[][][] tn, float[][][] td, float[][][] yn, float[][][] yd) 
+    final float xk, final float dx, final float[][][] x, 
+    final float[][][] tn, final float[][][] td, 
+    final float[][][] yn, final float[][][] yd) 
   {
     int n3 = x.length;
-    for (int i3=0; i3<n3; ++i3)
-      accum(xa,xb,xc,dx,x[i3],tn[i3],td[i3],yn[i3],yd[i3]);
+    Parallel.loop(n3,new Parallel.LoopInt() {
+      public void compute(int i3) {
+        accum(xk,dx,x[i3],tn[i3],td[i3],yn[i3],yd[i3]);
+      }
+    });
   }
 }
