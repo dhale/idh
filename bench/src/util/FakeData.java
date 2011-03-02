@@ -9,6 +9,7 @@ package util;
 import java.util.Random;
 
 import edu.mines.jtk.dsp.*;
+import edu.mines.jtk.mosaic.*;
 import edu.mines.jtk.sgl.*;
 import static edu.mines.jtk.util.ArrayMath.*;
 
@@ -25,15 +26,32 @@ public class FakeData {
    * the method seismic3d2010A().
    */
   public static void main(String[] args) {
-    if (args.length==0 || args[0]=="seismic3d2010A") {
+    if (args.length==0 || args[0].equals("seismic3d2010A")) {
       float[][][] f = seismic3d2010A();
       SimpleFrame frame = new SimpleFrame();
       frame.addImagePanels(f);
       frame.getOrbitView().setScale(2.0);
       frame.setSize(900,900);
+    } else if (args[0].equals("seismic2d2011A")) {
+      float[][] f = seismic2d2011A(251,501,45.0,50.0);
+      SimplePlot sp = SimplePlot.asPixels(f);
+      sp.setSize(1200,600);
     } else {
       System.out.println("unrecognized type of fake data");
     }
+  }
+
+  public static float[][] seismic2d2011A(
+    int n1, int n2, double dip, double sigma)
+  {
+    float fpeak = 0.2f;
+    float fmax = 2.0f*fpeak;
+    float[][] f = makeEvents(n1,n2);
+    f = addRickerWavelet(fpeak,f);
+    f = addDipRotate(f,2*n1/4,1*n2/4,dip,sigma);
+    f = addDipVShear(f,2*n1/4,3*n2/4,dip,sigma);
+    f = mul(1.0f/max(abs(f)),f);
+    return f;
   }
 
   /**
@@ -47,7 +65,7 @@ public class FakeData {
   }
 
   /**
-   * Returns a fake 3D seismic image, version A. As options, this image 
+   * Returns a fake 3D seismic image, version 2010A. As options, the image 
    * may include structure, a fault, an unconformity, and random noise.
    * <p>
    * The image is initially a random sequence of horizontal reflections.
@@ -102,6 +120,99 @@ public class FakeData {
 
   ///////////////////////////////////////////////////////////////////////////
   // private
+
+  private static float[][] addDipRotate(
+    float[][] f, double c1, double c2, 
+    double dip, double sigma) 
+  {
+    return addDip(f,c1,c2,dip,sigma,true);
+  }
+  private static float[][] addDipVShear(
+    float[][] f, double c1, double c2, 
+    double dip, double sigma) 
+  {
+    return addDip(f,c1,c2,dip,sigma,false);
+  }
+  private static float[][] addDip(
+    float[][] f, double c1, double c2, 
+    double dip, double sigma, boolean rotate) 
+  {
+    int n1 = f[0].length;
+    int n2 = f.length;
+    float[][] r1 = new float[n2][n1];
+    float[][] r2 = new float[n2][n1];
+    double cdip = cos(toRadians(dip));
+    double sdip = sin(toRadians(dip));
+    for (int i2=0; i2<n2; ++i2) {
+      double u2 = i2-c2;
+      for (int i1=0; i1<n1; ++i1) {
+        double u1 = i1-c1;
+        double x1,x2;
+        if (rotate) {
+          x1 = cdip*u1+sdip*u2;
+          x2 = cdip*u2-sdip*u1;
+        } else {
+          x1 =  u1+u2*sdip/cdip;
+          x2 =  u2;
+        }
+        double e = exp(-0.5*(u1*u1+u2*u2)/(sigma*sigma));
+        //e = 1.0;
+        r1[i2][i1] = (float)(e*(u1-x1));
+        r2[i2][i1] = (float)(e*(u2-x2));
+      }
+    }
+    float[][][] s = sFromR(r1,r2);
+    float[][] s1 = s[0];
+    float[][] s2 = s[1];
+    SincInterpolator si = new SincInterpolator();
+    si.setExtrapolation(SincInterpolator.Extrapolation.CONSTANT);
+    si.setUniform(n1,1.0,0.0,n2,1.0,0.0,f);
+    float[][] g = new float[n2][n1];
+    for (int i2=0; i2<n2; ++i2) {
+      double x2 = i2;
+      for (int i1=0; i1<n1; ++i1) {
+        double x1 = i1;
+        g[i2][i1] = si.interpolate(x1+s1[i2][i1],x2+s2[i2][i1]);
+      }
+    }
+    return g;
+  }
+  private static float[][][] sFromR(float[][] r1, float[][] r2) {
+    int n1 = r1[0].length;
+    int n2 = r1.length;
+    float[][] s1 = copy(r1);
+    float[][] s2 = copy(r2);
+    /* */
+    LinearInterpolator li1 = new LinearInterpolator();
+    li1.setExtrapolation(LinearInterpolator.Extrapolation.CONSTANT);
+    li1.setUniform(n1,1.0,0.0,n2,1.0,0.0,r1);
+    LinearInterpolator li2 = new LinearInterpolator();
+    li2.setExtrapolation(LinearInterpolator.Extrapolation.CONSTANT);
+    li2.setUniform(n1,1.0,0.0,n2,1.0,0.0,r2);
+    for (int i2=0; i2<n2; ++i2) {
+      double x2 = i2;
+      for (int i1=0; i1<n1; ++i1) {
+        double x1 = i1;
+        double s1i = s1[i2][i1];
+        double s2i = s2[i2][i1];
+        double s1p,s2p,ds1,ds2;
+        do {
+          double u1 = x1+s1i;
+          double u2 = x2+s2i;
+          s1p = s1i;
+          s2p = s2i;
+          s1i = li1.interpolate(u1,u2); // s1(x) = r1(u(x))
+          s2i = li2.interpolate(u1,u2); // s2(x) = r2(u(x))
+          ds1 = s1i-s1p;
+          ds2 = s2i-s2p;
+        } while (ds1*ds1+ds2*ds2>0.0001);
+        s1[i2][i1] = (float)s1i;
+        s2[i2][i1] = (float)s2i;
+      }
+    }
+    /* */
+    return new float[][][]{s1,s2};
+  }
 
   private static float[][] smoothRandomSurface(
     int seed, double sigma, double smin, double smax, int n2, int n3) {

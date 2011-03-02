@@ -16,15 +16,15 @@ from edu.mines.jtk.util.ArrayMath import *
 
 from ldf import *
 
-#pngDir = None
-pngDir = "png/blf/"
+pngDir = None
+#pngDir = "png/blf/"
 
 #############################################################################
 # functions
 
 def main(args):
-  #goRandomBlocks()
-  goShowRangeFunctions()
+  goRandomBlocks()
+  #goShowRangeFunctions()
 
 gauss = BilateralFilter.Type.GAUSS
 huber = BilateralFilter.Type.HUBER
@@ -39,8 +39,9 @@ def goRandomBlocks():
   plot2(x,y,-12,12,"rbxy")
   sigmaS = 20.0
   z = zerofloat(n1)
-  for scale in [0.5,1.0,1.5,10.0]:
+  for scale in [0.01,0.5,1.0,1.5,10,100.0]:
     sigmaX = scale*yqqd
+    print "sigmaS =",sigmaS," sigmaX =",sigmaX
     bf = BilateralFilter(sigmaS,sigmaX)
     bf.setType(tukey)
     bf.apply(y,z)

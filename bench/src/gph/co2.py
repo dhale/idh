@@ -7,15 +7,17 @@ pngDir = None
 #pngDir = "png/co2/"
 
 def main(args):
-  #goCrossValidate(2009.28)
-  goAnalyzeErrors()
+  #goCrossValidateLoo(2009.28)
+  #goCrossValidateKfold(10,2009.28)
+  #goAnalyzeErrors()
   #goVariogram(1971.95,1972,1)
   #goVariogram(2009.28,2010,1)
   #goVariogram(2009.28,2010,12,random=True)
   #goVariogram(2009.28,2010,12,random=False)
   #goVariogram(1970.28,2010,12)
-  #goGridding(2009.28,2010,12,sg=True,p3=True)
+  goGridding(2009.28,2010,12,sg=True,p3=True)
   #goGridding(2009.28,2010,12,sg=False,p3=True)
+  #goGridding(2009.28,2010,12,sg=True,p3=False)
   #goGridding(2009.28,2010,12,sg=False,p3=False)
   #goGridding(2009.28,2010,12,p3=True)
   #goGridding(1970,2010,1) # Jan-Dec
@@ -40,7 +42,8 @@ def main(args):
   #goDemo()
 
 def goTensors():
-  eimage = readEarthImage()
+  #eimage = readEarthImage()
+  eimage = readWaterImage()
   s1,s2 = gridSamplings()
   for scale in [1,4]:
     d = makeTensors(scale,s1,s2)
@@ -54,7 +57,7 @@ def goVariogram(fy,ly,ky,random=False):
     laty,lony,co2y = getGoodData(iy,lats,lons,co2s)
     n = len(laty)
     if random:
-      co2y = permute(co2y)
+      co2y = shuffle(co2y)
     x,y,s = [],[],[]
     for i in range(n):
       lati,loni,co2i = laty[i],lony[i],co2y[i]
@@ -77,14 +80,16 @@ def goVariogram(fy,ly,ky,random=False):
       png += "r"
     plotVariogram(s,x,y,title=title,png=png)
   
-def goCrossValidate(y):
+errorsDir = "/data/earth/co2/errors10/"
+def goCrossValidateLoo(y):
   eimage = readWaterImage()
   names,lats,lons,co2s = readCo2Table()
   sy = yearsSamplingCo2Table()
   iy = sy.indexOfNearest(y)
   laty,lony,co2y = getGoodData(iy,lats,lons,co2s)
-  for scale in [8.0,16.0]:
-    pw = PrintWriter(FileOutputStream("Co2e"+str(int(scale))+".txt"))
+  #for scale in [1.0,4.0]:
+  for scale in [6.0]:
+    pw = PrintWriter(FileOutputStream(errorsDir+"Co2e"+str(int(scale))+".txt"))
     f,u1,u2 = co2y,lony,laty
     n = len(f)
     fm,u1m,u2m = zerofloat(n-1),zerofloat(n-1),zerofloat(n-1)
@@ -102,10 +107,53 @@ def goCrossValidate(y):
       pw.flush()
       #plot2(eimage,f,u1,u2,g,s1,s2,None,mv=True,cv=True,tv=False,year=y)
     pw.close()
+def goCrossValidateKfold(k,y):
+  eimage = readWaterImage()
+  names,lats,lons,co2s = readCo2Table()
+  sy = yearsSamplingCo2Table()
+  iy = sy.indexOfNearest(y)
+  laty,lony,co2y = getGoodData(iy,lats,lons,co2s)
+  #for scale in [1.0,4.0]:
+  for scale in [1.0,2.0,3.0,4.0,5.0,6.0]:
+  #for scale in [4.0]:
+    print "scale =",scale
+    pw = PrintWriter(FileOutputStream(errorsDir+"Co2e"+str(int(scale))+".txt"))
+    f,u1,u2 = co2y,lony,laty
+    f = floatsFromList(f)
+    u1 = floatsFromList(u1)
+    u2 = floatsFromList(u2)
+    f = shuffle(f)
+    u1 = shuffle(u1)
+    u2 = shuffle(u2)
+    #g,s1,s2 = gridBlended(scale,f,u1,u2)
+    #plot2(eimage,f,u1,u2,g,s1,s2,None,mv=True,cv=True,tv=False,year=y)
+    n = len(f)
+    step = float(n)/k
+    for ik in range(k):
+      i = int(ik*step+0.5) # index of 1st missing sample
+      inext = int((ik+1)*step+0.5) # next index of 1st missing sample
+      m = inext-i # number of missing samples
+      if ik==k-1: m = n-i # last fold includes all remaining samples
+      #print "ik =",ik," i =",i," m =",m," n =",n
+      ft,u1t,u2t = zerofloat(n-m),zerofloat(n-m),zerofloat(n-m)
+      copy(i, f, ft); copy(n-i-m,i+m, f,i, ft)
+      copy(i,u1,u1t); copy(n-i-m,i+m,u1,i,u1t)
+      copy(i,u2,u2t); copy(n-i-m,i+m,u2,i,u2t)
+      g,s1,s2 = gridBlended(scale,ft,u1t,u2t)
+      for j in range(i,i+m):
+        fj,u1j,u2j = f[j],u1[j],u2[j]
+        j1 = s1.indexOfNearest(u1j)
+        j2 = s2.indexOfNearest(u2j)
+        e = g[j2][j1]-fj
+        #print "j =",j,"u1 =",u1j,"u2 =",u2j,"e =",e
+        pw.printf("%10.4f %10.4f %10.2f %10.2f%n",(u1j,u2j,fj,e))
+        pw.flush()
+      #plot2(eimage,ft,u1t,u2t,g,s1,s2,None,mv=True,cv=True,tv=False,year=y)
+    pw.close()
 
 def printErrorStats():
   print "     emin   eq25   eq50   eq75   emax   eavg   erms   eaad   emad"
-  for name in ["1","2","4","8","16"]:
+  for name in ["1","2","3","4","5","6"]:
     fileName = "Co2e"+name
     e,f,x1,x2 = readErrors(fileName)
     n = len(f)
@@ -132,7 +180,7 @@ def printErrorStats():
 def goAnalyzeErrors():
   printErrorStats()
   e1,f,x1,x2 = readErrors("Co2e1")
-  e2,f,x1,x2 = readErrors("Co2e4")
+  e2,f,x1,x2 = readErrors("Co2e2")
   n = len(f)
   sp = SimplePlot()
   sp.setFontSizeForPrint(8,240)
@@ -143,12 +191,14 @@ def goAnalyzeErrors():
   #sp.setHLimits(-450,450)
   sp.addGrid("HV--")
   styles = [PointsView.Line.SOLID,PointsView.Line.DOT]
-  colors = [Color.BLACK,Color.RED]
+  colors = [Color.LIGHT_GRAY,Color.BLACK]
   widths = [5,5]
-  errors = [e2,e1]
+  errors = [e1,e2]
   for i in range(len(errors)):
     e = errors[i]
-    h = Histogram(e,-10.0,10.0,21)
+    #h = Histogram(e,-11.0,11.0,11)
+    #h = Histogram(e,-10.5,10.5,21)
+    h = Histogram(e,-8.5,8.5,17)
     #h = Histogram(e)
     sh = h.getBinSampling()
     #print "h # bins =",sh.count
@@ -162,6 +212,7 @@ def goAnalyzeErrors():
 def goGridding(fy,ly,ky,sg=False,tv=False,p3=False):
   if sg:
     eimage = readEarthImage()
+    #eimage = readWaterImage()
   else:
     eimage = readWaterImage()
   names,lats,lons,co2s = readCo2Table()
@@ -172,7 +223,7 @@ def goGridding(fy,ly,ky,sg=False,tv=False,p3=False):
     if not laty:
       continue
     #for scale in [1.0,4.0]:
-    for scale in [4.0]:
+    for scale in [1.0]:
       f,u1,u2 = co2y,lony,laty
       if sg:
         g,s1,s2 = gridSimple(f,u1,u2)
@@ -297,7 +348,7 @@ def plot2(image,
       cv.setColorModel(makeTransparentColorModel(0.7))
     else:
       cv.setColorModel(makeTransparentColorModel(1.0))
-    cv.setColorModel(ColorMap.getJet(0.8))
+    #cv.setColorModel(ColorMap.getJet(0.8))
     tile.addTiledView(cv)
     cb = pp.addColorBar("CO2 (ppm)")
     cb.setInterval(5)
@@ -306,9 +357,9 @@ def plot2(image,
   if tv and d and s1 and s2:
     gwidth = 1
     tv = TensorsView(s1,s2,d)
-    tv.setScale(22.0)
-    tv.setLineColor(Color.BLACK)
-    tv.setLineWidth(2)
+    tv.setScale(14.0)
+    tv.setLineColor(Color.RED)
+    tv.setLineWidth(3)
     tv.setEllipsesDisplayed(Sampling(11,30,-150),Sampling(5,30,-60))
     tile.addTiledView(tv)
   if mv and f and u1 and u2:
@@ -719,7 +770,7 @@ def readCo2s(station,sy):
   else: return None
 
 def readErrors(fileName):
-  s = Scanner(FileInputStream(fileName+".txt"))
+  s = Scanner(FileInputStream(errorsDir+fileName+".txt"))
   e,f,x1,x2 = [],[],[],[]
   while s.hasNextLine():
     line = s.nextLine()
@@ -738,6 +789,24 @@ def floatsFromList(a):
   b = zerofloat(len(a))
   copy(len(a),a,b)
   return b
+
+#############################################################################
+# AIRS CO2 data from NASA
+
+airsDir = "/data/earth/co2/"
+def readAirsImage(fileName):
+  n1,n2 = 144,91
+  d1,d2 = 2.50,2.00
+  f1,f2 = 1.25,1.00
+  s1,s2 = Sampling(n1,d1,f1),Sampling(n2,d2,f2)
+  x = zerofloat(n1,n2)
+  ais = ArrayInputStream(airsDir+fileName)
+  ais.readFloats(x)
+  ais.close()
+  return x
+
+%def cleanAirsImage(x,xs1,xs2,ys1,ys2):
+  
 
 #############################################################################
 # Other stuff
@@ -768,13 +837,15 @@ def clipsForYear(y):
   cmax = co2+10.0
   return cmin,cmax
 
-def permute(x):
-  n = len(x)
-  y = zerofloat(n)
+def shuffle(x):
   r = Random(314159)
-  for i in range(n):
-    j = i+r.nextInt(n-i)
-    y[i] = x[j]
+  n = len(x)
+  y = x[:]
+  y[0] = x[0]
+  for i in range(1,n):
+    j = r.nextInt(i)
+    y[i] = y[j]
+    y[j] = x[i]
   return y
 
 def makeTensors(scale,slon,slat):
@@ -793,7 +864,9 @@ def makeTensors(scale,slon,slat):
 
 def gridSamplings():
   #n1,n2 = 360,180
-  n1,n2 = 180,90
+  #n1,n2 = 180,90
+  #n1,n2 = 120,60
+  n1,n2 = 90,45
   d1,d2 = 360.0/n1,180.0/n2
   f1,f2 = -180.0+0.5*d1,-90.0+0.5*d2
   s1 = Sampling(n1,d1,f1)
@@ -815,7 +888,7 @@ def gridBlended(scale,f,x1,x2):
   n1p,n2 = s1p.count,s2.count
   d = makeTensors(scale,s1p,s2)
   bg = BlendedGridder2(d,fp,x1p,x2p)
-  bg.setBlending(False)
+  bg.setBlending(True)
   gp = bg.grid(s1p,s2)
   g = copy(n1,n2,n1/2,0,gp)
   return g,s1,s2

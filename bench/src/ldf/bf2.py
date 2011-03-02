@@ -29,39 +29,48 @@ def main(args):
   goFilter()
   #goFilterImpulses()
   #goFilterRandom()
+  #goFilterWithGpow()
 
 def goFilter():
-  #lim = (2.1,1.4,7.9,1.85)
-  lim = (2.3,0.98,7.7,1.42)
-  #x,s1,s2,clip = getImageF3d(); png = "f3d_"
-  x,s1,s2,clip = getImageTpd(); png = "tpd_"
+  #lim = (2.1,1.4,7.9,1.85) # f3d
+  lim = (2.3,0.98,7.7,1.42) # f3d
+  x,s1,s2,clip = getImageF3d(); png = "f3d_"
+  #x,s1,s2,clip = getImageTpd(); png = "tpd_"
+  #x,s1,s2,clip = getImageAtw(); png = "atw_"
   plot(x,s1,s2,clip,png=png+"input")
   #plot(x,s1,s2,clip,limits=lim,png=png+"inputz")
+  sigmaR = qqd(x)
   sigmaS = 16.0
-  sigmaR = qqd(x); print "sigmaS =",sigmaS," sigmaR =",sigmaR
-  doFilter(sigmaS,sigmaR,False,False,x,s1,s2,clip,png=png+"blf")
-  doFilter(sigmaS,sigmaR,True,False,x,s1,s2,clip,png=png+"blft")
+  print "sigmaS =",sigmaS," sigmaR =",sigmaR
+  #doFilter(sigmaS,sigmaR,False,False,x,s1,s2,clip,png=png+"blf")
+  #doFilter(sigmaS,sigmaR,True,False,x,s1,s2,clip,png=png+"blft")
   #doFilter(sigmaS,sigmaR,True,False,x,s1,s2,clip,limits=lim,png=png+"blftz")
-  doFilter(sigmaS,sigmaR,True,True,x,s1,s2,clip,png=png+"blftc")
+  #doFilter(sigmaS,sigmaR,True,True,x,s1,s2,clip,png=png+"blftc")
+  #doFilter(sigmaS,100.0*sigmaR,False,False,x,s1,s2,clip,png=png+"lsf")
   doFilter(sigmaS,100.0*sigmaR,True,False,x,s1,s2,clip,png=png+"lsft")
   doFilter(sigmaS,100.0*sigmaR,True,True,x,s1,s2,clip,png=png+"lsftc")
-
+  
 def doFilter(sigmaS,sigmaR,useT,useC,x,s1,s2,clip,limits=None,png=None):
   if useT:
-    t = imageTensors(2.0,x)
+    t = diffusionTensors(2.0,x)
     if useC:
-      t.scale(coherence(2.0,t,x))
+      c = coherence(2.0,t,x)
+      plot(pow(c,1.0/8.0),s1,s2,1.0,limits=limits,png=png+"s")
+      plot(c,s1,s2,1.0,limits=limits,png=png+"c")
+      t.scale(mul(c,c))
+    plot(x,s1,s2,clip,t=t,limits=limits,png=png+"e")
   else:
     t = None
-  y = bilateralFilter(sigmaS,sigmaR,t,x)
+  y = x
+  y = bilateralFilter(sigmaS,sigmaR,t,y)
+  print "y min =",min(y)," max =",max(y)
   plot(y,s1,s2,clip,limits=limits,png=png)
   plot(sub(x,y),s1,s2,clip*0.251,limits=limits,png=png+"d")
 
 def goFilterImpulses():
   xa,s1,s2,clip = getImage()
   xb = makeImpulses(12,len(xa[0]),len(xa))
-  t = imageTensors(2.0,xa)
-  #t.scale(coherence(2.0,t,xa))
+  t = diffusionTensors(2.0,xa)
   plot(xa,s1,s2,1.3)
   #plot(xb,s1,s2,0.9)
   for sigmaR in [0.1,1.0,100.0]:
@@ -79,8 +88,7 @@ def goFilterRandom():
   plot(xa,s1,s2,clip)
   n1,n2 = len(xa[0]),len(xa)
   xb = makeRandom(n1,n2)
-  t = imageTensors(2.0,xa)
-  #t.scale(coherence(2.0,t,xa))
+  t = diffusionTensors(2.0,xa)
   #plot(xa,s1,s2,1.3)
   #plot(xb,s1,s2,0.5)
   xqqd = qqd(x)
@@ -96,6 +104,25 @@ def goFilterRandom():
 def goImage():
   x,s1,s2,clip = getImage()
   plot(x,s1,s2,clip)
+
+def goFilterWithGpow():
+  x,s1,s2,clip = getImageF3d(); png = "f3d_"
+  #x,s1,s2,clip = getImageTpd(); png = "tpd_"
+  plot(x,s1,s2,clip,png=png+"inputg05")
+  t = diffusionTensors(2.0,x)
+  gpow = 1.0
+  x = powGain(gpow,clip,x)
+  sigmaS = 16.0
+  sigmaR = qqd(x); print "sigmaS =",sigmaS," sigmaR =",sigmaR
+  y = bilateralFilter(sigmaS,sigmaR,t,x)
+  y = powGain(1.0/gpow,clip,y)
+  plot(y,s1,s2,clip,png="blftg05")
+  #plot(sub(x,y),s1,s2,clip,png="blftg05d")
+  plot(sub(x,y),s1,s2,clip*0.251,png="blftg05d")
+
+def powGain(g,c,x):
+  # y = c^(1-g)*sgn(x)|x|^g
+  return mul(mul(pow(c,1.0-g),sgn(x)),pow(abs(x),g))
 
 def getImage():
   return getImageF3d()
@@ -126,6 +153,16 @@ def getImageTpd():
   s1,s2 = Sampling(n1,d1,f1),Sampling(n2,d2,f2)
   return x,s1,s2,2.0
 
+def getImageAtw():
+  n1,n2 = 500,500
+  d1,d2 = 0.02,0.02
+  f1,f2 = 0.00,0.00
+  fileName = "/data/seis/atw/atwj1s.dat"
+  x = readImage(fileName,n1,n2)
+  x = mul(0.001,x)
+  s1,s2 = Sampling(n1,d1,f1),Sampling(n2,d2,f2)
+  return x,s1,s2,9.0
+
 def getImageSyn():
   n1,n2 = 251,357
   d1,d2 = 1.0,1.0
@@ -147,18 +184,20 @@ def readImage(fileName,n1,n2):
   ais.close()
   return x
 
-def imageTensors(sigma,x):
-  """ 
-  Returns tensors for guiding filters along features in specified image.
-  """
+def structureTensors(sigma,x):
   n1,n2 = len(x[0]),len(x)
-  lof = LocalOrientFilter(2.0*sigma,2.0)
-  lof.setGradientSmoothing(sigma)
-  t = lof.applyForTensors(x) # structure tensors
+  if n1==500 and n2==500:
+    lof = LocalOrientFilter(2.0*sigma)
+    lof.setGradientSmoothing(1.0)
+  else:
+    lof = LocalOrientFilter(2.0*sigma,sigma)
+    lof.setGradientSmoothing(sigma)
+  t = lof.applyForTensors(x)
+  return t
+
+def diffusionTensors(sigma,x):
+  t = structureTensors(sigma,x) # structure tensors
   t.invertStructure(0.0,4.0) # inverted with ev = 1.0, eu = small
-  #eu = fillfloat(0.0001,n1,n2)
-  #ev = fillfloat(1.0000,n1,n2)
-  #t.setEigenvalues(eu,ev)
   return t
 
 def bilateralFilter(sigmaS,sigmaX,t,x):
@@ -190,13 +229,20 @@ def smooth(sigma,t,x):
   return z
 
 def coherence(sigma,t,x):
+  n1,n2 = len(x[0]),len(x)
   s = semblance(sigma,t,x) # structure-oriented semblance s
-  s = pow(s,16.0) # make smaller sembances in [0,1] much smaller
+  if n1!=500 or n2!=500:
+    s = pow(s,8.0) # make smaller sembances in [0,1] much smaller
   return s
 
-def semblance(sigma,t,s):
-  lsf = LocalSemblanceFilter(int(sigma),4*int(sigma))
-  return lsf.semblance(LocalSemblanceFilter.Direction2.V,t,s)
+def semblance(sigma,t,x):
+  n1,n2 = len(x[0]),len(x)
+  if n1==500 and n2==500:
+    lsf = LocalSemblanceFilter(2*int(sigma),2*int(sigma))
+    return lsf.semblance(LocalSemblanceFilter.Direction2.UV,t,x)
+  else:
+    lsf = LocalSemblanceFilter(int(sigma),4*int(sigma))
+    return lsf.semblance(LocalSemblanceFilter.Direction2.V,t,x)
 
 def qqd(x):
   return 0.5*(Quantiler.estimate(0.75,x)-Quantiler.estimate(0.25,x))
@@ -228,17 +274,24 @@ def plot(f,s1,s2,clip=0.0,t=None,cbar="",limits=None,png=None):
   n1,n2 = len(f[0]),len(f)
   sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
   sp.setFontSizeForPrint(8.0,240)
-  sp.setSize(1020,750)
-  #sp.setSize(1090,760)
-  #sp.setSize(1090,800)
-  if limits:
-    sp.setHInterval(1.0)
-    sp.setVInterval(0.1)
-  else:
+  if n1==500 and n2==500: # Atwater
+    sp.setSize(980,890)
+    sp.setHLabel("Inline (km)")
+    sp.setVLabel("Crossline (km)")
     sp.setHInterval(2.0)
-    sp.setVInterval(0.2)
-  sp.setHLabel("Inline (km)")
-  sp.setVLabel("Time (s)")
+    sp.setVInterval(2.0)
+  else:
+    sp.setSize(1020,750)
+    #sp.setSize(1090,760)
+    #sp.setSize(1090,800)
+    if limits:
+      sp.setHInterval(1.0)
+      sp.setVInterval(0.1)
+    else:
+      sp.setHInterval(2.0)
+      sp.setVInterval(0.2)
+    sp.setHLabel("Inline (km)")
+    sp.setVLabel("Time (s)")
   if limits:
     sp.setLimits(limits[0],limits[1],limits[2],limits[3])
   if cbar!=None:
@@ -246,8 +299,12 @@ def plot(f,s1,s2,clip=0.0,t=None,cbar="",limits=None,png=None):
       cbar = sp.addColorBar(cbar)
     else:
       cbar = sp.addColorBar()
-    if clip==2.0:
+    if clip>3.0:
+      cbar.setInterval(2.0)
+    elif clip>=2.0:
       cbar.setInterval(1.0)
+    elif clip==1.0:
+      cbar.setInterval(0.2)
   sp.plotPanel.setColorBarWidthMinimum(90)
   pv = sp.addPixels(s1,s2,f)
   if clip!=0.0:
@@ -267,7 +324,7 @@ def plot(f,s1,s2,clip=0.0,t=None,cbar="",limits=None,png=None):
     tv.setOrientation(TensorsView.Orientation.X1DOWN_X2RIGHT)
     tv.setLineColor(Color.YELLOW)
     tv.setLineWidth(3)
-    tv.setEllipsesDisplayed(30)
+    tv.setEllipsesDisplayed(24)
     #tv.setScale(3)
     tile = sp.plotPanel.getTile(0,0)
     tile.addTiledView(tv)

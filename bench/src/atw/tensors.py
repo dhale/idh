@@ -16,18 +16,33 @@ def main(args):
   goTensors()
 
 def goTensors():
-  reads = [readAwImage]
+  reads = [readAwImage,readTpImage]
   plots = [plotAw,plotTp]
+  prefs = ["awe","tpe"]
+  #reads = [readAwImage]
+  #plots = [plotAw]
+  #prefs = ["awe"]
   for i,read in enumerate(reads):
     plot = plots[i]
+    pref = prefs[i]
     g,s1,s2 = read()
     lof = LocalOrientFilter(4.0)
     s = lof.applyForTensors(g)
+    d00 = EigenTensors2(s); d00.invertStructure(0.0,0.0)
+    d01 = EigenTensors2(s); d01.invertStructure(0.0,1.0)
+    d02 = EigenTensors2(s); d02.invertStructure(0.0,2.0)
+    d04 = EigenTensors2(s); d04.invertStructure(0.0,4.0)
     d11 = EigenTensors2(s); d11.invertStructure(1.0,1.0)
     d12 = EigenTensors2(s); d12.invertStructure(1.0,2.0)
+    d14 = EigenTensors2(s); d14.invertStructure(1.0,4.0)
     plot(g,s1,s2)
-    plot(g,s1,s2,d11,dscale=2,png="awe11")
-    plot(g,s1,s2,d12,dscale=2,png="awe12")
+    plot(g,s1,s2,d00,dscale=1,png=pref+"00")
+    plot(g,s1,s2,d01,dscale=1,png=pref+"01")
+    plot(g,s1,s2,d02,dscale=1,png=pref+"02")
+    plot(g,s1,s2,d04,dscale=1,png=pref+"04")
+    plot(g,s1,s2,d11,dscale=2,png=pref+"11")
+    plot(g,s1,s2,d12,dscale=2,png=pref+"12")
+    plot(g,s1,s2,d14,dscale=2,png=pref+"14")
 
 #############################################################################
 # plotting
@@ -54,13 +69,14 @@ def plotAw(g,s1,s2,d=None,dscale=1,cmin=0,cmax=0,png=None):
     tv = TensorsView(s1,s2,d)
     tv.setOrientation(TensorsView.Orientation.X1DOWN_X2RIGHT)
     tv.setLineColor(Color.YELLOW)
-    tv.setLineWidth(2)
+    tv.setLineWidth(3)
     tv.setEllipsesDisplayed(20)
     tv.setScale(dscale)
     tile = sp.plotPanel.getTile(0,0)
     tile.addTiledView(tv)
   if pngDir and png:
     sp.paintToPng(600,3,pngDir+png+".png")
+
 def plotTp(g,s1,s2,d=None,dscale=1,cmin=0,cmax=0,png=None):
   sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
   sp.setHLabel("Distance (km)")
@@ -68,7 +84,7 @@ def plotTp(g,s1,s2,d=None,dscale=1,cmin=0,cmax=0,png=None):
   sp.setHInterval(2.0)
   sp.setVInterval(0.2)
   sp.setFontSizeForPrint(8,240)
-  sp.setSize(910,945)
+  sp.setSize(910,670)
   pv = sp.addPixels(s1,s2,g)
   pv.setColorModel(ColorMap.GRAY)
   pv.setInterpolation(PixelsView.Interpolation.LINEAR)
@@ -80,7 +96,7 @@ def plotTp(g,s1,s2,d=None,dscale=1,cmin=0,cmax=0,png=None):
     tv = TensorsView(s1,s2,d)
     tv.setOrientation(TensorsView.Orientation.X1DOWN_X2RIGHT)
     tv.setLineColor(Color.YELLOW)
-    tv.setLineWidth(2)
+    tv.setLineWidth(3)
     tv.setEllipsesDisplayed(20)
     tv.setScale(dscale)
     tile = sp.plotPanel.getTile(0,0)

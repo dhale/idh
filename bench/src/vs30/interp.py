@@ -5,9 +5,10 @@ pngDir = None # for no PNG images
 
 def main(args):
   #goCrossPlot()
-  goAnalyzeErrors()
-  #goCrossValidate()
-  #goInterp()
+  #goAnalyzeErrors()
+  #goCrossValidateLoo()
+  #goCrossValidateKfold(10)
+  goInterp()
 
 def goCrossPlot():
   s1,s2 = getTaiwanSamplings()
@@ -45,6 +46,7 @@ def goCrossPlot():
     sp.paintToPng(720,3.3,pngDir+"/vs30sVsSlope.png")
 
 def goInterp():
+  residuals = True
   s1,s2 = getTaiwanSamplings()
   v,x1,x2 = readVs30s("TaiwanVs30s",s1,s2)
   vmin,vmax = min(v),max(v)
@@ -58,8 +60,8 @@ def goInterp():
   plot(v,x1,x2,vmod,s1,s2,
        cmin=0,cmax=810,cbar="Vs30 from slope (m/s)",png="vs30vm")
   #tests = [(0,0,1),(0,1,1),(0,2,1),(1,1,300),(1,2,300)]
-  tests = [(0,0,1),(0,2,1),(1,1,300)]
-  #tests = [(0,0,1)]
+  #tests = [(0,0,1),(0,2,1),(1,1,300)]
+  tests = [(0,0,1),(0,2,1)]
   ntest = len(tests)
   for i in range(ntest):
     p0,p1,es = tests[i]
@@ -68,22 +70,29 @@ def goInterp():
     dm = EigenTensors2(d); maskTensors(dm,mask)
     plot(None,x1,x2,logs,s1,s2,dm,es=es,
       cbar="Log10[slope (m/m)]",png=name+"d")
-    r = subtractVs30Modeled(v,x1,x2,logs,s1,s2)
+    if residuals:
+      r = subtractVs30Modeled(v,x1,x2,logs,s1,s2)
+    else:
+      r = safeLog10(v)
     gridder = BlendedGridder2(d,r,x1,x2)
     for blending in [True]:
       if blending: png = name+"q"
       else:        png = name+"p"
       gridder.setBlending(blending)
       q = gridder.grid(s1,s2)
-      #plot(v,x1,x2,q,s1,s2,cmin=-405,cmax=405,
-      #  cbar="Vs30 interpolated residual (m/s)",png=png)
-      q = addVs30Modeled(q,logs)
+      #if residuals:
+      #  plot(v,x1,x2,q,s1,s2,cmin=-405,cmax=405,
+      #    cbar="Vs30 interpolated residual (m/s)",png=png)
+      if residuals:
+        q = addVs30Modeled(q,logs)
+      else:
+        q = safeExp10(q)
       q = clip(vmin,vmax,q)
       q = maskImage(q,mask)
       plot(v,x1,x2,q,s1,s2,cmin=0.0,cmax=810.0,
         cbar="Vs30 interpolated (m/s)",png=png)
 
-def goCrossValidate():
+def goCrossValidateLoo():
   s1,s2 = getTaiwanSamplings()
   v,x1,x2 = readVs30s("TaiwanVs30s",s1,s2)
   vmin,vmax = min(v),max(v)
@@ -95,7 +104,7 @@ def goCrossValidate():
   vmod = maskImage(vmod,mask)
   r = subtractVs30Modeled(v,x1,x2,logs,s1,s2)
   n = len(v)
-  d = makeTensors(logs,mask,1.0,1.0)
+  d = makeTensors(logs,mask,0.0,2.0)
   gridder = BlendedGridder2(d)
   gridder.setBlending(True)
   rm,x1m,x2m = zerofloat(n-1),zerofloat(n-1),zerofloat(n-1)
@@ -119,9 +128,64 @@ def goCrossValidate():
     pw.flush()
   pw.close()
 
+def goCrossValidateKfold(k):
+  s1,s2 = getTaiwanSamplings()
+  v,x1,x2 = readVs30s("TaiwanVs30s",s1,s2)
+  vmin,vmax = min(v),max(v)
+  s = readImage("TaiwanSlope",s1,s2) # slope
+  mask = makeMask(s)
+  logs = safeLog10(s)
+  vmod = getVs30Modeled(logs)
+  vmod = clip(vmin,vmax,vmod)
+  vmod = maskImage(vmod,mask)
+  #r = subtractVs30Modeled(v,x1,x2,logs,s1,s2)
+  n = len(v)
+  d = makeTensors(logs,mask,0.0,2.0)
+  gridder = BlendedGridder2(d)
+  gridder.setBlending(True)
+  #r = shuffle(r)
+  v = shuffle(v)
+  x1 = shuffle(x1)
+  x2 = shuffle(x2)
+  pw = PrintWriter(FileOutputStream("TaiwanVs30e.txt"))
+  step = float(n)/k
+  for ik in range(k): # for each of k folds, ...
+    i = int(ik*step+0.5) # index of 1st missing sample
+    inext = int((ik+1)*step+0.5) # next index of 1st missing sample
+    m = inext-i # number of missing samples
+    if ik==k-1: m = n-i # last fold includes all remaining samples
+    print "ik =",ik," i =",i," m =",m," n =",n
+    #rt = zerofloat(n-m)
+    vt = zerofloat(n-m)
+    x1t = zerofloat(n-m)
+    x2t = zerofloat(n-m)
+    #copy(i, r, rt); copy(n-i-m,i+m, r,i, rt)
+    copy(i, v, vt); copy(n-i-m,i+m, v,i, vt)
+    copy(i,x1,x1t); copy(n-i-m,i+m,x1,i,x1t)
+    copy(i,x2,x2t); copy(n-i-m,i+m,x2,i,x2t)
+    ft = safeLog10(vt)
+    gridder.setScattered(ft,x1t,x2t)
+    q = gridder.grid(s1,s2)
+    q = safeExp10(q)
+    #q = addVs30Modeled(q,logs)
+    #q = clip(vmin,vmax,q)
+    q = maskImage(q,mask)
+    for j in range(i,i+m):
+      vj,x1j,x2j = v[j],x1[j],x2[j]
+      j1 = s1.indexOfNearest(x1j)
+      j2 = s2.indexOfNearest(x2j)
+      e = q[j2][j1]-vj
+      print "j =",j,"x1 =",x1j,"x2 =",x2j,"e =",e
+      pw.printf("%10.4f %10.4f %10.2f %10.2f%n",(x1j,x2j,vj,e))
+    pw.flush()
+  pw.close()
+
 def printErrorStats():
   print "        emin   eq25   eq50   eq75   emax   eavg   erms   eaad   emad"
-  for name in ["00d","01d","02d","11d","12d","00e","02e","11e"]:
+  for name in ["00d",      "02d","11d",
+               "00f",      "02f","11f",
+               "00e",      "02e","11e",
+               "00g",            "11g"]:
     fileName = "TaiwanVs30ErrorBg"+name
     e,f,x1,x2 = readErrors(fileName)
     n = len(f)
@@ -242,16 +306,6 @@ def subtractVs30Modeled(v,x1,x2,logs,s1,s2):
     i2 = s2.indexOfNearest(x2[i])
     logv[i] = AFIT+BFIT*logs[i2][i1]
   return sub(v,safeExp10(logv))
-def addLogVs30Modeled(logv,logs):
-  return add(logv,add(AFIT,mul(BFIT,logs)))
-def subtractLogVs30Modeled(logv,x1,x2,logs,s1,s2):
-  n = len(logv)
-  r = zerofloat(n)
-  for i in range(n):
-    i1 = s1.indexOfNearest(x1[i])
-    i2 = s2.indexOfNearest(x2[i])
-    r[i] = logv[i]-(AFIT+BFIT*logs[i2][i1])
-  return r
 
 def extrapSlopes(g,mask):
   n1,n2 = len(g[0]),len(g)
@@ -343,6 +397,17 @@ def median(a):
   mf = MedianFinder(n)
   return mf.findMedian(a)
 
+def shuffle(x):
+  r = Random(314159)
+  n = len(x)
+  y = x[:]
+  y[0] = x[0]
+  for i in range(1,n):
+    j = r.nextInt(i)
+    y[i] = y[j]
+    y[j] = x[i]
+  return y
+
 def smoothBoundary(z):
   n1,n2 = len(z[0]),len(z)
   y = copy(z)
@@ -417,7 +482,7 @@ def readVs30s(fileName,s1,s2):
   return f,x1,x2
 def floatsFromList(a):
   b = zerofloat(len(a))
-  copy(a,b)
+  copy(len(a),a,b)
   return b
 
 def readImage(fileName,s1,s2):
