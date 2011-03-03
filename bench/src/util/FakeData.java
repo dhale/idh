@@ -8,6 +8,7 @@ package util;
 
 import java.util.Random;
 
+import edu.mines.jtk.awt.*;
 import edu.mines.jtk.dsp.*;
 import edu.mines.jtk.mosaic.*;
 import edu.mines.jtk.sgl.*;
@@ -33,25 +34,73 @@ public class FakeData {
       frame.getOrbitView().setScale(2.0);
       frame.setSize(900,900);
     } else if (args[0].equals("seismic2d2011A")) {
-      float[][] f = seismic2d2011A(251,501,45.0,50.0);
-      SimplePlot sp = SimplePlot.asPixels(f);
-      sp.setSize(1200,600);
+      float[][] f = seismic2d2011A(251,501,45.0);
+        SimplePlot sp = new SimplePlot(SimplePlot.Origin.UPPER_LEFT);
+        PixelsView pv = sp.addPixels(f);
+        pv.setInterpolation(PixelsView.Interpolation.LINEAR);
+        sp.setSize(1200,600);
+    } else if (args[0].equals("seismicAndShifts2d2011A")) {
+      float[][][] fgsr = seismicAndShifts2d2011A(251,501,45.0);
+      for (int i=0; i<6; ++i) {
+        SimplePlot sp = new SimplePlot(SimplePlot.Origin.UPPER_LEFT);
+        PixelsView pv = sp.addPixels(fgsr[i]);
+        pv.setInterpolation(PixelsView.Interpolation.LINEAR);
+        if (i>=2)
+          pv.setColorModel(ColorMap.JET);
+        sp.addColorBar();
+        sp.setSize(1400,600);
+      }
     } else {
       System.out.println("unrecognized type of fake data");
     }
   }
 
+  /**
+   * Returns a fake 2D seismic image, version 2011A.
+   * This version simulates different types of structural deformation.
+   * For the specified dip, the first n2/2 traces are rotated,
+   * and the last n2/2 traces are vertically sheared. Shifts are
+   * tapered and smoothed to reduce shifts near the middle trace
+   * with index n2/2 and near edges of the images.
+   * @param n1 number of samples in 1st dimension.
+   * @param n2 number of samples in 2nd dimension.
+   * @param dip maximum dip angle, in degrees.
+   * @return the fake image.
+   */
   public static float[][] seismic2d2011A(
-    int n1, int n2, double dip, double sigma)
+    int n1, int n2, double dip)
+  {
+    float[][][] fgsr = seismicAndShifts2d2011A(n1,n2,dip);
+    return fgsr[1];
+  }
+
+  /**
+   * Returns fake 2D seismic images and shifts, version 2011A.
+   * This version simulates different types of structural deformation.
+   * For the specified dip, the first n2/2 traces are rotated,
+   * and the last n2/2 traces are vertically sheared. Shifts are
+   * tapered and smoothed to reduce shifts near the middle trace
+   * with index n2/2 and near edges of the images.
+   * <p>
+   * Elements of the returned array {f,g,s1,s2,r1,r2} are 2D arrays
+   * for a transform g(x1,x2) = f(x1+s1(x1,x2),x2+s2(x1,x2)) 
+   * and its inverse f(u1,u2) = g(u1-r1(u1,u2),u2-r2(u1,u2)).
+   * @param n1 number of samples in 1st dimension.
+   * @param n2 number of samples in 2nd dimension.
+   * @param dip maximum dip angle, in degrees.
+   * @return array {f,g,s1,s2,r1,r2} of images and shifts.
+   */
+  public static float[][][] seismicAndShifts2d2011A(
+    int n1, int n2, double dip)
   {
     float fpeak = 0.2f;
     float fmax = 2.0f*fpeak;
     float[][] f = makeEvents(n1,n2);
     f = addRickerWavelet(fpeak,f);
-    f = addDipRotate(f,2*n1/4,1*n2/4,dip,sigma);
-    f = addDipVShear(f,2*n1/4,3*n2/4,dip,sigma);
     f = mul(1.0f/max(abs(f)),f);
-    return f;
+    float[][][] gsr = addRotateAndShear(f,dip,n2/8.0);
+    //f = applyShiftsR(new float[][][]{gsr[3],gsr[4]},gsr[0]); // for testing 
+    return new float[][][]{f,gsr[0],gsr[1],gsr[2],gsr[3],gsr[4]};
   }
 
   /**
@@ -121,24 +170,68 @@ public class FakeData {
   ///////////////////////////////////////////////////////////////////////////
   // private
 
-  private static float[][] addDipRotate(
-    float[][] f, double c1, double c2, 
-    double dip, double sigma) 
-  {
-    return addDip(f,c1,c2,dip,sigma,true);
-  }
-  private static float[][] addDipVShear(
-    float[][] f, double c1, double c2, 
-    double dip, double sigma) 
-  {
-    return addDip(f,c1,c2,dip,sigma,false);
-  }
-  private static float[][] addDip(
-    float[][] f, double c1, double c2, 
-    double dip, double sigma, boolean rotate) 
+  /**
+   * Adds both rotation and shear to the specified image.
+   * Returns an array {g,s1,s2,r1,r2} such that the transform is
+   * g(x1,x2) = f(x1+s1(x1,x2),x2+s2(x1,x2)) and its inverse is
+   * f(x1,x2) = g(u1-r1(u1,u2),u2-r2(u1,u2)).
+   */
+  private static float[][][] addRotateAndShear(
+    float[][] f, double dip, double sigma) 
   {
     int n1 = f[0].length;
     int n2 = f.length;
+    float[][][] r = makeRotateAndShear(n1,n2,dip,sigma);
+    float[][][] s = makeShiftsSFromR(r);
+    float[][] g = applyShiftsS(s,f);
+    return new float[][][]{g,s[0],s[1],r[0],r[1]};
+  }
+
+  /**
+   * Returns shifts r for both rotation and shear.
+   */
+  private static float[][][] makeRotateAndShear(
+    int n1, int n2, double dip, double sigma)
+  {
+    double c1r = 2*n1/4;
+    double c2r = 1*n2/4;
+    double c1s = 2*n1/4;
+    double c2s = 3*n2/4;
+    int i2lo = n2/2-n2/16;
+    int i2hi = n2/2+n2/16;
+    float[][][] rr = makeRotateOrShear(n1,n2,c1r,c2r,dip,sigma,true);
+    float[][][] rs = makeRotateOrShear(n1,n2,c1s,c2s,dip,sigma,false);
+    float[][] r1r = rr[0], r2r = rr[1];
+    float[][] r1s = rs[0], r2s = rs[1];
+    float[][] r1 = new float[n2][n1];
+    float[][] r2 = new float[n2][n1];
+    for (int i2=0; i2<n2; ++i2) {
+      float wr,ws;
+      if (i2<=i2lo) {
+        wr = 1.0f;
+        ws = 0.0f;
+      } else if (i2>=i2hi) {
+        wr = 0.0f;
+        ws = 1.0f;
+      } else {
+        wr = 0.5f+0.5f*cos(FLT_PI*(float)(i2-i2lo)/(float)(i2hi-i2lo));
+        ws = 1.0f-wr;
+      }
+      for (int i1=0; i1<n1; ++i1) {
+        r1[i2][i1] = wr*r1r[i2][i1]+ws*r1s[i2][i1];
+        r2[i2][i1] = wr*r2r[i2][i1]+ws*r2s[i2][i1];
+      }
+    }
+    return new float[][][]{r1,r2};
+  }
+
+  /**
+   * Returns shifts r for either rotation or shear, centered at (c1,c2).
+   */
+  private static float[][][] makeRotateOrShear(
+    int n1, int n2, double c1, double c2, 
+    double dip, double sigma, boolean rotate)
+  {
     float[][] r1 = new float[n2][n1];
     float[][] r2 = new float[n2][n1];
     double cdip = cos(toRadians(dip));
@@ -149,19 +242,27 @@ public class FakeData {
         double u1 = i1-c1;
         double x1,x2;
         if (rotate) {
-          x1 = cdip*u1+sdip*u2;
-          x2 = cdip*u2-sdip*u1;
+          x1 = u1*cdip+u2*sdip;
+          x2 = u2*cdip-u1*sdip;
         } else {
-          x1 =  u1+u2*sdip/cdip;
-          x2 =  u2;
+          x1 = u1+u2*sdip/cdip;
+          x2 = u2;
         }
         double e = exp(-0.5*(u1*u1+u2*u2)/(sigma*sigma));
-        //e = 1.0;
         r1[i2][i1] = (float)(e*(u1-x1));
         r2[i2][i1] = (float)(e*(u2-x2));
       }
     }
-    float[][][] s = sFromR(r1,r2);
+    return new float[][][]{r1,r2};
+  }
+
+  /**
+   * Applies shifts s(x) via g(x) = f(x+s(x)).
+   * s[0] and s[1] contain the shifts s1(x1,x2) and s2(x1,x2).
+   */
+  private static float[][] applyShiftsS(float[][][] s, float[][] f) {
+    int n1 = f[0].length;
+    int n2 = f.length;
     float[][] s1 = s[0];
     float[][] s2 = s[1];
     SincInterpolator si = new SincInterpolator();
@@ -177,12 +278,40 @@ public class FakeData {
     }
     return g;
   }
-  private static float[][][] sFromR(float[][] r1, float[][] r2) {
+
+  /**
+   * Applies shifts r(u) via f(u) = g(u-r(u)).
+   * r[0] and r[1] contain the shifts r1(u1,u2) and r2(u1,u2).
+   */
+  private static float[][] applyShiftsR(float[][][] r, float[][] g) {
+    int n1 = g[0].length;
+    int n2 = g.length;
+    float[][] r1 = r[0];
+    float[][] r2 = r[1];
+    SincInterpolator si = new SincInterpolator();
+    si.setExtrapolation(SincInterpolator.Extrapolation.CONSTANT);
+    si.setUniform(n1,1.0,0.0,n2,1.0,0.0,g);
+    float[][] f = new float[n2][n1];
+    for (int i2=0; i2<n2; ++i2) {
+      double u2 = i2;
+      for (int i1=0; i1<n1; ++i1) {
+        double u1 = i1;
+        f[i2][i1] = si.interpolate(u1-r1[i2][i1],u2-r2[i2][i1]);
+      }
+    }
+    return f;
+  }
+
+  /**
+   * Returns shifts s such that s(x) = r(x-s(x)).
+   */
+  private static float[][][] makeShiftsSFromR(float[][][] r) {
+    float[][] r1 = r[0];
+    float[][] r2 = r[1];
     int n1 = r1[0].length;
     int n2 = r1.length;
     float[][] s1 = copy(r1);
     float[][] s2 = copy(r2);
-    /* */
     LinearInterpolator li1 = new LinearInterpolator();
     li1.setExtrapolation(LinearInterpolator.Extrapolation.CONSTANT);
     li1.setUniform(n1,1.0,0.0,n2,1.0,0.0,r1);
@@ -201,8 +330,8 @@ public class FakeData {
           double u2 = x2+s2i;
           s1p = s1i;
           s2p = s2i;
-          s1i = li1.interpolate(u1,u2); // s1(x) = r1(u(x))
-          s2i = li2.interpolate(u1,u2); // s2(x) = r2(u(x))
+          s1i = li1.interpolate(u1,u2);
+          s2i = li2.interpolate(u1,u2);
           ds1 = s1i-s1p;
           ds2 = s2i-s2p;
         } while (ds1*ds1+ds2*ds2>0.0001);
@@ -210,7 +339,6 @@ public class FakeData {
         s2[i2][i1] = (float)s2i;
       }
     }
-    /* */
     return new float[][][]{s1,s2};
   }
 
