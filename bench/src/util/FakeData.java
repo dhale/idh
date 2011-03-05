@@ -45,10 +45,14 @@ public class FakeData {
         SimplePlot sp = new SimplePlot(SimplePlot.Origin.UPPER_LEFT);
         PixelsView pv = sp.addPixels(fgsr[i]);
         pv.setInterpolation(PixelsView.Interpolation.LINEAR);
-        if (i>=2)
+        if (i>=2) {
+          pv.setClips(-35.0f,35.0f);
           pv.setColorModel(ColorMap.JET);
+        } else {
+          pv.setClips(-1.0f,1.0f);
+        }
         sp.addColorBar();
-        sp.setSize(1400,600);
+        sp.setSize(1220,600);
       }
     } else {
       System.out.println("unrecognized type of fake data");

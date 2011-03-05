@@ -27,9 +27,37 @@ s2 = Sampling(501,1.000,0.000)
 n1,n2 = s1.count,s2.count
 
 def main(args):
-  flatten()
   #slopes()
+  flatten()
   #flattenTest()
+
+def flatten():
+  #f = readImage(ffile)
+  f = FakeData.seismic2d2011A(n1,n2,45)
+  plot(f)
+  #sigma = 8.0
+  sigma = 1.0
+  pmax = 10.0
+  lsf = LocalSlopeFinder(sigma,pmax)
+  sigma1 = 6.0
+  sigma2 = 12.0
+  for fl in [FlattenerVS(sigma1,sigma2)]:
+    p2 = zerofloat(n1,n2)
+    el = zerofloat(n1,n2)
+    lsf.findSlopes(f,p2,el)
+    el = pow(el,6)
+    #plot(el,gray)
+    #plot(p2,gray,-1,1)
+    #s = fl.findShifts(0.0,p2,el)
+    s = fl.findShiftsA(p2,el)
+    g = fl.applyShifts(f,s)
+    plot(g)
+    plot(s[0],jet)
+    plot(s[1],jet)
+    if len(s)>2:
+      plot(s[2],jet)
+    print "average s1 =",sum(s[0])/n1/n2,"samples"
+    print "average s2 =",sum(s[1])/n1/n2,"samples"
 
 def slopes():
   f = readImage(ffile)
@@ -43,29 +71,6 @@ def slopes():
   plot(f)
   plot(p2,jet)
   plot(el,jet)
-
-def flatten():
-  #f = readImage(ffile)
-  f = FakeData.seismic2d2011A(n1,n2,45)
-  plot(f)
-  #sigma = 8.0
-  sigma = 1.0
-  pmax = 10.0
-  lsf = LocalSlopeFinder(sigma,pmax)
-  sigma1 = 6.0
-  sigma2 = 12.0
-  for fl in [FlattenerCg(sigma1,sigma2)]:
-    p2 = zerofloat(n1,n2)
-    el = zerofloat(n1,n2)
-    lsf.findSlopes(f,p2,el)
-    el = pow(el,6)
-    #plot(el,gray)
-    #plot(p2,gray,-1,1)
-    s = fl.findShifts(p2,el)
-    g = fl.applyShifts(f,s)
-    plot(g)
-    plot(s,jet)
-    print "average shift =",sum(s)/(n1*n2),"samples"
 
 def flattenTest():
   """Test for t(tau,x) = tau*(1+a*sin(b*x))"""
@@ -94,6 +99,7 @@ def plot(x,cmap=ColorMap.GRAY,cmin=0,cmax=0):
   sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
   sp.addColorBar();
   sp.setSize(600,900)
+  #sp.setSize(1480,770)
   pv = sp.addPixels(x)
   pv.setColorModel(cmap)
   if cmin<cmax:

@@ -21,7 +21,7 @@ public class CgSolver {
   public enum Stop {
     /**
      * Norm of residuals ||r|| = ||b-Ax|| is less than tiny * ||b||.
-     * When using a preconditioner M, ||r|| = ||Mb
+     * When using a preconditioner M, ||r|| = sqrt((b-Ax)'M(b-Ax)).
      */
     TINY,
     /**
