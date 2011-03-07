@@ -579,7 +579,7 @@ public class FlattenerVS {
 
   private static final float W1 = 0.001f; // r11 or u1*r11+u2*r21
   private static final float W2 = 1.001f; // r12 or u1*r12+u2*r22
-  private static final float W3 = 0.001f; // r21 or u1*r21-u2*r11
+  private static final float W3 = 1.001f; // r21 or u1*r21-u2*r11
   private static final float W4 = 1.001f; // r22 or u1*r22-u2*r12
 
   // Simple four equations.

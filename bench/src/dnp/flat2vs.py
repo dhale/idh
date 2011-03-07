@@ -71,8 +71,8 @@ def flatten():
   #plot(p2,gray,-1,1)
   #for rotate in [0.0,1.0]:
   for rotate in [1.0]:
-    s = fl.findShifts(rotate,p2,el)
-    #s = fl.findShiftsA(p2,el)
+    #s = fl.findShifts(rotate,p2,el)
+    s = fl.findShiftsA(p2,el)
     g = fl.applyShifts(s,f)
     plot(g,cmin=-clip,cmax=clip)
     s1,s2 = s[0],s[1]
