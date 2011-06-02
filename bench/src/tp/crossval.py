@@ -26,8 +26,8 @@ pngDir = None
 
 def main(args):
   #goCrossVal()
-  #goErrors()
-  goDisplay()
+  goErrors()
+  #goDisplay()
 
 def goCrossVal():
   for omit in vomit:

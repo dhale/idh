@@ -28,8 +28,8 @@ s2 = Sampling(501,1.000,0.000)
 n1,n2 = s1.count,s2.count
 
 def main(args):
-  #showFake()
-  flatten()
+  showFake()
+  #flatten()
   #flattenTest()
   #slopes()
 
@@ -58,32 +58,35 @@ def flatten():
   plot(f,cmin=-clip,cmax=clip)
   #plot(r1,jet)
   #plot(r2,jet)
-  plot(d,jet,cmin=0.65,cmax=1.35)
+  #plot(d,jet,cmin=0.65,cmax=1.35)
   sigma,pmax = 1.0,10.0
   lsf = LocalSlopeFinder(sigma,pmax)
   p2 = zerofloat(n1,n2)
   el = zerofloat(n1,n2)
   lsf.findSlopes(f,p2,el)
   el = pow(el,6)
-  sigma1,sigma2 = 6.0,6.0
+  sigma1,sigma2 = 12.0,12.0
   fl = FlattenerVS(sigma1,sigma2)
   #plot(el,gray)
   #plot(p2,gray,-1,1)
-  #for rotate in [0.0,1.0]:
-  for rotate in [1.0]:
-    #s = fl.findShifts(rotate,p2,el)
-    s = fl.findShiftsA(p2,el)
+  slist = []
+  for rotate in [0.0,1.0]:
+    s = fl.findShifts(rotate,p2,el)
+    #s = fl.findShiftsA(p2,el)
     g = fl.applyShifts(s,f)
     plot(g,cmin=-clip,cmax=clip)
     s1,s2 = s[0],s[1]
-    plot(s1,jet)
-    plot(s2,jet)
-    if len(s)>2:
-      plot(s[2],jet)
-    d = getDeterminantsFromShifts(s)
-    plot(d,jet,cmin=0.65,cmax=1.35)
+    #plot(s1,jet)
+    #plot(s2,jet)
+    #d = getDeterminantsFromShifts(s)
+    #plot(d,jet,cmin=0.65,cmax=1.35)
     print "average s1 =",sum(s1)/n1/n2,"samples"
     print "average s2 =",sum(s2)/n1/n2,"samples"
+    slist.append(s)
+  sv,sr = slist[0],slist[1]
+  a = getAFromShifts(sr,sv)
+  print "a min =",min(a),"max =",max(a)
+  plot(a,jet)
 
 def slopes():
   f = readImage(ffile)

@@ -23,7 +23,7 @@ import edu.mines.jtk.mosaic.*;
  * In 2D, the shifts (in samples) are functions s1(x1,x2) and s2(x1,x2)
  * that flatten image features. Specifically, for a 2D image f(u1,u2), 
  * flattening is performed by computing 
- * g(u1,u2) = f(x1-s1(x1,x2),x2-s2(x1,x2)). 
+ * g(x1,x2) = f(x1-s1(x1,x2),x2-s2(x1,x2)). 
  * The shifts s1 and s2 subracted from x1 in this expression are computed 
  * from local slopes dx1/dx2 and linearities provided for the 2D image 
  * f(x1,x2). After flattening, locally linear features with those slopes 
@@ -218,35 +218,9 @@ public class FlattenerVS {
     int n1 = s[0][0].length;
     int n2 = s[0].length;
     float[][] r1 = s[0], r2 = s[1];
-    float[][] s1 = copy(r1);
-    float[][] s2 = copy(r2);
-    LinearInterpolator li1 = new LinearInterpolator();
-    li1.setExtrapolation(LinearInterpolator.Extrapolation.CONSTANT);
-    li1.setUniform(n1,1.0,0.0,n2,1.0,0.0,r1);
-    LinearInterpolator li2 = new LinearInterpolator();
-    li2.setExtrapolation(LinearInterpolator.Extrapolation.CONSTANT);
-    li2.setUniform(n1,1.0,0.0,n2,1.0,0.0,r2);
-    for (int i2=0; i2<n2; ++i2) {
-      double x2 = i2;
-      for (int i1=0; i1<n1; ++i1) {
-        double x1 = i1;
-        double s1i = s1[i2][i1];
-        double s2i = s2[i2][i1];
-        double s1p,s2p,ds1,ds2;
-        do {
-          double u1 = x1+s1i;
-          double u2 = x2+s2i;
-          s1p = s1i;
-          s2p = s2i;
-          s1i = li1.interpolate(u1,u2);
-          s2i = li2.interpolate(u1,u2);
-          ds1 = s1i-s1p;
-          ds2 = s2i-s2p;
-        } while (ds1*ds1+ds2*ds2>0.0001);
-        s1[i2][i1] = (float)s1i;
-        s2[i2][i1] = (float)s2i;
-      }
-    }
+    float[][] s1 = new float[n2][n1];
+    float[][] s2 = new float[n2][n1];
+    convertR2S(r1,r2,s1,s2);
     return new float[][][]{s1,s2};
   }
 
@@ -365,6 +339,86 @@ public class FlattenerVS {
     return new float[][][]{u1,u2};
   }
 
+  public static float[][] getAFromShifts(float[][][] sr, float[][][] sv) {
+    final float w1 = 1.0f;
+    final float w2 = 1.0f;
+    final float w3 = 1.0f;
+    final float w4 = 1.0f;
+    int n1 = sr[0][0].length;
+    int n2 = sr[0].length;
+    float[][][] dr = getDerivatives(sr);
+    float[][][] dv = getDerivatives(sv);
+    float[][][] ur = getNormalsFromDerivatives(dr);
+    float[][][] uv = getNormalsFromDerivatives(dv);
+    float[][] s11r = dr[0], s12r = dr[1], s21r = dr[2], s22r = dr[3];
+    float[][] s11v = dv[0], s12v = dv[1], s21v = dv[2], s22v = dv[3];
+    float[][] u1r = ur[0], u2r = ur[1];
+    float[][] u1v = uv[0], u2v = uv[1];
+    float[][] en1 = new float[n2][n1];
+    float[][] en2 = new float[n2][n1];
+    float[][] en3 = new float[n2][n1];
+    float[][] en4 = new float[n2][n1];
+    float[][] ed1 = new float[n2][n1];
+    float[][] ed2 = new float[n2][n1];
+    float[][] ed3 = new float[n2][n1];
+    float[][] ed4 = new float[n2][n1];
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        float er1 = w1*(s11r[i2][i1]-(1.0f-u1r[i2][i1]));
+        float er2 = w2*(s12r[i2][i1]-(     u2r[i2][i1]));
+        float er3 = w3*(s21r[i2][i1]-(    -u2r[i2][i1]));
+        float er4 = w4*(s22r[i2][i1]-(1.0f-u1r[i2][i1]));
+        float ev1 = w1*(s11v[i2][i1]);
+        float ev2 = w2*(s12v[i2][i1]-(u2v[i2][i1]/u1v[i2][i1]));
+        float ev3 = w3*(s21v[i2][i1]);
+        float ev4 = w4*(s22v[i2][i1]);
+        float evr1 = ev1-er1;
+        float evr2 = ev2-er2;
+        float evr3 = ev3-er3;
+        float evr4 = ev4-er4;
+        /*
+        en1[i2][i1] =  ev1*evr1;
+        en2[i2][i1] =  ev2*evr2;
+        en3[i2][i1] =  ev3*evr3;
+        en4[i2][i1] =  ev4*evr4;
+        ed1[i2][i1] = evr1*evr1;
+        ed2[i2][i1] = evr2*evr2;
+        ed3[i2][i1] = evr3*evr3;
+        ed4[i2][i1] = evr4*evr4;
+        */
+        en1[i2][i1] = ev1;
+        en2[i2][i1] = ev2;
+        en3[i2][i1] = ev3;
+        en4[i2][i1] = ev4;
+        ed1[i2][i1] = er1;
+        ed2[i2][i1] = er2;
+        ed3[i2][i1] = er3;
+        ed4[i2][i1] = er4;
+      }
+    }
+    plot(en1,"ev1",jet);
+    plot(en2,"ev2",jet);
+    plot(en3,"ev3",jet);
+    plot(en4,"ev4",jet);
+    plot(ed1,"er1",jet);
+    plot(ed2,"er2",jet);
+    plot(ed3,"er3",jet);
+    plot(ed4,"er4",jet);
+    float[][][] e = new float[][][]{en1,en2,en3,en4,ed1,ed2,ed3,ed4};
+    RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(20.0);
+    for (int i=0; i<8; ++i) {
+      rgf.apply00(e[i],e[i]);
+    }
+    float[][] a = new float[n2][n1];
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        a[i2][i1] = (en1[i2][i1]+en2[i2][i1]+en3[i2][i1]+en4[i2][i1]) /
+                    (ed1[i2][i1]+ed2[i2][i1]+ed3[i2][i1]+ed4[i2][i1]);
+      }
+    }
+    return a;
+  }
+
   /**
    * Gets the coefficient a from specified shifts.
    * @param s array {s1,s2} of shifts.
@@ -429,10 +483,83 @@ public class FlattenerVS {
 
   private float _sigma1 = 6.0f; // half-width of smoother in 1st dimension
   private float _sigma2 = 6.0f; // half-width of smoother in 2nd dimension
-  private float _small = 0.005f; // stop CG iterations if residuals are small
+  private float _small = 0.002f; // stop CG iterations if residuals are small
   private int _niter = 20; // maximum number of CG iterations
 
-  // Conjugate-gradient operators.
+
+  // Invert shifts using fixed-point iterations.
+  private static void convertS2R(
+    float[][] s1, float[][] s2, 
+    float[][] r1, float[][] r2)
+  {
+    int n1 = s1[0].length;
+    int n2 = s1.length;
+    LinearInterpolator li1 = new LinearInterpolator();
+    li1.setExtrapolation(LinearInterpolator.Extrapolation.CONSTANT);
+    li1.setUniform(n1,1.0,0.0,n2,1.0,0.0,s1);
+    LinearInterpolator li2 = new LinearInterpolator();
+    li2.setExtrapolation(LinearInterpolator.Extrapolation.CONSTANT);
+    li2.setUniform(n1,1.0,0.0,n2,1.0,0.0,s2);
+    for (int i2=0; i2<n2; ++i2) {
+      double u2 = i2;
+      for (int i1=0; i1<n1; ++i1) {
+        double u1 = i1;
+        double r1i = s1[i2][i1];
+        double r2i = s2[i2][i1];
+        double r1p,r2p,dr1,dr2;
+        for (int iter=0; iter<100; ++iter) {
+          r1p = r1i;
+          r2p = r2i;
+          double x1 = u1-r1i;
+          double x2 = u2-r2i;
+          r1i = li1.interpolate(x1,x2);
+          r2i = li2.interpolate(x1,x2);
+          dr1 = r1i-r1p;
+          dr2 = r2i-r2p;
+          if (dr1*dr1+dr2*dr2<0.0001) 
+            break;
+        }
+        r1[i2][i1] = (float)r1i;
+        r2[i2][i1] = (float)r2i;
+      }
+    }
+  }
+  private static void convertR2S(
+    float[][] r1, float[][] r2, 
+    float[][] s1, float[][] s2)
+  {
+    int n1 = r1.length;
+    int n2 = r1.length;
+    LinearInterpolator li1 = new LinearInterpolator();
+    li1.setExtrapolation(LinearInterpolator.Extrapolation.CONSTANT);
+    li1.setUniform(n1,1.0,0.0,n2,1.0,0.0,r1);
+    LinearInterpolator li2 = new LinearInterpolator();
+    li2.setExtrapolation(LinearInterpolator.Extrapolation.CONSTANT);
+    li2.setUniform(n1,1.0,0.0,n2,1.0,0.0,r2);
+    for (int i2=0; i2<n2; ++i2) {
+      double x2 = i2;
+      for (int i1=0; i1<n1; ++i1) {
+        double x1 = i1;
+        double s1i = r1[i2][i1];
+        double s2i = r2[i2][i1];
+        double s1p,s2p,ds1,ds2;
+        for (int iter=0; iter<100; ++iter) {
+          s1p = s1i;
+          s2p = s2i;
+          double u1 = x1+s1i;
+          double u2 = x2+s2i;
+          s1i = li1.interpolate(u1,u2);
+          s2i = li2.interpolate(u1,u2);
+          ds1 = s1i-s1p;
+          ds2 = s2i-s2p;
+          if (ds1*ds1+ds2*ds2<0.0001) 
+            break;
+        }
+        s1[i2][i1] = (float)s1i;
+        s2[i2][i1] = (float)s2i;
+      }
+    }
+  }
 
   // Smoothers used as preconditioners.
   private static class Smoother2 {
@@ -554,6 +681,7 @@ public class FlattenerVS {
       p[ip] = q;
     }
     float[][] u1 = p[0], u2 = p[1];
+    float[][] a = (np>2)?p[2]:null;
     for (int i2=0; i2<n2; ++i2) {
       for (int i1=0; i1<n1; ++i1) {
         float u1i = u1[i2][i1];
@@ -561,6 +689,12 @@ public class FlattenerVS {
         float uss = 1.0f/sqrt(u1i*u1i+u2i*u2i);
         u1[i2][i1] *= uss;
         u2[i2][i1] *= uss;
+        if (a!=null) {
+          float ai = a[i2][i1];
+          if (ai<0.0f) ai = 0.0f;
+          if (ai>1.0f) ai = 1.0f;
+          a[i2][i1] = ai;
+        }
       }
     }
     for (int i2=0; i2<n2; ++i2) {
@@ -577,10 +711,10 @@ public class FlattenerVS {
     }
   }
 
-  private static final float W1 = 0.001f; // r11 or u1*r11+u2*r21
-  private static final float W2 = 1.001f; // r12 or u1*r12+u2*r22
-  private static final float W3 = 1.001f; // r21 or u1*r21-u2*r11
-  private static final float W4 = 1.001f; // r22 or u1*r22-u2*r12
+  private static final float W1 = 1.000f; // r11 or u1*r11+u2*r21
+  private static final float W2 = 1.000f; // r12 or u1*r12+u2*r22
+  private static final float W3 = 1.000f; // r21 or u1*r21-u2*r11
+  private static final float W4 = 1.000f; // r22 or u1*r22-u2*r12
 
   // Simple four equations.
   private static void makeRhsS(
@@ -599,10 +733,14 @@ public class FlattenerVS {
         float u1i = u1[i2][i1];
         float u2i = u2[i2][i1];
         float ai = a[i2][i1];
-        float x11 = ai*(1.0f-u1i);
-        float x12 = (1.0f-ai*(1.0f-u1i))*u2i/u1i;
-        float x21 = -ai*u2i;;
-        float x22 = ai*(1.0f-u1i);
+        //float ari = sqrt(ai);      // rotation
+        //float avi = sqrt(1.0f-ai); // vertical
+        float ari = ai;      // rotation
+        float avi = 1.0f-ai; // vertical
+        float x11 =  ari*(1.0f-u1i);
+        float x12 =  ari*u2i+avi*u2i/u1i;
+        float x21 = -ari*u2i;
+        float x22 =  ari*(1.0f-u1i);
         float y11 = w1*x11;
         float y12 = w2*x12;
         float y21 = w3*x21;
@@ -906,6 +1044,9 @@ public class FlattenerVS {
       pv.setColorModel(icm);
     sp.addColorBar();
     sp.setSize(1400,800);
+  }
+  private static void trace(String s) {
+    System.out.println(s);
   }
 
   public static void main(String[] args) {

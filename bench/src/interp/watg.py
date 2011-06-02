@@ -18,8 +18,8 @@ def main(args):
   makeTensors()
   #demoTimeMaps()
   #demoVariogram()
-  demoSimple()
-  #demoBlended()
+  #demoSimple()
+  demoBlended()
   #demoKriging()
 
 def makeTensors():
@@ -87,16 +87,16 @@ def demoKriging():
 def demoBlended():
   f,x1,x2 = readWolfcamp()
   f,x1,x2 = gridWolfcamp(f,x1,x2,s1,s2)
-  gbi = gridBlended(f,x1,x2,s1,s2,0.5,et=eti);
-  gba = gridBlended(f,x1,x2,s1,s2,0.5,et=eta);
-  #gbb = gridBlended(f,x1,x2,s1,s2,0.5,et=etb);
-  #gbr = gridBlended(f,x1,x2,s1,s2,0.5,et=etr);
-  gbs = gridBlended(f,x1,x2,s1,s2,0.5,et=ets);
-  plot(f,x1,x2,s1,s2,gbi,"gbi")
-  plot(f,x1,x2,s1,s2,gba,"gba")
+  #gbi = gridBlended(f,x1,x2,s1,s2,0.5,et=eti)
+  #gba = gridBlended(f,x1,x2,s1,s2,0.5,et=eta)
+  #gbb = gridBlended(f,x1,x2,s1,s2,0.5,et=etb)
+  #gbr = gridBlended(f,x1,x2,s1,s2,0.5,et=etr)
+  #gbs = gridBlended(f,x1,x2,s1,s2,0.5,et=ets)
+  #plot(f,x1,x2,s1,s2,gbi,"gbi")
+  #plot(f,x1,x2,s1,s2,gba,"gba")
   #plot(f,x1,x2,s1,s2,gbb,"gbb")
   #plot(f,x1,x2,s1,s2,gbr,"gbr")
-  plot(f,x1,x2,s1,s2,gbs,"gbs")
+  #plot(f,x1,x2,s1,s2,gbs,"gbs")
   #plot(f,x1,x2,s1,s2,gbi,"gbit",et=eti)
   #plot(f,x1,x2,s1,s2,gba,"gbat",et=eta)
   #plot(f,x1,x2,s1,s2,gbb,"gbbt",et=etb)
@@ -107,6 +107,20 @@ def demoBlended():
   #plot3(f,x1,x2,s1,s2,gbb)
   #plot3(f,x1,x2,s1,s2,gbr)
   #plot3(f,x1,x2,s1,s2,gbs)
+  e = ets.f
+  f = sampleElevation(x1,x2,s1,s2,e)
+  e = mul(0.002,e)
+  f = mul(0.002,f)
+  plot3(f,x1,x2,s1,s2,e)
+def sampleElevation(x1,x2,s1,s2,e):
+  nk = len(x1)
+  fk = zerofloat(nk)
+  n1,n2 = s1.count,s2.count
+  for k in range(nk):
+    i1 = s1.indexOfNearest(x1[k])
+    i2 = s2.indexOfNearest(x2[k])
+    fk[k] = e[i2][i1]
+  return fk
 
 def makeTimeMaps(f,x1,x2,et,fileName):
   nk = len(f)
@@ -237,11 +251,11 @@ class SineTensors2(EigenTensors2):
     b2 = 3.0*2.0*PI/(n2-1) # 3 cycles vertically
     a1 = ampmax
     a2 = atan(dipmax*PI/180.0)/b2
-    f = zerofloat(n1,n2)
+    self.f = zerofloat(n1,n2)
     for i2 in range(n2):
       for i1 in range(n1):
         s2 = a2*sin(b2*i2)
-        f[i2][i1] = a1*cos(b1*(i1+s2))
+        self.f[i2][i1] = a1*cos(b1*(i1+s2))
         e1 = -a1*b1*sin(b1*(i1+s2))
         e2 = e1*a2*b2*cos(b2*i2)
         den = 1.0+e1*e1+e2*e2
@@ -254,7 +268,7 @@ class SineTensors2(EigenTensors2):
 # Plotting
 
 #_pngDir = None # directory to use for png files
-_pngDir = "png/" # directory to use for png files
+_pngDir = "../../png/interp" # directory to use for png files
  
 def plotVariogram(hs,vs,hb=None,vb=None,hf=None,vf=None,png=None):
   sp = SimplePlot()

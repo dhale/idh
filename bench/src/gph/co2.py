@@ -3,8 +3,8 @@
 
 from shared import *
 
-pngDir = None
-#pngDir = "png/co2/"
+#pngDir = None
+pngDir = "../../png/co2/"
 
 def main(args):
   #goCrossValidateLoo(2009.28)
@@ -15,10 +15,10 @@ def main(args):
   #goVariogram(2009.28,2010,12,random=True)
   #goVariogram(2009.28,2010,12,random=False)
   #goVariogram(1970.28,2010,12)
-  goGridding(2009.28,2010,12,sg=True,p3=True)
+  #goGridding(2009.28,2010,12,sg=True,p3=True)
   #goGridding(2009.28,2010,12,sg=False,p3=True)
-  #goGridding(2009.28,2010,12,sg=True,p3=False)
-  #goGridding(2009.28,2010,12,sg=False,p3=False)
+  goGridding(2009.28,2010,12,sg=True,p3=False)
+  goGridding(2009.28,2010,12,sg=False,p3=False)
   #goGridding(2009.28,2010,12,p3=True)
   #goGridding(1970,2010,1) # Jan-Dec
   #goGridding(1970.04,2010,12) # Jan
@@ -183,7 +183,8 @@ def goAnalyzeErrors():
   e2,f,x1,x2 = readErrors("Co2e2")
   n = len(f)
   sp = SimplePlot()
-  sp.setFontSizeForPrint(8,240)
+  #sp.setFontSizeForPrint(8,240)
+  sp.setFontSizeForSlide(1.0,0.9)
   sp.setHLabel("CO2 error (ppm)")
   sp.setVLabel("Frequency")
   sp.setHInterval(2)
@@ -223,7 +224,7 @@ def goGridding(fy,ly,ky,sg=False,tv=False,p3=False):
     if not laty:
       continue
     #for scale in [1.0,4.0]:
-    for scale in [1.0]:
+    for scale in [4.0]:
       f,u1,u2 = co2y,lony,laty
       if sg:
         g,s1,s2 = gridSimple(f,u1,u2)
@@ -232,7 +233,10 @@ def goGridding(fy,ly,ky,sg=False,tv=False,p3=False):
       d = makeTensors(scale,s1,s2)
       #title = monthYearString(y)
       title = None
-      pngName = "co2Us"+str(int(scale))+"y"+yearIndexString(iy)
+      if sg:
+        pngName = "co2Sgy"+yearIndexString(iy)
+      else:
+        pngName = "co2Us"+str(int(scale))+"y"+yearIndexString(iy)
       print pngName," # values =",len(f)
       mv = not sg
       plot2(eimage,f,u1,u2,g,s1,s2,d,
@@ -371,8 +375,6 @@ def plot2(image,
     mv.setMarkSize(8)
     tile.addTiledView(mv)
   pf = PlotFrame(pp)
-  pf.setBackground(backgroundColor)
-  pf.setFontSizeForPrint(8,240)
   if axes:
     pp.setHLabel("Longitude (degrees)")
     pp.setVLabel("Latitude (degrees)")
@@ -384,9 +386,13 @@ def plot2(image,
       pp.setTitle(title)
       pf.setSize(1740,890)
     elif cv:
-      pf.setSize(1740,770)
+      #pf.setSize(1740,770) # print
+      pf.setSize(1740,750) # slide
     else: 
       pf.setSize(1078,562)
+  pf.setBackground(backgroundColor)
+  #pf.setFontSizeForPrint(8,240)
+  pf.setFontSizeForSlide(1.0,0.9)
   pf.setVisible(True)
   if png and pngDir: 
     pf.paintToPng(720,3.3,pngDir+png+".png")
@@ -453,7 +459,8 @@ def plotVariogram(s,x,y,title=None,png=None):
   sg = sqrt(sg)
   #sg = clip(max(sg)/255,max(sg),sg)
   sp = SimplePlot()
-  sp.setFontSizeForPrint(8,240)
+  #sp.setFontSizeForPrint(8,240)
+  sp.setFontSizeForSlide(1.0,0.9)
   if title:
     sp.setTitle(title)
     sp.setSize(800,718)
@@ -805,8 +812,6 @@ def readAirsImage(fileName):
   ais.close()
   return x
 
-%def cleanAirsImage(x,xs1,xs2,ys1,ys2):
-  
 
 #############################################################################
 # Other stuff

@@ -21,7 +21,7 @@ from edu.mines.jtk.sgl import *
 from edu.mines.jtk.util.ArrayMath import *
 
 from interp import *
-from Wa import *
+from interp.Wa import *
   
 #############################################################################
 # Run the function main on the Swing thread

@@ -19,8 +19,8 @@ gauss = BilateralFilter.Type.GAUSS
 huber = BilateralFilter.Type.HUBER
 tukey = BilateralFilter.Type.TUKEY
 
-#pngDir = None
-pngDir = "png/blf/"
+pngDir = None
+#pngDir = "png/blf/"
 
 #############################################################################
 
@@ -30,6 +30,7 @@ def main(args):
   #goFilterImpulses()
   #goFilterRandom()
   #goFilterWithGpow()
+  #goPhase()
 
 def goFilter():
   #lim = (2.1,1.4,7.9,1.85) # f3d
@@ -39,18 +40,20 @@ def goFilter():
   #x,s1,s2,clip = getImageAtw(); png = "atw_"
   plot(x,s1,s2,clip,png=png+"input")
   #plot(x,s1,s2,clip,limits=lim,png=png+"inputz")
+  #sigmaR = 0.71*qqd(slog(x))
   sigmaR = qqd(x)
   sigmaS = 16.0
   print "sigmaS =",sigmaS," sigmaR =",sigmaR
   #doFilter(sigmaS,sigmaR,False,False,x,s1,s2,clip,png=png+"blf")
-  #doFilter(sigmaS,sigmaR,True,False,x,s1,s2,clip,png=png+"blft")
+  doFilter(sigmaS,sigmaR,True,False,x,s1,s2,clip,png=png+"blft")
   #doFilter(sigmaS,sigmaR,True,False,x,s1,s2,clip,limits=lim,png=png+"blftz")
   #doFilter(sigmaS,sigmaR,True,True,x,s1,s2,clip,png=png+"blftc")
   #doFilter(sigmaS,100.0*sigmaR,False,False,x,s1,s2,clip,png=png+"lsf")
-  doFilter(sigmaS,100.0*sigmaR,True,False,x,s1,s2,clip,png=png+"lsft")
-  doFilter(sigmaS,100.0*sigmaR,True,True,x,s1,s2,clip,png=png+"lsftc")
+  #doFilter(sigmaS,100.0*sigmaR,True,False,x,s1,s2,clip,png=png+"lsft")
+  #doFilter(sigmaS,100.0*sigmaR,True,True,x,s1,s2,clip,png=png+"lsftc")
   
 def doFilter(sigmaS,sigmaR,useT,useC,x,s1,s2,clip,limits=None,png=None):
+  #x = slog(x)
   if useT:
     t = diffusionTensors(2.0,x)
     if useC:
@@ -63,6 +66,8 @@ def doFilter(sigmaS,sigmaR,useT,useC,x,s1,s2,clip,limits=None,png=None):
     t = None
   y = x
   y = bilateralFilter(sigmaS,sigmaR,t,y)
+  #x = sexp(x)
+  #y = sexp(y)
   print "y min =",min(y)," max =",max(y)
   plot(y,s1,s2,clip,limits=limits,png=png)
   plot(sub(x,y),s1,s2,clip*0.251,limits=limits,png=png+"d")
@@ -251,6 +256,12 @@ def like(x):
   n1,n2 = len(x[0]),len(x)
   return zerofloat(n1,n2)
 
+def slog(f):
+  return mul(sgn(f),log(add(1.0,abs(f))))
+
+def sexp(f):
+  return mul(sgn(f),sub(exp(abs(f)),1.0))
+
 def makeImpulses(ni,n1,n2):
   x = zerofloat(n1,n2)
   ns = max(n1/ni,n2/ni)
@@ -266,6 +277,36 @@ def makeImpulses(ni,n1,n2):
 def makeRandom(n1,n2):
   x = mul(2.0,sub(randfloat(n1,n2),0.5))
   return smooth(1.0,None,x)
+
+def goPhase():
+  x,s1,s2,clip = getImageF3d()
+  plot(x,s1,s2,clip)
+  p = phase(x)
+  sigmaR = qqd(p)
+  sigmaR = 3.0
+  sigmaS = 16.0
+  print "sigmaR =",sigmaR," sigmaS =",sigmaS
+  q = bilateralFilter(sigmaS,sigmaR,None,p)
+  r = sub(p,q)
+  plot(p,s1,s2)
+  plot(q,s1,s2)
+  plot(r,s1,s2)
+  plot(abs(r),s1,s2)
+
+def phase(x):
+  n1,n2 = len(x[0]),len(x)
+  y = like(x)
+  htf = HilbertTransformFilter()
+  for i2 in range(n2):
+    htf.apply(n1,x[i2],y[i2])
+  p = y
+  for i2 in range(n2):
+    p2 = p[i2]
+    x2 = x[i2]
+    y2 = y[i2]
+    for i1 in range(n1):
+      p2[i1] = atan2(y2[i1],x2[i1])
+  return p
 
 #############################################################################
 # plot

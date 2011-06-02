@@ -179,6 +179,19 @@ public class BilateralFilter {
     _lsf.setFactors((float[][])null);
     applyAB(_lsf,_fx,xa,xb,y);
   }
+  public QC2 applyQC(Tensors2 d, float[][] x, float[][] y) {
+    _lsf = getLsf();
+    _lsf.setTensors(d);
+    _lsf.setFactors((float[][])null);
+    return applyQC(_lsf,_fx,x,y);
+  }
+  public static class QC2 {
+    public Sampling sx; // Sampling
+    public float[][][] sn; // scaled numerators
+    public float[][][] sd; // scaled denominators
+    public float[][][] tn; // smoothed numerators
+    public float[][][] td; // smoothed denominators
+  }
 
   /**
    * Applies this filter. Tensors and scale factors modify the half-width 
@@ -507,6 +520,31 @@ public class BilateralFilter {
       accum(xk,dx,xa,tn,td,yn,yd);
     }
     div(yn,yd,y);
+  }
+  private static QC2 applyQC(
+    F2 f2, Fx fx, float[][] x, float[][] y) {
+    int n2 = x.length;
+    int n1 = x[0].length;
+    float[][] yn = new float[n2][n1];
+    float[][] yd = new float[n2][n1];
+    float[][] tt = y;
+    QC2 qc = new QC2();
+    Sampling sx = qc.sx = samplingX(x,fx);
+    float dx = (float)sx.getDelta();
+    int nx = sx.getCount();
+    float[][][] sn = qc.sn = new float[nx][n2][n1];
+    float[][][] sd = qc.sd = new float[nx][n2][n1];
+    float[][][] tn = qc.tn = new float[nx][n2][n1];
+    float[][][] td = qc.td = new float[nx][n2][n1];
+    for (int kx=0; kx<nx; ++kx) {
+      float xk = (float)sx.getValue(kx);
+      scale(fx,xk,x,sn[kx],sd[kx]);
+      f2.apply(sn[kx],tn[kx]);
+      f2.apply(sd[kx],td[kx]);
+      accum(xk,dx,x,tn[kx],td[kx],yn,yd);
+    }
+    div(yn,yd,y);
+    return qc;
   }
   private static void apply(F3 f3, Fx fx, float[][][] x, float[][][] y) {
     int n3 = x.length;

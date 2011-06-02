@@ -16,16 +16,18 @@ def main(args):
   goTensors()
 
 def goTensors():
-  reads = [readAwImage,readTpImage]
-  plots = [plotAw,plotTp]
-  prefs = ["awe","tpe"]
-  #reads = [readAwImage]
-  #plots = [plotAw]
-  #prefs = ["awe"]
+  #reads = [readAwImage,readTpImage]
+  #plots = [plotAw,plotTp]
+  #prefs = ["awe","tpe"]
+  reads = [readAwImage]
+  plots = [plotAw]
+  prefs = ["awe"]
   for i,read in enumerate(reads):
     plot = plots[i]
     pref = prefs[i]
     g,s1,s2 = read()
+    plot(g,s1,s2,png=pref)
+    return
     lof = LocalOrientFilter(4.0)
     s = lof.applyForTensors(g)
     d00 = EigenTensors2(s); d00.invertStructure(0.0,0.0)
@@ -35,7 +37,7 @@ def goTensors():
     d11 = EigenTensors2(s); d11.invertStructure(1.0,1.0)
     d12 = EigenTensors2(s); d12.invertStructure(1.0,2.0)
     d14 = EigenTensors2(s); d14.invertStructure(1.0,4.0)
-    plot(g,s1,s2)
+    plot(g,s1,s2,png=pref)
     plot(g,s1,s2,d00,dscale=1,png=pref+"00")
     plot(g,s1,s2,d01,dscale=1,png=pref+"01")
     plot(g,s1,s2,d02,dscale=1,png=pref+"02")
@@ -47,17 +49,21 @@ def goTensors():
 #############################################################################
 # plotting
 
-pngDir = "png/" # where to put PNG images of plots
+pngDir = "../../png/" # where to put PNG images of plots
 #pngDir = None # for no PNG images
+
+backgroundColor = Color(0xfd,0xfe,0xff) # easy to make transparent
 
 def plotAw(g,s1,s2,d=None,dscale=1,cmin=0,cmax=0,png=None):
   sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
-  sp.setHLabel("Inline distance (km)")
-  sp.setVLabel("Crossline distance (km)")
+  sp.setBackground(backgroundColor)
+  sp.setHLabel("Inline (km)")
+  sp.setVLabel("Crossline (km)")
   sp.setHInterval(2.0)
   sp.setVInterval(2.0)
-  sp.setFontSizeForPrint(8,240)
-  sp.setSize(910,945)
+  #sp.setFontSizeForPrint(8,240)
+  sp.setFontSizeForSlide(1.0,0.9)
+  sp.setSize(910,950)
   pv = sp.addPixels(s1,s2,g)
   pv.setColorModel(ColorMap.GRAY)
   pv.setInterpolation(PixelsView.Interpolation.LINEAR)
@@ -75,15 +81,17 @@ def plotAw(g,s1,s2,d=None,dscale=1,cmin=0,cmax=0,png=None):
     tile = sp.plotPanel.getTile(0,0)
     tile.addTiledView(tv)
   if pngDir and png:
-    sp.paintToPng(600,3,pngDir+png+".png")
+    sp.paintToPng(720,3.3,pngDir+png+".png")
 
 def plotTp(g,s1,s2,d=None,dscale=1,cmin=0,cmax=0,png=None):
   sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
+  sp.setBackground(backgroundColor)
   sp.setHLabel("Distance (km)")
   sp.setVLabel("Time (s)")
   sp.setHInterval(2.0)
   sp.setVInterval(0.2)
-  sp.setFontSizeForPrint(8,240)
+  #sp.setFontSizeForPrint(8,240)
+  sp.setFontSizeForSlide(1.0,0.9)
   sp.setSize(910,670)
   pv = sp.addPixels(s1,s2,g)
   pv.setColorModel(ColorMap.GRAY)
@@ -102,7 +110,7 @@ def plotTp(g,s1,s2,d=None,dscale=1,cmin=0,cmax=0,png=None):
     tile = sp.plotPanel.getTile(0,0)
     tile.addTiledView(tv)
   if pngDir and png:
-    sp.paintToPng(600,3,pngDir+png+".png")
+    sp.paintToPng(720,3.3,pngDir+png+".png")
 
 #############################################################################
 # data input/output

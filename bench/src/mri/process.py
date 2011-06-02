@@ -9,7 +9,6 @@ from edu.mines.jtk.dsp import *
 from edu.mines.jtk.io import *
 from edu.mines.jtk.mosaic import *
 from edu.mines.jtk.sgl import *
-from edu.mines.jtk.sgl.test import *
 from edu.mines.jtk.util import *
 from edu.mines.jtk.util.ArrayMath import *
 
@@ -57,13 +56,8 @@ def plot3d(x):
   s1 = Sampling(n1,d1,f1)
   s2 = Sampling(n2,d2,f2)
   s3 = Sampling(n3,d3,f3)
-  ipg = ImagePanelGroup(s1,s2,s3,x)
-  #clip = 1.0e-6
-  #ipg.setClips(-clip,clip)
-  world = World()
-  world.addChild(ipg)
-  frame = TestFrame(world)
-  frame.setVisible(True)
+  sf = SimpleFrame()
+  ip = sf.addImagePanels(s1,s2,s3,x)
 
 def convertImages():
   samplingHead()
