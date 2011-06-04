@@ -127,9 +127,9 @@ object ParallelNest {
     x:Float3, y:Float3):Unit = 
   {
     if (x.length<10)
-      x.indices.foreach(j=>solrS(a1,a2,b0,b1,b2,x(j),y(j)))
+      x.indices.foreach(j=>solrP(a1,a2,b0,b1,b2,x(j),y(j)))
     else
-      x.indices.par.foreach(j=>solrS(a1,a2,b0,b1,b2,x(j),y(j)))
+      x.indices.par.foreach(j=>solrP(a1,a2,b0,b1,b2,x(j),y(j)))
   }
 
   def benchArraySqr(n1:Int, n2:Int, n3:Int) = {
