@@ -45,8 +45,8 @@ pngDir = None
 
 def main(args):
   #goShifts()
-  #goThetas()
-  goScan()
+  goThetas()
+  #goScan()
   #goAlign()
   #goShear()
   #goShiftsX()
@@ -76,7 +76,8 @@ def goShifts():
   plot2(s1,s2,g,u,gmin=-3,gmax=3,title="shifts")
 
 def goThetas():
-  s1,s2,f = imageF3d()
+  s1,s2,f = imageSyn()
+  #s1,s2,f = imageF3d()
   #s1,s2,f = imageTeapot()
   n1,n2 = len(f[0]),len(f)
   plot2(s1,s2,f,title="input")
