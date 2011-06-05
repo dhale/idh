@@ -18,13 +18,18 @@ import static edu.mines.jtk.util.Parallel.*;
 public class ParallelNest {
 
   public static void main(String[] args) {
+    /*
     int[][] ns = {
       {1000, 50000,     5},
       {1000,  5000,    50},
       {1000,   500,   500},
       {1000,    50,  5000},
       {1000,     5, 50000}};
-    for (int i=0; i<5; ++i) {
+    */
+    int[][] ns = {
+      {1000,   500,    50},
+      {1000,    50,    50}};
+    for (int i=0; i<2; ++i) {
       int n1 = ns[i][0], n2 = ns[i][1], n3 = ns[i][2];
       benchSolr(n1,n2,n3);
     }
