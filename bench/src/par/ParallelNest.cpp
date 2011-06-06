@@ -154,7 +154,7 @@ void solrP(
   float a1, float a2, float b0, float b1, float b2,
   const vfloat2& x, vfloat2& y) {
   int n = x.size();
-  #pragma omp parallel for schedule(dynamic) if (n>10)
+  #pragma omp parallel for schedule(dynamic)
   for (int i=0; i<n; ++i)
     solr(a1,a2,b0,b1,b2,x[i],y[i]);
 }
@@ -169,7 +169,7 @@ void solrP(
   float a1, float a2, float b0, float b1, float b2,
   const vfloat3& x, vfloat3& y) {
   int n = x.size();
-  #pragma omp parallel for schedule(dynamic) if (n>10)
+  #pragma omp parallel for schedule(dynamic)
   for (int i=0; i<n; ++i)
     solrP(a1,a2,b0,b1,b2,x[i],y[i]);
 }
@@ -214,18 +214,13 @@ void benchSolr(int n1, int n2, int n3) {
 }
 
 int main(int argc, char** argv) {
-  /*
   int ns[5][3] = {
     {1000, 50000,     5},
     {1000,  5000,    50},
     {1000,   500,   500},
     {1000,    50,  5000},
     {1000,     5, 50000}};
-  */
-  int ns[2][3] = {
-    {1000,   500,    50},
-    {1000,    50,    50}};
-  for (int i=0; i<2; ++i) {
+  for (int i=0; i<5; i+=4) {
     int n1 = ns[i][0], n2 = ns[i][1], n3 = ns[i][2];
     benchSolr(n1,n2,n3);
   }

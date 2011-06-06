@@ -23,17 +23,12 @@ object ParallelNest {
 
   def main(args:Array[String]) = {
     println("Parallel benchmark in Scala:")
-    /*
     val ns = List(
       (1000, 50000,     5),
-      (1000,  5000,    50),
-      (1000,   500,   500),
-      (1000,    50,  5000),
+      //(1000,  5000,    50),
+      //(1000,   500,   500),
+      //(1000,    50,  5000),
       (1000,     5, 50000))
-    */
-    val ns = List(
-      (1000,   500,    50),
-      (1000,    50,    50))
     for ((n1,n2,n3) <- ns)
       benchSolr(n1,n2,n3)
   }
@@ -122,19 +117,13 @@ object ParallelNest {
     a1:Float, a2:Float, b0:Float, b1:Float, b2:Float,
     x:Float2, y:Float2):Unit = 
   {
-    if (x.length<10)
-      x.indices.foreach(j=>solrS(a1,a2,b0,b1,b2,x(j),y(j)))
-    else
-      x.indices.par.foreach(j=>solrS(a1,a2,b0,b1,b2,x(j),y(j)))
+    x.indices.par.foreach(j=>solrS(a1,a2,b0,b1,b2,x(j),y(j)))
   }
   private def solrP(
     a1:Float, a2:Float, b0:Float, b1:Float, b2:Float,
     x:Float3, y:Float3):Unit = 
   {
-    if (x.length<10)
-      x.indices.foreach(j=>solrP(a1,a2,b0,b1,b2,x(j),y(j)))
-    else
-      x.indices.par.foreach(j=>solrP(a1,a2,b0,b1,b2,x(j),y(j)))
+    x.indices.par.foreach(j=>solrP(a1,a2,b0,b1,b2,x(j),y(j)))
   }
 
   def benchArraySqr(n1:Int, n2:Int, n3:Int) = {

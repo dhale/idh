@@ -18,18 +18,13 @@ import static edu.mines.jtk.util.Parallel.*;
 public class ParallelNest {
 
   public static void main(String[] args) {
-    /*
     int[][] ns = {
       {1000, 50000,     5},
       {1000,  5000,    50},
       {1000,   500,   500},
       {1000,    50,  5000},
       {1000,     5, 50000}};
-    */
-    int[][] ns = {
-      {1000,   500,    50},
-      {1000,    50,    50}};
-    for (int i=0; i<2; ++i) {
+    for (int i=0; i<5; i+=4) {
       int n1 = ns[i][0], n2 = ns[i][1], n3 = ns[i][2];
       benchSolr(n1,n2,n3);
     }
@@ -79,8 +74,7 @@ public class ParallelNest {
     final float[][] x, final float[][] y) 
   {
     int n = x.length;
-    //loop(n,new LoopInt() {
-    loop(0,n,1,10,new LoopInt() {
+    loop(n,new LoopInt() {
       public void compute(int i) {
         solrS(a1,a2,b0,b1,b2,x[i],y[i]);
       }
@@ -92,8 +86,7 @@ public class ParallelNest {
     final float[][][] x, final float[][][] y) 
   {
     int n = x.length;
-    //loop(n,new LoopInt() {
-    loop(0,n,1,10,new LoopInt() {
+    loop(n,new LoopInt() {
       public void compute(int i) {
         solrP(a1,a2,b0,b1,b2,x[i],y[i]);
       }
