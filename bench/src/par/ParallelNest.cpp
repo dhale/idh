@@ -220,7 +220,7 @@ int main(int argc, char** argv) {
     {1000,   500,   500},
     {1000,    50,  5000},
     {1000,     5, 50000}};
-  for (int i=0; i<5; i+=4) {
+  for (int i=0; i<5; i+=1) {
     int n1 = ns[i][0], n2 = ns[i][1], n3 = ns[i][2];
     benchSolr(n1,n2,n3);
   }

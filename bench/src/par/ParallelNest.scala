@@ -22,12 +22,11 @@ object ParallelNest {
   val maxtime = 3.0
 
   def main(args:Array[String]) = {
-    println("Parallel benchmark in Scala:")
     val ns = List(
       (1000, 50000,     5),
-      //(1000,  5000,    50),
-      //(1000,   500,   500),
-      //(1000,    50,  5000),
+      (1000,  5000,    50),
+      (1000,   500,   500),
+      (1000,    50,  5000),
       (1000,     5, 50000))
     for ((n1,n2,n3) <- ns)
       benchSolr(n1,n2,n3)
