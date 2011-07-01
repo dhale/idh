@@ -17,7 +17,7 @@ from edu.mines.jtk.mosaic import *
 from edu.mines.jtk.util import *
 from edu.mines.jtk.util.ArrayMath import *
 
-from lcc import FaultFinder2,FaultFinder2B
+from lcc import FaultFinder2SB
 from dnp import LocalSlopeFinder
 
 #############################################################################
@@ -29,16 +29,12 @@ def main(args):
   #goShifts()
   goThin()
   #goScan()
-  #goAlign()
-  #goShear()
-  #goShiftsX()
-  #goFilter()
 
 def getFaultFinder():
   slopeMax = 5.0
   shiftMax = 15.0
   thetaMax = 20.0
-  return FaultFinder2(slopeMax,shiftMax,thetaMax)
+  return FaultFinder2SB(slopeMax,shiftMax,thetaMax)
 
 def getImage():
   #return imageSyn()
@@ -55,9 +51,11 @@ def goShifts():
   p = ff.findSlopes(f)
   #plot2(s1,s2,f,p,title="slopes")
   f = ff.taper(10,f)
-  ct = ff.findThetas(p,f)
-  plot2(s1,s2,f,ct[0],gmin=0,gmax=1,title="faults")
-  plot2(s1,s2,f,ct[1],title="thetas")
+  snd = ff.semblanceNumDen(p,f)
+  ct = ff.faultThetaScan(snd)
+  ct = ff.faultThetaThin(ct)
+  plot2(s1,s2,f,ct[0],gmin=0,gmax=1.0,title="faults")
+  #plot2(s1,s2,f,ct[1],title="thetas")
   g = ff.smooth(16.0,p,ct[0],f);
   plot2(s1,s2,g,title="smoothed")
   u = ff.findShifts(ct,g)
@@ -72,13 +70,13 @@ def goThin():
   ff = getFaultFinder()
   p = ff.findSlopes(f)
   #plot2(s1,s2,f,p,title="slopes")
-  f = ff.taper(10,f)
-  fmp = ff.align(1,p,f)
-  ct = ff.ctScan(fmp)
-  plot2(s1,s2,f,ct[0],gmin=0,gmax=1,title="c scan")
+  #f = ff.taper(10,f)
+  snd = ff.semblanceNumDen(p,f)
+  ct = ff.faultThetaScan(snd)
+  plot2(s1,s2,f,ct[0],gmin=0,gmax=1.0,title="c scan")
   plot2(s1,s2,f,ct[1],title="t scan")
-  ct = ff.ctThin(ct)
-  plot2(s1,s2,f,ct[0],gmin=0,gmax=1,title="c thin")
+  ct = ff.faultThetaThin(ct)
+  plot2(s1,s2,f,ct[0],gmin=0,gmax=1.0,title="c thin")
   plot2(s1,s2,f,ct[1],title="t thin")
   g = ff.smooth(16.0,p,ct[0],f);
   plot2(s1,s2,g,title="smoothed")
@@ -94,96 +92,16 @@ def goScan():
   p = ff.findSlopes(f)
   #plot2(s1,s2,f,p,title="slopes")
   f = ff.taper(10,f)
-  fmp = ff.align(1,p,f)
+  snd = ff.semblanceNumDen(p,f)
   st = Sampling(41,1.00,-20.0)
   #st = Sampling(1,1.00,0.0)
   nt,dt,ft = st.count,st.delta,st.first
   for jt in range(nt):
     t = st.getValue(jt)
-    c = ff.xcor(t,fmp)
-    c = sub(1.0,c)
+    s = ff.semblance(t,snd)
+    c = sub(1.0,pow(s,8))
     title = "theta = %6.3f" % t
-    plot2(s1,s2,f,c,gmin=0,gmax=1,title=title)
-
-def goShear():
-  s1,s2,f = getImage()
-  n1,n2 = len(f[0]),len(f)
-  f = slog(f)
-  ff = getFaultFinder()
-  shear = 0.13
-  g = ff.shear(shear,f)
-  h = ff.unshear(shear,g)
-  e = sub(h,f)
-  print "shear-unshear error max =",max(abs(e))
-  plot2(s1,s2,f,title="input")
-  plot2(s1,s2,g,title="sheared")
-  plot2(s1,s2,h,title="unsheared")
-  plot2(s1,s2,e,title="error")
-
-def goAlign():
-  s1,s2,f = getImage()
-  n1,n2 = len(f[0]),len(f)
-  f = slog(f)
-  ff = getFaultFinder()
-  p = ff.findSlopes(f)
-  fm,fp = ff.align(1,p,f)
-  fe = sub(fm,fp)
-  plot2(s1,s2,f,title="input")
-  plot2(s1,s2,fm,title="minus")
-  plot2(s1,s2,fp,title="plus")
-  plot2(s1,s2,fe,title="error")
-  fm,fp = ff.align(f)
-  fe = sub(fm,fp)
-  #plot2(s1,s2,fm,title="minus")
-  #plot2(s1,s2,fp,title="plus")
-  plot2(s1,s2,fe,title="error")
-
-def goShiftsX():
-  s1,s2,f = getImage()
-  n1,n2 = len(f[0]),len(f)
-  ff = getFaultFinder()
-  fs = ff.shear(-0.14,f)
-  f = copy(n1,n2,fs)
-  plot2(s1,s2,f)
-  u = zerofloat(n1,n2)
-  c = zerofloat(n1,n2)
-  d = zerofloat(n1,n2)
-  mlag = 15
-  nlag = 1+2*mlag
-  sigma = 3.0*mlag
-  for k in [2]:
-    u = findShifts(sigma,-mlag,mlag,k,f)
-    #w = pow(c,2.0) 
-    #us = smooth(0.9,w,u)
-    #plot2(s1,s2,f,us)
-    plot2(s1,s2,f,u)
-    #k2 = 240 # for imageSyn with k=3
-    #k2 = 145 # teapot and f3d
-    k2 = 192 # sheared f3d
-    fm = f[k2-k]
-    fp = f[k2+k]
-    lcf = LocalCorrelationFilter(
-      LocalCorrelationFilter.Type.SIMPLE,
-      LocalCorrelationFilter.Window.GAUSSIAN,
-      sigma)
-    lcf.setInputs(fm,fp)
-    c = zerofloat(n1,nlag)
-    for ilag in range(nlag):
-      lag = ilag-mlag
-      lcf.correlate(lag,c[ilag])
-      lcf.normalize(lag,c[ilag])
-    sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
-    sp.setSize(250,780)
-    sp.addPoints(fm).setLineColor(Color.RED)
-    sp.addPoints(fp).setLineColor(Color.BLUE)
-    sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
-    sp.addColorBar()
-    sp.setSize(500,780)
-    sl = Sampling(nlag,1.0,-mlag)
-    pv = sp.addPixels(Sampling(n1),sl,c)
-    pv.setColorModel(ColorMap.JET)
-    pv = sp.addPoints(u[k2])
-    pv.setLineWidth(5)
+    plot2(s1,s2,f,c,gmin=0,gmax=1.0,title=title)
 
 def findShifts(sigma,min1,max1,lag2,f):
   n1,n2 = len(f[0]),len(f)
