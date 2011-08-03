@@ -13,7 +13,34 @@ from edu.mines.jtk.util import *
 from edu.mines.jtk.util.ArrayMath import *
 
 def main(args):
-  goTensors()
+  #goTensors()
+  goGradients()
+
+def goGradients():
+  f,s1,s2 = readAwImage()
+  plotAw(f,s1,s2,png="awef")
+  rgf = RecursiveGaussianFilter(1.0)
+  g1 = copy(f); rgf.apply1X(f,g1); rgf.applyX0(g1,g1)
+  g2 = copy(f); rgf.applyX1(f,g2); rgf.apply0X(g2,g2)
+  plotAw(g1,s1,s2,png="aweg1")
+  plotAw(g2,s1,s2,png="aweg2")
+  g11 = mul(g1,g1)
+  g12 = mul(g1,g2)
+  g22 = mul(g2,g2)
+  ggmax = max(max(g11),max(g12),max(g22))
+  cmin,cmax = -0.1*ggmax,0.1*ggmax
+  plotAw(g11,s1,s2,cmin=cmin,cmax=cmax,png="aweg11")
+  plotAw(g12,s1,s2,cmin=cmin,cmax=cmax,png="aweg12")
+  plotAw(g22,s1,s2,cmin=cmin,cmax=cmax,png="aweg22")
+  rgf = RecursiveGaussianFilter(4.0)
+  rgf.apply00(g11,g11)
+  rgf.apply00(g12,g12)
+  rgf.apply00(g22,g22)
+  ggmax = max(max(g11),max(g12),max(g22))
+  cmin,cmax = -0.2*ggmax,0.2*ggmax
+  plotAw(g11,s1,s2,cmin=cmin,cmax=cmax,png="awes11")
+  plotAw(g12,s1,s2,cmin=cmin,cmax=cmax,png="awes12")
+  plotAw(g22,s1,s2,cmin=cmin,cmax=cmax,png="awes22")
 
 def goTensors():
   #reads = [readAwImage,readTpImage]
@@ -81,7 +108,8 @@ def plotAw(g,s1,s2,d=None,dscale=1,cmin=0,cmax=0,png=None):
     tile = sp.plotPanel.getTile(0,0)
     tile.addTiledView(tv)
   if pngDir and png:
-    sp.paintToPng(720,3.3,pngDir+png+".png")
+    sp.paintToPng(360,3.3,pngDir+png+".png")
+    #sp.paintToPng(720,3.3,pngDir+png+".png")
 
 def plotTp(g,s1,s2,d=None,dscale=1,cmin=0,cmax=0,png=None):
   sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
@@ -110,7 +138,8 @@ def plotTp(g,s1,s2,d=None,dscale=1,cmin=0,cmax=0,png=None):
     tile = sp.plotPanel.getTile(0,0)
     tile.addTiledView(tv)
   if pngDir and png:
-    sp.paintToPng(720,3.3,pngDir+png+".png")
+    sp.paintToPng(360,3.3,pngDir+png+".png")
+    #sp.paintToPng(720,3.3,pngDir+png+".png")
 
 #############################################################################
 # data input/output

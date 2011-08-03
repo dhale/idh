@@ -63,12 +63,12 @@ def process(name):
   title = name+": "+source
   f = read(name)
   f = tpow(2.0,st,f)
-  #f = nmo(3.0,st,sx,f)
-  #plot(name+": before",st,sx,f,name)
-  #f = align(f)
-  #plot(name+": after",st,sx,f,name)
+  f = nmo(3.0,st,sx,f)
+  plot(name+": before",st,sx,f,name)
+  f = align(f)
+  plot(name+": after",st,sx,f,name)
   g,t = alignWithTimes(st,f)
-  plotWithTimes(name+": before",st,sx,f,t,name)
+  plot(name+": before",st,sx,f,name)
   plot(name+": after",st,sx,g,name)
 
 def read(name):
@@ -165,22 +165,6 @@ def plot(title,st,sx,f,png=None):
   pv.setPercentiles(1.0,99.0)
   pv.setColorModel(ColorMap.GRAY)
   pv.setInterpolation(PixelsView.Interpolation.LINEAR)
-  if png and pngDir:
-    sp.paintToPng(100,6,pngDir+"/"+png+".png")
-
-def plotWithTimes(title,st,sx,f,t,png=None):
-  f = gpow(0.5,f)
-  sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
-  sp.setSize(500,900)
-  sp.setVLabel("Time (s)")
-  sp.setHLabel("Offset (km)")
-  sp.setTitle(title)
-  pv = sp.addPixels(st,sx,f)
-  pv.setPercentiles(1.0,99.0)
-  pv.setColorModel(ColorMap.GRAY)
-  pv.setInterpolation(PixelsView.Interpolation.LINEAR)
-  cv = sp.addContours(st,sx,t)
-  cv.setLineColor(Color.YELLOW)
   if png and pngDir:
     sp.paintToPng(100,6,pngDir+"/"+png+".png")
 

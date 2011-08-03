@@ -18,14 +18,13 @@ from lss import *
 #############################################################################
 # parameters
 
-smNone = LocalSemblanceFilter.Smoothing.NONE
-smBoxcar = LocalSemblanceFilter.Smoothing.BOXCAR
-smGaussian = LocalSemblanceFilter.Smoothing.GAUSSIAN
-smLaplacian = LocalSemblanceFilter.Smoothing.LAPLACIAN
+smNone = LocalSemblanceFilterX.Smoothing.NONE
+smBoxcar = LocalSemblanceFilterX.Smoothing.BOXCAR
+smGaussian = LocalSemblanceFilterX.Smoothing.GAUSSIAN
+smLaplacian = LocalSemblanceFilterX.Smoothing.LAPLACIAN
 
 plotWidth = 800
 plotHeight = 600
-plotFontSize = 28
 plotPngDir = "./png/"
 #plotPngDir = None
 
@@ -39,12 +38,15 @@ def goSmoothingFilters():
   n1 = 43
   hw = 10
   h1s,a1s = [],[]
-  for sm in [smLaplacian,smGaussian,smBoxcar]:
-    lsf = LocalSemblanceFilter(sm,hw,smNone,hw)
+  sms = [smLaplacian,smGaussian,smBoxcar]
+  nms = ["l","g","b"]
+  for i in range(len(sms)):
+    lsf = LocalSemblanceFilterX(sms[i],hw,smNone,hw)
     h1 = lsf.smooth1(makeImpulse(n1))
     a1 = spectrum(h1)
     h1s.append(h1)
     a1s.append(a1)
+    plotSequence(h1,"h1"+nms[i])
   plotSequences(h1s,"h1s")
   plotSpectra(a1s,"a1s")
 
@@ -67,37 +69,28 @@ def spectrum(h1):
 #############################################################################
 # plot
 
+def plotSequence(f,png=None):
+  n1 = len(f)
+  s1 = Sampling(n1,1.0,-(n1-1)/2.0)
+  p = panel()
+  p.setHLabel("sample index")
+  p.setHInterval(10.0)
+  p.setVLimits(-0.002,0.119)
+  sv = p.addSequence(s1,f)
+  frame(p,png)
+
 def plotSequences(fs,png=None):
   nf = len(fs)
   n1 = len(fs[0])
   s1 = Sampling(n1,1.0,-(n1-1)/2.0)
   cs = [Color.BLUE,Color.RED,Color.BLACK]
   p = panel()
-  #p.setHLabel("sample index")
-  p.setHLabel(" ")
+  p.setHLabel("sample index")
   p.setHInterval(10.0)
+  p.setVLimits(-0.002,0.119)
   for i in range(nf):
     sv = p.addSequence(s1,fs[i])
     sv.setColor(cs[i])
-  frame(p,png)
-
-def plotSequencesX(fs,png=None):
-  nf = len(fs)
-  n1 = len(fs[0])
-  s1 = Sampling(n1,1.0,-(n1-1)/2.0)
-  cs = [Color.BLUE,Color.RED,Color.BLACK]
-  ms = [PointsView.Mark.FILLED_CIRCLE,
-        PointsView.Mark.FILLED_CIRCLE,
-        PointsView.Mark.FILLED_CIRCLE]
-  p = panel()
-  #p.setHLabel("sample index")
-  p.setHLabel(" ")
-  for i in range(nf):
-    pv = p.addPoints(s1,fs[i])
-    pv.setMarkColor(cs[i])
-    pv.setMarkStyle(ms[i])
-    pv.setMarkSize(12)
-    pv.setLineStyle(PointsView.Line.NONE)
   frame(p,png)
 
 def plotSpectra(fs,png=None):
@@ -110,8 +103,7 @@ def plotSpectra(fs,png=None):
   p = panel()
   p.setHLimits(0.0,0.1)
   p.setVLimits(0.0,1.0)
-  #p.setHLabel("frequency (cycles/sample)")
-  p.setHLabel(" ")
+  p.setHLabel("frequency (cycles/sample)")
   for i in range(ns):
     pv = p.addPoints(sk,fs[i])
     pv.setLineWidth(5)
@@ -127,11 +119,11 @@ def panel():
 def frame(panel,png=None):
   frame = PlotFrame(panel)
   frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE)
-  frame.setFontSize(plotFontSize)
+  frame.setFontSizeForSlide(1.0,0.9)
   frame.setSize(plotWidth,plotHeight)
   frame.setVisible(True)
   if png and plotPngDir:
-    frame.paintToPng(200,6,plotPngDir+png+".png")
+    frame.paintToPng(720,3.3,plotPngDir+png+".png")
   return frame
 
 #############################################################################

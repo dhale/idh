@@ -25,7 +25,7 @@ s2file = "tps2" # semblance vw,u
 s3file = "tps3" # semblance uvw,
 gfile = "tpg"+logType # simple gridding with null for unknown samples
 pfile = "tpp"+logType+method # values of nearest known samples
-qfile = "ig50/tpq"+logType+method # output of blended gridder
+qfile = "tpq"+logType+method # output of blended gridder
 tfile = "tpt"+logType+method # times to nearest known samples
 
 horizons = ["CrowMountainCRMT"]

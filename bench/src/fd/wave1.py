@@ -48,11 +48,11 @@ def plot(w,png):
     pv.setLineWidth(3)
   pf = PlotFrame(pp)
   pf.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE)
-  pf.setFontSize(fontSize)
+  pf.setFontSizeForSlide(1.0,0.9)
   pf.setSize(width,height)
   pf.setVisible(True)
   if png and pngDir:
-    pf.paintToPng(300,6,pngDir+"/"+png+".png")
+    pf.paintToPng(720,3.3,pngDir+"/"+png+".png")
  
 def makeModel(dl,dr):
   nx = 801

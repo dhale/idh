@@ -307,8 +307,8 @@ public class FaultFinder2SB {
     int uMaxShift =  (int)_shiftMax;
     int pMinShift = -(int)_slopeMax*kb;
     int pMaxShift =  (int)_slopeMax*kb;
-    LocalShiftFinder lsfu = new LocalShiftFinder(_sigma);
-    LocalShiftFinder lsfp = new LocalShiftFinder(8.0);
+    LocalShiftFinderX lsfu = new LocalShiftFinderX(_sigma);
+    LocalShiftFinderX lsfp = new LocalShiftFinderX(8.0);
     lsfu.setSmoothShifts(true);
     lsfp.setSmoothShifts(false);
     for (int i1=0; i1<n1; ++i1) {
