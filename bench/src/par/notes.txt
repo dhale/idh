@@ -1,0 +1,15 @@
+Need thread pools, 
+  with threads constructed by frameworks.
+If both OpenMP and TBB are used, 
+  will thread pools be shared?
+Fork-join *with* work stealing
+  OpenMP does not steal work from other threads
+
+---
+
+The Mines Java Toolkit and Multicore Computing
+Dave Hale, Colorado School of Mines
+
+The Mines Java Toolkit (JTK) is not a collection of applications for geophysical data processing or interpretation. Rather, it is an open-source library of Java packages that others (including commercial software companies) use to build such applications. With students at the Colorado School of Mines, I write small scripts in Python that use JTK packages to develop new algorithms for geophysical data analysis.
+
+The half-life of any software library not designed for parallel computing is two years, roughly the time it takes for the number of cores to double in modern hardware systems. Both authors and users of software libraries will use various methods, such as OpenMP, to implement parallel processing on multicore systems. Even with care and forethought, these methods can be incompatible and inefficient, as library authors cannot know sufficiently the contexts in which their software will be used. New programming methods and languages should be considered to address this problem.
