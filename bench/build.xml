@@ -28,7 +28,7 @@ available at http://www.eclipse.org/legal/cpl-v10.html
   <property environment="env"/>
   <path id="classpath">
     <fileset dir="${java.home}" includes="lib/javaws.jar"/>
-    <fileset dir="${basedir}/../../../jtk/trunk">
+    <fileset dir="${basedir}/../../jtk">
       <include name="jar/*.jar"/>
       <include name="build/jar/edu_mines_jtk.jar"/>
     </fileset>
