@@ -1,0 +1,68 @@
+Geophysical Computing
+
+Grading
+  50% programming assignments
+  50% use of course material in your own projects
+
+Topics/Labs
+  Benchmarking programming languages
+      Java Stopwatch -> two other languages
+      Java recursive smoother in the same
+        benchmark for n = 1000 samples
+  2D image processing with recursive filters
+    compute and display 2D impulse response
+    cascade to approximate Gaussian smoothing
+    smooth your photo (or your data)
+  portable multi-language computing
+    portable build system: Scons, CMake, Ant, ...
+    Python/Matlab -> C/C++/Fortran
+    Jython/Scala -> Java
+    test on two from Windows/MacOSX/Linux
+  multicore computing (from now on)
+    compare OpenMP in C/C++/Fortran
+    with one other method:
+      Intel TBB in C++ 
+      Scala parallel arrays
+      Matlab Parallel Toolbox
+  2D image processing with FFTs
+    exponential and Gaussian smoothing with FFTs
+    compare with recursive smoothing
+  2D windows, correlations, and predictions
+    detrending (subtracting the local mean)
+    local prediction error filtering
+      compare with one global filter
+    structure tensors?
+-----------------
+  Program reviews
+-----------------
+  Spatial interpolation with kriging
+    uniformly grid some scattered data
+      linear, smooth, and wavy anisotropic
+      100, 1000, and 10000 samples
+    LAPACK to solve linear systems
+    local sliding windows
+    error estimates with cross-validation
+  Other spatial interpolation methods
+    distance-weighted averaging
+    radial basis functions (LAPACK, Wessel)
+    nearest neighbor
+    Matlab's gridders
+  Spatial data structures
+    KD-tree to find m nearest-neighbors
+    speed up the sliding windows in gridders
+    compare with Delaunay triangulation (Matlab, JTK, ???)
+  Finite-difference approximations
+    1D constant-velocity, variable-density
+      compare SPD approximations with others
+    2D variable velocity and density
+      movie of waves propagating
+  2D smoothing with spatially-varying filters
+    implement edge-preserving smoothing
+      implement CG solver for (I+G'DG)q = p
+    smooth nearest-neighbor interpolations
+      test for gridding example data
+  Arrays too large to fit in memory
+    implement Float3 with BlockedFloat3
+-----------------
+  Program reviews
+-----------------
