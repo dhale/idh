@@ -10,6 +10,7 @@ import edu.mines.jtk.dsp.*;
 import static edu.mines.jtk.util.ArrayMath.*;
 import static edu.mines.jtk.util.Parallel.*;
 
+import edu.mines.jtk.util.Stopwatch;
 import dnp.LocalSlopeFinder;
 import het.RecursiveExponentialFilter;
 
@@ -252,13 +253,24 @@ public class FaultFinder3SB {
    * @return array of semblances.
    */
   public float[][][] semblance(double phi, double theta, float[][][][] snd) {
+    FaultPlaneSmoother fps = new FaultPlaneSmoother(_sigma,4.0,0.5,snd);
+    return semblance(phi,theta,fps);
+  }
+
+  /**
+   * Returns semblances computed for specified fault strike and angle.
+   * @param phi fault strike, in degrees.
+   * @param theta fault angle, in degrees.
+   * @param fps fault plane smoother constructed for unsmoothed {snum,sden}.
+   * @return array of semblances.
+   */
+  public float[][][] semblance(
+    double phi, double theta, FaultPlaneSmoother fps) 
+  {
+    float[][][][] snd = fps.apply(phi,theta);
     final int n1 = snd[0][0][0].length;
     final int n2 = snd[0][0].length;
     final int n3 = snd[0].length;
-    //FaultPlaneSmoother fps = new FaultPlaneSmoother(_sigma,4.0,0.0,snd);
-    FaultPlaneSmoother fps = new FaultPlaneSmoother(4.0,0.0,0.0,snd);
-    snd = new float[2][n3][n2][n1];
-    fps.apply(phi,theta,snd);
     final float[][][] sn = snd[0];
     final float[][][] sd = snd[1];
     final float[][][] s = sn;
@@ -290,6 +302,9 @@ public class FaultFinder3SB {
    * @return array {c,p,t} of fault likelihoods c and fault angles p and t.
    */
   public float[][][][] faultPhiThetaScan(float[][][][] snd) {
+    Stopwatch sw = new Stopwatch();
+    sw.start();
+    FaultPlaneSmoother fps = new FaultPlaneSmoother(_sigma,4.0,0.5,snd);
     final int n1 = snd[0][0][0].length;
     final int n2 = snd[0][0].length;
     final int n3 = snd[0].length;
@@ -299,10 +314,11 @@ public class FaultFinder3SB {
     int np = _sp.getCount();
     int nt = _st.getCount();
     for (int ip=0; ip<np; ++ip) {
+      System.out.println("scan: ip="+ip);
       final float pi = (float)_sp.getValue(ip);
       for (int it=0; it<nt; ++it) {
         final float ti = (float)_st.getValue(it);
-        final float[][][] s = semblance(pi,ti,snd);
+        final float[][][] s = semblance(pi,ti,fps);
         loop(n3,new LoopInt() {
         public void compute(int i3) {
           for (int i2=0; i2<n2; ++i2) {
@@ -326,6 +342,8 @@ public class FaultFinder3SB {
         }});
       }
     }
+    sw.stop();
+    System.out.println("scan: time="+sw.time());
     return new float[][][][]{c,p,t};
   }
 

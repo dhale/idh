@@ -104,23 +104,10 @@ public class FaultPlaneSmoother {
     // padding and transforming over all three dimensions.
     _fk = new float[_nf][_nk3][_n2][_n1*2];
 
-    // Perform FFT over 3rd dimension.
-    final float[][][][] fx = f;
-    final float[][][][] fk = _fk;
-    loop(_n2,new LoopInt() {
-    public void compute(int i2) {
-      float[][] fxpad = new float[_n3fft][_n1];
-      float[][] fkpad = new float[_nk3][_n1*2];
-      for (int i=0; i<_nf; ++i) {
-        for (int i3=0; i3<_n3; ++i3)
-          copy(fx[i][i3][i2],fxpad[i3]);
-        _fft3.realToComplex2(-1,_n1,fxpad,fkpad);
-        for (int i3=0; i3<_nk3; ++i3)
-          ccopy(fkpad[i3],fk[i][i3][i2]);
-      }
-    }});
+    // Perform forward FFT over 3rd dimension only.
+    for (int i=0; i<_nf; ++i)
+      fft3Forward(f[i],_fk[i]);
   }
-
   /**
    * Applies this filter for specified fault angles.
    * @param phi fault strike angle in degrees [-90,90].
@@ -143,21 +130,23 @@ public class FaultPlaneSmoother {
     Check.argument(_n3==g[0].length,"dimension n3 of g is valid");
     Check.argument(_nf==g.length,"number of arrays in g is valid");
     float[][][] h = makeFilter(phi,theta);
-    final float[][][] gk = new float[_nk3][_n2][_n1*2];
-    for (int i=0; i<_nf; ++i) {
-      final float[][][] gxi = g[i];
-      applyFilter(h,_fk[i],gk);
-      loop(_n2,new LoopInt() {
-      public void compute(int i2) {
-        float[][] gkpad = new float[_nk3][_n1*2];
-        float[][] gxpad = new float[_n3fft][_n1];
-        for (int i3=0; i3<_nk3; ++i3)
-          ccopy(gk[i3][i2],gkpad[i3]);
-        _fft3.complexToReal2(1,_n1,gkpad,gxpad);
-        for (int i3=0; i3<_n3; ++i3)
-          copy(gxpad[i3],gxi[i3][i2]);
-      }});
+    float[][][] gk = new float[_nk3][_n2][_n1*2];
+    for (int i=0; i<_nf; ++i) { // for all arrays, ...
+      applyFilter(h,_fk[i],gk); // multiply by transform of filter
+      fft3Inverse(gk,g[i]); // inverse FFT over 3rd dimension only
     }
+  }
+
+  /**
+   * Applies this filter for specified fault angles.
+   * @param phi fault strike angle in degrees [-90,90].
+   * @param theta fault angle from vertical in degrees [-90,90].
+   * @return output array of smoothed 3D arrays.
+   */
+  public float[][][][] apply(double phi, double theta) {
+    float[][][][] g = new float[_nf][_n3][_n2][_n1];
+    apply(phi,theta,g);
+    return g;
   }
 
   private float _sigmau,_sigmav,_sigmaw;
@@ -231,6 +220,34 @@ public class FaultPlaneSmoother {
       _fft1.complexToComplex1(1,_nk2,gk,gk);
       _fft2.complexToComplex2(1,_n1,gk,gk);
       copy(2*_n1,_n2,gk,gg[i3]);
+    }});
+  }
+
+  // Forward FFT over 3rd dimension only.
+  private void fft3Forward(final float[][][] fx, final float[][][] fk) {
+    loop(_n2,new LoopInt() {
+    public void compute(int i2) {
+      float[][] fxpad = new float[_n3fft][_n1];
+      float[][] fkpad = new float[_nk3][_n1*2];
+      for (int i3=0; i3<_n3; ++i3)
+        copy(fx[i3][i2],fxpad[i3]);
+      _fft3.realToComplex2(-1,_n1,fxpad,fkpad);
+      for (int i3=0; i3<_nk3; ++i3)
+        ccopy(fkpad[i3],fk[i3][i2]);
+    }});
+  }
+
+  // Inverse FFT over 3rd dimension only.
+  private void fft3Inverse(final float[][][] fk, final float[][][] fx) {
+    loop(_n2,new LoopInt() {
+    public void compute(int i2) {
+      float[][] fkpad = new float[_nk3][_n1*2];
+      float[][] fxpad = new float[_n3fft][_n1];
+      for (int i3=0; i3<_nk3; ++i3)
+        ccopy(fk[i3][i2],fkpad[i3]);
+      _fft3.complexToReal2(1,_n1,fkpad,fxpad);
+      for (int i3=0; i3<_n3; ++i3)
+        copy(fxpad[i3],fx[i3][i2]);
     }});
   }
 
