@@ -24,13 +24,13 @@ from lcc import *
 #############################################################################
 
 def main(args):
-  #goBenchmarkSmoothers()
+  goBenchmarkSmoothers()
   #goSlopes()
   #goAlign()
   #goSemblance()
   #goScan()
   #goThin()
-  goSmooth()
+  #goSmooth()
 
 def goSmooth():
   s1,s2,s3,g = imageF3d()

@@ -1,11 +1,11 @@
-#header( ".." "EPIC 251" "teaching" )
+#header( ".." "GPGN 598" "teaching" )
 
 <div id="title">
   <div id="title-text">
-    <h1>EPIC 251 &mdash; Geophysical Computing</h1>
+    <h1>GPGN 598 &mdash; Geophysical Computing</h1>
     <h2>
-      An introduction to computer programming, typically for 
-      sophomores majoring in Geophysics at Mines.
+      An advanced course in computer programming, especially 
+      for graduate students in Geophysics at Mines.
     </h2>
   </div>
 </div>
@@ -17,97 +17,78 @@
 Geophysicists today use some of the most powerful computers in the world.
 This is partly because geophysical data volumes are vast and growing.
 Another reason is that raw geophysical data are not easily understood,
-and typically require substantial processing and interactive 
-visualization and exploration before we can make sense of them.
+and typically require substantial processing, visualization and analysis 
+before we can make sense of them.
 </p>
 <p>
-This section of EPICS 251 introduces students of geophysics at Mines 
-to the <em>development</em> of computer software for analyzing 
-geophysical data. 
-We will use freely available tools, such as the programming languages 
-Python and Java, and free libraries of software written in these and 
-other languages.
-We will work in teams, and practice good software engineering.
+This course emphasizes computational solutions most applicable to 
+geophysical problems that require multidimensional image processing, 
+interpolation and gridding of sparse data, and numerical solutions
+to partial differential equations.
+Our solutions will include aspects of multi-language programming, 
+efficient algorithms, data structures beyond simple arrays, 
+memory management, multicore parallel computing, and graphical 
+visualizations.
+</p>
+<p>
+A large part of this course is the application of these solutions
+to problems encountered by students in their own research.
+Although this course is designed for graduate students in geophysics,
+others with a strong interest in scientific computing are welcome with 
+permission of the instructor.
 </p>
 <dl class="img">
   <dt>
-    <img src="${base}/images/GravityIsoReg.png" width="180" height="107"
+    <img src="${base}/images/EarthMulticore.png" width="180" height="185"
      alt=""/>
   </dt>
   <dd>
-    We will analyze freely available geophysical data. 
-    The image shown here is an example of data available from the 
-    <a href="http://www.ngdc.noaa.gov/ngdc.html">
-      National Geophysical Data Center
-    </a>.
-    Can you guess what it is?
+    <em>
+    Spatial interpolation of atmospheric CO<sub>2</sub> data provided by 
+    the National Oceanic and Atmospheric Administration, superimposed
+    on an Intel Tera-scale chip with 80 processing cores.
+    </em>
   </dd>
 </dl>
-<p>
-Although this section of EPICS 251 is designed for geophysics majors,
-others (particularly those with a strong interest in computing) are 
-welcome with permission of the instructor.
-</p>
 
 <h3>Time and place</h3>
 <p>
-  Mondays and Wednesdays, 8:00-9:50 am; Fridays, 8:00-8:50 am; GC 297
+  Mondays, Wednesdays, and Fridays, 9:00-9:50 am; GC 281/297
 </p>
 
 <h3>Text</h3>
 <p>
-  <cite>Think Python: How to Think Like a Computer Scientist</cite>, 
-  by Allen Downey. This book is 
-  <a href="Downey08ThinkPython.pdf">freely available online</a>.
-  A paperback book with similar content by the same author is also 
-  available from
-  <a href="http://www.amazon.com/gp/product/0521725968">amazon.com</a>
-  and other bookstores.
+No text is currently required for this course.
 </p>
 
 <h3>Grading</h3>
 <p>
-Your course grade is determined entirely by your performance in class.
-</p>
-<dl>
-  <dt>50%: programming prowess</dt>
-  <dd>
-    <ul>
-      <li>Reuse of software written by others.</li>
-      <li>Rapid software development.</li>
-      <li>Software quality and style.</li>
-    </ul>
-  </dd>
-</dl>
-<dl>
-  <dt>50%: class participation</dt>
-  <dd>
-    <ul>
-      <li>In-class programming exercises.</li>
-      <li>Discussion of assigned reading.</li>
-      <li>Helping others, teamwork.</li>
-    </ul>
-  </dd>
-</dl>
+Your course grade will be based on 
+<ul>
+  <li>your programming solutions to assigned problems</li>
+  <li>your programs for your own research problems</li>
+  <li>in-class presentation of your programs</li>
+  <li>in-class reviews of solutions by others</li>
+</ul>
 
 <!-- --------------------------------------------------------------------
 Week
-08/25  0 Introduction to Linux
-08/30  1 A text editor for computer programming.
-09/06  2 Variables, expressions and statements (Chapters 1, 2)
-09/13  3 Functions and interfaces (Chapters 3, 4)
-09/20  4 Conditionals and recursion (Chapters 5, 6)
-09/27  5 Iteration and strings (Chapter 7, 8)
-10/04  6 Text processing and lists (Chapters 9, 10)
-10/11  7 Reading and processing text files (Chapter 14)
-10/18  8 Fall Break, SEG meeting (no classes)
-10/25  9 Review (Chapters 1-10, 14)
-11/01 10 Scientific computing with pylab
-11/08 11 Geophysical data processing and analysis
-11/15 12 Reading and processing binary data files
-11/22 13 Multi-dimensional data processing (Thanksgiving)
-11/29 14 Multi-dimensional data processing (continued)
-12/06 15 Software cleanup and final program reviews
+08/24-08/26  0 benchmarking and portability
+08/29-09/02  1 mixed-language computing
+09/05-09/09  2 2D image processing
+09/12-09/16  3 multi-core computing
+09/19-09/23  4 SEG (no classes)
+09/26-09/30  5 2D image processing with FFTs
+10/03-10/07  6 2D correlations and predictions
+10/10-10/14  7 code reviews
+10/19-10/21  8 spatial interpolation with kriging (and Fall Break)
+10/24-10/28  9 other spatial interpolation methods
+10/31-11/04 10 spatial data structures
+11/07-11/11 11 finite-difference approximations
+11/14-11/18 12 spatially-varying smoothing
+11/21-11/21 13 special (and Thanksgiving holiday)
+11/28-12/02 14 code reviews
+12/05-12/07 15 code reviews (and Dead Day)
 -------------------------------------------------------------------- -->
 
 <h3 class="newpage">Schedule</h3>
@@ -119,83 +100,83 @@ Week
 </tr>
 <tr>
   <td>0</td>
-  <td>08/25-08/27</td>
-  <td>Introduction to Linux</td>
+  <td>08/24-08/26</td>
+  <td>benchmarking and portability</td>
 </tr>
 <tr>
   <td>1</td>
-  <td>08/30-09/03</td>
-  <td>A text editor for computer programming</td>
+  <td>08/29-09/02</td>
+  <td>mixed-language computing</td>
 </tr>
 <tr>
   <td>2</td>
-  <td>09/06-09/10</td>
-  <td>Variables, expressions and statements (Chapters 1, 2)</td>
+  <td>09/05-09/09</td>
+  <td>multidimensional image processing</td>
 </tr>
 <tr>
   <td>3</td>
-  <td>09/13-09/17</td>
-  <td>Functions and interfaces (Chapters 3, 4)</td>
+  <td>09/12-09/16</td>
+  <td>multicore computing</td>
 </tr>
 <tr>
   <td>4</td>
-  <td>09/20-09/24</td>
-  <td>Conditionals and recursion (Chapters 5, 6)</td>
+  <td>09/19-09/23</td>
+  <td>SEG (no classes)</td>
 </tr>
 <tr>
   <td>5</td>
-  <td>09/27-10/01</td>
-  <td>Iteration and strings (Chapter 7, 8)</td>
+  <td>09/26-09/30</td>
+  <td>image processing with FFTs</td>
 </tr>
 <tr>
   <td>6</td>
-  <td>10/04-10/08</td>
-  <td>Text processing and lists (Chapters 9, 10)</td>
+  <td>10/03-10/07</td>
+  <td>spatial correlations and predictions</td>
 </tr>
 <tr>
   <td>7</td>
-  <td>10/11-10/15</td>
-  <td>Reading and processing text files (Chapter 14)
+  <td>10/10-10/14</td>
+  <td>code reviews</td>
 </tr>
 <tr>
   <td>8</td>
-  <td>10/18-10/22</td>
-  <td>Fall Break, SEG meeting (no classes)</td>
+  <td>10/19-10/21</td>
+  <td>spatial interpolation with kriging (and Fall Break)</td>
 </tr>
 <tr>
   <td>9</td>
-  <td>10/25-10/29</td>
-  <td>Review (Chapters 1-10, 14)</td>
+  <td>10/24-10/28</td>
+  <td>other spatial interpolation methods</td>
 </tr>
 <tr>
   <td>10</td>
-  <td>11/01-11/05</td>
-  <td>Scientific computing with pylab</td>
+  <td>10/31-11/04</td>
+  <td>spatial data structures</td>
 </tr>
 <tr>
   <td>11</td>
-  <td>11/08-11/12</td>
-  <td>Geophysical data processing and analysis</td>
+  <td>11/07-11/11</td>
+  <td>finite-difference approximations</td>
 </tr>
 <tr>
   <td>12</td>
-  <td>11/15-11/19</td>
-  <td>Reading and processing binary data files</td>
+  <td>11/14-11/18</td>
+  <td>spatially-varying smoothing</td>
 </tr>
 <tr>
   <td>13</td>
-  <td>11/22</td>
-  <td>Multi-dimensional data processing (Thanksgiving)</td>
+  <td>11/21</td>
+  <td>special (and Thanksgiving)</td>
 </tr>
 <tr>
   <td>14</td>
-  <td>11/29-12/03</td>
-  <td>Multi-dimensional data processing (continued)</td>
+  <td>11/28-12/02</td>
+  <td>code reviews</td>
 </tr>
 <tr>
   <td>15</td>
-  <td>12/06-12/08</td>
-  <td>Software cleanup and final program reviews</td>
+  <td>12/05-12/07</td>
+  <td>code reviews (and Dead Day)</td>
 </tr>
 </table>
 
@@ -225,26 +206,35 @@ Here is a link to this
 
 <h3>Resources</h3>
 <p>
-The computers in GC 297 run Ubuntu, a GNU/Linux operating system.
+Computers in GC 297 run Ubuntu, a GNU/Linux operating system.
 These systems include open-source software that you can freely 
 download and install on your own computers.
-All of the software tools used in this course work as well on systems 
-running GNU/Linux, Microsoft Windows, and Mac OS X operating systems.
+Most (if not all) students will want to use their own computers,
+with their preferred operating systems and programming environments.
 </p>
 <p>
-  You can download and install <a href="http://www.python.org/">Python</a>
-  on your computer.
+However, all students should download and install
+<a href="http://www.scons.org/">SCons</a>,
+a portable system for building computer programs.
+The
+<a href="http://www.scons.org/doc/production/HTML/scons-user/index.html">
+SCons User Guide</a> includes instructions for installing this software,
+even on computers for which you do not have administrative privileges.
 </p>
 <p>
-  For 2-D graphics and plotting, we use
-  <a href="http://matplotlib.sourceforge.net/">Matplotlib (pylab)</a>,
-  which includes
-  <a href="http://numpy.scipy.org/">NumPy</a>.
+If not already installed on your computers, 
+I recommend that you also download and install 
+<a href="http://www.python.org/">Python</a>.
+For 2-D graphics and plotting with Python, I like
+<a href="http://matplotlib.sourceforge.net/">Matplotlib (pylab)</a>,
+which includes
+<a href="http://numpy.scipy.org/">NumPy</a>.
 </p>
 <p>
-  <a href="http://www.jython.org">Jython</a> is 
-  <a href="http://www.python.org/">Python</a> for
-  <a href="http://java.sun.com/javase">Java</a> programmers.
+However, because I write a lot of software in 
+<a href="http://www.oracle.com/javase">Java</a>, I typically use
+<a href="http://www.jython.org">Jython</a>, which is Python for
+Java programmers.
 </p>
 <h3>Wisdom</h3>
 <p>
@@ -255,6 +245,7 @@ running GNU/Linux, Microsoft Windows, and Mac OS X operating systems.
   Half of life is just showing up. &mdash; Woody Allen
 </p>
 
+<!--
 <h3>References</h3>
 <p>
 For some history on our choices of programming languages, read
@@ -270,5 +261,6 @@ Programming languages for geophysics students
 </a>
 by
 <a href="http://billharlan.com">Bill Harlan</a>.
+-->
 
 #footer()

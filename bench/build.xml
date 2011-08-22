@@ -66,7 +66,7 @@ available at http://www.eclipse.org/legal/cpl-v10.html
     </path>
     <path id="scala.build.classpath">
       <pathelement location="${build.cls}"/>
-      <fileset dir="${basedir}/../../../jtk/trunk">
+      <fileset dir="${basedir}/../../../jtk">
         <include name="jar/*.jar"/>
         <include name="build/jar/edu_mines_jtk.jar"/>
       </fileset>

@@ -178,16 +178,22 @@ public class FaultPlaneSmoother {
     loop(_nk3,new LoopInt() {
     public void compute(int i3) {
       float k3 = i3*dk3;
+      float uk3 = u3*k3;
+      float vk3 = v3*k3;
+      float wk3 = w3*k3;
       for (int i2=0; i2<_nk2; ++i2) {
         float k2 = i2*dk2;
         if (i2*2>_nk2) k2 -= twopi;
+        float uk23 = u2*k2+uk3;
+        float vk23 = v2*k2+vk3;
+        float wk23 = w2*k2+wk3;
         float[] h32 = h[i3][i2];
         for (int i1=0; i1<_nk1; ++i1) {
           float k1 = i1*dk1;
           if (i1*2>_nk1) k1 -= twopi;
-          float uk = u1*k1+u2*k2+u3*k3;
-          float vk = v1*k1+v2*k2+v3*k3;
-          float wk = w1*k1+w2*k2+w3*k3;
+          float uk = u1*k1+uk23;
+          float vk = v1*k1+vk23;
+          float wk = w1*k1+wk23;
           float s = sigmaus*uk*uk+sigmavs*vk*vk+sigmaws*wk*wk;
           if (s<10.0f)
             h32[i1] = exp(-0.5f*s)*hscale;

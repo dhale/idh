@@ -138,6 +138,8 @@ public class SequencePlot {
         File file = fc.getSelectedFile();
         if (file!=null) {
           String filename = file.getAbsolutePath();
+          if (!filename.toLowerCase().endsWith(".png"))
+            filename = filename+".png";
           _frame.paintToPng(300,6,filename);
         }
       }

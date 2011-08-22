@@ -22,7 +22,7 @@ available at http://www.eclipse.org/legal/cpl-v10.html
   <property environment="env"/>
   <path id="classpath">
     <fileset dir="${java.home}" includes="lib/javaws.jar"/>
-    <fileset dir="${basedir}/../../../jtk/trunk">
+    <fileset dir="${basedir}/../../jtk">
       <include name="jar/*.jar"/>
       <include name="build/jar/edu_mines_jtk.jar"/>
     </fileset>
@@ -39,9 +39,12 @@ available at http://www.eclipse.org/legal/cpl-v10.html
   <!-- Compile Java -->
   <target name="compile-java" depends="init">
     <javac srcdir="${src}" destdir="${build.cls}" 
-      compiler="javac1.5"
+      compiler="javac1.6"
+      memoryMaximumSize="500m"
+      fork="true"
       debug="on" 
-      deprecation="on">
+      deprecation="on"
+      includeantruntime="false">
       <compilerarg value="-Xlint:all,-serial"/>
       <classpath refid="classpath"/>
       <exclude name="**/old/**"/>

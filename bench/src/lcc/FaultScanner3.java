@@ -86,7 +86,7 @@ public class FaultScanner3 {
     if (s==Smoother.ROTATE_AND_SHEAR) {
       _snd = snd;
     } else {
-      _fps = new FaultPlaneSmoother(_sigmaTheta,_sigmaPhi,0.5,snd);
+      _fps = new FaultPlaneSmoother(_sigmaTheta,_sigmaPhi,0.0,snd);
     }
     _n1 = snd[0][0][0].length;
     _n2 = snd[0][0].length;
