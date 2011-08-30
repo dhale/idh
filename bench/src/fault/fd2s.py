@@ -17,7 +17,7 @@ from edu.mines.jtk.mosaic import *
 from edu.mines.jtk.util import *
 from edu.mines.jtk.util.ArrayMath import *
 
-from lcc import FaultFinder2SB
+from fault import FaultFinder2SB
 from dnp import LocalSlopeFinder
 
 #############################################################################
