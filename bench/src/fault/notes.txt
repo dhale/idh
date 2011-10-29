@@ -1,0 +1,25 @@
+DTW (1D): 
+  model: f(i) ~ g(i+u(i))
+  minimize sum of errors (abs, squared, ...)
+  subject to constraints:
+    umin <= u(i) <= umax
+    |u(i)-u(i-1)| <= b
+    
+  e = |f - g|^2
+  d = accumulate e left to right
+  u = backtrack d right to left
+
+accumulate <=> smooth
+  dlr = accumulate e left to right
+  drl = accumulate e right to left
+  es = dlr+drl-e (subtract e, so we do not count e twice)
+  do DTW using es instead of e
+    ds = accumulate es left to right
+    u = backtrack ds right to left
+  
+DIW (2D):
+  model: f(i1,i2) ~ g(i1+u(i1,i2),i2) <- shift only i1
+  subject to constraints:
+    umin <= u(i1,i2) <= umax
+    |u(i1,i2)-u(i1-1,i2)| <= b1
+    |u(i1,i2)-u(i1,i2-1)| <= b2
