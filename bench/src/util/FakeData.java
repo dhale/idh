@@ -97,7 +97,7 @@ public class FakeData {
   public static float[][][] seismicAndShifts2d2011A(
     int n1, int n2, double dip)
   {
-    float fpeak = 0.2f;
+    float fpeak = 0.125f; // 1/4 of Nyquist
     float fmax = 2.0f*fpeak;
     float[][] f = makeEvents(n1,n2);
     f = addRickerWavelet(fpeak,f);
@@ -485,7 +485,7 @@ public class FakeData {
 
   private static float[] makeEvents(int n1) {
     Random r = new Random(31415);
-    return pow(mul(2.0f,sub(randfloat(r,n1),0.5f)),8.0f);
+    return pow(mul(2.0f,sub(randfloat(r,n1),0.5f)),7.0f);
   }
   private static float[][] makeEvents(int n1, int n2) {
     float[][] f = new float[n2][n1];

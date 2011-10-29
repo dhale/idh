@@ -24,26 +24,79 @@ from fault import *
 #############################################################################
 
 def main(args):
-  goBenchmarkSmoothers()
+  #goBenchmarkSmoothers()
   #goSlopes()
   #goAlign()
   #goSemblance()
   #goScan()
   #goThin()
   #goSmooth()
+  goTrack()
+
+def goTrack():
+  s1,s2,s3,g = imageF3d()
+  f = readImage(s1,s2,s3,"flt")
+  g = slog(g)
+  #g = readImage(s1,s2,s3,"gs")
+  #plot3(sub(1.0,f),None,0,1)
+  #return
+  p = readImage(s1,s2,s3,"fp")
+  t = readImage(s1,s2,s3,"ft")
+  ft = FaultTracker3([f,p,t])
+  #i1,i2,i3 = 189,184,111
+  #i1,i2,i3 = 165,163,121
+  #i1,i2,i3 = 182,146,108
+  i1,i2,i3 = 209,99,29
+  #i1,i2,i3 = 195,54,37
+  ft.setThreshold(0.1)
+  kf = ft.track(i1,i2,i3)
+  print "number of points =",len(kf[0])
+  xyz = ft.xyz(kf)
+  plot3(g,f,0,1,xyz)
+  return
+  gfm,gfp = sampleFault(kf,g)
+  writeImage(gfm,"gfm")
+  writeImage(gfp,"gfp")
+  SimplePlot.asPixels(gfm)
+  SimplePlot.asPixels(gfp)
+
+def sampleFault(kf,g):
+  n1,n2,n3 = len(g[0][0]),len(g[0]),len(g)
+  k1,k2,k3 = kf[0],kf[1],kf[2]
+  nk = len(k1)
+  #j2 = fillint(n2,n1,n3)
+  j2 = fillint(-1,n1,n3)
+  for ik in range(nk):
+    i1,i2,i3 = k1[ik],k2[ik],k3[ik]
+    #if i2>j2[i3][i1]:
+    if i2>j2[i3][i1]:
+      j2[i3][i1] = i2
+  gfm = zerofloat(n1,n3)
+  gfp = zerofloat(n1,n3)
+  for i3 in range(n3):
+    for i1 in range(n1):
+      i2 = j2[i3][i1]
+      #if i2<n2:
+      if i2>=0:
+        i2m = max(0,i2-2)
+        i2p = min(n2-1,i2+2)
+        gfm[i3][i1] = g[i3][i2m][i1]
+        gfp[i3][i1] = g[i3][i2p][i1]
+  return gfm,gfp
 
 def goSmooth():
   s1,s2,s3,g = imageF3d()
   g = slog(g)
   fl = readImage(s1,s2,s3,"flt")
-  p2 = readImage(s1,s2,s3,"p2")
-  p3 = readImage(s1,s2,s3,"p3")
-  gs = FaultScanner3.smooth(16.0,p2,p3,fl,g)
-  writeImage(gs,"gs")
-  #gs = readImage(s1,s2,s3,"gs")
-  plot3(g,fl,0,1)
+  #p2 = readImage(s1,s2,s3,"p2")
+  #p3 = readImage(s1,s2,s3,"p3")
+  #gs = FaultScanner3.smooth(16.0,p2,p3,fl,g)
+  #writeImage(gs,"gs")
+  gs = readImage(s1,s2,s3,"gs")
+  #plot3(g,fl,0,1)
   plot3(g)
   plot3(gs)
+  plot3(sub(1.0,pow(fl,4)))
 
 def goThin():
   s1,s2,s3,g = imageF3d()
@@ -226,7 +279,7 @@ def imageF3d():
 #############################################################################
 # plotting
 
-def plot3(f,g=None,gmin=None,gmax=None):
+def plot3(f,g=None,gmin=None,gmax=None,xyz=None):
   n1 = len(f[0][0])
   n2 = len(f[0])
   n3 = len(f)
@@ -236,6 +289,14 @@ def plot3(f,g=None,gmin=None,gmax=None):
   else:
     ipg = ImagePanelGroup2(f,g)
     sf.world.addChild(ipg)
+  if xyz!=None:
+    pg = PointGroup(xyz)
+    ps = PointState()
+    ps.setSize(3.0)
+    ss = StateSet()
+    ss.add(ps)
+    pg.setStates(ss)
+    sf.world.addChild(pg)
   ipg.setSlices(209,12,18)
   sf.setSize(1200,1100)
   sf.orbitView.setScale(2.5)

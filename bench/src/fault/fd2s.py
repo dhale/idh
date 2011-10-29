@@ -27,8 +27,8 @@ pngDir = None
 
 def main(args):
   #goShifts()
-  goThin()
-  #goScan()
+  #goThin()
+  goScan()
 
 def getFaultFinder():
   slopeMax = 5.0

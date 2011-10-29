@@ -153,7 +153,7 @@ public class FaultFinder2SB {
   public float[][] semblance(double theta, float[][][] snd) {
     int n1 = snd[0][0].length;
     int n2 = snd[0].length;
-    FaultLineSmoother fls = new FaultLineSmoother(_sigma,2.0f,snd);
+    FaultLineSmoother fls = new FaultLineSmoother(_sigma,1.0f,snd);
     snd = new float[2][n2][n1];
     fls.apply(theta,snd);
     float[][] sn = snd[0];

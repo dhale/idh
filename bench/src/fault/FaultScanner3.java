@@ -41,7 +41,7 @@ import edu.mines.jtk.mosaic.*;
  * <p>
  * EXPERIMENTAL: this class provides two methods for smoothing
  * semblance numerators and denominators along fault planes.
- * One method first rotates and shearing those factors before 
+ * One method first rotates and shears those factors before 
  * applying fast recursive axis-aligned smoothing filters.
  * The other method uses rotated Gaussian filters implemented
  * with FFTs.
