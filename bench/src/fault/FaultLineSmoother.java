@@ -145,6 +145,17 @@ public class FaultLineSmoother {
     }
   }
 
+  /**
+   * Applies this filter for specified fault angles.
+   * @param theta fault angle from vertical in degrees [-90,90].
+   * @return output array of smoothed 2D arrays.
+   */
+  public float[][][] apply(double theta) {
+    float[][][] g = new float[_nf][_n2][_n1];
+    apply(theta,g);
+    return g;
+  }
+
   ///////////////////////////////////////////////////////////////////////////
   // private
 

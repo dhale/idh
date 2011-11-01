@@ -17,24 +17,24 @@ from edu.mines.jtk.mosaic import *
 from edu.mines.jtk.util import *
 from edu.mines.jtk.util.ArrayMath import *
 
-from fault import FaultFinder2SB
-from dnp import LocalSlopeFinder
+from fault import FaultScanner2,FaultSemblance
 
 #############################################################################
 
 #pngDir = "./png"
 pngDir = None
 
-def main(args):
-  #goShifts()
-  #goThin()
-  goScan()
+sigmaTheta = 20
+smoother = FaultScanner2.Smoother.SHEAR
+#smoother = FaultScanner2.Smoother.FFT
 
-def getFaultFinder():
-  slopeMax = 5.0
-  shiftMax = 15.0
-  thetaMax = 20.0
-  return FaultFinder2SB(slopeMax,shiftMax,thetaMax)
+def main(args):
+  #goSlopes()
+  #goAlign()
+  #goSemblance()
+  #goScan()
+  #goThin()
+  goShifts()
 
 def getImage():
   #return imageSyn()
@@ -42,68 +42,112 @@ def getImage():
   #return imageTpd()
 
 def goShifts():
-  s1,s2,f = getImage()
-  n1,n2 = len(f[0]),len(f)
-  #plot2(s1,s2,f,title="input")
-  f = slog(f)
-  plot2(s1,s2,f,title="log input")
-  ff = getFaultFinder()
-  p = ff.findSlopes(f)
-  #plot2(s1,s2,f,p,title="slopes")
-  f = ff.taper(10,f)
-  snd = ff.semblanceNumDen(p,f)
-  ct = ff.faultThetaScan(snd)
-  ct = ff.faultThetaThin(ct)
-  plot2(s1,s2,f,ct[0],gmin=0,gmax=1.0,title="faults")
-  #plot2(s1,s2,f,ct[1],title="thetas")
-  g = ff.smooth(16.0,p,ct[0],f);
-  plot2(s1,s2,g,title="smoothed")
-  u = ff.findShifts(ct,g)
-  plot2(s1,s2,g,u,gmin=-3,gmax=3,title="shifts")
+  s1,s2,g = getImage()
+  g = slog(g)
+  #plot2(s1,s2,g,title="log input")
+  fse = FaultSemblance()
+  g = fse.taper(10,g)
+  for iter in range(1):
+    p = fse.slopes(g)
+    sn,sd = fse.semblanceNumDen(p,g)
+    fsc = FaultScanner2(sigmaTheta,[sn,sd],smoother)
+    f,t = fsc.scan(-15,15)
+    ft,tt = fsc.thin([f,t])
+    plot2(s1,s2,g,ft,gmin=0,gmax=1,title="fault likelihood")
+    plot2(s1,s2,g,tt,title="fault dip (degrees)")
+    g = fsc.smooth(8,p,ft,g)
+    #plot2(s1,s2,g,title="smoothed")
+  st = fsc.makeThetaSampling(-15,15)
+  shiftMin,shiftMax = -20,20
+  s = fsc.scanForShifts(shiftMin,shiftMax,st,0.1,[ft,tt],p,g)
+  plot2(s1,s2,g,s,gmin=-10,gmax=10,title="fault shifts")
 
 def goThin():
-  s1,s2,f = getImage()
-  n1,n2 = len(f[0]),len(f)
-  #plot2(s1,s2,f,title="input")
-  f = slog(f)
-  plot2(s1,s2,f,title="log input")
-  ff = getFaultFinder()
-  p = ff.findSlopes(f)
-  #plot2(s1,s2,f,p,title="slopes")
-  #f = ff.taper(10,f)
-  snd = ff.semblanceNumDen(p,f)
-  ct = ff.faultThetaScan(snd)
-  plot2(s1,s2,f,ct[0],gmin=0,gmax=1.0,title="c scan")
-  plot2(s1,s2,f,ct[1],title="t scan")
-  ct = ff.faultThetaThin(ct)
-  plot2(s1,s2,f,ct[0],gmin=0,gmax=1.0,title="c thin")
-  plot2(s1,s2,f,ct[1],title="t thin")
-  g = ff.smooth(16.0,p,ct[0],f);
-  plot2(s1,s2,g,title="smoothed")
-  #plot2(s1,s2,sexp(g),title="exp smoothed")
+  s1,s2,g = getImage()
+  g = slog(g)
+  plot2(s1,s2,g,title="log input")
+  fse = FaultSemblance()
+  g = fse.taper(10,g)
+  for iter in [1,2,3,4]:
+    p = fse.slopes(g)
+    #p = zerofloat(len(p[0]),len(p))
+    sn,sd = fse.semblanceNumDen(p,g)
+    fsc = FaultScanner2(sigmaTheta,[sn,sd],smoother)
+    f,t = fsc.scan(-15,15)
+    #plot2(s1,s2,g,f,gmin=0,gmax=1,title="fault likelihood")
+    #plot2(s1,s2,g,t,title="fault dip (degrees)")
+    ft,tt = fsc.thin([f,t])
+    plot2(s1,s2,g,ft,gmin=0,gmax=1,title="fault likelihood")
+    #plot2(s1,s2,g,tt,title="fault dip (degrees)")
+    g = fsc.smooth(4,p,ft,g)
+    #plot2(s1,s2,g,title="smoothed")
 
 def goScan():
-  ff = getFaultFinder()
-  s1,s2,f = getImage()
-  n1,n2 = len(f[0]),len(f)
-  #plot2(s1,s2,f,title="input")
-  f = slog(f)
-  plot2(s1,s2,f,title="log input")
-  p = ff.findSlopes(f)
-  #plot2(s1,s2,f,p,title="slopes")
-  f = ff.taper(10,f)
-  snd = ff.semblanceNumDen(p,f)
-  st = Sampling(41,1.00,-20.0)
-  #st = Sampling(1,1.00,0.0)
-  nt,dt,ft = st.count,st.delta,st.first
-  for jt in range(nt):
-    t = st.getValue(jt)
-    s = ff.semblance(t,snd)
-    c = sub(1.0,pow(s,8))
-    title = "theta = %6.3f" % t
-    plot2(s1,s2,f,c,gmin=0,gmax=1.0,title=title)
+  s1,s2,g = getImage()
+  g = slog(g)
+  fse = FaultSemblance()
+  g = fse.taper(10,g)
+  p = fse.slopes(g)
+  sn,sd = fse.semblanceNumDen(p,g)
+  fsc = FaultScanner2(sigmaTheta,[sn,sd])
+  st = Sampling(31,1.0,-15.0)
+  for theta in st.values:
+    f = fsc.likelihood(theta)
+    plot2(s1,s2,g,f,gmin=0,gmax=1,title="theta = "+str(int(theta)))
+  tmin,tmax = st.first,st.last
+  f,t = fsc.scan(tmin,tmax)
+  plot2(s1,s2,g,f,gmin=0,gmax=1,title="fault likelihood")
+  plot2(s1,s2,g,t,gmin=tmin,gmax=tmax,title="fault dip (degrees)")
 
-def findShifts(sigma,min1,max1,lag2,f):
+def goSemblance():
+  s1,s2,g = getImage()
+  g = slog(g)
+  fse = FaultSemblance()
+  g = fse.taper(10,g)
+  p = fse.slopes(g)
+  sn0,sd0 = fse.semblanceNumDen(p,g)
+  print "semblances for different vertical smoothings:"
+  for sigma in [0,2,4,8]:
+    ref = RecursiveExponentialFilter(sigma)
+    sn = copy(sn0)
+    sd = copy(sd0)
+    ref.apply1(sn,sn)
+    ref.apply1(sd,sd)
+    s = fse.semblanceFromNumDen(sn,sd)
+    print "sigma =",sigma," s min =",min(s)," max =",max(s)
+    title = "semblance: sigma = "+str(sigma)
+    plot2(s1,s2,g,s,gmin=0,gmax=1,title=title)
+
+def goAlign():
+  s1,s2,g = getImage()
+  g = slog(g)
+  n1,n2 = len(g[0]),len(g)
+  fse = FaultSemblance()
+  p = fse.slopes(g)
+  ref = RecursiveExponentialFilter(4)
+  sn,sd = fse.semblanceNumDen(p,g)
+  ref.apply1(sn,sn)
+  ref.apply1(sd,sd)
+  s = fse.semblanceFromNumDen(sn,sd)
+  plot2(s1,s2,g,s,gmin=0,gmax=1,title="semblance with alignment")
+  p = zerofloat(n1,n2) # semblance with zero slopes
+  sn,sd = fse.semblanceNumDen(p,g)
+  ref.apply1(sn,sn)
+  ref.apply1(sd,sd)
+  s = fse.semblanceFromNumDen(sn,sd)
+  plot2(s1,s2,g,s,gmin=0,gmax=1,title="semblance without alignment")
+
+def goSlopes():
+  s1,s2,g = getImage()
+  plot2(s1,s2,g,title="input")
+  g = slog(g)
+  plot2(s1,s2,g,title="log input")
+  fse = FaultSemblance()
+  p = fse.slopes(g)
+  plot2(s1,s2,g,p,gmin=-0.9,gmax=0.9,title="slopes")
+
+###
+def xfindShifts(sigma,min1,max1,lag2,f):
   n1,n2 = len(f[0]),len(f)
   u = zerofloat(n1,n2)
   lsf = LocalShiftFinder(sigma)
@@ -234,7 +278,8 @@ def plot2(s1,s2,f,g=None,gmin=None,gmax=None,
     if gmax==None: gmax = max(g)
     pv.setClips(gmin,gmax)
     pv.setColorModel(ColorMap.getJet(alpha))
-    #updateColorModel(pv,0.9)
+    if gmin==0:
+      updateColorModel(pv,0.9)
   frame2(panel,png)
 
 def updateColorModel(pv,alpha):
@@ -247,18 +292,19 @@ def updateColorModel(pv,alpha):
     icm.getReds(r)
     icm.getGreens(g)
     icm.getBlues(b)
-    ia = int(255.0*alpha)
-    if ia>128:
-      ia -= 256
     for i in range(n):
-      a[i] = ia
-    if alpha<1.0:
+      ai = int(255.0*alpha*i/n)
+      if ai>127:
+        ai -= 256
+      a[i] = ai
+    #if alpha<1.0:
       #r[n/2] = r[n/2-1] = -1
       #g[n/2] = g[n/2-1] = -1
       #b[n/2] = b[n/2-1] = -1
-      a[n/2  ] = a[n/2-1] = 0
-      a[n/2+1] = a[n/2-2] = 0
-      a[n/2+2] = a[n/2-3] = 0
+      #a[n/2  ] = a[n/2-1] = 0
+      #a[n/2+1] = a[n/2-2] = 0
+      #a[n/2+2] = a[n/2-3] = 0
+      #a[0] = a[1] = 0
     icm = IndexColorModel(8,n,r,g,b,a)
     pv.setColorModel(icm)
 

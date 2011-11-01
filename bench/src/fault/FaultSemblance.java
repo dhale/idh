@@ -363,6 +363,42 @@ public class FaultSemblance {
    * @param f input image.
    * @return the tapered image.
    */
+  public static float[][] taper(int m, float[][] f) {
+    int n1 = f[0].length;
+    int n2 = f.length;
+    float[][] g = copy(f);
+    float[] t = new float[m];
+    for (int i=0; i<m; ++i) {
+      t[i] = (float)(0.54+0.46*cos(PI*(m-i)/m));
+    }
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0,j1=n1-1; i1<m; ++i1,--j1) {
+        float ti = t[i1];
+        g[i2][i1] *= ti;
+        g[i2][j1] *= ti;
+      }
+    }
+    /* disable horizontal smoothing
+    for (int i2=0,j2=n2-1; i2<m; ++i2,--j2) {
+      float ti = t[i2];
+      for (int i1=0; i1<n1; ++i1) {
+        g[i2][i1] *= ti;
+        g[j2][i1] *= ti;
+      }
+    }
+    */
+    return g;
+  }
+
+  /**
+   * Returns an image with specified samples taper to zero at edges.
+   * Tapering enables simple zero-value boundary conditions to be
+   * used in fault detection without artifacts caused by abrupt 
+   * truncations of strong image features near edges.
+   * @param m width of the tapered band of samples at each edge.
+   * @param f input image.
+   * @return the tapered image.
+   */
   public static float[][][] taper(int m, float[][][] f) {
     int n1 = f[0][0].length;
     int n2 = f[0].length;
