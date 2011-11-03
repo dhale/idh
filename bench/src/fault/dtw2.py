@@ -33,7 +33,7 @@ seed = 588
 print "seed =",seed
 
 nrms = 0.00
-npass = 3
+npass = 1
 stretchMax = 0.2
 showLsf = False
 smoothShifts = False
