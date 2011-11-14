@@ -47,9 +47,9 @@ public class LanguageHits {
     if (args.length>1)  BING_API_KEY = args[1];
     System.out.println(new Date());
     Engine[] engines = {
-      Engine.GSERP, 
-      Engine.GOOGLE,
-      Engine.YAHOO,
+      //Engine.GSERP, 
+      //Engine.GOOGLE,
+      //Engine.YAHOO,
       Engine.BING};
     for (Engine engine:engines) {
       if (engine==Engine.YAHOO && YAHOO_API_KEY==null) continue;

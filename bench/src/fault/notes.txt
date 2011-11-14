@@ -1,3 +1,47 @@
+Sign conventions for fault strike, dip, and throw
+
+strike in (-90,90], dip in [-45,45]
+dip ambiguous for strike = 90 degrees
+dip has +- discontinuity
+as strike goes from -89 to 89 degrees
+
+strike in [0:360), dip in [0:45)
+strike ambiguous for dip = 0 degrees
+strike has 180 degree discontinuity
+as dip goes through vertical
+
+---
+3D fault displacements
+
+do not try to make fault surfaces for warping
+instead build fault trees for warping with TSDP
+each node in the tree has 
+  one or two vertical nabors
+  one or two horizontal nabors
+  node nabors depend on fault likelihoods, strikes and dips
+    strike and dip define local above, below, left and right
+  nabors must be symmetric
+    each node is a nabor of its nabors
+tree leaves are nodes with only one nabor
+
+before warping, ...
+must compute for each node an array of errors for different shifts
+  shifts are measured in vertical samples along fault dips
+  errors are differences between image values squared
+    for image values on opposite sides of fault
+  when computing errors for one node
+    must collect two sequences alongside (not on) fault
+      need samples on opposite two sides of fault
+        two sides determined locally by fault strike and dip
+      when gathering samples along the fault
+        use only samples above and below the node
+        but include samples that may not be node nabors
+          require only consistency with fault dip and strike
+          if no consistent sample, then set large error for that shift
+            extrapolate using dip and strike of nearest consistent sample
+
+---
+
 DTW (1D): 
   model: f(i) ~ g(i+u(i))
   minimize sum of errors (abs, squared, ...)

@@ -6,6 +6,8 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package fault;
 
+import java.util.ArrayList;
+
 import edu.mines.jtk.dsp.*;
 import static edu.mines.jtk.util.ArrayMath.*;
 import static edu.mines.jtk.util.Parallel.*;
@@ -835,5 +837,479 @@ public class FaultScanner3 {
               x2p<=_s2p.getLast()+HALF_LSINC &&
               x3p<=_s3p.getLast()+HALF_LSINC;
     }
+  }
+
+  ///////////////////////////////////////////////////////////////////////////
+  // fault analysis
+
+  /*
+  public Faults findFaults(float[][][][] fpt, int minLength) {
+    return new Faults(fpt,minLength);
+  }
+
+  public static class Faults {
+    Faults(float[][][] ft, int minLength) {
+      _n1 = ft[0][0].length;
+      _n2 = ft[0].length;
+      FaultNode[][] fns = findFaultNodes(ft);
+      _fls = findFaultLines(fns,minLength);
+    }
+
+    public void findShifts(float[][] g, float[][] p, int smin, int smax) {
+      for (FaultLine fl:_fls)
+        findShiftsFl(fl,g,p,smin,smax);
+    }
+
+    public void clean() {
+      ArrayList<FaultLine> fls = new ArrayList<FaultLine>();
+      for (FaultLine fl:_fls)
+        if (shiftsValid(fl))
+          fls.add(fl);
+      _fls = fls;
+    }
+
+    public int getCount() {
+      return _fls.size();
+    }
+
+    public float[][] getShifts() {
+      float[][] s = new float[_n2][_n1];
+      for (FaultLine fl:_fls) {
+        FaultNode[] fns = fl.getNodes();
+        int nn = fns.length;
+        for (int in=0; in<nn; ++in) {
+          FaultNode fn = fns[in];
+          int i1 = fn.i1;
+          int i2m = fn.i2m;
+          int i2p = fn.i2p;
+          s[i2m][i1] = fn.smp;
+          s[i2p][i1] = fn.spm;
+        }
+      }
+      return s;
+    }
+
+    public float[][] getLikelihoods() {
+      float[][] f = new float[_n2][_n1];
+      for (FaultLine fl:_fls) {
+        FaultNode[] fns = fl.getNodes();
+        int nn = fns.length;
+        for (int in=0; in<nn; ++in) {
+          FaultNode fn = fns[in];
+          int i1 = fn.i1;
+          int i2 = fn.i2;
+          f[i2][i1] = fn.fl;
+        }
+      }
+      return f;
+    }
+
+    public float[][] getDips() {
+      float[][] t = new float[_n2][_n1];
+      for (FaultLine fl:_fls) {
+        FaultNode[] fns = fl.getNodes();
+        int nn = fns.length;
+        for (int in=0; in<nn; ++in) {
+          FaultNode fn = fns[in];
+          int i1 = fn.i1;
+          int i2 = fn.i2;
+          t[i2][i1] = fn.ft;
+        }
+      }
+      return t;
+    }
+
+    private int _n1,_n2;
+    private ArrayList<FaultLine> _fls;
+  }
+  */
+
+  // One node in a fault corresponds to one image sample.
+  private static class FaultNode {
+    FaultNode(
+      int i1, int i2, int i3, 
+      int i2m, int i2p, int i3m, int i3p, float x2, float x3, 
+      float fl, float fp, float ft) 
+    {
+      this.i1 = i1; this.i2 = i2; this.i3 = i3;
+      this.i2m = i2m; this.i2p = i2p;
+      this.i3m = i3m; this.i3p = i3p;
+      this.x2 = x2; this.x3 = x3;
+      this.fl = fl; this.fp = fp; this.ft = ft;
+    }
+    int i1,i2,i3; // sample indices (i1,i2,i3) for this node
+    int i2m,i2p,i3m,i3p; // indices i2,i3 for minus and plus sides of fault
+    float x2,x3; // horizontal fault location in [i2m,i2p],[i3m,i3p]
+    float fl,fp,ft; // fault likelihood, phi and theta
+    float smp,spm; // fault shifts for both mp and pm sides of fault
+    FaultNode above,below,left,right; // node neighbors
+  }
+
+  //private static class FaultSurf {
+  //  ArrayList<FaultLineH> flh;
+  //  ArrayList<FaultLineV> flv;
+  //}
+
+  // A vertical fault line is a linked top-to-bottom list of fault nodes.
+  private static class FaultLineV {
+    FaultLineV(FaultNode top) {
+      this.top = top;
+      this.n = 1;
+      for (FaultNode fn=top.below; fn!=null; fn=fn.below)
+        ++n;
+    }
+    int n; // number of nodes
+    FaultNode top; // top node
+    FaultNode[] getNodes() {
+      FaultNode[] fns = new FaultNode[n];
+      int in = 0;
+      for (FaultNode fn=top; fn!=null; fn=fn.below,++in)
+        fns[in] = fn;
+      return fns;
+    }
+  }
+
+  // Returns index for specified fault strike:
+  //   0 for phi ~ -90 (or phi ~ 90) (fault strike aligned with axis 3)
+  //   1 for phi ~ -45
+  //   2 for phi ~   0 (fault strike aligned with axis 2)
+  //   3 for phi ~  45
+  private static int indexPhi(float phi) {
+    return (int)((phi+112.5f)/45.0f)%4;
+  }
+
+  private static FaultNode[][][] findFaultNodes(float[][][][] fpt) {
+    int n1 = n1(fpt);
+    int n2 = n2(fpt);
+    int n3 = n3(fpt);
+    float[][][] f = fpt[0];
+    float[][][] p = fpt[1];
+    float[][][] t = fpt[2];
+    float[][][] fs = new float[n3][n2][n1];
+    new RecursiveGaussianFilter(1.0).apply000(f,fs);
+    FaultNode[][][] fns = new FaultNode[n3][n2][n1];
+    for (int i3=1; i3<n3-1; ++i3) {
+      for (int i2=1; i2<n2-1; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          int ifp = indexPhi(p[i3][i2][i1]);
+          if (ifp==0) {
+            fns[i3][i2][i1] = makeFaultNode0(i1,i2,i3,fs,f,p,t);
+          } else if (ifp==1) {
+            fns[i3][i2][i1] = makeFaultNode1(i1,i2,i3,fs,f,p,t);
+          } else if (ifp==2) {
+            fns[i3][i2][i1] = makeFaultNode2(i1,i2,i3,fs,f,p,t);
+          } else if (ifp==3) {
+            fns[i3][i2][i1] = makeFaultNode3(i1,i2,i3,fs,f,p,t);
+          }
+        }
+      }
+    }
+    return fns;
+  }
+  private static FaultNode makeFaultNode0(
+    int i1, int i2, int i3, 
+    float[][][] fs, float[][][] f, float[][][] p, float[][][] t) 
+  {
+    float f0m = fs[i3][i2-1][i1]; //   o
+    float f00 = fs[i3][i2  ][i1]; // - o -  (phi ~ 90 or phi ~ 90)
+    float f0p = fs[i3][i2+1][i1]; //   o
+    FaultNode fn = null;
+    if (f0m<f00 && f0p<f00) {
+      float u = peak(f0m,f00,f0p);
+      float x2 = i2+u;
+      float x3 = i3;
+      int i2m = i2, i2p = i2;
+      int i3m = i3, i3p = i3;
+      if (u>=0.0f) {
+        ++i2p;
+      } else {
+        --i2p; 
+      }
+      fn = new FaultNode(i1,i2,i3,i2m,i2p,i3m,i3p,x2,x3,
+        f[i3][i2][i1],p[i3][i2][i1],t[i3][i2][i1]);
+    }
+    return fn;
+  }
+  private static FaultNode makeFaultNode1(
+    int i1, int i2, int i3, 
+    float[][][] fs, float[][][] f, float[][][] p, float[][][] t) 
+  {
+    float fmm = fs[i3-1][i2-1][i1]; // o  / 
+    float f00 = fs[i3  ][i2  ][i1]; //   o    (phi ~ -45)
+    float fpp = fs[i3+1][i2+1][i1]; // /   o
+    FaultNode fn = null;
+    if (fmm<f00 && fpp<f00) {
+      float u = peak(fmm,f00,fpp);
+      float x2 = i2+u;
+      float x3 = i3+u;
+      int i2m = i2, i2p = i2;
+      int i3m = i3, i3p = i3;
+      if (u>=0.0f) {
+        ++i2p; ++i3p; 
+      } else {
+        --i2p; --i3m;
+      }
+      fn = new FaultNode(i1,i2,i3,i2m,i2p,i3m,i3p,x2,x3,
+        f[i3][i2][i1],p[i3][i2][i1],t[i3][i2][i1]);
+    }
+    return fn;
+  }
+  private static FaultNode makeFaultNode2(
+    int i1, int i2, int i3, 
+    float[][][] fs, float[][][] f, float[][][] p, float[][][] t) 
+  {
+    float fm0 = fs[i3-1][i2][i1]; //    |
+    float f00 = fs[i3  ][i2][i1]; // o  o  o (phi ~ 0) 
+    float fp0 = fs[i3+1][i2][i1]; //    |
+    FaultNode fn = null;
+    if (fm0<f00 && fp0<f00) {
+      float u = peak(fm0,f00,fp0);
+      float x2 = i2;
+      float x3 = i3+u;
+      int i2m = i2, i2p = i2;
+      int i3m = i3, i3p = i3;
+      if (u>=0.0f) {
+        ++i3p;
+      } else {
+        --i3m;
+      }
+      fn = new FaultNode(i1,i2,i3,i2m,i2p,i3m,i3p,x2,x3,
+        f[i3][i2][i1],p[i3][i2][i1],t[i3][i2][i1]);
+    }
+    return fn;
+  }
+  private static FaultNode makeFaultNode3(
+    int i1, int i2, int i3, 
+    float[][][] fs, float[][][] f, float[][][] p, float[][][] t) 
+  {
+    float fpm = fs[i3+1][i2-1][i1]; //  \  o
+    float f00 = fs[i3  ][i2  ][i1]; //   o    (phi ~ 45)
+    float fmp = fs[i3-1][i2+1][i1]; // o  \
+    FaultNode fn = null;
+    if (fpm<f00 && fmp<f00) {
+      float u = peak(fpm,f00,fmp);
+      float x2 = i2-u;
+      float x3 = i3+u;
+      int i2m = i2, i2p = i2;
+      int i3m = i3, i3p = i3;
+      if (u>=0.0f) {
+        --i2p; ++i3p; 
+      } else {
+        ++i2p; --i3m;
+      }
+      fn = new FaultNode(i1,i2,i3,i2m,i2p,i3m,i3p,x2,x3,
+        f[i3][i2][i1],p[i3][i2][i1],t[i3][i2][i1]);
+    }
+    return fn;
+  }
+  private static float peak(float fa, float fb, float fc) {
+    float c0 = fb;
+    float c1 = 0.5f*(fc-fa);
+    float c2 = 0.5f*(fc+fa)-fb;
+    float u = (c2<0.0f)?-0.5f*c1/c2:0.0f;
+    return u;
+  }
+
+  /*
+  private static ArrayList<FaultLine> findFaultLines(
+    FaultNode[][] fns, int minNodesInLine) 
+  {
+    int n1 = fns[0].length;
+    int n2 = fns.length;
+
+    // List of fault lines.
+    ArrayList<FaultLine> fls = new ArrayList<FaultLine>();
+
+    // For all fault nodes in the array of nodes, ...
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        FaultNode fni = fns[i2][i1];
+
+        // If a node exists and has not yet been linked to others, ...
+        if (fni!=null && fni.above==null && fni.below==null) {
+
+          // Count the number of nodes.
+          int nn = 1;
+
+          // Search below for nabors to link to this node.
+          for (FaultNode fnt=fni; fnt!=null; fnt=fnt.below) {
+            FaultNode fnb = naborBelow(fnt,fns);
+            if (fnb!=null && fnt==naborAbove(fnb,fns)) {
+              fnb.above = fnt;
+              fnt.below = fnb;
+              ++nn;
+            }
+          }
+
+          // Search above for nabors to link to this node.
+          // Also remember the top node, which may become the
+          // head node in the list of nodes for a fault line.
+          FaultNode fnr = fni;
+          for (FaultNode fnt=fni; fnt!=null; fnt=fnt.above) {
+            FaultNode fna = naborAbove(fnt,fns);
+            if (fna!=null && fnt==naborBelow(fna,fns)) {
+              fna.below = fnt;
+              fnt.above = fna;
+              ++nn;
+            }
+            fnr = fnt;
+          }
+
+          // If sufficient number of nodes, construct new fault line.
+          if (nn>=minNodesInLine)
+            fls.add(new FaultLine(fnr));
+        }
+      }
+    }
+    return fls;
+  }
+
+  private static float[][] getImageSamples(FaultLine fl, int k, float[][] g) {
+    FaultNode[] fns = fl.getNodes();
+    int nn = fns.length;
+    int n1 = g[0].length;
+    int n2 = g.length;
+    int n2m = n2-1;
+    float[] gm = new float[nn];
+    float[] gp = new float[nn];
+    for (int in=0; in<nn; ++in) {
+      FaultNode fn = fns[in];
+      int i1 = fn.i1;
+      int i2 = fn.i2;
+      int i2m = max(  0,i2-k);
+      int i2p = min(n2m,i2+k);
+      gm[in] = g[i2m][i1];
+      gp[in] = g[i2p][i1];
+    }
+    return new float[][]{gm,gp};
+  }
+
+  private static boolean shiftsValid(FaultLine fl) {
+    FaultNode[] fns = fl.getNodes();
+    int nn = fns.length;
+    int nv = 0;
+    for (int in=0; in<nn; ++in) {
+      FaultNode fn = fns[in];
+      if (fn.smp*fn.spm<=0.0f)
+        ++nv;
+    }
+    return 10*nv>8*nn; // 80% of shifts must have opposite signs
+  }
+
+  private static void cleanShifts(FaultLine fl) {
+    FaultNode[] fns = fl.getNodes();
+    int nn = fns.length;
+    for (int in=0; in<nn; ++in) {
+      FaultNode fn = fns[in];
+      if (fn.smp*fn.spm>=0.0f) {
+        fn.smp = 0.0f;
+        fn.spm = 0.0f;
+      }
+    }
+  }
+
+  private static void findShiftsFl(
+    FaultLine fl, float[][] g, float[][] p, int smin, int smax) 
+  {
+    findShiftsFl( 1,fl,g,p,smin,smax);
+    findShiftsFl(-1,fl,g,p,smin,smax);
+  }
+
+  private static void findShiftsFl(
+    int sign, FaultLine fl, float[][] g, float[][] p, int smin, int smax) 
+  {
+    FaultNode[] fns = fl.getNodes();
+    int nn = fns.length;
+    int ssmin = (nn+smin>10)?smin:10-nn;
+    int ssmax = (nn-smax>10)?smax:nn-10;
+    DynamicWarping dw = new DynamicWarping(ssmin,ssmax);
+    dw.setStretchMax(0.2);
+    float[][] gmp = getImageSamples(fl,2,g);
+    float[][] pmp = getImageSamples(fl,2,p);
+    float[] g1,g2,p1,p2;
+    float ps;
+    if (sign>0) {
+      g1 = gmp[0]; g2 = gmp[1];
+      p1 = pmp[0]; p2 = pmp[1];
+      ps = 2.0f;
+    } else {
+      g1 = gmp[1]; g2 = gmp[0];
+      p1 = pmp[1]; p2 = pmp[0];
+      ps = -2.0f;
+    }
+    float[][] se = dw.computeErrors(g1,g2);
+    float[][] sd = dw.accumulateForward(se);
+    float[] s = dw.findShiftsReverse(sd,se);
+    for (int in=0; in<nn; ++in)
+      s[in] -= ps*(p1[in]+p2[in]);
+    if (sign>0) {
+      for (int in=0; in<nn; ++in)
+        fns[in].smp = s[in];
+    } else {
+      for (int in=0; in<nn; ++in)
+        fns[in].spm = s[in];
+    }
+  }
+  */
+
+  // Minimum acceptable dot product of two aligned fault dip vectors.
+  // Nodes can be neighbors only if their dip vectors are so aligned.
+  private static final float AMIN = 0.9f;
+
+  // Returns dot product of dip vectors for two specified nodes.
+  private static float dotDipVectors(FaultNode fn1, FaultNode fn2) {
+    float t1 = toRadians(fn1.ft);
+    float t2 = toRadians(fn2.ft);
+    float c1 = cos(t1);
+    float c2 = cos(t2);
+    float s1 = sin(t1);
+    float s2 = sin(t2);
+    return c1*c2+s1*s2;
+  }
+
+  // Determines which (if any) of nodes f1,f2,f3 is aligned with fn.
+  private static FaultNode alignDip(
+    FaultNode fn, FaultNode f1, FaultNode f2, FaultNode f3) 
+  {
+    float a1 = (f1!=null)?dotDipVectors(fn,f1):0.0f;
+    float a2 = (f2!=null)?dotDipVectors(fn,f2):0.0f;
+    float a3 = (f3!=null)?dotDipVectors(fn,f3):0.0f;
+    float am = max(a1,a2,a3);
+    FaultNode fm = null;
+    if (am>=AMIN) 
+      fm = (a1==am)?f1:(a2==am)?f2:f3;
+    return fm;
+  }
+
+  // Returns the best nabor (if any) above the specified node.
+  private static FaultNode naborAbove(FaultNode fn, FaultNode[][] fns) {
+    int n1 = fns[0].length;
+    int n2 = fns.length;
+    int i1 = fn.i1;
+    int i2 = fn.i2;
+    FaultNode fm = null;
+    if (i1>0) {
+      FaultNode f1 = fns[i2][i1-1];
+      FaultNode f2 = (i2>0)?fns[i2-1][i1-1]:null;
+      FaultNode f3 = (i2<n2-1)?fns[i2+1][i1-1]:null;
+      fm = alignDip(fn,f1,f2,f3);
+    }
+    return fm;
+  }
+
+  // Returns the best nabor (if any) below the specified node.
+  private static FaultNode naborBelow(FaultNode fn, FaultNode[][] fns) {
+    int n1 = fns[0].length;
+    int n2 = fns.length;
+    int i1 = fn.i1;
+    int i2 = fn.i2;
+    FaultNode fm = null;
+    if (i1<n1-1) {
+      FaultNode f1 = fns[i2][i1+1];
+      FaultNode f2 = (i2>0)?fns[i2-1][i1+1]:null;
+      FaultNode f3 = (i2<n2-1)?fns[i2+1][i1+1]:null;
+      fm = alignDip(fn,f1,f2,f3);
+    }
+    return fm;
   }
 }
