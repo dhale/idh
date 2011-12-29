@@ -6,16 +6,11 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package fault;
 
-import java.util.ArrayList;
+import java.util.*;
 
 import edu.mines.jtk.dsp.*;
 import static edu.mines.jtk.util.ArrayMath.*;
 import static edu.mines.jtk.util.Parallel.*;
-
-import edu.mines.jtk.util.Stopwatch;
-import dnp.LocalSlopeFinder;
-
-import edu.mines.jtk.mosaic.*;
 
 /**
  * Computes fault likelihoods by scanning over fault orientations.
@@ -247,7 +242,7 @@ public class FaultScanner3 {
     int np = sp.getCount();
     int nt = st.getCount();
     for (int ip=0; ip<np; ++ip) {
-      System.out.println("FaultScanner3.scanF: ip="+ip);
+      trace("FaultScanner3.scanF: ip="+ip);
       final float phi = (float)sp.getValue(ip);
       for (int it=0; it<nt; ++it) {
         final float theta = (float)st.getValue(it);
@@ -299,7 +294,7 @@ public class FaultScanner3 {
     final float[][][] t = new float[n3][n2][n1];
     int np = sp.getCount();
     for (int ip=0; ip<np; ++ip) {
-      System.out.println("FaultScanner3.scanS: ip="+ip);
+      trace("FaultScanner3.scanS: ip="+ip);
       final float phi = (float)sp.getValue(ip);
       Rotator r = new Rotator(phi,n1,n2,n3);
       float[][][][] rsnd = r.rotate(_snd);
@@ -672,10 +667,10 @@ public class FaultScanner3 {
       double f3q = x3min;
       _s2q = new Sampling(n2q,d2q,f2q);
       _s3q = new Sampling(n3q,d3q,f3q);
-      //System.out.println("s2p: n2p="+n2);
-      //System.out.println("s3p: n3p="+n3);
-      //System.out.println("s2q: n2q="+n2q+" d2q="+d2q+" f2q="+f2q);
-      //System.out.println("s3q: n3q="+n3q+" d3q="+d3q+" f3q="+f3q);
+      //trace("s2p: n2p="+n2);
+      //trace("s3p: n3p="+n3);
+      //trace("s2q: n2q="+n2q+" d2q="+d2q+" f2q="+f2q);
+      //trace("s3q: n3q="+n3q+" d3q="+d3q+" f3q="+f3q);
     }
 
     public float[][][][] rotate(float[][][][] p) {
@@ -842,90 +837,79 @@ public class FaultScanner3 {
   ///////////////////////////////////////////////////////////////////////////
   // fault analysis
 
-  /*
-  public Faults findFaults(float[][][][] fpt, int minLength) {
-    return new Faults(fpt,minLength);
+  public static Faults findFaults(float[][][][] fpt, int minSize) {
+    return new Faults(fpt,minSize);
   }
 
   public static class Faults {
-    Faults(float[][][] ft, int minLength) {
-      _n1 = ft[0][0].length;
-      _n2 = ft[0].length;
-      FaultNode[][] fns = findFaultNodes(ft);
-      _fls = findFaultLines(fns,minLength);
+    Faults(float[][][][] fpt, int minSize) {
+      _n1 = fpt[0][0][0].length;
+      _n2 = fpt[0][0].length;
+      _n3 = fpt[0].length;
+      trace("find nodes ...");
+      FaultNode[][][] fns = findFaultNodes(fpt);
+      trace("find surfs ...");
+      _fsl = findFaultSurfs(fns,minSize);
     }
 
-    public void findShifts(float[][] g, float[][] p, int smin, int smax) {
-      for (FaultLine fl:_fls)
-        findShiftsFl(fl,g,p,smin,smax);
-    }
-
-    public void clean() {
-      ArrayList<FaultLine> fls = new ArrayList<FaultLine>();
-      for (FaultLine fl:_fls)
-        if (shiftsValid(fl))
-          fls.add(fl);
-      _fls = fls;
+    public void findShifts(
+      float[][][] g, float[][][][] p, int smin, int smax) 
+    {
+      //for (FaultSurf fs:_fsl)
+      //  findShiftsFs(fs,g,p,smin,smax);
     }
 
     public int getCount() {
-      return _fls.size();
+      return _fsl.size();
     }
 
-    public float[][] getShifts() {
-      float[][] s = new float[_n2][_n1];
-      for (FaultLine fl:_fls) {
-        FaultNode[] fns = fl.getNodes();
-        int nn = fns.length;
+    public float[][][] getShifts() {
+      float[][][] s = new float[_n3][_n2][_n1];
+      for (FaultSurf fs:_fsl) {
+        ArrayList<FaultNode> fns = fs.getNodes();
+        int nn = fns.size();
         for (int in=0; in<nn; ++in) {
-          FaultNode fn = fns[in];
+          FaultNode fn = fns.get(in);
           int i1 = fn.i1;
           int i2m = fn.i2m;
           int i2p = fn.i2p;
-          s[i2m][i1] = fn.smp;
-          s[i2p][i1] = fn.spm;
+          int i3m = fn.i3m;
+          int i3p = fn.i3p;
+          s[i3m][i2m][i1] = -1.0f;
+          s[i3p][i2p][i1] =  1.0f;
         }
       }
       return s;
     }
 
-    public float[][] getLikelihoods() {
-      float[][] f = new float[_n2][_n1];
-      for (FaultLine fl:_fls) {
-        FaultNode[] fns = fl.getNodes();
-        int nn = fns.length;
+    public float[][][] getLikelihoods() {
+      float[][][] f = new float[_n3][_n2][_n1];
+      for (FaultSurf fs:_fsl) {
+        ArrayList<FaultNode> fns = fs.getNodes();
+        int nn = fns.size();
         for (int in=0; in<nn; ++in) {
-          FaultNode fn = fns[in];
+          FaultNode fn = fns.get(in);
           int i1 = fn.i1;
           int i2 = fn.i2;
-          f[i2][i1] = fn.fl;
+          int i3 = fn.i3;
+          f[i3][i2][i1] = fn.fl;
         }
       }
       return f;
     }
 
-    public float[][] getDips() {
-      float[][] t = new float[_n2][_n1];
-      for (FaultLine fl:_fls) {
-        FaultNode[] fns = fl.getNodes();
-        int nn = fns.length;
-        for (int in=0; in<nn; ++in) {
-          FaultNode fn = fns[in];
-          int i1 = fn.i1;
-          int i2 = fn.i2;
-          t[i2][i1] = fn.ft;
-        }
-      }
-      return t;
-    }
-
-    private int _n1,_n2;
-    private ArrayList<FaultLine> _fls;
+    private int _n1,_n2,_n3;
+    private ArrayList<FaultSurf> _fsl;
   }
-  */
 
   // One node in a fault corresponds to one image sample.
   private static class FaultNode {
+    int i1,i2,i3; // sample indices (i1,i2,i3) for this node
+    int i2m,i2p,i3m,i3p; // indices i2,i3 for minus and plus sides of fault
+    float x2,x3; // horizontal fault location in [i2m,i2p],[i3m,i3p]
+    float fl,fp,ft; // fault likelihood, phi and theta
+    float smp,spm; // fault shifts for both mp and pm sides of fault
+    FaultNode above,below,left,right; // node neighbors
     FaultNode(
       int i1, int i2, int i3, 
       int i2m, int i2p, int i3m, int i3p, float x2, float x3, 
@@ -937,18 +921,261 @@ public class FaultScanner3 {
       this.x2 = x2; this.x3 = x3;
       this.fl = fl; this.fp = fp; this.ft = ft;
     }
-    int i1,i2,i3; // sample indices (i1,i2,i3) for this node
-    int i2m,i2p,i3m,i3p; // indices i2,i3 for minus and plus sides of fault
-    float x2,x3; // horizontal fault location in [i2m,i2p],[i3m,i3p]
-    float fl,fp,ft; // fault likelihood, phi and theta
-    float smp,spm; // fault shifts for both mp and pm sides of fault
-    FaultNode above,below,left,right; // node neighbors
+    void flipOrientation() {
+      int i2t = i2m; i2m = i2p; i2p = i2t;
+      int i3t = i3m; i3m = i3p; i3p = i3t;
+      float st = smp; smp = spm; spm = st;
+      FaultNode fnt = left; left = right; right = fnt;
+    }
+    public String toString() {
+      return "("+i1+","+i2+","+i3+")";
+    }
   }
 
-  //private static class FaultSurf {
-  //  ArrayList<FaultLineH> flh;
-  //  ArrayList<FaultLineV> flv;
-  //}
+  private static class FaultSurf {
+    public FaultSurf(FaultNode node, FaultNode[][][] fns) {
+      //System.out.print("linking ... ");
+      linkNodeNabors(node,fns);
+      //System.out.print("cleaning ... ");
+      //cleanNodeNabors();
+      checkNodeNabors();
+      //System.out.println("count="+countNodes());
+    }
+    public int countNodes() {
+      return _nodes.size();
+    }
+    public ArrayList<FaultNode> getNodes() {
+      int n = countNodes();
+      ArrayList<FaultNode> fnl = new ArrayList<FaultNode>(n);
+      for (FaultNode fn:_nodes)
+        fnl.add(fn);
+      return fnl;
+    }
+    HashSet<FaultNode> _nodes = new HashSet<FaultNode>();
+
+    // Recursively link nodes with nabors above, below, left and right.
+    private void linkNodeNabors(FaultNode fn, FaultNode[][][] fns) {
+      ArrayDeque<FaultNode> fnq = new ArrayDeque<FaultNode>();
+      fnq.add(fn);
+      while (!fnq.isEmpty()) {
+        fn = fnq.removeLast();
+        FaultNode fna = null;
+        FaultNode fnb = null;
+        FaultNode fnl = null;
+        FaultNode fnr = null;
+        if (fn.above==null) {
+          fna = naborAbove(fn,fns);
+          if (fna!=null && fn==naborBelow(fna,fns)) {
+            fn.above = fna;
+            fna.below = fn;
+          } else {
+            fna = null;
+          }
+        }
+        if (fn.below==null) {
+          fnb = naborBelow(fn,fns);
+          if (fnb!=null && fn==naborAbove(fnb,fns)) {
+            fn.below = fnb;
+            fnb.above = fn;
+          } else {
+            fnb = null;
+          }
+        }
+        if (fn.left==null) {
+          fnl = naborLeft(fn,fns);
+          if (fnl!=null && fn==naborLeft(fnl,fns))
+            fnl.flipOrientation();
+          if (fnl!=null && fn==naborRight(fnl,fns)) {
+            fn.left = fnl;
+            fnl.right = fn;
+          } else {
+            fnl = null;
+          }
+        }
+        if (fn.right==null) {
+          fnr = naborRight(fn,fns);
+          if (fnr!=null && fn==naborRight(fnr,fns))
+            fnr.flipOrientation();
+          if (fnr!=null && fn==naborLeft(fnr,fns)) {
+            fn.right = fnr;
+            fnr.left = fn;
+          } else {
+            fnr = null;
+          }
+        }
+
+        if ((fn.above!=null || fn.below!=null) &&
+            (fn.left !=null || fn.right!=null)) {
+          _nodes.add(fn);
+          /*
+          if (fn.below!=null && fn.right!=null) {
+            if (linkNaborsLeftRight(fn.below,naborBelow(fn.right,fns),fns))
+              linkNaborsAboveBelow(fn.right,fn.below.right,fns);
+          }
+          if (fn.right!=null && fn.above!=null) {
+            if (linkNaborsLeftRight(fn.above,naborAbove(fn.right,fns),fns))
+              linkNaborsAboveBelow(fn.above.right,fn.right,fns);
+          }
+          if (fn.above!=null && fn.left!=null) {
+            if (linkNaborsLeftRight(naborAbove(fn.left,fns),fn.above,fns))
+              linkNaborsAboveBelow(fn.above.left,fn.left,fns);
+          }
+          if (fn.left!=null && fn.below!=null) {
+            if (linkNaborsLeftRight(naborBelow(fn.left,fns),fn.below,fns))
+              linkNaborsAboveBelow(fn.left,fn.below.left,fns);
+          }
+          */
+        }
+        if (fna!=null) fnq.add(fna);
+        if (fnb!=null) fnq.add(fnb);
+        if (fnl!=null) fnq.add(fnl);
+        if (fnr!=null) fnq.add(fnr);
+      }
+    }
+
+    // Attempts to link above-below nodes. Returns true, if the
+    // nodes are successfully linked (or were already linked) as 
+    // above-below nabors; false, otherwise.
+    private static boolean linkNaborsAboveBelow(
+      FaultNode fna, FaultNode fnb, FaultNode[][][] fns) 
+    {
+      if (fna==null || fnb==null)
+        return false;
+      if (fna.below==fnb.above)
+        return true;
+      FaultNode fnab = naborBelow(fna,fns);
+      FaultNode fnba = naborAbove(fnb,fns);
+      if (fna==fnba && fnb==fnab) {
+        fna.below = fnb;
+        fnb.above = fna;
+        return true;
+      }
+      return false;
+    }
+    
+    // Attempts to link specified left-right nodes. If necessary,
+    // modifies the orientations of those nodes to make them nabors. 
+    // Returns true, if the nodes are successfully linked (or were 
+    // already linked) as left-right nabors; false, otherwise.
+    private static boolean linkNaborsLeftRight(
+      FaultNode fnl, FaultNode fnr, FaultNode[][][] fns) 
+    {
+      if (fnl==null || fnr==null)
+        return false;
+      if (fnl.right==fnr.left)
+        return true;
+      FaultNode fnll = naborLeft(fnl,fns);
+      FaultNode fnlr = naborRight(fnl,fns);
+      FaultNode fnrl = naborLeft(fnr,fns);
+      FaultNode fnrr = naborRight(fnr,fns);
+      if ((fnl==fnrl || fnl==fnrr) && (fnr==fnlr || fnr==fnll)) {
+        if (fnl==fnrr) {
+          fnr.flipOrientation();
+          fnrl = fnrr;
+        }
+        if (fnr==fnll) {
+          fnl.flipOrientation();
+          fnlr = fnll;
+        }
+        fnl.right = fnr;
+        fnr.left = fnl;
+        return true;
+      }
+      return false;
+    }
+
+    private void checkNodeNabors() {
+      for (FaultNode fn:_nodes) {
+        if (fn.right!=null && fn.right.left!=fn)
+          trace("fn.right.left!=fn for fn="+fn);
+        if (fn.left!=null && fn.left.right!=fn)
+          trace("fn.left.right!=fn for fn="+fn);
+        /*
+        if (fn.right!=null && fn.above!=null) {
+          FaultNode fnra = fn.right.above;
+          FaultNode fnal = fn.above.left;
+          if (fnra!=null && fnal!=null && fnra==fnal) {
+            trace("fnra="+fnra+" fnal="+fnal);
+            trace("fnra: phi="+fnra.fp+" theta="+fnra.ft);
+            trace("fnal: phi="+fnal.fp+" theta="+fnal.ft);
+            //assert fnra==null || fnal==null || fnra!=fnal;
+          }
+        } else if (fn.right!=null && fn.below!=null) {
+          FaultNode fnrb = fn.right.below;
+          FaultNode fnbl = fn.below.left;
+          //assert fnrb==null || fnbl==null || fnrb!=fnbl;
+        } else if (fn.left!=null && fn.below!=null) {
+          FaultNode fnlb = fn.left.below;
+          FaultNode fnbr = fn.below.right;
+          //assert fnlb==null || fnbr==null || fnlb!=fnbr;
+        } else if (fn.left!=null && fn.above!=null) {
+          FaultNode fnla = fn.left.above;
+          FaultNode fnar = fn.above.right;
+          //assert fnla==null || fnar==null || fnla!=fnar;
+        }
+        */
+      }
+    }
+
+    // Ensure nodes belong to at least one quad loop of nodes.
+    // Unlinks any nodes for which this condition is not satisfied. 
+    private void cleanNodeNabors() {
+      HashMap<FaultNode,Integer> fnm = new HashMap<FaultNode,Integer>();
+      for (FaultNode fni:_nodes) {
+        FaultNode fnr = fni.right;
+        if (fnr!=null) {
+          FaultNode fna = fnr.above;
+          if (fna!=null) {
+            FaultNode fnl = fna.left;
+            if (fnl!=null) {
+              FaultNode fnb = fnl.below;
+              if (fni==fnb) {
+                fnm.put(fnb,(fnm.containsKey(fnb)?fnm.get(fnb):0)+1);
+                fnm.put(fnr,(fnm.containsKey(fnr)?fnm.get(fnr):0)+1);
+                fnm.put(fna,(fnm.containsKey(fna)?fnm.get(fna):0)+1);
+                fnm.put(fnl,(fnm.containsKey(fnl)?fnm.get(fnl):0)+1);
+              }
+            }
+          }
+        }
+      }
+      int nclean = 0;
+      for (FaultNode fni:fnm.keySet()) {
+        int count = fnm.get(fni);
+        if (count==0) {
+          _nodes.remove(fni);
+          ++nclean;
+        }
+      }
+      if (nclean>0)
+        trace("cnn: nclean="+nclean);
+    }
+  }
+
+  private static ArrayList<FaultSurf> findFaultSurfs(
+    FaultNode[][][] fns, int minSize) 
+  {
+    int n1 = fns[0][0].length;
+    int n2 = fns[0].length;
+    int n3 = fns.length;
+    ArrayList<FaultSurf> fsl = new ArrayList<FaultSurf>();
+    for (int i3=0; i3<n3; ++i3) {
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          //if (i1!=209 || i2!=99 || i3!=29) continue;
+          FaultNode fn = fns[i3][i2][i1];
+          if (fn!=null &&
+              fn.above==null && fn.below==null &&
+               fn.left==null && fn.right==null) {
+            FaultSurf fs = new FaultSurf(fn,fns);
+            if (fs.countNodes()>minSize)
+              fsl.add(fs);
+          }
+        }
+      }
+    }
+    return fsl;
+  }
 
   // A vertical fault line is a linked top-to-bottom list of fault nodes.
   private static class FaultLineV {
@@ -969,11 +1196,12 @@ public class FaultScanner3 {
     }
   }
 
-  // Returns index for specified fault strike:
-  //   0 for phi ~ -90 (or phi ~ 90) (fault strike aligned with axis 3)
+  // Returns index for specified fault strike phi:
+  //   0 for phi ~ -90 (strike aligned with axis 3)
   //   1 for phi ~ -45
-  //   2 for phi ~   0 (fault strike aligned with axis 2)
+  //   2 for phi ~   0 (strike aligned with axis 2)
   //   3 for phi ~  45
+  //   0 for phi ~  90 (strike aligned with axis 3)
   private static int indexPhi(float phi) {
     return (int)((phi+112.5f)/45.0f)%4;
   }
@@ -988,32 +1216,69 @@ public class FaultScanner3 {
     float[][][] fs = new float[n3][n2][n1];
     new RecursiveGaussianFilter(1.0).apply000(f,fs);
     FaultNode[][][] fns = new FaultNode[n3][n2][n1];
+    dumpSlice(9,5,80,120,99,fs);
+    dumpSlice(9,5,80,120,99,p);
     for (int i3=1; i3<n3-1; ++i3) {
+    //for (int i3=131; i3<165; ++i3) {
+    //for (int i3=90; i3<110; ++i3) {
       for (int i2=1; i2<n2-1; ++i2) {
+      //for (int i2=28; i2<59; ++i2) {
+      //for (int i2=115; i2<135; ++i2) {
         for (int i1=0; i1<n1; ++i1) {
-          int ifp = indexPhi(p[i3][i2][i1]);
-          if (ifp==0) {
-            fns[i3][i2][i1] = makeFaultNode0(i1,i2,i3,fs,f,p,t);
-          } else if (ifp==1) {
-            fns[i3][i2][i1] = makeFaultNode1(i1,i2,i3,fs,f,p,t);
-          } else if (ifp==2) {
-            fns[i3][i2][i1] = makeFaultNode2(i1,i2,i3,fs,f,p,t);
-          } else if (ifp==3) {
-            fns[i3][i2][i1] = makeFaultNode3(i1,i2,i3,fs,f,p,t);
+        //for (int i1=80; i1<85; ++i1) {
+          if (f[i3][i2][i1]>FMIN) {
+            float fpi = p[i3][i2][i1];
+            int ifp = indexPhi(fpi);
+            FaultNode fn = null;
+            if (ifp==0) {
+              fn = makeFaultNode0(i1,i2,i3,fs,f,p,t);
+              //if (fn==null) fn = (fpi<=0.0f) ?
+              //  makeFaultNode1(i1,i2,i3,fs,f,p,t) :
+              //  makeFaultNode3(i1,i2,i3,fs,f,p,t);
+            } else if (ifp==1) {
+              fn = makeFaultNode1(i1,i2,i3,fs,f,p,t);
+              //if (fn==null) fn = (fpi<=-45.0f) ?
+              //  makeFaultNode0(i1,i2,i3,fs,f,p,t) :
+              //  makeFaultNode2(i1,i2,i3,fs,f,p,t);
+            } else if (ifp==2) {
+              fn = makeFaultNode2(i1,i2,i3,fs,f,p,t);
+              //if (fn==null) fn = (fpi<=0.0f) ?
+              //  makeFaultNode1(i1,i2,i3,fs,f,p,t) :
+              //  makeFaultNode3(i1,i2,i3,fs,f,p,t);
+            } else if (ifp==3) {
+              fn = makeFaultNode3(i1,i2,i3,fs,f,p,t);
+              //if (fn==null) fn = (fpi<=45.0f) ?
+              //  makeFaultNode2(i1,i2,i3,fs,f,p,t) :
+              //  makeFaultNode0(i1,i2,i3,fs,f,p,t);
+            }
+            fns[i3][i2][i1] = fn;
           }
         }
       }
     }
     return fns;
   }
+  private static void dumpSlice(
+    int n2, int n3, int i1, int i2, int i3, float[][][] x)
+  {
+    float[][] s = new float[n3][n2];
+    for (int j3=i3; j3<i3+n3; ++j3) {
+      for (int j2=i2; j2<i2+n2; ++j2) {
+        s[j3-i3][j2-i2] = x[j3][j2][i1];
+      }
+    }
+    dump(transpose(s));
+  }
   private static FaultNode makeFaultNode0(
     int i1, int i2, int i3, 
     float[][][] fs, float[][][] f, float[][][] p, float[][][] t) 
   {
-    float f0m = fs[i3][i2-1][i1]; //   o
-    float f00 = fs[i3][i2  ][i1]; // - o -  (phi ~ 90 or phi ~ 90)
-    float f0p = fs[i3][i2+1][i1]; //   o
+    float f0m = fs[i3][i2-1][i1]; //   o-
+    float f00 = fs[i3][i2  ][i1]; // - o -  (phi ~ +-90)
+    float f0p = fs[i3][i2+1][i1]; //   o+
     FaultNode fn = null;
+    if (i1==80 && i2==121 && i3==100)
+      trace("f0m="+f0m+" f00="+f00+" f0p="+f0p);
     if (f0m<f00 && f0p<f00) {
       float u = peak(f0m,f00,f0p);
       float x2 = i2+u;
@@ -1023,10 +1288,13 @@ public class FaultScanner3 {
       if (u>=0.0f) {
         ++i2p;
       } else {
-        --i2p; 
+        --i2m; 
       }
       fn = new FaultNode(i1,i2,i3,i2m,i2p,i3m,i3p,x2,x3,
         f[i3][i2][i1],p[i3][i2][i1],t[i3][i2][i1]);
+      if (i1==80 && 120<i2 && i2<130 && 95<i3 && i3<105)
+        trace("fn="+fn+" i2m="+i2m+" i2p="+i2p+" i3m="+i3m+" i3p="+i3p+
+              " p="+p[i3][i2][i1]);
     }
     return fn;
   }
@@ -1034,9 +1302,9 @@ public class FaultScanner3 {
     int i1, int i2, int i3, 
     float[][][] fs, float[][][] f, float[][][] p, float[][][] t) 
   {
-    float fmm = fs[i3-1][i2-1][i1]; // o  / 
+    float fmm = fs[i3-1][i2-1][i1]; // o- / 
     float f00 = fs[i3  ][i2  ][i1]; //   o    (phi ~ -45)
-    float fpp = fs[i3+1][i2+1][i1]; // /   o
+    float fpp = fs[i3+1][i2+1][i1]; // /   o+
     FaultNode fn = null;
     if (fmm<f00 && fpp<f00) {
       float u = peak(fmm,f00,fpp);
@@ -1047,7 +1315,7 @@ public class FaultScanner3 {
       if (u>=0.0f) {
         ++i2p; ++i3p; 
       } else {
-        --i2p; --i3m;
+        --i2m; --i3m;
       }
       fn = new FaultNode(i1,i2,i3,i2m,i2p,i3m,i3p,x2,x3,
         f[i3][i2][i1],p[i3][i2][i1],t[i3][i2][i1]);
@@ -1059,7 +1327,7 @@ public class FaultScanner3 {
     float[][][] fs, float[][][] f, float[][][] p, float[][][] t) 
   {
     float fm0 = fs[i3-1][i2][i1]; //    |
-    float f00 = fs[i3  ][i2][i1]; // o  o  o (phi ~ 0) 
+    float f00 = fs[i3  ][i2][i1]; // o- o  o+ (phi ~ 0) 
     float fp0 = fs[i3+1][i2][i1]; //    |
     FaultNode fn = null;
     if (fm0<f00 && fp0<f00) {
@@ -1082,20 +1350,22 @@ public class FaultScanner3 {
     int i1, int i2, int i3, 
     float[][][] fs, float[][][] f, float[][][] p, float[][][] t) 
   {
-    float fpm = fs[i3+1][i2-1][i1]; //  \  o
+    float fpm = fs[i3+1][i2-1][i1]; //  \  o+
     float f00 = fs[i3  ][i2  ][i1]; //   o    (phi ~ 45)
-    float fmp = fs[i3-1][i2+1][i1]; // o  \
+    float fmp = fs[i3-1][i2+1][i1]; // o- \
+    if (i1==80 && i2==126 && i3==102)
+      trace("fpm="+fpm+" f00="+f00+" fmp="+fmp);
     FaultNode fn = null;
     if (fpm<f00 && fmp<f00) {
-      float u = peak(fpm,f00,fmp);
+      float u = peak(fmp,f00,fpm);
       float x2 = i2-u;
       float x3 = i3+u;
       int i2m = i2, i2p = i2;
       int i3m = i3, i3p = i3;
       if (u>=0.0f) {
-        --i2p; ++i3p; 
+        --i2p; ++i3p;
       } else {
-        ++i2p; --i3m;
+        ++i2m; --i3m;
       }
       fn = new FaultNode(i1,i2,i3,i2m,i2p,i3m,i3p,x2,x3,
         f[i3][i2][i1],p[i3][i2][i1],t[i3][i2][i1]);
@@ -1108,6 +1378,170 @@ public class FaultScanner3 {
     float c2 = 0.5f*(fc+fa)-fb;
     float u = (c2<0.0f)?-0.5f*c1/c2:0.0f;
     return u;
+  }
+
+  // Minimum acceptable fault likelihood.
+  private static final float FMIN = 0.1f;
+
+  // Minimum acceptable dot product of two aligned vectors. Nodes can 
+  // be neighbors only if their dip/strike vectors are so aligned.
+  private static final float AMIN = 0.9f;
+
+  // Returns dot product of dip vectors for two specified nodes.
+  private static float dotDipVectors(FaultNode fna, FaultNode fnb) {
+    float pa = toRadians(fna.fp);
+    float ta = toRadians(fna.ft);
+    float pb = toRadians(fnb.fp);
+    float tb = toRadians(fnb.ft);
+    float cpa = cos(pa), cta = cos(ta);
+    float spa = sin(pa), sta = sin(ta);
+    float cpb = cos(pb), ctb = cos(tb);
+    float spb = sin(pb), stb = sin(tb);
+    float wa1 = cta, wa2 = -spa*sta, wa3 = cpa*sta;
+    float wb1 = ctb, wb2 = -spb*stb, wb3 = cpb*stb;
+    return wa1*wb1+wa2*wb2+wa3*wb3;
+  }
+
+  // Returns dot product of strike vectors for two specified nodes.
+  private static float dotStrikeVectors(FaultNode fna, FaultNode fnb) {
+    float pa = toRadians(fna.fp);
+    float pb = toRadians(fnb.fp);
+    float cpa = cos(pa);
+    float spa = sin(pa);
+    float cpb = cos(pb);
+    float spb = sin(pb);
+    return cpa*cpb+spa*spb;
+  }
+
+  // Determines which (if any) of nodes fa,fb,fc is dip-aligned with fn.
+  private static FaultNode alignDip(
+    FaultNode fn, FaultNode fa, FaultNode fb, FaultNode fc) 
+  {
+    float da = (fa!=null)?dotDipVectors(fn,fa):0.0f;
+    float db = (fb!=null)?dotDipVectors(fn,fb):0.0f;
+    float dc = (fc!=null)?dotDipVectors(fn,fc):0.0f;
+    float dm = max(da,db,dc);
+    FaultNode fm = null;
+    if (dm>=AMIN) 
+      fm = (db==dm)?fb:(da==dm)?fa:fc;
+    return fm;
+  }
+
+  // Determines which (if any) of nodes fa,fb,fc is strike-aligned with fn.
+  private static FaultNode alignStrike(
+    FaultNode fn, FaultNode fa, FaultNode fb, FaultNode fc) 
+  {
+    float da = (fa!=null)?dotStrikeVectors(fn,fa):0.0f;
+    float db = (fb!=null)?dotStrikeVectors(fn,fb):0.0f;
+    float dc = (fc!=null)?dotStrikeVectors(fn,fc):0.0f;
+    if (da<0.0f) da = -da;
+    if (db<0.0f) db = -db;
+    if (dc<0.0f) dc = -dc;
+    float dm = max(da,db,dc);
+    FaultNode fm = null;
+    if (dm>=AMIN) 
+      fm = (db==dm)?fb:(da==dm)?fa:fc;
+    return fm;
+  }
+
+  // Returns node with specified indices, or null if out of bounds.
+  private static FaultNode node(int i1, int i2, int i3, FaultNode[][][] fns) {
+    int n1 = fns[0][0].length;
+    int n2 = fns[0].length;
+    int n3 = fns.length;
+    return (0<=i1 && i1<n1 && 0<=i2 && i2<n2 && 0<=i3 && i3<n3) ?
+      fns[i3][i2][i1]:
+      null;
+  }
+
+  // Returns the best nabor (if any) above the specified node.
+  private static FaultNode naborAbove(FaultNode fn, FaultNode[][][] fns) {
+    return naborAboveBelow(-1,fn,fns);
+  }
+  // Returns the best nabor (if any) below the specified node.
+  private static FaultNode naborBelow(FaultNode fn, FaultNode[][][] fns) {
+    return naborAboveBelow(1,fn,fns);
+  }
+  private static FaultNode naborAboveBelow(
+    int k, FaultNode fn, FaultNode[][][] fns) 
+  {
+    int n1 = fns[0][0].length;
+    int n2 = fns[0].length;
+    int n3 = fns.length;
+    int i1 = fn.i1;
+    int i2 = fn.i2;
+    int i3 = fn.i3;
+    FaultNode fa = null;
+    FaultNode fb = node(i1+k,i2,i3,fns);
+    FaultNode fc = null;
+    int ifp = indexPhi(fn.fp);
+    if (ifp==0) {
+      fa = node(i1+k,i2-1,i3,fns);
+      fc = node(i1+k,i2+1,i3,fns);
+    } else if (ifp==1) {
+      fa = node(i1+k,i2-1,i3-1,fns);
+      fc = node(i1+k,i2+1,i3+1,fns);
+    } else if (ifp==2) {
+      fa = node(i1+k,i2,i3-1,fns);
+      fc = node(i1+k,i2,i3+1,fns);
+    } else if (ifp==3) {
+      fa = node(i1+k,i2+1,i3-1,fns);
+      fc = node(i1+k,i2-1,i3+1,fns);
+    }
+    return alignDip(fn,fa,fb,fc);
+  }
+
+  // Returns the best nabor (if any) left of the specified node.
+  private static FaultNode naborLeft(FaultNode fn, FaultNode[][][] fns) {
+    return naborLeftRight(-1,fn,fns);
+  }
+  private static FaultNode naborRight(FaultNode fn, FaultNode[][][] fns) {
+    return naborLeftRight(1,fn,fns);
+  }
+  private static FaultNode naborLeftRight(
+    int k, FaultNode fn, FaultNode[][][] fns) 
+  {
+    int n1 = fns[0][0].length;
+    int n2 = fns[0].length;
+    int n3 = fns.length;
+    int i1 = fn.i1;
+    int i2 = fn.i2;
+    int i3 = fn.i3;
+    int i2m = fn.i2m, i2p = fn.i2p;
+    int i3m = fn.i3m, i3p = fn.i3p;
+    FaultNode fa = null;
+    FaultNode fb = null;
+    FaultNode fc = null;
+    if (i3m==i3p) {
+      int k2 = (k<0)?i2p-i2m:i2m-i2p;
+      assert k2==-1 || k2==1;
+      fa = node(i1,i2-k2,i3-k2,fns);
+      fb = node(i1,i2   ,i3-k2,fns);
+      fc = node(i1,i2+k2,i3-k2,fns);
+    } else if (i2m<i2p && i3m<i3p) {
+      int k2 = (k<0)?i2p-i2m:i2m-i2p;
+      int k3 = (k<0)?i3p-i3m:i3m-i3p;
+      assert k2==-1 || k2==1;
+      assert k3==-1 || k3==1;
+      fa = node(i1,i2   ,i3-k3,fns);
+      fb = node(i1,i2+k2,i3-k3,fns);
+      fc = node(i1,i2+k2,i3   ,fns);
+    } else if (i2m==i2p) {
+      int k3 = (k<0)?i3p-i3m:i3m-i3p;
+      assert k3==-1 || k3==1;
+      fa = node(i1,i2+k3,i3-k3,fns);
+      fb = node(i1,i2+k3,i3   ,fns);
+      fc = node(i1,i2+k3,i3+k3,fns);
+    } else {
+      int k2 = (k<0)?i2p-i2m:i2m-i2p;
+      int k3 = (k<0)?i3p-i3m:i3m-i3p;
+      assert k2==-1 || k2==1;
+      assert k3==-1 || k3==1;
+      fa = node(i1,i2-k2,i3   ,fns);
+      fb = node(i1,i2-k2,i3+k3,fns);
+      fc = node(i1,i2   ,i3+k3,fns);
+    }
+    return alignStrike(fn,fa,fb,fc);
   }
 
   /*
@@ -1252,64 +1686,37 @@ public class FaultScanner3 {
   }
   */
 
-  // Minimum acceptable dot product of two aligned fault dip vectors.
-  // Nodes can be neighbors only if their dip vectors are so aligned.
-  private static final float AMIN = 0.9f;
-
-  // Returns dot product of dip vectors for two specified nodes.
-  private static float dotDipVectors(FaultNode fn1, FaultNode fn2) {
-    float t1 = toRadians(fn1.ft);
-    float t2 = toRadians(fn2.ft);
-    float c1 = cos(t1);
-    float c2 = cos(t2);
-    float s1 = sin(t1);
-    float s2 = sin(t2);
-    return c1*c2+s1*s2;
-  }
-
-  // Determines which (if any) of nodes f1,f2,f3 is aligned with fn.
-  private static FaultNode alignDip(
-    FaultNode fn, FaultNode f1, FaultNode f2, FaultNode f3) 
-  {
-    float a1 = (f1!=null)?dotDipVectors(fn,f1):0.0f;
-    float a2 = (f2!=null)?dotDipVectors(fn,f2):0.0f;
-    float a3 = (f3!=null)?dotDipVectors(fn,f3):0.0f;
-    float am = max(a1,a2,a3);
-    FaultNode fm = null;
-    if (am>=AMIN) 
-      fm = (a1==am)?f1:(a2==am)?f2:f3;
-    return fm;
-  }
-
-  // Returns the best nabor (if any) above the specified node.
-  private static FaultNode naborAbove(FaultNode fn, FaultNode[][] fns) {
-    int n1 = fns[0].length;
-    int n2 = fns.length;
-    int i1 = fn.i1;
-    int i2 = fn.i2;
-    FaultNode fm = null;
-    if (i1>0) {
-      FaultNode f1 = fns[i2][i1-1];
-      FaultNode f2 = (i2>0)?fns[i2-1][i1-1]:null;
-      FaultNode f3 = (i2<n2-1)?fns[i2+1][i1-1]:null;
-      fm = alignDip(fn,f1,f2,f3);
+  public static float[][][][] fakeFpt(int n1, int n2, int n3) {
+    Random r = new Random(314159);
+    float[][][] f = new float[n3][n2][n1];
+    float[][][] p = new float[n3][n2][n1];
+    float[][][] t = new float[n3][n2][n1];
+    float c2 = n2/2+0.5f;
+    float c3 = n3/2+0.5f;
+    float rc = min(n2,n3)/3;
+    for (int i1=0; i1<n1; ++i1) {
+      float rs = 0.5f+0.5f*i1/n1;
+      for (int i3=0; i3<n3; ++i3) {
+        float x3 = i3-c3;
+        for (int i2=0; i2<n2; ++i2) {
+          float x2 = i2-c2;
+          float y2 = x2+0.0f*r.nextFloat();
+          float y3 = x3+0.0f*r.nextFloat();
+          float rx = sqrt(y2*y2+y3*y3);
+          float dr = rx-rs*rc;
+          float fx = exp(-0.125f*dr*dr);
+          float px = toDegrees(atan(-x2/x3));
+          float tx = 0.0f;
+          f[i3][i2][i1] = fx;
+          p[i3][i2][i1] = px;
+          t[i3][i2][i1] = tx;
+        }
+      }
     }
-    return fm;
+    return new float[][][][]{f,p,t};
   }
 
-  // Returns the best nabor (if any) below the specified node.
-  private static FaultNode naborBelow(FaultNode fn, FaultNode[][] fns) {
-    int n1 = fns[0].length;
-    int n2 = fns.length;
-    int i1 = fn.i1;
-    int i2 = fn.i2;
-    FaultNode fm = null;
-    if (i1<n1-1) {
-      FaultNode f1 = fns[i2][i1+1];
-      FaultNode f2 = (i2>0)?fns[i2-1][i1+1]:null;
-      FaultNode f3 = (i2<n2-1)?fns[i2+1][i1+1]:null;
-      fm = alignDip(fn,f1,f2,f3);
-    }
-    return fm;
+  private static void trace(String s) {
+    System.out.println(s);
   }
 }

@@ -15,6 +15,7 @@ from edu.mines.jtk.awt import *
 from edu.mines.jtk.dsp import *
 from edu.mines.jtk.io import *
 from edu.mines.jtk.mosaic import *
+from edu.mines.jtk.ogl.Gl import *
 from edu.mines.jtk.sgl import *
 from edu.mines.jtk.util import *
 from edu.mines.jtk.util.ArrayMath import *
@@ -31,7 +32,70 @@ def main(args):
   #goScan()
   #goThin()
   #goSmooth()
-  goTrack()
+  #goTrack()
+  #goShifts()
+  goSurfing()
+  #goSurfingFake()
+
+def goSurfingFake():
+  n1,n2,n3 = 101,102,103
+  #n1,n2,n3 = 51,52,53
+  #n1,n2,n3 = 41,42,43
+  #n1,n2,n3 = 11,12,13
+  g = sub(randfloat(n1,n2,n3),0.5)
+  f,p,t = Util.fakeFpt(n1,n2,n3)
+  fs = FaultSurfer3([f,p,t])
+  fs.setThreshold(0.5)
+  quads = fs.findQuads()
+  quads = fs.linkQuads(quads)
+  surfs = fs.findSurfs(quads)
+  surfs = fs.getSurfsWithSize(surfs,1000)
+  plot3(g,f,0,1,surfs=surfs)
+
+def goSurfing():
+  def subset(s1,s2,s3,g):
+    n1,j1 = 70,130 # deeper coherent
+    #n1,j1 = 130,0 # shallow incoherent
+    s1 = Sampling(n1,s1.delta,s1.first+j1*s1.delta)
+    g = copy(n1,s2.count,s3.count,j1,0,0,g)
+    return s1,s2,s3,g
+  s1,s2,s3,g = imageF3d()
+  g = slog(g)
+  f = readImage(s1,s2,s3,"fl")
+  p = readImage(s1,s2,s3,"fp")
+  t = readImage(s1,s2,s3,"ft")
+  s1,s2,s3,g = subset(s1,s2,s3,g)
+  s1,s2,s3,f = subset(s1,s2,s3,f)
+  s1,s2,s3,p = subset(s1,s2,s3,p)
+  s1,s2,s3,t = subset(s1,s2,s3,t)
+  fs = FaultSurfer3([f,p,t])
+  fs.setThreshold(0.5)
+  quads = fs.findQuads()
+  quads = fs.linkQuads(quads)
+  surfs = fs.findSurfs(quads)
+  surfs = fs.getSurfsWithSize(surfs,1000)
+  plot3(g,surfs=surfs)
+  #plot3(g)
+
+def goShifts():
+  s1,s2,s3,g = imageF3d()
+  f = readImage(s1,s2,s3,"fl")
+  p = readImage(s1,s2,s3,"fp")
+  t = readImage(s1,s2,s3,"ft")
+  #f,p,t = FaultScanner3.fakeFpt(s1.count,s2.count,s3.count)
+  #plot3(sub(1.0,f),None,0,1)
+  g = slog(g)
+  #g = readImage(s1,s2,s3,"gs")
+  #plot3(sub(1.0,f),None,0,1)
+  #plot3(g,f,0,1)
+  #plot3(g,p)
+  faults = FaultScanner3.findFaults([f,p,t],1000)
+  print "faults: count =",faults.count
+  f = faults.getLikelihoods()
+  plot3(g,f,0,1)
+  #s = faults.getShifts()
+  #plot3(g,s)
+  return
 
 def goTrack():
   s1,s2,s3,g = imageF3d()
@@ -279,7 +343,62 @@ def imageF3d():
 #############################################################################
 # plotting
 
-def plot3(f,g=None,gmin=None,gmax=None,xyz=None):
+def plot2(f,x23p=None,x23l=None,fmin=None,fmax=None,
+          label=None,title=None,png=None):
+  n1 = len(f[0])
+  n2 = len(f)
+  panel = panel2()
+  if label:
+    panel.addColorBar(label)
+  else:
+    panel.addColorBar()
+  if title:
+    panel.setTitle(title)
+  panel.setColorBarWidthMinimum(100)
+  panel.setLimits(0,0,n1-1,n2-1)
+  #panel.setLimits(0,0,100,100)
+  #panel.setLimits(100,160,130,190)
+  pv = panel.addPixels(f)
+  pv.setInterpolation(PixelsView.Interpolation.NEAREST)
+  pv.setColorModel(ColorMap.JET)
+  if fmin==None: fmin = min(f)
+  if fmax==None: fmax = max(f)
+  pv.setClips(fmin,fmax)
+  if x23p:
+    x2p,x3p = x23p
+    pv = panel.addPoints(x2p,x3p)
+    pv.setLineStyle(PointsView.Line.NONE)
+    pv.setMarkStyle(PointsView.Mark.FILLED_CIRCLE)
+    pv.setMarkSize(5.0)
+  if x23l:
+    x2l,x3l = x23l
+    pv = panel.addPoints(x2l,x3l)
+    pv.setLineWidth(2.0)
+  frame2(panel,png)
+
+def panel2():
+  #panel = PlotPanel(1,1,
+  #  PlotPanel.Orientation.X1DOWN_X2RIGHT,
+  #  PlotPanel.AxesPlacement.NONE)
+  panel = PlotPanel(1,1,
+    PlotPanel.Orientation.X1DOWN_X2RIGHT)
+  return panel
+
+def frame2(panel,png=None):
+  frame = PlotFrame(panel)
+  frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE)
+  #frame.setFontSizeForPrint(8,240)
+  #frame.setSize(1240,774)
+  #frame.setFontSizeForSlide(1.0,0.8)
+  #frame.setSize(1290,777)
+  #frame.setSize(1490,977)
+  frame.setSize(980,890)
+  frame.setVisible(True)
+  if png and pngDir:
+    frame.paintToPng(400,3.2,pngDir+"/"+png+".png")
+  return frame
+
+def plot3(f,g=None,gmin=None,gmax=None,xyz=None,surfs=None):
   n1 = len(f[0][0])
   n2 = len(f[0])
   n3 = len(f)
@@ -288,18 +407,71 @@ def plot3(f,g=None,gmin=None,gmax=None,xyz=None):
     ipg = sf.addImagePanels(f)
   else:
     ipg = ImagePanelGroup2(f,g)
+    if gmin and gmax:
+      ipg.setClips2(gmin,gmax)
+    if gmin==0.0 and gmax==1.0:
+      updateColorModel2(ipg,0.8)
     sf.world.addChild(ipg)
-  if xyz!=None:
+  if xyz:
     pg = PointGroup(xyz)
+    ss = StateSet()
     ps = PointState()
     ps.setSize(3.0)
-    ss = StateSet()
     ss.add(ps)
     pg.setStates(ss)
     sf.world.addChild(pg)
-  ipg.setSlices(209,12,18)
+  if surfs:
+    sg = Group()
+    ss = StateSet()
+    lms = LightModelState()
+    lms.setTwoSide(True)
+    ss.add(lms)
+    ms = MaterialState()
+    ms.setSpecular(Color.GRAY)
+    ms.setShininess(100.0)
+    ms.setColorMaterial(GL_AMBIENT_AND_DIFFUSE)
+    ms.setEmissiveBack(Color(0.0,0.0,0.5))
+    ss.add(ms)
+    sg.setStates(ss)
+    for surf in surfs:
+      xyz,uvw,rgb = surf.getXyzUvwRgb()
+      #qg = QuadGroup(False,xyz,rgb)
+      qg = QuadGroup(True,xyz,rgb)
+      #qg = QuadGroup(xyz,uvw,rgb)
+      qg.setStates(None)
+      sg.addChild(qg)
+    sf.world.addChild(sg)
+  #ipg.setSlices(209,12,18)
+  ipg.setSlices(200,0,0)
   sf.setSize(1200,1100)
-  sf.orbitView.setScale(2.5)
+  sf.setWorldSphere(n3/2,n2/2,n1/2,0.5*sqrt(n1*n1+n2*n2+n3*n3))
+  sf.orbitView.setScale(1.5)
+
+def updateColorModel2(ipg,alpha):
+  n = 256
+  r = zerobyte(n)
+  g = zerobyte(n)
+  b = zerobyte(n)
+  a = zerobyte(n)
+  icm = ipg.getColorModel2()
+  icm.getReds(r)
+  icm.getGreens(g)
+  icm.getBlues(b)
+  for i in range(n):
+    ai = int(255.0*alpha*i/n)
+    if ai>127:
+      ai -= 256
+    a[i] = ai
+  #if alpha<1.0:
+    #r[n/2] = r[n/2-1] = -1
+    #g[n/2] = g[n/2-1] = -1
+    #b[n/2] = b[n/2-1] = -1
+    #a[n/2  ] = a[n/2-1] = 0
+    #a[n/2+1] = a[n/2-2] = 0
+    #a[n/2+2] = a[n/2-3] = 0
+    #a[0] = a[1] = 0
+  icm = IndexColorModel(8,n,r,g,b,a)
+  ipg.setColorModel2(icm)
 
 #############################################################################
 # Do everything on Swing thread.

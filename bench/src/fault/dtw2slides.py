@@ -24,8 +24,8 @@ from util import FakeData
 
 #############################################################################
 
-#pngDir = "./png"
-pngDir = None
+pngDir = "./png"
+#pngDir = None
 
 seed = abs(Random().nextInt()/1000000)
 seed = 580
@@ -34,15 +34,16 @@ print "seed =",seed
 
 nrms = 2.00
 npass = 5
-stretchMax = 1.0
-showLsf = False
-smoothShifts = False
+stretchMax = 0.20
+showLsf = True
+smoothShifts = True
+smoothSigma = 8
 
 def main(args):
   #goTestImages()
-  #goFaultImages()
   goTestShifts() #smax = 0.20, nrms = 2.0
-  #goFaultShifts() #smax = 0.25, npass = 3
+  #goFaultImages()
+  #goFaultShifts()
 
 def goTestShifts():
   shift = 16
@@ -53,89 +54,76 @@ def goTestShifts():
   dw.setStretchMax(stretchMax)
   f,g,s = makeTestImages()
   fclips = (min(f),max(f))
-  plot(f,"f",fclips)
-  plot(g,"g",fclips)
+  plot(f,fclips,label="Amplitude",png="asynf")
+  plot(g,fclips,label="Amplitude",png="asyng")
   e = dw.computeErrors(f,g)
   if npass>=1:
     u = shifts1(dw,e);
     print "errors      u1: sum =",dw.sumErrors(e,u)
-    plot(u,"u1",uclips)
+    plot(u,uclips,label="Lag (samples)",png="asynu1")
   if npass>=2:
     u = shifts12(dw,e)
     print "errors     u12: sum =",dw.sumErrors(e,u)
-    plot(u,"u12",uclips)
+    plot(u,uclips,label="Lag (samples)",png="asynu2")
   if npass>=3:
     u = shifts121(dw,e)
     print "errors    u121: sum =",dw.sumErrors(e,u)
-    plot(u,"u121",uclips)
+    plot(u,uclips,label="Lag (samples)",png="asynu3")
   if npass>=4:
     u = shifts1212(dw,e)
     print "errors   u1212: sum =",dw.sumErrors(e,u)
-    plot(u,"u1212",uclips)
+    plot(u,uclips,label="Lag (samples)",png="asynu4")
   if npass>=5:
     u = shifts12121(dw,e)
     print "errors  u12121: sum =",dw.sumErrors(e,u)
-    plot(u,"u12121",uclips)
+    plot(u,uclips,label="Lag (samples)",png="asynu5")
   if showLsf:
     v = copy(u)
     LocalShiftFinder(ml,sigma).find1(-ml,ml,f,g,v)
     print "errors   u lsf: sum =",dw.sumErrors(e,v)
-    plot(v,"u lsf",uclips)
+    plot(v,uclips,label="Lag (samples)",png="asynv")
   if s:
     print "errors       s: sum =",dw.sumErrors(e,s)
-    plot(s,"s")
+    plot(s,uclips,label="Lag (samples)",png="asyns")
   h = align(u,f,g)
-  plot(h,"h",fclips)
+  plot(h,fclips,label="Amplitude",png="asynh")
 
 def goFaultShifts():
+  global smoothShifts; smoothShifts = True
+  global smoothSigma; smoothSigma = 2.0
   shift = 10
   ml = 2*shift
   uclips = (0,8)
   dw = DynamicWarping(0,ml)
-  dw.setStretchMax(stretchMax)
+  dw.setStretchMax(0.25)
   f,g = makeFaultImages()
-  fclips = (min(f),max(f))
-  plot(f,"f",fclips)
-  plot(g,"g",fclips)
+  fclips = (-3.0,3.0)
+  plot(f,fclips,label="Amplitude",png="faultf")
+  plot(g,fclips,label="Amplitude",png="faultg")
   e = dw.computeErrors(f,g)
-  if npass>=1:
-    u = shifts1(dw,e);
-    print "errors      u1: sum =",dw.sumErrors(e,u)
-    plot(u,"u1",uclips)
-  if npass>=2:
-    u = shifts12(dw,e)
-    print "errors     u12: sum =",dw.sumErrors(e,u)
-    plot(u,"u12",uclips)
-  if npass>=3:
-    u = shifts121(dw,e)
-    print "errors    u121: sum =",dw.sumErrors(e,u)
-    plot(u,"u121",uclips)
-  if npass>=4:
-    u = shifts1212(dw,e)
-    print "errors   u1212: sum =",dw.sumErrors(e,u)
-    plot(u,"u1212",uclips)
-  if npass>=5:
-    u = shifts12121(dw,e)
-    print "errors  u12121: sum =",dw.sumErrors(e,u)
-    plot(u,"u12121",uclips)
-  if showLsf:
-    v = copy(u)
-    LocalShiftFinder(ml,shift).find1(0,ml,f,g,v)
-    print "errors   u lsf: sum =",dw.sumErrors(e,v)
-    plot(v,"u lsf",uclips)
+  u = shifts121(dw,e)
+  uclips = (0.0,8*4)
+  plot(mul(4,u),uclips,label="Fault throw (ms)",png="faultu")
+  #v = copy(u)
+  #LocalShiftFinder(ml,shift).find1(0,ml,f,g,v)
+  #plot(mul(4,v),uclips,label="Fault throw (ms)",png="faultv")
   h = align(u,f,g)
-  plot(h,"h",fclips)
+  plot(h,fclips,label="Amplitude",png="faulth")
 
 def goTestImages():
   f,g,s = makeTestImages()
-  plot(f,"f")
-  plot(g,"g")
-  plot(s,"s")
+  plot(f,title="f")
+  plot(g,title="g")
+  plot(s,title="s")
 
 def goFaultImages():
   f,g = makeFaultImages()
-  plot(f,"f")
-  plot(g,"g")
+  clips = (-3,3)
+  plot(f,clips,label="Amplitude",png="faultf")
+  plot(g,clips,label="Amplitude",png="faultg")
+
+def slog(f):
+  return mul(sgn(f),log(add(1.0,abs(f))))
 
 def makeTestImages():
   dip = 30.0
@@ -143,6 +131,7 @@ def makeTestImages():
   n1,n2 = 501,501; f = FakeData.seismic2d2011A(n1,n2,dip)
   #n1,n2 = 462,951; f = readImage("/data/seis/f3d/f3d75.dat",n1,n2)
   f = sub(f,sum(f)/n1/n2)
+  #f = slog(f)
   #w = Warp2.constant(shift,0.0,n1,n2)
   w = Warp2.sinusoid(shift,0.0,n1,n2)
   g = w.warp(f)
@@ -165,7 +154,7 @@ def makeFaultImages():
 def smooth(u):
   v = copy(u)
   if smoothShifts:
-    rgf = RecursiveGaussianFilter(8); rgf.apply00(u,v)
+    rgf = RecursiveGaussianFilter(smoothSigma); rgf.apply00(u,v)
   return v
 
 def normalize(x):
@@ -275,17 +264,40 @@ def addNoise(nrms,f,seed=0):
 #############################################################################
 # plotting
 
-def plot(f,title=None,clips=None):
-  #sp = SimplePlot.asPixels(f)
+""" sampling of 3D image subset used to extract fault images
+  j1,j2,j3 = 240, 50,100
+  n1,n2,n3 = 222,221,220
+  d1,d2,d3 = 0.004,0.025,0.025
+  f1,f2,f3 = 0.964,0.000,0.000
+"""
+
+def plot(f,clips=None,title=None,label=None,png=None):
   sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
-  sp.plotPanel.setColorBarWidthMinimum(100)
-  pv = sp.addPixels(f)
+  sp.setBackground(Color(0xfd,0xfe,0xff)) # easy to make transparent
+  sp.plotPanel.setColorBarWidthMinimum(160)
+  s12 = len(f)==220
+  if s12:
+    s1 = Sampling(222,0.004,0.964)
+    s2 = Sampling(220,0.025,0.000)
+    pv = sp.addPixels(s1,s2,f)
+  else:
+    pv = sp.addPixels(f)
   if clips:
     pv.setClips(clips[0],clips[1])
   if title:
     sp.setTitle(title)
-  sp.addColorBar()
-  sp.setSize(900,900)
+  if label:
+    sp.addColorBar(label)
+  if s12:
+    sp.setHLabel("Distance along fault strike (km)")
+    sp.setVLabel("Time (s)")
+    if clips[0]==0.0:
+      pv.setColorModel(ColorMap.JET)
+  sp.setFontSizeForSlide(1.0,0.9)
+  sp.setSize(1150,815)
+  sp.setVisible(True)
+  if png and pngDir:
+    sp.paintToPng(400,3.2,pngDir+"/"+png+".png")
 
 #############################################################################
 # Do everything on Swing thread.

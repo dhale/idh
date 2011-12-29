@@ -38,39 +38,45 @@ def main(args):
 
 def getImage():
   #return imageSyn()
-  #return imageF3d()
-  return imageTpd()
+  return imageF3d()
+  #return imageTpd()
 
 def goShifts():
   s1,s2,g = getImage()
   g = slog(g)
-  plot2(s1,s2,g,title="log input")
+  #plot2(s1,s2,g,title="log input")
   fse = FaultSemblance()
   g = fse.taper(10,g)
   p = fse.slopes(g)
   sn,sd = fse.semblanceNumDen(p,g)
   fsc = FaultScanner2(sigmaTheta,[sn,sd],smoother)
   f,t = fsc.scan(-15,15)
-  plot2(s1,s2,g,f,gmin=0,gmax=1,title="fault likelihood")
+  #plot2(s1,s2,g,f,gmin=0,gmax=1,title="fault likelihood")
   #ff,tt = fsc.thin([f,t])
   #plot2(s1,s2,g,ff,gmin=0,gmax=1,title="fault likelihood")
   shiftMin,shiftMax = -20,20
   faults = fsc.findFaults([f,t],shiftMax-shiftMin);
   ff = faults.getLikelihoods()
-  plot2(s1,s2,g,ff,gmin=0,gmax=1,title="fault likelihood")
+  #plot2(s1,s2,g,ff,gmin=0,gmax=1,title="fault likelihood")
+  plot2(s1,s2,g,ff,gmin=0,gmax=1,label="Fault likelihood",png="flg")
   g = fsc.smooth(4,p,ff,g)
-  plot2(s1,s2,g,ff,gmin=0,gmax=1,title="input smoothed")
+  #plot2(s1,s2,g,ff,gmin=0,gmax=1,title="input smoothed")
+  plot2(s1,s2,g,ff,gmin=0,gmax=1,label="Fault likelihood",png="flgs")
+  plot2(s1,s2,g,label="Log amplitude",png="gs")
   p = fse.slopes(g)
   faults.findShifts(g,p,shiftMin,shiftMax)
   faults.clean()
   s = faults.getShifts()
+  s = mul(s1.delta*1000.0,s)
   print "s min =",min(s)," max =",max(s)
-  plot2(s1,s2,g,s,gmin=-8,gmax=8,title="fault throws")
+  #plot2(s1,s2,g,s,gmin=-8,gmax=8,title="fault shifts")
+  plot2(s1,s2,g,s,gmin=-28,gmax=28,label="Fault throw (ms)",png="fs")
+  plot2(s1,s2,g,s,gmin=-8,gmax=8,label="Fault throw (ms)",png="fs8")
 
 def goThin():
   s1,s2,g = getImage()
   g = slog(g)
-  plot2(s1,s2,g,title="log input")
+  #plot2(s1,s2,g,title="log input")
   fse = FaultSemblance()
   g = fse.taper(10,g)
   for iter in range(1):
@@ -79,15 +85,19 @@ def goThin():
     sn,sd = fse.semblanceNumDen(p,g)
     fsc = FaultScanner2(sigmaTheta,[sn,sd],smoother)
     f,t = fsc.scan(-15,15)
-    plot2(s1,s2,g,f,gmin=0,gmax=1,title="fault likelihood")
+    #plot2(s1,s2,g,f,gmin=0,gmax=1,title="fault likelihood")
     #plot2(s1,s2,g,t,title="fault dip (degrees)")
     fs = copy(f); RecursiveGaussianFilter(1.0).apply00(fs,fs)
-    plot2(s1,s2,g,fs,gmin=0,gmax=1,title="fault likelihood smoothed")
+    #plot2(s1,s2,g,fs,gmin=0,gmax=1,title="fault likelihood smoothed")
+    plot2(s1,s2,g,fs,gmin=0,gmax=1,label="Fault likelihood")
     ft,tt = fsc.thin([f,t])
-    plot2(s1,s2,g,ft,gmin=0,gmax=1,title="fault likelihood thinned")
-    plot2(s1,s2,g,tt,title="fault dip (degrees) thinned")
+    #plot2(s1,s2,g,ft,gmin=0,gmax=1,title="fault likelihood thinned")
+    #plot2(s1,s2,g,tt,title="fault dip (degrees) thinned")
+    plot2(s1,s2,g,ft,gmin=0,gmax=1,label="Fault likelihood",png="flt")
+    plot2(s1,s2,g,tt,label="Fault dip (degrees)",png="ftt")
     g = fsc.smooth(8,p,ft,g)
-    plot2(s1,s2,g,title="input smoothed")
+    #plot2(s1,s2,g,title="input smoothed")
+    plot2(s1,s2,g,label="Log amplitude",png="gs")
 
 def goScan():
   s1,s2,g = getImage()
@@ -100,11 +110,15 @@ def goScan():
   st = Sampling(31,1.0,-15.0)
   for theta in st.values:
     f = fsc.likelihood(theta)
-    plot2(s1,s2,g,f,gmin=0,gmax=1,title="theta = "+str(int(theta)))
+    #plot2(s1,s2,g,f,gmin=0,gmax=1,title="theta = "+str(int(theta)))
+    png = "fl"+str(int(theta))
+    plot2(s1,s2,g,f,gmin=0,gmax=1,label="Fault likelihood",png=png)
   tmin,tmax = st.first,st.last
   f,t = fsc.scan(tmin,tmax)
-  plot2(s1,s2,g,f,gmin=0,gmax=1,title="fault likelihood")
-  plot2(s1,s2,g,t,gmin=tmin,gmax=tmax,title="fault dip (degrees)")
+  #plot2(s1,s2,g,f,gmin=0,gmax=1,title="fault likelihood")
+  #plot2(s1,s2,g,t,gmin=tmin,gmax=tmax,title="fault dip (degrees)")
+  plot2(s1,s2,g,f,gmin=0,gmax=1,label="Fault likelihood",png="fl")
+  plot2(s1,s2,g,t,gmin=tmin,gmax=tmax,label="Fault dip (degrees)",png="ft")
 
 def goSemblance():
   s1,s2,g = getImage()
@@ -114,7 +128,7 @@ def goSemblance():
   p = fse.slopes(g)
   sn0,sd0 = fse.semblanceNumDen(p,g)
   print "semblances for different vertical smoothings:"
-  for sigma in [0,2,4,8]:
+  for sigma in [0,5,10,20]:
     ref = RecursiveExponentialFilter(sigma)
     sn = copy(sn0)
     sd = copy(sd0)
@@ -123,7 +137,9 @@ def goSemblance():
     s = fse.semblanceFromNumDen(sn,sd)
     print "sigma =",sigma," s min =",min(s)," max =",max(s)
     title = "semblance: sigma = "+str(sigma)
-    plot2(s1,s2,g,s,gmin=0,gmax=1,title=title)
+    png="s"+str(sigma)
+    #plot2(s1,s2,g,s,gmin=0,gmax=1,title=title)
+    plot2(s1,s2,g,s,gmin=0,gmax=1,label="Semblance",png=png)
 
 def goAlign():
   s1,s2,g = getImage()
@@ -131,27 +147,33 @@ def goAlign():
   n1,n2 = len(g[0]),len(g)
   fse = FaultSemblance()
   p = fse.slopes(g)
-  ref = RecursiveExponentialFilter(4)
+  ref = RecursiveExponentialFilter(5)
   sn,sd = fse.semblanceNumDen(p,g)
   ref.apply1(sn,sn)
   ref.apply1(sd,sd)
   s = fse.semblanceFromNumDen(sn,sd)
-  plot2(s1,s2,g,s,gmin=0,gmax=1,title="semblance with alignment")
+  #plot2(s1,s2,g,s,gmin=0,gmax=1,title="semblance with alignment")
+  plot2(s1,s2,g,s,gmin=0,gmax=1,label="Semblance",png="s5wa")
   p = zerofloat(n1,n2) # semblance with zero slopes
   sn,sd = fse.semblanceNumDen(p,g)
   ref.apply1(sn,sn)
   ref.apply1(sd,sd)
   s = fse.semblanceFromNumDen(sn,sd)
-  plot2(s1,s2,g,s,gmin=0,gmax=1,title="semblance without alignment")
+  #plot2(s1,s2,g,s,gmin=0,gmax=1,title="semblance without alignment")
+  plot2(s1,s2,g,s,gmin=0,gmax=1,label="Semblance",png="s5woa")
 
 def goSlopes():
   s1,s2,g = getImage()
-  plot2(s1,s2,g,title="input")
+  #plot2(s1,s2,g,title="input")
+  plot2(s1,s2,g,label="Amplitude",png="ga")
   g = slog(g)
-  plot2(s1,s2,g,title="log input")
+  #plot2(s1,s2,g,title="log input")
+  plot2(s1,s2,g,label="Log amplitude",png="g")
   fse = FaultSemblance()
   p = fse.slopes(g)
-  plot2(s1,s2,g,p,gmin=-0.9,gmax=0.9,title="slopes")
+  p = mul(s1.delta/s2.delta,p)
+  #plot2(s1,s2,g,p,gmin=-0.9,gmax=0.9,title="slopes")
+  plot2(s1,s2,g,p,gmin=-0.15,gmax=0.15,label="Slope (s/km)",png="p")
 
 ###
 def xfindShifts(sigma,min1,max1,lag2,f):
@@ -268,18 +290,20 @@ def plot2(s1,s2,f,g=None,gmin=None,gmax=None,
     panel.addColorBar(label)
   else:
     panel.addColorBar()
-  if title:
-    panel.setTitle(title)
+  #if title:
+  #  panel.setTitle(title)
   panel.setColorBarWidthMinimum(180)
-  #pv = panel.addPixels(s1,s2,f)
-  pv = panel.addPixels(f)
+  panel.setHLabel("Inline (km)")
+  panel.setVLabel("Time (s)")
+  pv = panel.addPixels(s1,s2,f)
+  #pv = panel.addPixels(f)
   pv.setInterpolation(PixelsView.Interpolation.NEAREST)
   pv.setColorModel(ColorMap.GRAY)
   #pv.setClips(-4.5,4.5)
   if g:
     alpha = 0.5
-    #pv = panel.addPixels(s1,s2,g)
-    pv = panel.addPixels(g)
+    pv = panel.addPixels(s1,s2,g)
+    #pv = panel.addPixels(g)
     pv.setInterpolation(PixelsView.Interpolation.NEAREST)
     if gmin==None: gmin = min(g)
     if gmax==None: gmax = max(g)
@@ -326,12 +350,14 @@ def panel2():
 def frame2(panel,png=None):
   frame = PlotFrame(panel)
   frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE)
+  frame.setBackground(Color(0xfd,0xfe,0xff)) # easy to make transparent
   #frame.setFontSizeForPrint(8,240)
   #frame.setSize(1240,774)
-  #frame.setFontSizeForSlide(1.0,0.8)
+  frame.setFontSizeForSlide(1.0,0.8)
   #frame.setSize(1290,777)
   #frame.setSize(1490,977)
-  frame.setSize(1290,815)
+  #frame.setSize(1490,815)
+  frame.setSize(1280,815)
   frame.setVisible(True)
   if png and pngDir:
     frame.paintToPng(400,3.2,pngDir+"/"+png+".png")
