@@ -11,8 +11,8 @@ public class Util {
 
   public static float[][][][] fakeFpt(int n1, int n2, int n3) {
     float[][][][] fpt = new float[3][n3][n2][n1];
-    fpt = mergeFpt(fpt,planeFpt(n1,n2,n3,1.0f, 20.0f,10.0f,n1/2,n2/2,n3/3));
-    fpt = mergeFpt(fpt,planeFpt(n1,n2,n3,0.8f,-40.0f,10.0f,n1/2,n2/2,n3/3));
+    fpt = mergeFpt(fpt,planeFpt(n1,n2,n3,1.0f, 40.0f,10.0f,n1/2,n2/2,n3/3));
+    fpt = mergeFpt(fpt,planeFpt(n1,n2,n3,0.8f,-15.0f,10.0f,n1/2,n2/2,n3/3));
     return fpt;
   }
   public static float[][][][] planeFpt(
@@ -35,7 +35,7 @@ public class Util {
     for (int i3=0; i3<n3; ++i3) {
       for (int i2=0; i2<n2; ++i2) {
         for (int i1=0; i1<n1; ++i1) {
-          float d = (i1-x1)*u1+(i2-x2)*u2+(i3-x3)*u3;
+          float d = (i1-x1)*u1+(i2-x2)*u2+(i3-x3)*u3+0.001f;
           f[i3][i2][i1] = fl*exp(-0.125f*d*d);
           p[i3][i2][i1] = fp;
           t[i3][i2][i1] = ft;

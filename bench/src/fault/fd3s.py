@@ -42,7 +42,8 @@ def goSurfingFake():
   #n1,n2,n3 = 51,52,53
   #n1,n2,n3 = 41,42,43
   #n1,n2,n3 = 11,12,13
-  g = sub(randfloat(n1,n2,n3),0.5)
+  #g = sub(randfloat(n1,n2,n3),0.5)
+  g = zerofloat(n1,n2,n3)
   f,p,t = Util.fakeFpt(n1,n2,n3)
   fs = FaultSurfer3([f,p,t])
   fs.setThreshold(0.5)
@@ -50,7 +51,14 @@ def goSurfingFake():
   quads = fs.linkQuads(quads)
   surfs = fs.findSurfs(quads)
   surfs = fs.getSurfsWithSize(surfs,1000)
-  plot3(g,f,0,1,surfs=surfs)
+  xyz = fs.sampleFaultDip(surfs[0])
+  #s = fs.findShifts(surfs)
+  #plot3(g,s,surfs=surfs)
+  plot3(g,f,0,1,xyz=xyz,surfs=surfs)
+  #sp = SimplePlot()
+  #pv = sp.addPixels(fs.slice1(n1/2,s))
+  #pv.setColorModel(ColorMap.JET)
+  #pv.setInterpolation(PixelsView.Interpolation.NEAREST)
 
 def goSurfing():
   def subset(s1,s2,s3,g):
@@ -74,7 +82,10 @@ def goSurfing():
   quads = fs.linkQuads(quads)
   surfs = fs.findSurfs(quads)
   surfs = fs.getSurfsWithSize(surfs,1000)
-  plot3(g,surfs=surfs)
+  xyz = fs.sampleFaultDip(surfs[7]) # 2, 3, 7
+  plot3(g,xyz=xyz,surfs=surfs)
+  #s = fs.findShifts(surfs)
+  #plot3(g,s,surfs=surfs)
   #plot3(g)
 
 def goShifts():
@@ -413,12 +424,17 @@ def plot3(f,g=None,gmin=None,gmax=None,xyz=None,surfs=None):
       updateColorModel2(ipg,0.8)
     sf.world.addChild(ipg)
   if xyz:
-    pg = PointGroup(xyz)
+    pg = PointGroup(0.2,xyz)
     ss = StateSet()
-    ps = PointState()
-    ps.setSize(3.0)
-    ss.add(ps)
+    cs = ColorState()
+    cs.setColor(Color.YELLOW)
+    ss.add(cs)
     pg.setStates(ss)
+    #ss = StateSet()
+    #ps = PointState()
+    #ps.setSize(5.0)
+    #ss.add(ps)
+    #pg.setStates(ss)
     sf.world.addChild(pg)
   if surfs:
     sg = Group()
@@ -434,9 +450,10 @@ def plot3(f,g=None,gmin=None,gmax=None,xyz=None,surfs=None):
     ss.add(ms)
     sg.setStates(ss)
     for surf in surfs:
+      #surf.blocky()
       xyz,uvw,rgb = surf.getXyzUvwRgb()
-      #qg = QuadGroup(False,xyz,rgb)
-      qg = QuadGroup(True,xyz,rgb)
+      qg = QuadGroup(False,xyz,rgb)
+      #qg = QuadGroup(True,xyz,rgb)
       #qg = QuadGroup(xyz,uvw,rgb)
       qg.setStates(None)
       sg.addChild(qg)
