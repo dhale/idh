@@ -34,8 +34,44 @@ def main(args):
   #goSmooth()
   #goTrack()
   #goShifts()
-  goSurfing()
   #goSurfingFake()
+  goSurfing()
+
+def goSurfing():
+  def subset(s1,s2,s3,g):
+    n1,j1 = 70,130 # deeper coherent
+    #n1,j1 = 130,0 # shallow incoherent
+    s1 = Sampling(n1,s1.delta,s1.first+j1*s1.delta)
+    g = copy(n1,s2.count,s3.count,j1,0,0,g)
+    return s1,s2,s3,g
+  s1,s2,s3,g = imageF3d()
+  g = slog(g)
+  gs = readImage(s1,s2,s3,"gs")
+  fl = readImage(s1,s2,s3,"fl")
+  fp = readImage(s1,s2,s3,"fp")
+  ft = readImage(s1,s2,s3,"ft")
+  s1,s2,s3,g  = subset(s1,s2,s3,g)
+  s1,s2,s3,gs = subset(s1,s2,s3,gs)
+  s1,s2,s3,fl = subset(s1,s2,s3,fl)
+  s1,s2,s3,fp = subset(s1,s2,s3,fp)
+  s1,s2,s3,ft = subset(s1,s2,s3,ft)
+  fs = FaultSurfer3([fl,fp,ft])
+  fs.setThreshold(0.5)
+  quads = fs.findQuads()
+  quads = fs.linkQuads(quads)
+  surfs = fs.findSurfs(quads)
+  surfs = fs.getSurfsWithSize(surfs,1000)
+  #xyz = surfs[18].sampleFaultDip() # 2, 3, 7
+  #plot3(g,xyz=xyz,surfs=surfs)
+  #surfs[18].findShifts(20.0,g)
+  s = fs.findShifts(20.0,surfs,gs)
+  print "s: min =",min(s)," max =",max(s)
+  plot3(g,surfs=surfs)
+  smax = 10
+  plot3(g,surfs=surfs,smax=-smax)
+  plot3(g,surfs=surfs,smax= smax)
+  #plot3(g,s,-10,10)
+  #plot3(g)
 
 def goSurfingFake():
   n1,n2,n3 = 101,102,103
@@ -59,34 +95,6 @@ def goSurfingFake():
   #pv = sp.addPixels(fs.slice1(n1/2,s))
   #pv.setColorModel(ColorMap.JET)
   #pv.setInterpolation(PixelsView.Interpolation.NEAREST)
-
-def goSurfing():
-  def subset(s1,s2,s3,g):
-    n1,j1 = 70,130 # deeper coherent
-    #n1,j1 = 130,0 # shallow incoherent
-    s1 = Sampling(n1,s1.delta,s1.first+j1*s1.delta)
-    g = copy(n1,s2.count,s3.count,j1,0,0,g)
-    return s1,s2,s3,g
-  s1,s2,s3,g = imageF3d()
-  g = slog(g)
-  f = readImage(s1,s2,s3,"fl")
-  p = readImage(s1,s2,s3,"fp")
-  t = readImage(s1,s2,s3,"ft")
-  s1,s2,s3,g = subset(s1,s2,s3,g)
-  s1,s2,s3,f = subset(s1,s2,s3,f)
-  s1,s2,s3,p = subset(s1,s2,s3,p)
-  s1,s2,s3,t = subset(s1,s2,s3,t)
-  fs = FaultSurfer3([f,p,t])
-  fs.setThreshold(0.5)
-  quads = fs.findQuads()
-  quads = fs.linkQuads(quads)
-  surfs = fs.findSurfs(quads)
-  surfs = fs.getSurfsWithSize(surfs,1000)
-  xyz = fs.sampleFaultDip(surfs[7]) # 2, 3, 7
-  plot3(g,xyz=xyz,surfs=surfs)
-  #s = fs.findShifts(surfs)
-  #plot3(g,s,surfs=surfs)
-  #plot3(g)
 
 def goShifts():
   s1,s2,s3,g = imageF3d()
@@ -409,7 +417,7 @@ def frame2(panel,png=None):
     frame.paintToPng(400,3.2,pngDir+"/"+png+".png")
   return frame
 
-def plot3(f,g=None,gmin=None,gmax=None,xyz=None,surfs=None):
+def plot3(f,g=None,gmin=None,gmax=None,xyz=None,surfs=None,smax=None):
   n1 = len(f[0][0])
   n2 = len(f[0])
   n3 = len(f)
@@ -418,6 +426,7 @@ def plot3(f,g=None,gmin=None,gmax=None,xyz=None,surfs=None):
     ipg = sf.addImagePanels(f)
   else:
     ipg = ImagePanelGroup2(f,g)
+    ipg.setColorModel2(ColorMap.getJet(0.8))
     if gmin and gmax:
       ipg.setClips2(gmin,gmax)
     if gmin==0.0 and gmax==1.0:
@@ -446,22 +455,29 @@ def plot3(f,g=None,gmin=None,gmax=None,xyz=None,surfs=None):
     ms.setSpecular(Color.GRAY)
     ms.setShininess(100.0)
     ms.setColorMaterial(GL_AMBIENT_AND_DIFFUSE)
-    ms.setEmissiveBack(Color(0.0,0.0,0.5))
+    if not smax:
+      ms.setEmissiveBack(Color(0.0,0.0,0.5))
     ss.add(ms)
     sg.setStates(ss)
     for surf in surfs:
       #surf.blocky()
-      xyz,uvw,rgb = surf.getXyzUvwRgb()
-      qg = QuadGroup(False,xyz,rgb)
-      #qg = QuadGroup(True,xyz,rgb)
+      if smax:
+        xyz,uvw,rgb = surf.getXyzUvwRgbShifts(smax)
+      else:
+        xyz,uvw,rgb = surf.getXyzUvwRgb()
+      #qg = QuadGroup(False,xyz,rgb)
+      qg = QuadGroup(True,xyz,rgb)
       #qg = QuadGroup(xyz,uvw,rgb)
       qg.setStates(None)
       sg.addChild(qg)
     sf.world.addChild(sg)
   #ipg.setSlices(209,12,18)
-  ipg.setSlices(200,0,0)
-  sf.setSize(1200,1100)
+  #ipg.setSlices(200,0,0)
+  ipg.setSlices(66,9,13)
+  sf.setSize(1300,1100)
   sf.setWorldSphere(n3/2,n2/2,n1/2,0.5*sqrt(n1*n1+n2*n2+n3*n3))
+  #sf.orbitView.setAzimuthAndElevation(90,40)
+  sf.orbitView.setAzimuthAndElevation(-49,57)
   sf.orbitView.setScale(1.5)
 
 def updateColorModel2(ipg,alpha):

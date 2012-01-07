@@ -1,5 +1,5 @@
 /****************************************************************************
-Copyright (c) 2011, Colorado School of Mines and others. All rights reserved.
+Copyright (c) 2012, Colorado School of Mines and others. All rights reserved.
 This program and accompanying materials are made available under the terms of
 the Common Public License - v1.0, which accompanies this distribution, and is 
 available at http://www.eclipse.org/legal/cpl-v10.html
@@ -30,67 +30,42 @@ public class FaultSurfer3 {
     return fs;
   }
 
-  public float[] sampleFaultDip(Surf surf) {
-    float c1 = 0.0f;
-    float c2 = 0.0f;
-    float c3 = 0.0f;
-    int nq = 0;
-    for (Quad quad:surf) {
-      c1 += quad.c1;
-      c2 += quad.c2;
-      c3 += quad.c3;
-      nq += 1;
-    }
-    c1 /= nq;
-    c2 /= nq;
-    c3 /= nq;
-    float dsmin = Float.MAX_VALUE;
-    Quad qmin = null;
-    for (Quad quad:surf) {
-      if (quad.isVertical()) {
-        float d1 = quad.c1-c1;
-        float d2 = quad.c2-c2;
-        float d3 = quad.c3-c3;
-        float ds = d1*d1+d2*d2+d3*d3;
-        if (ds<dsmin) {
-          dsmin = ds;
-          qmin = quad;
+  public float[][][] findShifts(double smax, Surf[] surfs, float[][][] f) {
+    int n1 = f[0][0].length;
+    int n2 = f[0].length;
+    int n3 = f.length;
+    float[][][] s = new float[n3][n2][n1];
+    float[][][] c = new float[n3][n2][n1];
+    for (int isurf=0; isurf<surfs.length; ++isurf) {
+      Surf surf = surfs[isurf];
+      surf.findShifts(smax,f);
+      for (Quad quad:surf) {
+        if (quad.isVertical()) {
+          Vert v = quad.getVert();
+          int i1 = quad.i1;
+          int i2m = v.i2m, i2p = v.i2p;
+          int i3m = v.i3m, i3p = v.i3p;
+          s[i3m][i2m][i1] += v.smp;
+          s[i3p][i2p][i1] += v.spm;
+          c[i3m][i2m][i1] += 1.0f;
+          c[i3p][i2p][i1] += 1.0f;
         }
       }
     }
-    FloatList xyz = new FloatList();
-    Vert vert = qmin.getVert();
-    xyz.add(vert.sampleFaultDip());
-    while (vert.qe!=null) {
-      vert = vert.qe.getVert();
-      xyz.add(vert.sampleFaultDip());
-    }
-    vert = qmin.getVert();
-    while (vert.qw!=null) {
-      vert = vert.qw.getVert();
-      xyz.add(vert.sampleFaultDip());
-    }
-    return xyz.trim();
-  }
-
-  public float[][][] findShifts(Surf[] surfs) {
-    float[][][] s = new float[_n3][_n2][_n1];
-    for (Surf surf:surfs) {
-      for (Quad quad:surf) {
-        if (quad.isVertical()) {
-          Vert vert = quad.getVert();
-          int i1 = quad.i1;
-          int i2m = vert.i2m;
-          int i2p = vert.i2p;
-          int i3m = vert.i3m;
-          int i3p = vert.i3p;
-          s[i3m][i2m][i1] = -1.0f;
-          s[i3p][i2p][i1] =  1.0f;
+    for (int i3=0; i3<n3; ++i3) {
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          if (c[i3][i2][i1]>0.0f)
+            s[i3][i2][i1] /= c[i3][i2][i1];
         }
       }
     }
     return s;
   }
+
+  ///////////////////////////////////////////////////////////////////////////
+  // Node
+  ///////////////////////////////////////////////////////////////////////////
 
   /**
    * A node is a point on a fault surface, with likelihood and orientation.
@@ -128,6 +103,10 @@ public class FaultSurfer3 {
       x3 = (int)x3+0.5f;
     }
   }
+
+  ///////////////////////////////////////////////////////////////////////////
+  // Quad
+  ///////////////////////////////////////////////////////////////////////////
 
   /**
    * A quad references exactly four nodes and up to four quad nabors.
@@ -249,31 +228,46 @@ public class FaultSurfer3 {
     }
 
     /**
+     * Returns true iff orientation of nabor is consistent with this quad.
+     */
+    boolean isOrientedLikeNabor(Quad qn) {
+      if (qn==qa) {
+        if (na==qn.na) return nb==qn.nd; else
+        if (na==qn.nb) return nb==qn.na; else
+        if (na==qn.nc) return nb==qn.nb; else
+        if (na==qn.nd) return nb==qn.nc; else
+                       return false;
+      } else if (qn==qb) {
+        if (nb==qn.na) return nc==qn.nd; else
+        if (nb==qn.nb) return nc==qn.na; else
+        if (nb==qn.nc) return nc==qn.nb; else
+        if (nb==qn.nd) return nc==qn.nc; else
+                       return false;
+      } else if (qn==qc) {
+        if (nc==qn.na) return nd==qn.nd; else
+        if (nc==qn.nb) return nd==qn.na; else
+        if (nc==qn.nc) return nd==qn.nb; else
+        if (nc==qn.nd) return nd==qn.nc; else
+                       return false;
+      } else if (qn==qd) {
+        if (nd==qn.na) return na==qn.nd; else
+        if (nd==qn.nb) return na==qn.na; else
+        if (nd==qn.nc) return na==qn.nb; else
+        if (nd==qn.nd) return na==qn.nc; else
+                       return false;
+      } else {
+        return false;
+      }
+    }
+
+    /**
      * Orients the specified quad nabor to be consistent with this quad.
      * Does nothing if the specified quad is null or is not a nabor of
      * this quad.
      */
     void orientNabor(Quad qn) {
-      if (qn!=null) {
-        if (qn==qa && (na==qn.na && nb!=qn.nd ||
-                       na==qn.nb && nb!=qn.na ||
-                       na==qn.nc && nb!=qn.nb ||
-                       na==qn.nd && nb!=qn.nc) ||
-            qn==qb && (nb==qn.na && nc!=qn.nd ||
-                       nb==qn.nb && nc!=qn.na ||
-                       nb==qn.nc && nc!=qn.nb ||
-                       nb==qn.nd && nc!=qn.nc) ||
-            qn==qc && (nc==qn.na && nd!=qn.nd ||
-                       nc==qn.nb && nd!=qn.na ||
-                       nc==qn.nc && nd!=qn.nb ||
-                       nc==qn.nd && nd!=qn.nc) ||
-            qn==qd && (nd==qn.na && na!=qn.nd ||
-                       nd==qn.nb && na!=qn.na ||
-                       nd==qn.nc && na!=qn.nb ||
-                       nd==qn.nd && na!=qn.nc)) {
-          qn.flip();
-        }
-      }
+      if (!isOrientedLikeNabor(qn))
+        qn.flip();
     }
 
     /**
@@ -348,11 +342,15 @@ public class FaultSurfer3 {
     }
   }
 
+  ///////////////////////////////////////////////////////////////////////////
+  // Vert
+  ///////////////////////////////////////////////////////////////////////////
+
   /**
    * Auxiliary data associated with vertical quads.
    * Vertical quads are used to estimate fault displacements.
    * Before constructing these data, quads must be linked and oriented
-   * so that east, north, west and south directions are well defined.
+   * so that east, north, west and south directions can be defined.
    */
   public static class Vert {
     Quad q; // the quad augmented by these data
@@ -361,8 +359,14 @@ public class FaultSurfer3 {
     int i3m,i3p; // sample indices i3 on back and front sides of quad
     float[] emp; // array of errors back-front
     float[] epm; // array of errors front-back
+    float smp; // shift (fault throw) back-front
+    float spm; // shift (fault throw) front-back
 
+    /**
+     * Constructs data for the specified vertical quad.
+     */
     Vert(Quad q) {
+      assert q.isVertical();
       this.q = q;
 
       // Sample indices of minus-plus pairs (i2m,i2p) and (i3m,i3p).
@@ -396,12 +400,14 @@ public class FaultSurfer3 {
       } else { // one of the above must be true
         assert false;
       }
+      assert qe==null || qe.isVertical():qe+" is vertical";
+      assert qw==null || qw.isVertical():qw+" is vertical";
 
       // If north or south nabors are horizontal quads, then replace 
       // them with the quad on the other side of this one, if that
       // quad is vertical, or null, if that quad is also horizontal.
-      // In linking vertical quads, we can bridge across one horizontal 
-      // quad, but not more than one.
+      // In linking vertical quads, we choose to bridge across one 
+      // horizontal quad, if necessary, but never more than one.
       if (qn!=null && !qn.isVertical()) {
         qn = quadOnOtherSideOfNabor(qn);
         if (qn!=null && (!qn.isVertical() || qn.i1>=q.i1))
@@ -422,15 +428,19 @@ public class FaultSurfer3 {
     }
 
     float[] sampleFaultDip() {
-      FloatList xyz = new FloatList();
       Quad qi;
-      float us,ut,u1,u2,u3,y1,y2,y3;
-      float x1 = q.c1;
-      float x2 = q.c2;
-      float x3 = q.c3;
+      float y1,y2,y3;
+
+      // List of sample coordinates (x,y,z) = (x3,x2,x1).
+      FloatList xyz = new FloatList();
+
+      // First sample lies within fault plane with integer x1 = i1.
+      float us = q.us23, u1 = us*q.u1, u2 = us*q.u2, u3 = us*q.u3;
+      float ut = (q.i1-q.c1)*u1;
+      float x1 = q.i1, x2 = q.c2-ut*u2, x3 = q.c3-ut*u3;
       xyz.add(x3); xyz.add(x2); xyz.add(x1);
 
-      // Sample south.
+      // Collect samples south; increment x1 by one for each sample.
       us = q.us23; u1 = us*q.u1; u2 = us*q.u2; u3 = us*q.u3;
       y1 = x1+1.0f; y2 = x2-u1*u2; y3 = x3-u1*u3;
       qi = quadSouth(q,y1,y2,y3);
@@ -443,7 +453,7 @@ public class FaultSurfer3 {
         qi = quadSouth(qi,y1,y2,y3);
       }
 
-      // Sample north.
+      // Collect samples north; decrement x1 by one for each sample.
       us = q.us23; u1 = us*q.u1; u2 = us*q.u2; u3 = us*q.u3;
       y1 = x1-1.0f; y2 = x2+u1*u2; y3 = x3+u1*u3;
       qi = quadNorth(q,y1,y2,y3);
@@ -459,40 +469,68 @@ public class FaultSurfer3 {
       return xyz.trim();
     }
 
-    /*
-    float[] computeErrors(int lmax, float d, float[][][] f) {
+    void computeErrors(int lmax, float d, float[][][] f) {
+      int n1 = f[0][0].length;
+      int i1 = q.i1;
+      Quad qi;
+      int nlag;
+      float y1,y2,y3,gm,gp;
+
+      // Errors for lag zero.
       emp = new float[lmax+1+lmax];
       epm = new float[lmax+1+lmax];
-      float us = 1.0f/sqrt(q.u2*q.u2+q.u3*q.u3);
-      float u1 = us*q.u1;
-      float u2 = us*q.u2;
-      float u3 = us*q.u3;
-      float x1 = q.c1;
-      float x2 = q.c2;
-      float x3 = q.c3;
-      float fm = valueAt(x1,x2-d*u2,x3-d*u3);
-      float fp = valueAt(x1,x2+d*u2,x3+d*u3);
-      float y1 = x1;
-      float y2 = x2;
-      float y3 = x3;
+      float us = q.us23, u1 = us*q.u1, u2 = us*q.u2, u3 = us*q.u3;
+      float ut = (i1-q.c1)*u1;
+      float x1 = i1, x2 = q.c2-ut*u2, x3 = q.c3-ut*u3;
+      float fm = valueAt(x1,x2-d*u2,x3-d*u3,f);
+      float fp = valueAt(x1,x2+d*u2,x3+d*u3,f);
       float empl = emp[lmax] = error(fm,fp);
       float epml = epm[lmax] = error(fp,fm);
-      int i1 = nint(x1);
-      for (int l1=1,j1=i1+1; l1<=lmax; ++l1) {
-        if (j1>=n1) {
-          emp[lmax+l1] = empl;
-          epm[lmax+l1] = epml;
-        } else {
-          y1 += 1.0f;
-          y2 -= u1*u2;
-          y3 -= u1*u3;
 
-          float gm = valueAt(y1,y2-d*u2,y3-d*u3,f);
-          float gp = valueAt(y1,y2+d*u2,y3+d*u3,f);
+      // Errors for samples south.
+      us = q.us23; u1 = us*q.u1; u2 = us*q.u2; u3 = us*q.u3;
+      y1 = x1+1.0f; y2 = x2-u1*u2; y3 = x3-u1*u3;
+      qi = quadSouth(q,y1,y2,y3);
+      nlag = min(lmax,n1-1-i1);
+      for (int ilag=1; ilag<=nlag; ++ilag) {
+        if (qi!=null) {
+          us = qi.us23; u1 = us*qi.u1; u2 = us*qi.u2; u3 = us*qi.u3;
+          ut = (y1-qi.c1)*u1+(y2-qi.c2)*u2+(y3-qi.c3)*u3;
+          y2 -= ut*u2; y3 -= ut*u3;
+          gm = valueAt(y1,y2-d*u2,y3-d*u3,f);
+          gp = valueAt(y1,y2+d*u2,y3+d*u3,f);
+          empl = emp[lmax+ilag] = error(fm,gp);
+          epml = epm[lmax+ilag] = error(fp,gm);
+          y1 += 1.0f; y2 -= u1*u2; y3 -= u1*u3;
+          qi = quadSouth(qi,y1,y2,y3);
+        } else {
+          emp[lmax+ilag] = empl;
+          epm[lmax+ilag] = epml;
+        }
+      }
+
+      // Errors for samples north.
+      us = q.us23; u1 = us*q.u1; u2 = us*q.u2; u3 = us*q.u3;
+      y1 = x1-1.0f; y2 = x2+u1*u2; y3 = x3+u1*u3;
+      qi = quadNorth(q,y1,y2,y3);
+      nlag = min(lmax,i1);
+      for (int ilag=1; ilag<=nlag; ++ilag) {
+        if (qi!=null) {
+          us = qi.us23; u1 = us*qi.u1; u2 = us*qi.u2; u3 = us*qi.u3;
+          ut = (y1-qi.c1)*u1+(y2-qi.c2)*u2+(y3-qi.c3)*u3;
+          y2 -= ut*u2; y3 -= ut*u3;
+          gm = valueAt(y1,y2-d*u2,y3-d*u3,f);
+          gp = valueAt(y1,y2+d*u2,y3+d*u3,f);
+          empl = emp[lmax-ilag] = error(fm,gp);
+          epml = epm[lmax-ilag] = error(fp,gm);
+          y1 -= 1.0f; y2 += u1*u2; y3 += u1*u3;
+          qi = quadNorth(qi,y1,y2,y3);
+        } else {
+          emp[lmax-ilag] = empl;
+          epm[lmax-ilag] = epml;
         }
       }
     }
-    */
 
     private static Quad quadNorth(Quad qi, float x1, float x2, float x3) {
       assert qi!=null && qi.isVertical();
@@ -554,6 +592,9 @@ public class FaultSurfer3 {
     }
   }
 
+  ///////////////////////////////////////////////////////////////////////////
+  // Surf
+  ///////////////////////////////////////////////////////////////////////////
 
   /**
    * A fault surface consists of a set of linked and oriented quads.
@@ -570,6 +611,9 @@ public class FaultSurfer3 {
     }
     public float[][] getXyzUvwRgb() {
       return FaultSurfer3.getXyzUvwRgb(_quads,_flmin);
+    }
+    public float[][] getXyzUvwRgbShifts(float smax) {
+      return FaultSurfer3.getXyzUvwRgbShifts(_quads,smax);
     }
 
     /**
@@ -620,8 +664,134 @@ public class FaultSurfer3 {
         q.blocky();
     }
 
+    public float[] sampleFaultDip() {
+      float c1 = 0.0f;
+      float c2 = 0.0f;
+      float c3 = 0.0f;
+      int nq = 0;
+      for (Quad quad:_quads) {
+        c1 += quad.c1;
+        c2 += quad.c2;
+        c3 += quad.c3;
+        nq += 1;
+      }
+      c1 /= nq;
+      c2 /= nq;
+      c3 /= nq;
+      float dsmin = Float.MAX_VALUE;
+      Quad qmin = null;
+      for (Quad quad:_quads) {
+        if (quad.isVertical()) {
+          float d1 = quad.c1-c1;
+          float d2 = quad.c2-c2;
+          float d3 = quad.c3-c3;
+          float ds = d1*d1+d2*d2+d3*d3;
+          if (ds<dsmin) {
+            dsmin = ds;
+            qmin = quad;
+          }
+        }
+      }
+      FloatList xyz = new FloatList();
+      Vert vert = qmin.getVert();
+      xyz.add(vert.sampleFaultDip());
+      while (vert.qe!=null) {
+        vert = vert.qe.getVert();
+        xyz.add(vert.sampleFaultDip());
+      }
+      vert = qmin.getVert();
+      while (vert.qw!=null) {
+        vert = vert.qw.getVert();
+        xyz.add(vert.sampleFaultDip());
+      }
+      return xyz.trim();
+    }
+
+    /**
+     * Computes errors for all vertical quads in this surface.
+     */
+    public void computeErrors(int lmax, float d, float[][][] f) {
+      for (Quad quad:_quads) {
+        if (quad.isVertical()) {
+          Vert vert = quad.getVert();
+          vert.computeErrors(lmax,d,f);
+        }
+      }
+    }
+
+    /**
+     * Returns east-west and north-south arrays of quads.
+     */
+    public Quad[][][] getQuadsEwNs() {
+      HashSet<Quad> qewSet = new HashSet<Quad>(size());
+      HashSet<Quad> qnsSet = new HashSet<Quad>(size());
+      ArrayList<Quad[]> qewList = new ArrayList<Quad[]>();
+      ArrayList<Quad[]> qnsList = new ArrayList<Quad[]>();
+      for (Quad q:this) {
+        if (q.isVertical()) {
+          if (!qewSet.contains(q)) {
+            Quad qi = q;
+            for (Quad qe=qi.getVert().qe; qe!=null; qe=qi.getVert().qe)
+              qi = qe;
+            ArrayList<Quad> ql = new ArrayList<Quad>();
+            for (; qi!=null; qi=qi.getVert().qw) {
+              ql.add(qi);
+              qewSet.add(qi);
+            }
+            qewList.add(ql.toArray(new Quad[0]));
+          }
+          if (!qnsSet.contains(q)) {
+            Quad qi = q;
+            for (Quad qn=qi.getVert().qn; qn!=null; qn=qi.getVert().qn)
+              qi = qn;
+            ArrayList<Quad> ql = new ArrayList<Quad>();
+            for (; qi!=null; qi=qi.getVert().qs) {
+              ql.add(qi);
+              qnsSet.add(qi);
+            }
+            qnsList.add(ql.toArray(new Quad[0]));
+          }
+        }
+      }
+      Quad[][] qew = qewList.toArray(new Quad[0][]);
+      Quad[][] qns = qnsList.toArray(new Quad[0][]);
+      return new Quad[][][]{qew,qns};
+    }
+
+    /**
+     * Finds and sets fault shifts for all vertical quads in this surface.
+     */
+    public void findShifts(double smax, float[][][] f) {
+      int lmax = (int)smax;
+      final float d = 2.0f;
+      computeErrors(lmax,d,f);
+      Quad[][][] qewns = getQuadsEwNs();
+      Quad[][] qew = qewns[0];
+      Quad[][] qns = qewns[1];
+      DynamicWarping dw = new DynamicWarping(-lmax,lmax);
+      dw.setStretchMax(0.25,0.25);
+      findShiftsMP(dw,qew,qns);
+      findShiftsPM(dw,qew,qns);
+      filterShifts();
+    }
+    private void filterShifts() {
+      for (Quad q:this) {
+        if (q.isVertical()) {
+          Vert v = q.getVert();
+          if (v.smp*v.spm>0.0f) {
+            v.smp = 0.0f;
+            v.spm = 0.0f;
+          }
+        }
+      }
+    }
+
     private Quad[] _quads;
   }
+
+  ///////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////
 
   /**
    * Constructs a fault surfer for specified likelihoods and orientations.
@@ -732,7 +902,12 @@ public class FaultSurfer3 {
     }
     trace("linkQuads: after linking all quads"); printStats(quads);
 
-    // Now unlink any quads with insufficient nabors. Quad nabors are
+    // Unlink any quads that are folded on top of one another.
+    // Normal vectors of quads and quad nabors must be consistent.
+    unlinkFoldedQuads(quads);
+    trace("linkQuads:  after unlinking folded quads"); printStats(quads);
+
+    // Unlink any quads with insufficient nabors. Quad nabors are
     // insufficent if they do not reference at least one common node.
     // This criterion eliminates fins and bridges with width one quad.
     unlinkSkinnyQuads(quads);
@@ -762,6 +937,9 @@ public class FaultSurfer3 {
     // Stack of quads that have been oriented, but with nabors to visit.
     ArrayDeque<Quad> stack = new ArrayDeque<Quad>();
 
+    // Count surfaces that are not orientable.
+    int nsno = 0;
+
     // For all quads, ...
     for (Quad quad:quads) {
 
@@ -779,6 +957,9 @@ public class FaultSurfer3 {
         list.add(quad);
         stack.push(quad);
 
+        // Count of quads that cannot be oriented consistently.
+        int nqno = 0;
+
         // While quad nabors have not yet been oriented, ...
         while (!stack.isEmpty()) {
 
@@ -791,20 +972,33 @@ public class FaultSurfer3 {
           // For all quad nabors qn of the oriented quad q, ...
           Quad[] qns = new Quad[]{q.qa,q.qb,q.qc,q.qd};
           for (Quad qn:qns) {
+            if (qn!=null) {
 
-            // If nabor has not yet been oriented, orient it, add it to
-            // the set of oriented quads, and to the stack of quads with 
-            // nabors to visit.
-            if (qn!=null && !set.contains(qn)) {
-              q.orientNabor(qn);
-              set.add(qn);
-              list.add(qn);
-              stack.push(qn);
+              // If nabor has not yet been oriented, orient it, add it to
+              // the set of oriented quads, and to the stack of quads with 
+              // nabors to visit.
+              if (!set.contains(qn)) {
+                q.orientNabor(qn);
+                set.add(qn);
+                list.add(qn);
+                stack.push(qn);
+              }
+
+              // Otherwise, if nabor has been oriented, then determine 
+              // whether or not its orientation is consistent with that
+              // for this quad. If not, then surface is not orientable.
+              else if (!q.isOrientedLikeNabor(qn)) {
+                ++nqno;
+              }
             }
           }
         }
 
         // Construct and orient a new surface, and add list of surfaces.
+        if (nqno>0) {
+          ++nsno;
+          trace("findSurfs: surf "+surfs.size()+" not orientable!");
+        }
         Surf surf = new Surf(list.toArray(new Quad[0]));
         surf.orient();
         surfs.add(surf);
@@ -812,6 +1006,7 @@ public class FaultSurfer3 {
     }
     trace("findSurfs: nquad="+quads.length+
                     " nsurf="+surfs.size()+
+                    " nsno="+nsno+
                     " nset="+set.size());
     return surfs.toArray(new Surf[0]);
   }
@@ -856,6 +1051,71 @@ public class FaultSurfer3 {
     float fcmax = 1.0f;
     ColorMap cmap = new ColorMap(fcmin,fcmax,ColorMap.JET);
     float[] rgb = cmap.getRgbFloats(fc);
+    return new float[][]{xyz.trim(),uvw.trim(),rgb};
+  }
+
+  /**
+   * Gets arrays {xyz,uvw,rgb} of quad coordinates, normals and colors.
+   * Uses color to represent fault shifts.
+   */
+  public static class Sum {
+    float s;
+    int n;
+    void add(float v) {
+      s += v;
+      n += 1;
+    }
+    float avg() {
+      return n>0?s/n:0.0f;
+    }
+  }
+  private static void acc(HashMap<Node,Sum> map, Node node, float v) {
+    Sum s = map.get(node);
+    if (s==null)
+      map.put(node,s=new Sum());
+    s.add(v);
+  }
+  private static float avg(HashMap<Node,Sum> map, Node node) {
+    Sum s = map.get(node);
+    return (s!=null)?s.avg():0.0f;
+  }
+  public static float[][] getXyzUvwRgbShifts(Quad[] quads, float smax) {
+    HashMap<Node,Sum> map = new HashMap<Node,Sum>(2*quads.length);
+    for (Quad quad:quads) {
+      if (quad.isVertical()) {
+        Vert vert = quad.getVert();
+        float s = smax>0.0?vert.smp:vert.spm;
+        acc(map,quad.na,s);
+        acc(map,quad.nb,s);
+        acc(map,quad.nc,s);
+        acc(map,quad.nd,s);
+      }
+    }
+    FloatList xyz = new FloatList();
+    FloatList uvw = new FloatList();
+    FloatList scl = new FloatList();
+    for (Quad quad:quads) {
+      float s = 0.0f;
+      if (quad.isVertical()) {
+        Vert vert = quad.getVert();
+        s = smax>0.0?vert.smp:vert.spm;
+      }
+      Node na = quad.na; float sa = avg(map,na);
+      Node nb = quad.nb; float sb = avg(map,nb);
+      Node nc = quad.nc; float sc = avg(map,nc);
+      Node nd = quad.nd; float sd = avg(map,nd);
+      xyz.add(na.x3); xyz.add(na.x2); xyz.add(na.x1); scl.add(sa);
+      xyz.add(nb.x3); xyz.add(nb.x2); xyz.add(nb.x1); scl.add(sb);
+      xyz.add(nc.x3); xyz.add(nc.x2); xyz.add(nc.x1); scl.add(sc);
+      xyz.add(nd.x3); xyz.add(nd.x2); xyz.add(nd.x1); scl.add(sd);
+      uvw.add(na.u3); uvw.add(na.u2); uvw.add(na.u1);
+      uvw.add(nb.u3); uvw.add(nb.u2); uvw.add(nb.u1);
+      uvw.add(nc.u3); uvw.add(nc.u2); uvw.add(nc.u1);
+      uvw.add(nd.u3); uvw.add(nd.u2); uvw.add(nd.u1);
+    }
+    float[] sc = scl.trim();
+    ColorMap cmap = new ColorMap(-abs(smax),abs(smax),ColorMap.JET);
+    float[] rgb = cmap.getRgbFloats(sc);
     return new float[][]{xyz.trim(),uvw.trim(),rgb};
   }
 
@@ -1178,6 +1438,7 @@ public class FaultSurfer3 {
       float h3d = h3j-h3i;
       float hsd = h1d*h1d+h2d*h2d+h3d*h3d;
       float wi = (hsd>hsdtiny)?(h1j*h1d+h2j*h2d+h3j*h3d)/hsd:0.5f;
+      //if (wi>0.99f) wi = 0.99f;
       float wj = 1.0f-wi;
 
       // Compute values on edge of sampling grid via linear interpolation.
@@ -1301,6 +1562,32 @@ public class FaultSurfer3 {
   }
 
   /**
+   * Unlink any quads that are folded on top of one another.
+   */
+  private static void unlinkFoldedQuads(Quad[] quads) {
+    for (Quad q:quads) {
+      unlinkIfFolded(q,q.qa);
+      unlinkIfFolded(q,q.qb);
+      unlinkIfFolded(q,q.qc);
+      unlinkIfFolded(q,q.qd);
+    }
+  }
+  private static void unlinkIfFolded(Quad q1, Quad q2) {
+    final float uusmall = 0.00f; // angles less than 90 degrees
+    //final float uusmall = 0.25f; // angles less than 60 degrees
+    //final float uusmall = 0.50f; // angles less than 45 degrees
+    //final float uusmall = 0.75f; // angles less than 30 degrees
+    if (q1!=null && q2!=null) {
+      boolean qq = q1.isOrientedLikeNabor(q2);
+      float uu = q1.u1*q2.u1+q1.u2*q2.u2+q1.u3*q2.u3;
+      if (qq && uu<uusmall || !qq && uu>-uusmall) {
+        q1.unlink();
+        q2.unlink();
+      }
+    }
+  }
+
+  /**
    * Recursively unlinks any quads with insufficient nabors.
    */
   private static void unlinkSkinnyQuads(Quad[] quads) {
@@ -1344,6 +1631,86 @@ public class FaultSurfer3 {
     trace("    number of quads with 4 nabors = "+nq[4]);
   }
 
+  private static void findShiftsMP(
+    DynamicWarping dw, Quad[][] qew, Quad[][] qns) 
+  {
+    findShifts(dw,true,qew,qns);
+  }
+
+  private static void findShiftsPM(
+    DynamicWarping dw, Quad[][] qew, Quad[][] qns) 
+  {
+    findShifts(dw,false,qew,qns);
+  }
+
+  private static void findShifts(
+    DynamicWarping dw, boolean mp, Quad[][] qew, Quad[][] qns) 
+  {
+
+    // Arrays of arrays of errors, linked east to west.
+    int mew = qew.length;
+    float[][][] eew = new float[mew][][];
+    for (int iew=0; iew<mew; ++iew) {
+      int lew = qew[iew].length;
+      eew[iew] = new float[lew][];
+      for (int jew=0; jew<lew; ++jew) {
+        Vert v = qew[iew][jew].getVert();
+        eew[iew][jew] = mp?v.emp:v.epm;
+      }
+    }
+
+    // Arrays of arrays of errors, linked north to south.
+    int mns = qns.length;
+    float[][][] ens = new float[mns][][];
+    for (int ins=0; ins<mns; ++ins) {
+      int lns = qns[ins].length;
+      ens[ins] = new float[lns][];
+      for (int jns=0; jns<lns; ++jns) {
+        Vert v = qns[ins][jns].getVert();
+        ens[ins][jns] = mp?v.emp:v.epm;
+      }
+    }
+
+    // Smooth the errors in north-south and east-west directions.
+    dw.accumulate1(ens,ens);
+    dw.accumulate1(eew,eew);
+    dw.accumulate1(ens,ens);
+    dw.accumulate1(eew,eew);
+
+    // Find shifts by accumulating and backtracking.
+    for (int ins=0; ins<mns; ++ins) {
+      float[][] dns = dw.accumulateForward(ens[ins]);
+      float[] s = dw.findShiftsReverse(dns,ens[ins]);
+      int lns = s.length;
+      for (int jns=0; jns<lns; ++jns) {
+        Vert v = qns[ins][jns].getVert();
+        if (mp) {
+          v.smp = s[jns];
+        } else {
+          v.spm = s[jns];
+        }
+      }
+    }
+  }
+
+  private static float[] like(float[] x) {
+    return new float[x.length];
+  }
+  private static float[][] like(float[][] x) {
+    int n = x.length; 
+    float[][] y = new float[n][];
+    for (int i=0; i<n; ++i)
+      y[i] = like(x[i]);
+    return y;
+  }
+  private static float[][][] like(float[][][] x) {
+    int n = x.length; 
+    float[][][] y = new float[n][][];
+    for (int i=0; i<n; ++i)
+      y[i] = like(x[i]);
+    return y;
+  }
+
   private static void trace(String s) {
     System.out.println(s);
   }
@@ -1368,29 +1735,6 @@ public class FaultSurfer3 {
       if (n==0)
         return null;
       float[] t = new float[n];
-      System.arraycopy(a,0,t,0,n);
-      return t;
-    }
-  }
-
-  private static class IntList {
-    public int n;
-    public int[] a = new int[1024];
-    public void add(float f) {
-      add(round(f));
-    }
-    public void add(int i) {
-      if (n==a.length) {
-        int[] t = new int[2*n];
-        System.arraycopy(a,0,t,0,n);
-        a = t;
-      }
-      a[n++] = i;
-    }
-    public int[] trim() {
-      if (n==0)
-        return null;
-      int[] t = new int[n];
       System.arraycopy(a,0,t,0,n);
       return t;
     }
