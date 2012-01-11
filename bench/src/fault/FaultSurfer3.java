@@ -642,11 +642,27 @@ public class FaultSurfer3 {
      * Orients this surface. Orientation is computed such that the 
      * average of u2 components of quad normal vectors is non-negative.
      */
-    public void orient() {
+    public void orientU2() {
       float u2sum = 0.0f;
       for (Quad q:_quads)
         u2sum += q.u2;
       if (u2sum<0.0) {
+        for (Quad q:_quads)
+          q.flip();
+        for (Quad q:_quads)
+          q.orientNodes();
+      }
+    }
+
+    /**
+     * Orients this surface. Orientation is computed such that the 
+     * average of u1 components of quad normal vectors is negative.
+     */
+    public void orient() {
+      float u1sum = 0.0f;
+      for (Quad q:_quads)
+        u1sum += q.u1;
+      if (u1sum>0.0) {
         for (Quad q:_quads)
           q.flip();
         for (Quad q:_quads)
@@ -989,6 +1005,8 @@ public class FaultSurfer3 {
               // for this quad. If not, then surface is not orientable.
               else if (!q.isOrientedLikeNabor(qn)) {
                 ++nqno;
+                q.unlink(qn);
+                qn.unlink(q);
               }
             }
           }
@@ -1114,7 +1132,7 @@ public class FaultSurfer3 {
       uvw.add(nd.u3); uvw.add(nd.u2); uvw.add(nd.u1);
     }
     float[] sc = scl.trim();
-    ColorMap cmap = new ColorMap(-abs(smax),abs(smax),ColorMap.JET);
+    ColorMap cmap = new ColorMap(-abs(smax),abs(smax),ColorMap.RED_WHITE_BLUE);
     float[] rgb = cmap.getRgbFloats(sc);
     return new float[][]{xyz.trim(),uvw.trim(),rgb};
   }
@@ -1573,16 +1591,23 @@ public class FaultSurfer3 {
     }
   }
   private static void unlinkIfFolded(Quad q1, Quad q2) {
-    final float uusmall = 0.00f; // angles less than 90 degrees
-    //final float uusmall = 0.25f; // angles less than 60 degrees
-    //final float uusmall = 0.50f; // angles less than 45 degrees
-    //final float uusmall = 0.75f; // angles less than 30 degrees
+    final float uusmall = 0.00f; // folded if angle > 90 degrees
+    //final float uusmall = 0.25f; // folded if angle > 60 degrees
+    //final float uusmall = 0.50f; // folded if angle > 45 degrees
+    //final float uusmall = 0.75f; // folded if angle > 30 degrees
     if (q1!=null && q2!=null) {
       boolean qq = q1.isOrientedLikeNabor(q2);
       float uu = q1.u1*q2.u1+q1.u2*q2.u2+q1.u3*q2.u3;
-      if (qq && uu<uusmall || !qq && uu>-uusmall) {
-        q1.unlink();
-        q2.unlink();
+      if (qq) {
+        if (uu<uusmall) {
+          q1.unlink();
+          q2.unlink();
+        }
+      } else {
+        if (uu>-uusmall) {
+          q1.unlink();
+          q2.unlink();
+        }
       }
     }
   }

@@ -70,8 +70,9 @@ def goSurfing():
   smax = 10
   plot3(g,surfs=surfs,smax=-smax)
   plot3(g,surfs=surfs,smax= smax)
-  #plot3(g,s,-10,10)
-  #plot3(g)
+  plot3(g,s,-10,10,gmap=bwrFill(0.7))
+  plot3(g,s,-10,10,gmap=bwrNotch(1.0))
+  plot3(g)
 
 def goSurfingFake():
   n1,n2,n3 = 101,102,103
@@ -417,7 +418,32 @@ def frame2(panel,png=None):
     frame.paintToPng(400,3.2,pngDir+"/"+png+".png")
   return frame
 
-def plot3(f,g=None,gmin=None,gmax=None,xyz=None,surfs=None,smax=None):
+def jetFill(alpha):
+  return ColorMap.setAlpha(ColorMap.JET,alpha)
+def bwrFill(alpha):
+  return ColorMap.setAlpha(ColorMap.BLUE_WHITE_RED,alpha)
+def jetRamp(alpha):
+  return ColorMap.setAlpha(ColorMap.JET,fillfloat(0.0,1.0/256,256))
+def bwrNotch(alpha):
+  a = zerofloat(256)
+  for i in range(len(a)):
+    if i<128:
+      a[i] = alpha*(128.0-i)/128.0
+    else:
+      a[i] = alpha*(i-127.0)/128.0
+    """
+    if i<96:
+      a[i] = 1.0
+    elif i<128:
+      a[i] = alpha*(128.0-i)/32.0
+    elif i<160:
+      a[i] = alpha*(i-127.0)/32.0
+    else:
+      a[i] = 1.0
+    """
+  return ColorMap.setAlpha(ColorMap.BLUE_WHITE_RED,a)
+
+def plot3(f,g=None,gmin=None,gmax=None,gmap=None,xyz=None,surfs=None,smax=None):
   n1 = len(f[0][0])
   n2 = len(f[0])
   n3 = len(f)
@@ -426,11 +452,11 @@ def plot3(f,g=None,gmin=None,gmax=None,xyz=None,surfs=None,smax=None):
     ipg = sf.addImagePanels(f)
   else:
     ipg = ImagePanelGroup2(f,g)
-    ipg.setColorModel2(ColorMap.getJet(0.8))
+    if gmap==None:
+      gmap = jetFill(0.8)
+    ipg.setColorModel2(gmap)
     if gmin and gmax:
       ipg.setClips2(gmin,gmax)
-    if gmin==0.0 and gmax==1.0:
-      updateColorModel2(ipg,0.8)
     sf.world.addChild(ipg)
   if xyz:
     pg = PointGroup(0.2,xyz)
@@ -479,32 +505,6 @@ def plot3(f,g=None,gmin=None,gmax=None,xyz=None,surfs=None,smax=None):
   #sf.orbitView.setAzimuthAndElevation(90,40)
   sf.orbitView.setAzimuthAndElevation(-49,57)
   sf.orbitView.setScale(1.5)
-
-def updateColorModel2(ipg,alpha):
-  n = 256
-  r = zerobyte(n)
-  g = zerobyte(n)
-  b = zerobyte(n)
-  a = zerobyte(n)
-  icm = ipg.getColorModel2()
-  icm.getReds(r)
-  icm.getGreens(g)
-  icm.getBlues(b)
-  for i in range(n):
-    ai = int(255.0*alpha*i/n)
-    if ai>127:
-      ai -= 256
-    a[i] = ai
-  #if alpha<1.0:
-    #r[n/2] = r[n/2-1] = -1
-    #g[n/2] = g[n/2-1] = -1
-    #b[n/2] = b[n/2-1] = -1
-    #a[n/2  ] = a[n/2-1] = 0
-    #a[n/2+1] = a[n/2-2] = 0
-    #a[n/2+2] = a[n/2-3] = 0
-    #a[0] = a[1] = 0
-  icm = IndexColorModel(8,n,r,g,b,a)
-  ipg.setColorModel2(icm)
 
 #############################################################################
 # Do everything on Swing thread.
