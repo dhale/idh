@@ -278,6 +278,10 @@ public class DynamicWarping {
       for (int i2=0; i2<n2; ++i2) {
          ei1[i2] =  e[i2][i1];
         eai1[i2] = ea[i2][i1];
+        for (int il=0; il<nl; ++il) {
+          ef[i2][il] = 0.0f;
+          er[i2][il] = 0.0f;
+        }
       }
       accumulate( 1,_bstretch2,ei1,ef);
       accumulate(-1,_bstretch2,ei1,er);
@@ -424,10 +428,12 @@ public class DynamicWarping {
         dp += e[k1b][ilp1];
       }
       dl = min3(dm,di,dp);
-      if (dl==dm) {
-        il = ilm1;
-      } else if (dl==dp) {
-        il = ilp1;
+      if (dl!=di) {
+        if (dl==dm) {
+          il = ilm1;
+        } else if (dl==dp) {
+          il = ilp1;
+        }
       }
       i1 += i1s;
       u[i1] = il+lmin;

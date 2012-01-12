@@ -39,8 +39,8 @@ def main(args):
 
 def goSurfing():
   def subset(s1,s2,s3,g):
-    n1,j1 = 70,130 # deeper coherent
-    #n1,j1 = 130,0 # shallow incoherent
+    #n1,j1 = 70,130 # deeper coherent
+    n1,j1 = 130,0 # shallow incoherent
     s1 = Sampling(n1,s1.delta,s1.first+j1*s1.delta)
     g = copy(n1,s2.count,s3.count,j1,0,0,g)
     return s1,s2,s3,g
