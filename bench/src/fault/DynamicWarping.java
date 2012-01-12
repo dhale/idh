@@ -431,7 +431,7 @@ public class DynamicWarping {
       if (dl!=di) {
         if (dl==dm) {
           il = ilm1;
-        } else if (dl==dp) {
+        } else {
           il = ilp1;
         }
       }

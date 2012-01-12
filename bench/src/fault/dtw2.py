@@ -33,16 +33,16 @@ seed = 588
 print "seed =",seed
 
 nrms = 2.00
-npass = 5
-stretchMax = 1.0
+npass = 3
+stretchMax = 0.25
 showLsf = False
-smoothShifts = False
+smoothShifts = True
 
 def main(args):
   #goTestImages()
   #goFaultImages()
-  goTestShifts() #smax = 0.20, nrms = 2.0
-  #goFaultShifts() #smax = 0.25, npass = 3
+  #goTestShifts() #smax = 0.20, nrms = 2.0
+  goFaultShifts() #smax = 0.25, npass = 3
 
 def goTestShifts():
   shift = 16
