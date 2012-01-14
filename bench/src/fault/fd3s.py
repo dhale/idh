@@ -39,8 +39,8 @@ def main(args):
 
 def goSurfing():
   def subset(s1,s2,s3,g):
-    #n1,j1 = 70,130 # deeper coherent
-    n1,j1 = 130,0 # shallow incoherent
+    n1,j1 = 90,130 # deeper coherent
+    #n1,j1 = 120,0 # shallow incoherent
     s1 = Sampling(n1,s1.delta,s1.first+j1*s1.delta)
     g = copy(n1,s2.count,s3.count,j1,0,0,g)
     return s1,s2,s3,g
@@ -60,7 +60,7 @@ def goSurfing():
   quads = fs.findQuads()
   quads = fs.linkQuads(quads)
   surfs = fs.findSurfs(quads)
-  surfs = fs.getSurfsWithSize(surfs,1000)
+  surfs = fs.getSurfsWithSize(surfs,2000)
   #xyz = surfs[18].sampleFaultDip() # 2, 3, 7
   #plot3(g,xyz=xyz,surfs=surfs)
   #surfs[18].findShifts(20.0,g)
@@ -71,7 +71,7 @@ def goSurfing():
   plot3(g,surfs=surfs,smax=-smax)
   plot3(g,surfs=surfs,smax= smax)
   plot3(g,s,-10,10,gmap=bwrFill(0.7))
-  plot3(g,s,-10,10,gmap=bwrNotch(1.0))
+  plot3(g,s,-5,5,gmap=bwrNotch(1.0))
   plot3(g)
 
 def goSurfingFake():
