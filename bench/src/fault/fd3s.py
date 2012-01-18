@@ -13,6 +13,7 @@ from javax.swing import *
 
 from edu.mines.jtk.awt import *
 from edu.mines.jtk.dsp import *
+from edu.mines.jtk.interp import *
 from edu.mines.jtk.io import *
 from edu.mines.jtk.mosaic import *
 from edu.mines.jtk.ogl.Gl import *
@@ -35,7 +36,29 @@ def main(args):
   #goTrack()
   #goShifts()
   #goSurfingFake()
-  goSurfing()
+  #goSurfing()
+  goUnfault()
+
+def goUnfault():
+  global dataDir,dataPre
+  dataDir = "/data/seis/f3d/faults/"
+  dataPre = ""
+  n1,n2,n3 = 90,221,220
+  s1 = Sampling(n1,1.0,0.0)
+  s2 = Sampling(n2,1.0,0.0)
+  s3 = Sampling(n3,1.0,0.0)
+  g = readImage(s1,s2,s3,"ag")
+  g = slog(g)
+  q1 = zerofloat(n1,n2,n3)
+  t1 = readImage(s1,s2,s3,"at1")
+  plot3(g,t1,-10.0,10.0,gmap=bwrFill(0.7))
+  st1,sx1,sx2,sx3 = SimpleGridder3.getGriddedSamples(-0.12345,s1,s2,s3,t1)
+  #bg = BlendedGridder3()
+  #d1 = bg.gridNearest(-0.12345,t1)
+  #bg.gridBlended(d1,t1,q1)
+  sg = SibsonGridder3(st1,sx1,sx2,sx3)
+  q1 = sg.grid(s1,s2,s3)
+  plot3(g,q1,-10.0,10.0,gmap=bwrFill(0.7))
 
 def goSurfing():
   def subset(s1,s2,s3,g):
@@ -61,18 +84,25 @@ def goSurfing():
   quads = fs.linkQuads(quads)
   surfs = fs.findSurfs(quads)
   surfs = fs.getSurfsWithSize(surfs,2000)
-  #xyz = surfs[18].sampleFaultDip() # 2, 3, 7
-  #plot3(g,xyz=xyz,surfs=surfs)
-  #surfs[18].findShifts(20.0,g)
   s = fs.findShifts(20.0,surfs,gs)
+  t1,t2,t3 = fs.findThrows(-0.12345,surfs)
   print "s: min =",min(s)," max =",max(s)
-  plot3(g,surfs=surfs)
-  smax = 10
-  plot3(g,surfs=surfs,smax=-smax)
-  plot3(g,surfs=surfs,smax= smax)
-  plot3(g,s,-10,10,gmap=bwrFill(0.7))
-  plot3(g,s,-5,5,gmap=bwrNotch(1.0))
-  plot3(g)
+  #plot3(g,surfs=surfs)
+  #plot3(g,surfs=surfs,smax=-10)
+  #plot3(g,surfs=surfs,smax= 10)
+  #plot3(g,s,-10,10,gmap=bwrFill(0.7))
+  plot3(g,t1,-10.0,10.0,gmap=bwrFill(0.7))
+  plot3(g,t2,-0.50,0.50,gmap=bwrFill(0.7))
+  plot3(g,t3,-0.50,0.50,gmap=bwrFill(0.7))
+  global dataDir,dataPre
+  dataDir = "/data/seis/f3d/faults/"
+  dataPre = "a"
+  writeImage(g,"g")
+  writeImage(t1,"t1")
+  writeImage(t2,"t2")
+  writeImage(t3,"t3")
+  #plot3(g,s,-5,5,gmap=bwrNotch(1.0))
+  #plot3(g)
 
 def goSurfingFake():
   n1,n2,n3 = 101,102,103

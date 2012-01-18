@@ -230,15 +230,15 @@ public class KdTree {
         float ds = _d.f1(j,x[j],xmin[j]); 
         sum += ds; 
         if (sum>sds) 
-          return false; // not true <- FBF error
+          return false; // FBF wrong; returns true
       } else if (x[j]>xmax[j]) {
         float ds = _d.f1(j,x[j],xmax[j]); 
         sum += ds; 
         if (sum>sds) 
-          return false; // not true <- FBF error
+          return false; // FBF wrong; returns true
       }
     }
-    return true; // not false <- FBF error
+    return true; // FBF wrong; returns false
   }
 
   /**

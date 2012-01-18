@@ -36,9 +36,8 @@ public class FaultSurfer3 {
     int n3 = f.length;
     float[][][] s = new float[n3][n2][n1];
     float[][][] c = new float[n3][n2][n1];
-    for (int isurf=0; isurf<surfs.length; ++isurf) {
-      Surf surf = surfs[isurf];
-      surf.findShifts(smax,f);
+    for (Surf surf:surfs) {
+      surf.computeShifts(smax,f);
       for (Quad quad:surf) {
         if (quad.isVertical()) {
           Vert v = quad.getVert();
@@ -61,6 +60,94 @@ public class FaultSurfer3 {
       }
     }
     return s;
+  }
+
+  /**
+   * Returns fault throw vectors for an array of fault surfaces.
+   * Throw vectors are computed for only one side of faults.
+   * Throws for the other side of the fault are set to zero.
+   * Throws for samples not adjacent to faults are marked using
+   * a specified value.
+   * @param tmark the mark for throws not adjacent to a fault.
+   * @param surfs array of fault surfaces.
+   * @return array {t1,t2,t3} of components of fault throws.
+   */
+  public float[][][][] findThrows(float tmark, Surf[] surfs) {
+    int n1 = _n1, n2 = _n2, n3 = _n3;
+    float[][][] t1 = new float[n3][n2][n1];
+    float[][][] t2 = new float[n3][n2][n1];
+    float[][][] t3 = new float[n3][n2][n1];
+    float[][][] ts = new float[n3][n2][n1];
+
+    // Initially set all throw vectors to the specified mark.
+    for (int i3=0; i3<n3; ++i3) {
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          t1[i3][i2][i1] = tmark;
+          t2[i3][i2][i1] = tmark;
+          t3[i3][i2][i1] = tmark;
+        }
+      }
+    }
+
+    // For all surfaces, ...
+    for (Surf surf:surfs) {
+
+      // Compute fault throws for all vertical quads in the surface.
+      surf.computeThrows();
+
+      // For all vertical quads in the surface, ...
+      for (Quad quad:surf) {
+        if (quad.isVertical()) {
+          Vert v = quad.getVert();
+
+          // Get sample indices for the zero and throw sides of the quad.
+          int i1 = quad.i1;
+          int i2z,i3z,i2t,i3t;
+          if (v.tp) {
+            i2z = v.i2m; i3z = v.i3m;
+            i2t = v.i2p; i3t = v.i3p;
+          } else {
+            i2z = v.i2p; i3z = v.i3p;
+            i2t = v.i2m; i3t = v.i3m;
+          }
+
+          // If throw on the zero side has not been set, zero it.
+          if (t1[i3z][i2z][i1]==tmark) {
+            t1[i3z][i2z][i1] = 0.0f;
+            t2[i3z][i2z][i1] = 0.0f;
+            t3[i3z][i2z][i1] = 0.0f;
+          }
+
+          // Set or accumulate throws on the throw side.
+          if (t1[i3t][i2t][i1]==tmark) {
+            t1[i3t][i2t][i1]  = v.t1;
+            t2[i3t][i2t][i1]  = v.t2;
+            t3[i3t][i2t][i1]  = v.t3;
+            ts[i3t][i2t][i1]  = 1.0f;
+          } else {
+            t1[i3t][i2t][i1] += v.t1;
+            t2[i3t][i2t][i1] += v.t2;
+            t3[i3t][i2t][i1] += v.t3;
+            ts[i3t][i2t][i1] += 1.0f;
+          }
+        }
+      }
+    }
+
+    // Where more than one throw was accumulated, compute the average.
+    for (int i3=0; i3<n3; ++i3) {
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          if (ts[i3][i2][i1]>1.0f) {
+            t1[i3][i2][i1] /= ts[i3][i2][i1];
+            t2[i3][i2][i1] /= ts[i3][i2][i1];
+            t3[i3][i2][i1] /= ts[i3][i2][i1];
+          }
+        }
+      }
+    }
+    return new float[][][][]{t1,t2,t3};
   }
 
   ///////////////////////////////////////////////////////////////////////////
@@ -355,12 +442,14 @@ public class FaultSurfer3 {
   public static class Vert {
     Quad q; // the quad augmented by these data
     Quad qe,qn,qw,qs; // quads east, north, west, and south
-    int i2m,i2p; // sample indices i2 on back and front sides of quad
-    int i3m,i3p; // sample indices i3 on back and front sides of quad
-    float[] emp; // array of errors back-front
-    float[] epm; // array of errors front-back
-    float smp; // shift (fault throw) back-front
-    float spm; // shift (fault throw) front-back
+    int i2m,i2p; // sample indices i2 on minus and plus sides of quad
+    int i3m,i3p; // sample indices i3 on minus and plus sides of quad
+    float[] emp; // array of errors minus-plus
+    float[] epm; // array of errors plus-minus
+    float smp; // shift minus-plus
+    float spm; // shift plus-minus
+    float t1,t2,t3; // fault throw vector
+    boolean tp; // true if fault throw is displacement of plus side
 
     /**
      * Constructs data for the specified vertical quad.
@@ -425,6 +514,66 @@ public class FaultSurfer3 {
       else if (q==qn.qc) return qn.qa;
       else if (q==qn.qd) return qn.qb;
       else {assert false; return null;}
+    }
+
+    /**
+     * Computes fault throw vector from vertical shifts.
+     */
+    void computeThrowFromShifts() {
+
+      // Start on fault plane with integer x1 = i1.
+      float us = q.us23, u1 = us*q.u1, u2 = us*q.u2, u3 = us*q.u3;
+      float ut = (q.i1-q.c1)*u1;
+      float x1 = q.i1, x2 = q.c2-ut*u2, x3 = q.c3-ut*u3;
+      float y1 = x1, y2 = x2, y3 = x3;
+
+      // Choose the largest (presumably non-negative) shift.
+      // Throw corresponds to either the minus or plus side, 
+      // depending on which shift is chosen.
+      float s1 = max(smp,spm);
+      tp = s1==smp;
+
+      // If shift is small enough, do nothing.
+      if (abs(s1)<=0.5f) {
+        // do nothing
+      }
+
+      // Else, if shift is positive, walk south (downward) on quads.
+      // Stop walking when we get to a quad corresponding to the 
+      // shift, or when we can find no more quads to walk on.
+      else if (s1>0.0f) {
+        us = q.us23; u1 = us*q.u1; u2 = us*q.u2; u3 = us*q.u3;
+        y1 += 1.0f; y2 -= u1*u2; y3 -= u1*u3;
+        Quad qi = quadSouth(q,y1,y2,y3);
+        while (qi!=null && abs(y1-x1-s1)>0.5f) {
+          us = qi.us23; u1 = us*qi.u1; u2 = us*qi.u2; u3 = us*qi.u3;
+          ut = (y1-qi.c1)*u1+(y2-qi.c2)*u2+(y3-qi.c3)*u3;
+          y2 -= ut*u2; y3 -= ut*u3;
+          y1 += 1.0f; y2 -= u1*u2; y3 -= u1*u3;
+          qi = quadSouth(qi,y1,y2,y3);
+        }
+      }
+
+      // Else, if shift is negative, walk north (upward) on quads. 
+      // Stop walking when we get to a quad corresponding to the 
+      // shift, or when we can find no more quads to walk on.
+      else {
+        us = q.us23; u1 = us*q.u1; u2 = us*q.u2; u3 = us*q.u3;
+        y1 -= 1.0f; y2 += u1*u2; y3 += u1*u3;
+        Quad qi = quadNorth(q,y1,y2,y3);
+        while (qi!=null && abs(y1-x1-s1)>0.5f) {
+          us = qi.us23; u1 = us*qi.u1; u2 = us*qi.u2; u3 = us*qi.u3;
+          ut = (y1-qi.c1)*u1+(y2-qi.c2)*u2+(y3-qi.c3)*u3;
+          y2 -= ut*u2; y3 -= ut*u3;
+          y1 -= 1.0f; y2 += u1*u2; y3 += u1*u3;
+          qi = quadNorth(qi,y1,y2,y3);
+        }
+      }
+
+      // Now as close as we can get for the shift; compute the throw.
+      float d1 = x1+s1-y1;
+      y1 += d1; y2 -= d1*u1*u2; y3 -= d1*u1*u3;
+      t1 = y1-x1; t2 = y2-x2; t3 = y3-x3;
     }
 
     float[] sampleFaultDip() {
@@ -564,7 +713,7 @@ public class FaultSurfer3 {
       float empl = emp[lmax] = error(fm,fp);
       float epml = epm[lmax] = error(fp,fm);
 
-      // Errors for samples south.
+      // Errors for samples south; any extrapolated errors are negative.
       us = q.us23; u1 = us*q.u1; u2 = us*q.u2; u3 = us*q.u3;
       y1 = x1+1.0f; y2 = x2-u1*u2; y3 = x3-u1*u3;
       qi = quadSouth(q,y1,y2,y3);
@@ -586,7 +735,7 @@ public class FaultSurfer3 {
         }
       }
 
-      // Errors for samples north.
+      // Errors for samples north; any extrapolated errors are negative.
       us = q.us23; u1 = us*q.u1; u2 = us*q.u2; u3 = us*q.u3;
       y1 = x1-1.0f; y2 = x2+u1*u2; y3 = x3+u1*u3;
       qi = quadNorth(q,y1,y2,y3);
@@ -804,9 +953,25 @@ public class FaultSurfer3 {
     }
 
     /**
-     * Computes errors for all vertical quads in this surface.
+     * Computes fault shifts for all vertical quads in this surface.
      */
-    public void computeErrors(int lmax, float d, float[][][] f) {
+    public void computeShifts(double smax, float[][][] f) {
+      int lmax = (int)smax;
+      final float d = 2.0f;
+      computeErrors(lmax,d,f);
+      Quad[][][] qewns = getQuadsEwNs();
+      Quad[][] qew = qewns[0];
+      Quad[][] qns = qewns[1];
+      extrapolateErrors(qns);
+      DynamicWarping dw = new DynamicWarping(-lmax,lmax);
+      dw.setStretchMax(0.25,0.25);
+      findShiftsMP(dw,qew,qns);
+      findShiftsPM(dw,qew,qns);
+      filterShifts();
+      smoothShifts();
+      smoothShifts();
+    }
+    private void computeErrors(int lmax, float d, float[][][] f) {
       for (Quad quad:_quads) {
         if (quad.isVertical()) {
           Vert vert = quad.getVert();
@@ -814,11 +979,56 @@ public class FaultSurfer3 {
         }
       }
     }
+    private void smoothShifts() {
+      for (Quad q:this) {
+        if (q.isVertical()) {
+          Vert v = q.getVert();
+          float smp = 0.0f;
+          float spm = 0.0f;
+          float css = 0.0f;
+          for (Quad qn:new Quad[]{v.qs,v.qn,v.qw,v.qe}) {
+            if (qn!=null) {
+              Vert vn = qn.getVert();
+              smp += v.smp+vn.smp;
+              spm += v.spm+vn.spm;
+              css += 2.0f;
+            }
+          }
+          v.smp = smp/css;
+          v.spm = spm/css;
+        }
+      }
+    }
+    private void filterShifts() {
+      for (Quad q:this) {
+        if (q.isVertical()) {
+          Vert v = q.getVert();
+          if (v.smp*v.spm>0.0f) {
+            v.smp = 0.0f;
+            v.spm = 0.0f;
+          }
+        }
+      }
+    }
+
+    /**
+     * Computes throw vectors for all vertical quads in this surface.
+     * Uses shifts that must already have been computed for each 
+     * vertical quad.
+     */
+    public void computeThrows() {
+      for (Quad quad:_quads) {
+        if (quad.isVertical()) {
+          Vert vert = quad.getVert();
+          vert.computeThrowFromShifts();
+        }
+      }
+    }
 
     /**
      * Returns east-west and north-south arrays of quads.
      */
-    public Quad[][][] getQuadsEwNs() {
+    private Quad[][][] getQuadsEwNs() {
       HashSet<Quad> qewSet = new HashSet<Quad>(size());
       HashSet<Quad> qnsSet = new HashSet<Quad>(size());
       ArrayList<Quad[]> qewList = new ArrayList<Quad[]>();
@@ -852,57 +1062,6 @@ public class FaultSurfer3 {
       Quad[][] qew = qewList.toArray(new Quad[0][]);
       Quad[][] qns = qnsList.toArray(new Quad[0][]);
       return new Quad[][][]{qew,qns};
-    }
-
-    /**
-     * Finds and sets fault shifts for all vertical quads in this surface.
-     */
-    public void findShifts(double smax, float[][][] f) {
-      int lmax = (int)smax;
-      final float d = 2.0f;
-      computeErrors(lmax,d,f);
-      Quad[][][] qewns = getQuadsEwNs();
-      Quad[][] qew = qewns[0];
-      Quad[][] qns = qewns[1];
-      extrapolateErrors(qns);
-      DynamicWarping dw = new DynamicWarping(-lmax,lmax);
-      dw.setStretchMax(0.25,0.25);
-      findShiftsMP(dw,qew,qns);
-      findShiftsPM(dw,qew,qns);
-      filterShifts();
-      smoothShifts();
-      smoothShifts();
-    }
-    private void smoothShifts() {
-      for (Quad q:this) {
-        if (q.isVertical()) {
-          Vert v = q.getVert();
-          float smp = 0.0f;
-          float spm = 0.0f;
-          float css = 0.0f;
-          for (Quad qn:new Quad[]{v.qs,v.qn,v.qw,v.qe}) {
-            if (qn!=null) {
-              Vert vn = qn.getVert();
-              smp += v.smp+vn.smp;
-              spm += v.spm+vn.spm;
-              css += 2.0f;
-            }
-          }
-          v.smp = smp/css;
-          v.spm = spm/css;
-        }
-      }
-    }
-    private void filterShifts() {
-      for (Quad q:this) {
-        if (q.isVertical()) {
-          Vert v = q.getVert();
-          if (v.smp*v.spm>0.0f) {
-            v.smp = 0.0f;
-            v.spm = 0.0f;
-          }
-        }
-      }
     }
 
     private Quad[] _quads;
