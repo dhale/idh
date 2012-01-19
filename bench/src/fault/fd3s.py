@@ -43,27 +43,32 @@ def goUnfault():
   global dataDir,dataPre
   dataDir = "/data/seis/f3d/faults/"
   dataPre = ""
-  n1,n2,n3 = 90,221,220
+  #n1,n2,n3 = 90,221,220
+  n1,n2,n3 = 120,221,220
   s1 = Sampling(n1,1.0,0.0)
   s2 = Sampling(n2,1.0,0.0)
   s3 = Sampling(n3,1.0,0.0)
-  g = readImage(s1,s2,s3,"ag")
-  g = slog(g)
-  q1 = zerofloat(n1,n2,n3)
-  t1 = readImage(s1,s2,s3,"at1")
-  plot3(g,t1,-10.0,10.0,gmap=bwrFill(0.7))
-  st1,sx1,sx2,sx3 = SimpleGridder3.getGriddedSamples(-0.12345,s1,s2,s3,t1)
+  #g = readImage(s1,s2,s3,"ag")
+  #h = readImage(s1,s2,s3,"ah")
+  g = readImage(s1,s2,s3,"bg")
+  h = readImage(s1,s2,s3,"bh")
+  plot3(g,h=h)
+  #g = slog(g)
+  #q1 = zerofloat(n1,n2,n3)
+  #t1 = readImage(s1,s2,s3,"at1")
+  #plot3(g,t1,-10.0,10.0,gmap=bwrFill(0.7))
+  #st1,sx1,sx2,sx3 = SimpleGridder3.getGriddedSamples(-0.12345,s1,s2,s3,t1)
   #bg = BlendedGridder3()
   #d1 = bg.gridNearest(-0.12345,t1)
   #bg.gridBlended(d1,t1,q1)
-  sg = SibsonGridder3(st1,sx1,sx2,sx3)
-  q1 = sg.grid(s1,s2,s3)
-  plot3(g,q1,-10.0,10.0,gmap=bwrFill(0.7))
+  #sg = SibsonGridder3(st1,sx1,sx2,sx3)
+  #q1 = sg.grid(s1,s2,s3)
+  #plot3(g,q1,-10.0,10.0,gmap=bwrFill(0.7))
 
 def goSurfing():
   def subset(s1,s2,s3,g):
-    n1,j1 = 90,130 # deeper coherent
-    #n1,j1 = 120,0 # shallow incoherent
+    #n1,j1 = 90,130 # deeper coherent
+    n1,j1 = 120,0 # shallow incoherent
     s1 = Sampling(n1,s1.delta,s1.first+j1*s1.delta)
     g = copy(n1,s2.count,s3.count,j1,0,0,g)
     return s1,s2,s3,g
@@ -87,22 +92,22 @@ def goSurfing():
   s = fs.findShifts(20.0,surfs,gs)
   t1,t2,t3 = fs.findThrows(-0.12345,surfs)
   print "s: min =",min(s)," max =",max(s)
-  #plot3(g,surfs=surfs)
+  plot3(g,surfs=surfs)
   #plot3(g,surfs=surfs,smax=-10)
   #plot3(g,surfs=surfs,smax= 10)
-  #plot3(g,s,-10,10,gmap=bwrFill(0.7))
-  plot3(g,t1,-10.0,10.0,gmap=bwrFill(0.7))
-  plot3(g,t2,-0.50,0.50,gmap=bwrFill(0.7))
-  plot3(g,t3,-0.50,0.50,gmap=bwrFill(0.7))
-  global dataDir,dataPre
-  dataDir = "/data/seis/f3d/faults/"
-  dataPre = "a"
-  writeImage(g,"g")
-  writeImage(t1,"t1")
-  writeImage(t2,"t2")
-  writeImage(t3,"t3")
-  #plot3(g,s,-5,5,gmap=bwrNotch(1.0))
-  #plot3(g)
+  plot3(g,s,-10,10,gmap=bwrFill(0.7))
+  #plot3(g,t1,-10.0,10.0,gmap=bwrFill(0.7))
+  #plot3(g,t2,-0.50,0.50,gmap=bwrFill(0.7))
+  #plot3(g,t3,-0.50,0.50,gmap=bwrFill(0.7))
+  #global dataDir,dataPre
+  #dataDir = "/data/seis/f3d/faults/"
+  #dataPre = "b"
+  #writeImage(g,"g")
+  #writeImage(t1,"t1")
+  #writeImage(t2,"t2")
+  #writeImage(t3,"t3")
+  plot3(g,s,-5,5,gmap=bwrNotch(1.0))
+  plot3(g)
 
 def goSurfingFake():
   n1,n2,n3 = 101,102,103
@@ -473,7 +478,8 @@ def bwrNotch(alpha):
     """
   return ColorMap.setAlpha(ColorMap.BLUE_WHITE_RED,a)
 
-def plot3(f,g=None,gmin=None,gmax=None,gmap=None,xyz=None,surfs=None,smax=None):
+def plot3(f,g=None,gmin=None,gmax=None,gmap=None,h=None,
+          xyz=None,surfs=None,smax=None):
   n1 = len(f[0][0])
   n2 = len(f[0])
   n3 = len(f)
@@ -488,6 +494,8 @@ def plot3(f,g=None,gmin=None,gmax=None,gmap=None,xyz=None,surfs=None,smax=None):
     if gmin and gmax:
       ipg.setClips2(gmin,gmax)
     sf.world.addChild(ipg)
+  if h!=None:
+    ipg = sf.addImagePanels(h)
   if xyz:
     pg = PointGroup(0.2,xyz)
     ss = StateSet()
