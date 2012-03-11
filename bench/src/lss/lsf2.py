@@ -17,10 +17,45 @@ from lss import *
 #############################################################################
 
 def main(args):
+  testPasses()
   #testDerivative()
   #testConstant()
-  testCircle()
+  #testCircle()
   #testChirp()
+
+def testPasses():
+  n1,n2 = 401,401
+  kr,kt = 20,40
+  s1,s2 = Sampling(n1),Sampling(n2)
+  f = makeImpulsesOnCircles(n1,n2,kr,kt)
+  t = makeCircleTensors(n1,n2)
+  print "smooth with multi-pass kernel"
+  for npass in [1,2]:
+    print "  npass =",npass
+    ldk = LocalDiffusionKernel()
+    ldk.setNumberOfPasses(npass)
+    lsf = LocalSmoothingFilter(0.001,10000,ldk)
+    g = copy(f)
+    h = copy(g)
+    lsf.applySmoothS(f,g)
+    lsf.apply(t,200.0,g,h)
+    if npass>1:
+      lsf.applySmoothS(h,h)
+      pass
+    if npass==1:
+      plot(s1,s2,g)
+    plot(s1,s2,h)
+  print "smooth twice with single-pass kernel"
+  ldk = LocalDiffusionKernel()
+  lsf = LocalSmoothingFilter(0.001,10000,ldk)
+  lsf.applySmoothS(f,g)
+  lsf.apply(t,200.0,copy(g),g)
+  lsf.apply(t,200.0,copy(g),g)
+  lsf.applySmoothS(g,g)
+  plot(s1,s2,g)
+  plot(s1,s2,sub(g,h))
+  print "max abs err:",max(abs(sub(g,h)))
+
 
 def testDerivative():
   for m in [1,2,3,4,6]:
@@ -204,7 +239,7 @@ def plot(s1,s2,h):
   pv.setColorModel(ColorMap.GRAY)
   pv.setInterpolation(PixelsView.Interpolation.NEAREST)
   #pv.setClips(-1.0,1.0)
-  pv.setClips(-0.025,0.025)
+  #pv.setClips(-0.025,0.025)
   frame(p,810,634)
 
 def plotA(s1,s2,h):

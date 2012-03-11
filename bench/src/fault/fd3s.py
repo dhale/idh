@@ -36,22 +36,102 @@ def main(args):
   #goTrack()
   #goShifts()
   #goSurfingFake()
-  #goSurfing()
-  goUnfault()
+  goSurfing()
+  #goUnfault()
+  #goSubsets()
+
+def goSurfing():
+  global dataDir,dataPre
+  dataDir = "/data/seis/f3d/faults/"
+  dataPre = ""
+  #n1,n2,n3 = 90,221,220 # deeper coherent
+  n1,n2,n3 = 120,221,220 # shallow incoherent
+  s1,s2,s3 = Sampling(n1,1.0,0.0),Sampling(n2,1.0,0.0),Sampling(n3,1.0,0.0)
+  #g = readImage(s1,s2,s3,"ag")
+  #h = readImage(s1,s2,s3,"ah")
+  g = readImage(s1,s2,s3,"bg"); g = copy(90,n2,n3,15,0,0,g); n1 = 90
+  h = readImage(s1,s2,s3,"bh"); h = copy(90,n2,n3,15,0,0,h); n1 = 90
+  def subset(s1,s2,s3,g):
+    #n1,j1 = 90,130 # deeper coherent
+    n1,j1 = 90,15 # shallow incoherent
+    #n1,j1 = 120,0 # shallow incoherent
+    s1 = Sampling(n1,s1.delta,s1.first+j1*s1.delta)
+    g = copy(n1,s2.count,s3.count,j1,0,0,g)
+    return s1,s2,s3,g
+  s1,s2,s3,gignore = imageF3d()
+  gs = readImage(s1,s2,s3,"gs")
+  fl = readImage(s1,s2,s3,"fl")
+  fp = readImage(s1,s2,s3,"fp")
+  ft = readImage(s1,s2,s3,"ft")
+  s1,s2,s3,gs = subset(s1,s2,s3,gs)
+  s1,s2,s3,fl = subset(s1,s2,s3,fl)
+  s1,s2,s3,fp = subset(s1,s2,s3,fp)
+  s1,s2,s3,ft = subset(s1,s2,s3,ft)
+  print "s1:",s1.count,s1.delta,s1.first
+  print "s2:",s2.count,s2.delta,s2.first
+  print "s3:",s3.count,s3.delta,s3.first
+  fs = FaultSurfer3([fl,fp,ft])
+  fs.setThreshold(0.5)
+  quads = fs.findQuads()
+  quads = fs.linkQuads(quads)
+  surfs = fs.findSurfs(quads)
+  surfs = fs.getSurfsWithSize(surfs,2000)
+  s = fs.findShifts(20.0,surfs,gs)
+  print "s: min =",min(s)," max =",max(s)
+  #t1,t2,t3 = fs.findThrows(-0.12345,surfs)
+  #plot3(g,surfs=surfs)
+  #plot3(g,surfs=surfs,smax=-3.75)
+  plot3(g,surfs=surfs,smax= 3.75)
+  #plot3(h,surfs=surfs,smax= 3.75)
+  #plot3(g,s,-10,10,gmap=bwrFill(0.7))
+  #plot3(g,t1,-10.0,10.0,gmap=bwrFill(0.7))
+  #plot3(g,t2,-0.50,0.50,gmap=bwrFill(0.7))
+  #plot3(g,t3,-0.50,0.50,gmap=bwrFill(0.7))
+  plot3(g,s,-5,5,gmap=bwrNotch(1.0))
+  plot3(g)
+
+def goSubsets():
+  def subset(s1,s2,s3,g):
+    n1,j1 = 90,130 # deeper coherent
+    #n1,j1 = 120,0 # shallow incoherent
+    s1 = Sampling(n1,s1.delta,s1.first+j1*s1.delta)
+    g = copy(n1,s2.count,s3.count,j1,0,0,g)
+    return s1,s2,s3,g
+  s1,s2,s3,g = imageF3d()
+  g = slog(g)
+  gs = readImage(s1,s2,s3,"gs")
+  fl = readImage(s1,s2,s3,"fl")
+  fp = readImage(s1,s2,s3,"fp")
+  ft = readImage(s1,s2,s3,"ft")
+  flt = readImage(s1,s2,s3,"flt")
+  s1,s2,s3,g  = subset(s1,s2,s3,g)
+  s1,s2,s3,gs = subset(s1,s2,s3,gs)
+  s1,s2,s3,fl = subset(s1,s2,s3,fl)
+  s1,s2,s3,fp = subset(s1,s2,s3,fp)
+  s1,s2,s3,ft = subset(s1,s2,s3,ft)
+  s1,s2,s3,flt = subset(s1,s2,s3,flt)
+  global dataDir,dataPre
+  dataDir = "/data/seis/f3d/faults/"
+  dataPre = "a"
+  writeImage(gs,"gs")
+  writeImage(fl,"fl")
+  writeImage(fp,"fp")
+  writeImage(ft,"ft")
+  writeImage(flt,"flt")
 
 def goUnfault():
   global dataDir,dataPre
   dataDir = "/data/seis/f3d/faults/"
   dataPre = ""
-  #n1,n2,n3 = 90,221,220
-  n1,n2,n3 = 120,221,220
+  n1,n2,n3 = 90,221,220
+  #n1,n2,n3 = 120,221,220
   s1 = Sampling(n1,1.0,0.0)
   s2 = Sampling(n2,1.0,0.0)
   s3 = Sampling(n3,1.0,0.0)
-  #g = readImage(s1,s2,s3,"ag")
-  #h = readImage(s1,s2,s3,"ah")
-  g = readImage(s1,s2,s3,"bg")
-  h = readImage(s1,s2,s3,"bh")
+  g = readImage(s1,s2,s3,"ag")
+  h = readImage(s1,s2,s3,"ah")
+  #g = readImage(s1,s2,s3,"bg")
+  #h = readImage(s1,s2,s3,"bh")
   plot3(g,h=h)
   #g = slog(g)
   #q1 = zerofloat(n1,n2,n3)
@@ -65,68 +145,25 @@ def goUnfault():
   #q1 = sg.grid(s1,s2,s3)
   #plot3(g,q1,-10.0,10.0,gmap=bwrFill(0.7))
 
-def goSurfing():
-  def subset(s1,s2,s3,g):
-    #n1,j1 = 90,130 # deeper coherent
-    n1,j1 = 120,0 # shallow incoherent
-    s1 = Sampling(n1,s1.delta,s1.first+j1*s1.delta)
-    g = copy(n1,s2.count,s3.count,j1,0,0,g)
-    return s1,s2,s3,g
-  s1,s2,s3,g = imageF3d()
-  g = slog(g)
-  gs = readImage(s1,s2,s3,"gs")
-  fl = readImage(s1,s2,s3,"fl")
-  fp = readImage(s1,s2,s3,"fp")
-  ft = readImage(s1,s2,s3,"ft")
-  s1,s2,s3,g  = subset(s1,s2,s3,g)
-  s1,s2,s3,gs = subset(s1,s2,s3,gs)
-  s1,s2,s3,fl = subset(s1,s2,s3,fl)
-  s1,s2,s3,fp = subset(s1,s2,s3,fp)
-  s1,s2,s3,ft = subset(s1,s2,s3,ft)
-  fs = FaultSurfer3([fl,fp,ft])
-  fs.setThreshold(0.5)
-  quads = fs.findQuads()
-  quads = fs.linkQuads(quads)
-  surfs = fs.findSurfs(quads)
-  surfs = fs.getSurfsWithSize(surfs,2000)
-  s = fs.findShifts(20.0,surfs,gs)
-  t1,t2,t3 = fs.findThrows(-0.12345,surfs)
-  print "s: min =",min(s)," max =",max(s)
-  plot3(g,surfs=surfs)
-  #plot3(g,surfs=surfs,smax=-10)
-  #plot3(g,surfs=surfs,smax= 10)
-  plot3(g,s,-10,10,gmap=bwrFill(0.7))
-  #plot3(g,t1,-10.0,10.0,gmap=bwrFill(0.7))
-  #plot3(g,t2,-0.50,0.50,gmap=bwrFill(0.7))
-  #plot3(g,t3,-0.50,0.50,gmap=bwrFill(0.7))
-  #global dataDir,dataPre
-  #dataDir = "/data/seis/f3d/faults/"
-  #dataPre = "b"
-  #writeImage(g,"g")
-  #writeImage(t1,"t1")
-  #writeImage(t2,"t2")
-  #writeImage(t3,"t3")
-  plot3(g,s,-5,5,gmap=bwrNotch(1.0))
-  plot3(g)
-
 def goSurfingFake():
-  n1,n2,n3 = 101,102,103
-  #n1,n2,n3 = 51,52,53
+  #n1,n2,n3 = 101,102,103
+  n1,n2,n3 = 51,52,53
   #n1,n2,n3 = 41,42,43
   #n1,n2,n3 = 11,12,13
   #g = sub(randfloat(n1,n2,n3),0.5)
   g = zerofloat(n1,n2,n3)
-  f,p,t = Util.fakeFpt(n1,n2,n3)
+  f,p,t = Util.fakeSpheresFpt(n1,n2,n3)
+  print "f max =",max(f)
   fs = FaultSurfer3([f,p,t])
   fs.setThreshold(0.5)
   quads = fs.findQuads()
   quads = fs.linkQuads(quads)
   surfs = fs.findSurfs(quads)
-  surfs = fs.getSurfsWithSize(surfs,1000)
-  xyz = fs.sampleFaultDip(surfs[0])
+  surfs = fs.getSurfsWithSize(surfs,100)
+  #xyz = fs.sampleFaultDip(surfs[0])
   #s = fs.findShifts(surfs)
   #plot3(g,s,surfs=surfs)
-  plot3(g,f,0,1,xyz=xyz,surfs=surfs)
+  plot3(g,f,0,1,surfs=surfs)
   #sp = SimplePlot()
   #pv = sp.addPixels(fs.slice1(n1/2,s))
   #pv.setColorModel(ColorMap.JET)
@@ -484,6 +521,7 @@ def plot3(f,g=None,gmin=None,gmax=None,gmap=None,h=None,
   n2 = len(f[0])
   n3 = len(f)
   sf = SimpleFrame()
+  sf.setBackground(Color(255,255,255))
   if g==None:
     ipg = sf.addImagePanels(f)
   else:
@@ -530,19 +568,39 @@ def plot3(f,g=None,gmin=None,gmax=None,gmap=None,h=None,
       else:
         xyz,uvw,rgb = surf.getXyzUvwRgb()
       #qg = QuadGroup(False,xyz,rgb)
-      qg = QuadGroup(True,xyz,rgb)
-      #qg = QuadGroup(xyz,uvw,rgb)
+      qg = QuadGroup(True,xyz,rgb) #qg = QuadGroup(xyz,uvw,rgb)
       qg.setStates(None)
       sg.addChild(qg)
     sf.world.addChild(sg)
   #ipg.setSlices(209,12,18)
   #ipg.setSlices(200,0,0)
-  ipg.setSlices(66,9,13)
-  sf.setSize(1300,1100)
+  #ipg.setSlices(80,9,13)
+  #ipg.setSlices(80,9,209)
+  #sf.setSize(1300,1100)
+  sf.setSize(1040,1124)
   sf.setWorldSphere(n3/2,n2/2,n1/2,0.5*sqrt(n1*n1+n2*n2+n3*n3))
   #sf.orbitView.setAzimuthAndElevation(90,40)
-  sf.orbitView.setAzimuthAndElevation(-49,57)
-  sf.orbitView.setScale(1.5)
+  #sf.orbitView.setAzimuthAndElevation(-49,57)
+  #sf.orbitView.setAzimuthAndElevation(60,60)
+  #sf.orbitView.setAzimuthAndElevation(-90,80)
+  #sf.orbitView.setScale(1.42)
+  # good for subset a
+  ipg.setSlices(80,38,119)
+  sf.orbitView.setAzimuthAndElevation(-73,51)
+  sf.orbitView.setScale(1.35)
+  sf.orbitView.setTranslate(Vector3(0.0587,0.0626,0.0068))
+  sf.viewCanvas.setBackground(sf.getBackground())
+  # good for subset b
+  #ipg.setSlices(80,47,146) # t55
+  #ipg.setSlices(80,52,142) # t59
+  #sf.orbitView.setAzimuthAndElevation(-99,67)
+  #sf.orbitView.setScale(1.56)
+  #sf.orbitView.setTranslate(Vector3(0.0435,0.0550,-0.0157))
+  # good for closeup view
+  #sf.orbitView.setAzimuthAndElevation(225.72,44.38)
+  #sf.orbitView.setScale(14.54)
+  #sf.orbitView.setTranslate(Vector3(-0.4886,0.1457,-0.3072))
+  #sf.viewCanvas.setBackground(sf.getBackground())
 
 #############################################################################
 # Do everything on Swing thread.

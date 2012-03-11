@@ -9,7 +9,14 @@ import static edu.mines.jtk.util.ArrayMath.*;
  */
 public class Util {
 
-  public static float[][][][] fakeFpt(int n1, int n2, int n3) {
+  public static float[][][][] fakeSpheresFpt(int n1, int n2, int n3) {
+    float ra=1.8f*n2, sa=0.0f, c1a= 0.0f*n1, c2a=-0.7f*n2, c3a=-0.7f*n3;
+    float rb=1.9f*n2, sb=0.3f, c1b=-0.3f*n1, c2b=-0.9f*n2, c3b=-0.5f*n3;
+    float[][][][] fpt = sphereFpt(n1,n2,n3,1.0f,ra,sa,c1a,c2a,c3a);
+    fpt = mergeFpt2(fpt,sphereFpt(n1,n2,n3,1.0f,rb,sb,c1b,c2b,c3b));
+    return fpt;
+  }
+  public static float[][][][] fakePlanesFpt(int n1, int n2, int n3) {
     float[][][][] fpt = new float[3][n3][n2][n1];
     fpt = mergeFpt(fpt,planeFpt(n1,n2,n3,1.0f, 40.0f,10.0f,n1/2,n2/2,n3/3));
     fpt = mergeFpt(fpt,planeFpt(n1,n2,n3,0.8f,-15.0f,10.0f,n1/2,n2/2,n3/3));
@@ -44,6 +51,35 @@ public class Util {
     }
     return new float[][][][]{f,p,t};
   }
+  public static float[][][][] sphereFpt(
+    int n1, int n2, int n3,
+    float fl, float r, float s,
+    float c1, float c2, float c3)
+  {
+    c1 += 0.001f;
+    c2 += 0.001f;
+    c3 += 0.001f;
+    float[][][] f = new float[n3][n2][n1];
+    float[][][] p = new float[n3][n2][n1];
+    float[][][] t = new float[n3][n2][n1];
+    for (int i3=0; i3<n3; ++i3) {
+      float d3 = i3-c3;
+      for (int i2=0; i2<n2; ++i2) {
+        float d2 = i2-c2;
+        for (int i1=0; i1<n1; ++i1) {
+          float d1 = i1-c1;
+          float di = sqrt(d1*d1+d2*d2+d3*d3);
+          float pi = -atan(d2/d3);
+          float ti = -asin(d1/di);
+          di += s*cos(toDegrees(pi));
+          f[i3][i2][i1] = fl*exp(-0.005f*(di-r)*(di-r));
+          p[i3][i2][i1] = toDegrees(pi);
+          t[i3][i2][i1] = toDegrees(ti);
+        }
+      }
+    }
+    return new float[][][][]{f,p,t};
+  }
   public static float[][][][] mergeFpt(
     float[][][][] fpta, float[][][][] fptb) 
   {
@@ -61,6 +97,36 @@ public class Util {
           float fai = fa[i3][i2][i1];
           float fbi = fb[i3][i2][i1];
           if (fa[i3][i2][i1]>=fb[i3][i2][i1]) {
+            fc[i3][i2][i1] = fa[i3][i2][i1];
+            pc[i3][i2][i1] = pa[i3][i2][i1];
+            tc[i3][i2][i1] = ta[i3][i2][i1];
+          } else {
+            fc[i3][i2][i1] = fb[i3][i2][i1];
+            pc[i3][i2][i1] = pb[i3][i2][i1];
+            tc[i3][i2][i1] = tb[i3][i2][i1];
+          }
+        }
+      }
+    }
+    return new float[][][][]{fc,pc,tc};
+  }
+  public static float[][][][] mergeFpt2(
+    float[][][][] fpta, float[][][][] fptb) 
+  {
+    int n1 = fpta[0][0][0].length;
+    int n2 = fpta[0][0].length;
+    int n3 = fpta[0].length;
+    float[][][] fa = fpta[0], pa = fpta[1], ta = fpta[2];
+    float[][][] fb = fptb[0], pb = fptb[1], tb = fptb[2];
+    float[][][] fc = new float[n3][n2][n1];
+    float[][][] pc = new float[n3][n2][n1];
+    float[][][] tc = new float[n3][n2][n1];
+    for (int i3=0; i3<n3; ++i3) {
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          float fai = fa[i3][i2][i1];
+          float fbi = fb[i3][i2][i1];
+          if (fai>fbi) {
             fc[i3][i2][i1] = fa[i3][i2][i1];
             pc[i3][i2][i1] = pa[i3][i2][i1];
             tc[i3][i2][i1] = ta[i3][i2][i1];

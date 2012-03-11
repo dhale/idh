@@ -18,6 +18,7 @@ from edu.mines.jtk.io import *
 from edu.mines.jtk.lapack import *
 from edu.mines.jtk.mosaic import *
 from edu.mines.jtk.sgl import *
+from edu.mines.jtk.util import *
 from edu.mines.jtk.util.ArrayMath import *
 
 from interp import *

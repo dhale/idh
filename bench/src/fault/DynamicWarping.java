@@ -369,7 +369,7 @@ public class DynamicWarping {
     return e*e;
   }
 
-  private static void accumulate(int dir, int b, float[][] e, float[][] d) {
+  private static void xaccumulate(int dir, int b, float[][] e, float[][] d) {
     int nl = e[0].length;
     int n1 = e.length;
     int nlm1 = nl-1;
@@ -395,7 +395,7 @@ public class DynamicWarping {
     }
   }
 
-  private static void findShifts(
+  private static void xfindShifts(
     int dir, int b, int lmin, float[][] d, float[][] e, float[] u) 
   {
     int nl = d[0].length;
@@ -446,7 +446,183 @@ public class DynamicWarping {
     }
   }
 
+  /**
+   * Non-linear accumulation of alignment errors.
+   * @param dir accumulation direction, positive or negative.
+   * @param b sample offset used to constrain changes in lag.
+   * @param e input array[ni][nl] of alignment errors.
+   * @param d output array[ni][nl] of accumulated errors.
+   */
+  private static void accumulate(int dir, int b, float[][] e, float[][] d) {
+    int nl = e[0].length;
+    int ni = e.length;
+    int nlm1 = nl-1;
+    int nim1 = ni-1;
+    int ib = (dir>0)?0:nim1;
+    int ie = (dir>0)?ni:-1;
+    int is = (dir>0)?1:-1;
+    for (int ii=ib; ii!=ie; ii+=is) {
+      int ji = max(0,min(nim1,ii-is));
+      int jb = max(0,min(nim1,ii-is*b));
+      for (int il=0; il<nl; ++il) {
+        int ilm1 = il-1; if (ilm1<=-1) ilm1 = 0;
+        int ilp1 = il+1; if (ilp1==nl) ilp1 = nlm1;
+        float dm = d[jb][ilm1];
+        float di = d[ji][il  ];
+        float dp = d[jb][ilp1];
+        for (int kb=ji; kb!=jb; kb-=is) {
+          dm += e[kb][ilm1];
+          dp += e[kb][ilp1];
+        }
+        d[ii][il] = min3(dm,di,dp)+e[ii][il];
+      }
+    }
+  }
+
+  /**
+   * Finds shifts by backtracking in accumulated alignment errors.
+   * Backtracking must be performed in the direction opposite to
+   * that for which accumulation was performed.
+   * @param dir backtrack direction, positive or negative.
+   * @param b sample offset used to constrain changes in lag.
+   * @param lmin minimum lag corresponding to lag index zero.
+   * @param d input array[ni][nl] of accumulated errors.
+   * @param e input array[ni][nl] of alignment errors.
+   * @param u output array[ni] of computed shifts.
+   */
+  private static void findShifts(
+    int dir, int b, int lmin, float[][] d, float[][] e, float[] u) 
+  {
+    int nl = d[0].length;
+    int ni = d.length;
+    int nlm1 = nl-1;
+    int nim1 = ni-1;
+    int ib = (dir>0)?0:nim1;
+    int ie = (dir>0)?nim1:0;
+    int is = (dir>0)?1:-1;
+    int ii = ib;
+    int il = 0;
+    float dl = d[ii][il];
+    for (int jl=1; jl<nl; ++jl) {
+      if (d[ii][jl]<dl) {
+        dl = d[ii][jl];
+        il = jl;
+      }
+    }
+    u[ii] = il+lmin;
+    while (ii!=ie) {
+      int ji = max(0,min(nim1,ii+is));
+      int jb = max(0,min(nim1,ii+is*b));
+      int ilm1 = il-1; if (ilm1<=-1) ilm1 = 0;
+      int ilp1 = il+1; if (ilp1==nl) ilp1 = nlm1;
+      float dm = d[jb][ilm1];
+      float di = d[ji][il  ];
+      float dp = d[jb][ilp1];
+      for (int kb=ji; kb!=jb; kb+=is) { // ii-1
+        dm += e[kb][ilm1];
+        dp += e[kb][ilp1];
+      }
+      dl = min3(dm,di,dp);
+      if (dl!=di) {
+        if (dl==dm) {
+          il = ilm1;
+        } else {
+          il = ilp1;
+        }
+      }
+      ii += is;
+      u[ii] = il+lmin;
+      if (il==ilm1 || il==ilp1) {
+        for (int kb=ji; kb!=jb; kb+=is) {
+          ii += is;
+          u[ii] = il+lmin;
+        }
+      }
+    }
+  }
+
   private static float min3(float a, float b, float c) {
     return b<=a?(b<=c?b:c):(a<=c?a:c); // if equal, choose b
   }
+
+  /////////////////////////////////////////////////////////////////////////////
+  // Listings in paper
+  void xxaccumulate(int dir, int b, 
+                  float[][] e, float[][] d) 
+  {
+    int nl = e[0].length;
+    int ni = e.length;
+    int nlm1 = nl-1;
+    int nim1 = ni-1;
+    int ib = (dir>0)?0:nim1;
+    int ie = (dir>0)?ni:-1;
+    int is = (dir>0)?1:-1;
+    for (int i=ib; i!=ie; i+=is) {
+      int ji = max(0,min(nim1,i-is));
+      int jb = max(0,min(nim1,i-is*b));
+      for (int l=0; l<nl; ++l) {
+        int lm1 = l-1; if (lm1<=-1) lm1 = 0;
+        int lp1 = l+1; if (lp1==nl) lp1 = nlm1;
+        float dm = d[jb][lm1];
+        float di = d[ji][l  ];
+        float dp = d[jb][lp1];
+        for (int kb=ji; kb!=jb; kb-=is) {
+          dm += e[kb][lm1];
+          dp += e[kb][lp1];
+        }
+        d[i][l] = min3(dm,di,dp)+e[i][l];
+      }
+    }
+  }
+  void xxbacktrack(int dir, int b, int lmin, 
+    float[][] d, float[][] e, float[] u) 
+  {
+    int nl = d[0].length;
+    int ni = d.length;
+    int nlm1 = nl-1;
+    int nim1 = ni-1;
+    int ib = (dir>0)?0:nim1;
+    int ie = (dir>0)?nim1:0;
+    int is = (dir>0)?1:-1;
+    int ii = ib;
+    int il = 0;
+    float dl = d[ii][il];
+    for (int jl=1; jl<nl; ++jl) {
+      if (d[ii][jl]<dl) {
+        dl = d[ii][jl];
+        il = jl;
+      }
+    }
+    u[ii] = il+lmin;
+    while (ii!=ie) {
+      int ji = max(0,min(nim1,ii+is));
+      int jb = max(0,min(nim1,ii+is*b));
+      int ilm1 = il-1; if (ilm1<=-1) ilm1 = 0;
+      int ilp1 = il+1; if (ilp1==nl) ilp1 = nlm1;
+      float dm = d[jb][ilm1];
+      float di = d[ji][il  ];
+      float dp = d[jb][ilp1];
+      for (int kb=ji; kb!=jb; kb+=is) {
+        dm += e[kb][ilm1];
+        dp += e[kb][ilp1];
+      }
+      dl = min3(dm,di,dp);
+      if (dl!=di) {
+        if (dl==dm) {
+          il = ilm1;
+        } else {
+          il = ilp1;
+        }
+      }
+      ii += is;
+      u[ii] = il+lmin;
+      if (il==ilm1 || il==ilp1) {
+        for (int kb=ji; kb!=jb; kb+=is) {
+          ii += is;
+          u[ii] = il+lmin;
+        }
+      }
+    }
+  }
+
 }

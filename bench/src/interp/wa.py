@@ -59,12 +59,12 @@ def makeVariogram(f,x1,x2):
 def demoMethods():
   f,x1,x2 = readWolfcamp()
   gba = gridSimple(f,x1,x2,s1a,s2a);
-  gsk = gridKriging(1.0,40.0,f,x1,x2,s1,s2)
+  gsk = gridKriging(f,x1,x2,s1,s2,sigmaD=0.0,shapeM=0.5,rangeM=80.0)
   gb0 = gridBlended(f,x1,x2,s1,s2,0.5);
   """
   gbb = gridSimple(f,x1,x2,s1b,s2b);
   gnn = gridNearest(f,x1,x2,s1,s2);
-  gsk = gridKriging(1.0,40.0,f,x1,x2,s1,s2)
+  gsk = gridKriging(f,x1,x2,s1,s2,sigmaD=0.0,shapeM=1.0,rangeM=40.0)
   gsh = gridShepard(f,x1,x2,s1,s2);
   gb0 = gridBlended(f,x1,x2,s1,s2,0.5);
   gb1 = gridBlended(f,x1,x2,s1,s2,1.0);
@@ -102,20 +102,47 @@ def gridSimple(f,x1,x2,s1,s2):
 def gridBlended(f,x1,x2,s1,s2,smooth=0.5):
   bg = BlendedGridder2(f,x1,x2)
   bg.setSmoothness(smooth)
-  return bg.grid(s1,s2);
+  return bg.grid(s1,s2)
+  """
+  sg = SimpleGridder2(f,x1,x2)
+  pnull = -FLT_MAX
+  tnull = -FLT_MAX
+  sg.setNullValue(pnull)
+  p = sg.grid(s1,s2);
+  n1,n2 = s1.count,s2.count
+  t = zerofloat(n1,n2)
+  for i2 in range(n2):
+    for i1 in range(n1):
+      if p[i2][i1]==pnull:
+        t[i2][i1] = tnull
+      else:
+        t[i2][i1] = 0.0
+  bg.gridNearest(t,p)
+  q = zerofloat(n1,n2)
+  bg.gridBlended(t,p,q)
+  bg.gridBlended(t,copy(q),q)
+  return q
+  """
+
+def gridKriging(f,x1,x2,s1,s2,sigmaD=0.0,shapeM=1.0,rangeM=40.0):
+  kg = KrigingGridder2(f,x1,x2)
+  kg.setDataError(sigmaD)
+  kg.setModelCovariance(Matern(shapeM,1.0,rangeM));
+  kg.setPolyTrend(1);
+  return kg.grid(s1,s2)
 
 def gridNearest(f,x1,x2,s1,s2):
-  return NearestGridder2(f,x1,x2).grid(s1,s2);
+  return NearestGridder2(f,x1,x2).grid(s1,s2)
 
 def gridSibson(f,x1,x2,s1,s2,smooth=False):
   sg = SibsonGridder2(f,x1,x2)
   sg.setSmooth(smooth)
-  return sg.grid(s1,s2);
+  return sg.grid(s1,s2)
 
 def gridDiscreteSibson(f,x1,x2,s1,s2,nsmooth=0):
   sg = DiscreteSibsonGridder2(f,x1,x2)
   sg.setSmooth(nsmooth)
-  return sg.grid(s1,s2);
+  return sg.grid(s1,s2)
 
 #############################################################################
 # Plotting
@@ -195,8 +222,8 @@ def byteFromInt(i):
   return i
 
 def plot3(f,x1,x2,s1,s2,g):
-  f = mul(120.0,f)
-  g = mul(120.0,g)
+  f = mul(300.0,f)
+  g = mul(300.0,g)
   pg = makePointGroup(x1,x2,f)
   tg = makeTriangleGroup(s1,s2,g)
   world = World()
@@ -204,9 +231,11 @@ def plot3(f,x1,x2,s1,s2,g):
   world.addChild(tg)
   sf = SimpleFrame(world,AxesOrientation.XOUT_YRIGHT_ZUP)
   sf.setSize(1200,750)
-  sf.setWorldSphere(-240.0,10.0,30.0,170.0,300.0,80.0)
+  sf.setWorldSphere(-240.0,10.0,90.0,170.0,300.0,240.0)
   ov = sf.getOrbitView()
   ov.setScale(1.5)
+  ov.setAzimuthAndElevation(50.0,12.0)
+  ov.setTranslate(Vector3(0.070,0.000,0.087))
 
 def makePointGroup(x,y,z):
   n = len(z)

@@ -52,7 +52,8 @@ metaMap = {
 # Data processing
 
 def main(args):
-  for name in ["oz01"]: #metaMap:
+  #for name in ["oz01"]: #metaMap:
+  for name in metaMap:
     process(name)
   return
 
@@ -63,13 +64,14 @@ def process(name):
   title = name+": "+source
   f = read(name)
   f = tpow(2.0,st,f)
-  f = nmo(3.0,st,sx,f)
-  plot(name+": before",st,sx,f,name)
-  f = align(f)
-  plot(name+": after",st,sx,f,name)
-  g,t = alignWithTimes(st,f)
-  plot(name+": before",st,sx,f,name)
-  plot(name+": after",st,sx,g,name)
+  plot(name,st,sx,f,name)
+  #f = nmo(3.0,st,sx,f)
+  #plot(name+": before",st,sx,f,name)
+  #f = align(f)
+  #plot(name+": after",st,sx,f,name)
+  #g,t = alignWithTimes(st,f)
+  #plot(name+": before",st,sx,f,name)
+  #plot(name+": after",st,sx,g,name)
 
 def read(name):
   """Reads gather with specified name."""

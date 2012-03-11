@@ -34,6 +34,12 @@ public abstract class Warp2 {
     return new SinusoidWarp2(u1,u2,n1,n2);
   }
 
+  public static Warp2 sinusoid(
+    double c1, double c2, double u1, double u2, int n1, int n2) 
+  {
+    return new SinusoidWarp2(c1,c2,u1,u2,n1,n2);
+  }
+
   public abstract double u1(double x1, double x2);
   public abstract double u2(double x1, double x2);
 
@@ -240,23 +246,33 @@ public abstract class Warp2 {
    */
   private static class SinusoidWarp2 extends Warp2 {
     public SinusoidWarp2(double u1max, double u2max, int n1, int n2) {
+      this(0.0,0.0,u1max,u2max,n1,n2);
+    }
+    public SinusoidWarp2(
+      double u1add, double u2add, 
+      double u1max, double u2max, 
+      int n1, int n2) 
+    {
       super(n1,n2);
       double l1 = n1-1;
       double l2 = n2-1;
+      _c1 = u1add;
+      _c2 = u2add;
       _a1 = u1max;
       _a2 = u2max;
       _b1 = 2.0*PI/l1;
       _b2 = 2.0*PI/l2;
     }
     public double u1(double x1, double x2) {
-      //return _a1*sin(_b1*x1)*sin(0.5*_b2*x2);
-      return _a1*sin(_b1*x1)*sin(_b2*x2);
+      return _c1+_a1*sin(_b1*x1)*sin(0.5*_b2*x2);
+      //return _c1+_a1*sin(_b1*x1)*sin(_b2*x2);
     }
     public double u2(double x1, double x2) {
-      //return _a2*sin(_b2*x2)*sin(0.5*_b1*x1);
-      return _a2*sin(_b2*x2)*sin(_b1*x1);
+      return _c2+_a2*sin(_b2*x2)*sin(0.5*_b1*x1);
+      //return _c2+_a2*sin(_b2*x2)*sin(_b1*x1);
     }
     private double _a1,_a2;
     private double _b1,_b2;
+    private double _c1,_c2;
   }
 }
