@@ -355,7 +355,7 @@ public class KrigingGridder2 implements Gridder2 {
   private float[][] gridForVariableTensors(Sampling s1, Sampling s2) {
     int n1 = s1.getCount();
     int n2 = s2.getCount();
-    WhittleSmoother ws = new WhittleSmoother(_tensors,_modelC);
+    WhittleSmoother ws = new WhittleSmoother(n1,n2,_tensors,_modelC);
     //ws.testSpd(n1,n2); if (ws!=null) return null;
     float[][] fxs = SimpleGridder2.samplesOnGrid(s1,s2,_f,_x1,_x2,_sd);
     float[] f = fxs[0];
@@ -388,29 +388,35 @@ public class KrigingGridder2 implements Gridder2 {
   }
 
   private static class WhittleSmoother {
-    WhittleSmoother(Tensors2 tensors, Covariance modelC) {
+    WhittleSmoother(int n1, int n2, Tensors2 tensors, Covariance modelC) {
       Check.argument((modelC instanceof Matern),"Covariance is Matern");
       double shapeM = ((Matern)modelC).getShape();
       double sigmaM = ((Matern)modelC).getSigma();
       double rangeM = ((Matern)modelC).getRange();
       Check.argument(shapeM==1.0,"Matern shape = 1.0");
-      _modelC = (Matern)modelC;
-      _cscale = (float)(PI*sigmaM*sigmaM*rangeM*rangeM);
-      _dscale = (float)(rangeM*rangeM/4.0);
       _tensors = tensors;
+      _modelC = (Matern)modelC;
+      _cscale = new float[n2][n1];
+      float[] d = new float[3];
+      float cscale = (float)(PI*sigmaM*sigmaM*rangeM*rangeM);
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          _tensors.getTensor(i1,i2,d);
+          float d11 = d[0], d12 = d[1], d22 = d[2];
+          float det = d11*d22-d12*d12;
+          _cscale[i2][i1] = cscale*det;
+        }
+      }
+      _dscale = (float)(rangeM*rangeM/4.0);
       _lsf = new LocalSmoothingFilter(1.0e-6,1000);
     }
     void apply(float[][] q) {
       int n1 = q[0].length;
       int n2 = q.length;
-      for (int i2=0; i2<n2; ++i2) {
-        for (int i1=0; i1<n1; ++i1) {
-          q[i2][i1] *= _cscale;
-        }
-      }
       float[][] t = new float[n2][n1];
       _lsf.applySmoothS(q,q);
       _lsf.apply(_tensors,_dscale,q,t);
+      mul(_cscale,t,t);
       _lsf.apply(_tensors,_dscale,t,q);
       _lsf.applySmoothS(q,q);
     }
@@ -449,10 +455,10 @@ public class KrigingGridder2 implements Gridder2 {
       System.out.println("xax="+xax+" yay="+yay);
       System.out.println("xay="+xay+" yax="+yax);
     }
-    private Matern _modelC;
-    private float _cscale;
-    private float _dscale;
     private Tensors2 _tensors;
+    private Matern _modelC;
+    private float[][] _cscale;
+    private float _dscale;
     private LocalSmoothingFilter _lsf;
   }
 

@@ -49,10 +49,10 @@ def demoSimple():
 
 def demoKriging():
   print "demoKriging ..."
-  sd,rm = 1.0,80.0
+  sd,rm = 0.0,80.0
   f,x1,x2 = readWolfcamp()
   f,x1,x2 = gridWolfcamp(f,x1,x2,s1,s2)
-  sd = mul(sd,randfloat(len(f)))
+  #sd = mul(sd,randfloat(len(f)))
   #gk0 = gridKriging(f,x1,x2,s1,s2,sigmaD=sd,rangeM=rm)
   #gkip = gridKriging(f,x1,x2,s1,s2,sigmaD=sd,rangeM=rm,et=eti,pa=True)
   #gkit = gridKriging(f,x1,x2,s1,s2,sigmaD=sd,rangeM=rm,et=eti,pa=False)

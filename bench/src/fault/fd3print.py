@@ -23,8 +23,8 @@ from edu.mines.jtk.util.ArrayMath import *
 from fault import *
 
 gmin,gmax,gint,gatt,glab = -5.5,5.5,2.0,None,"Log amplitude"
-t1min,t1max,t1int,t1att = 0.0,15.0,1.0,None
-t1lab = "Vertical component of fault throw (ms)"
+t1min,t1max,t1int,t1att = 0.0,15.0,2.0,None
+t1lab = "Vertical component of throw (ms)"
 flmin,flmax,flint,flatt,fllab = 0.5,1.0,0.05,None,"Fault likelihood"
 background = Color(255,255,255) # pure white for print
 pngDir = "png/"
@@ -46,8 +46,8 @@ def goFigures3f():
     flt = readImage("flt")
     for kkk in kkks:
       k1,k2,k3,pngPre = kkk
-      plot3f(g,None,gmin,gmax,gint,gatt,glab,"g")
-      plot3f(gs,None,gmin,gmax,gint,gatt,glab,"gs")
+      #plot3f(g,None,gmin,gmax,gint,gatt,glab,"g")
+      #plot3f(gs,None,gmin,gmax,gint,gatt,glab,"gs")
       plot3f(g,t1,t1min,t1max,t1int,t1att,t1lab,"gt1")
       plot3f(h,t1,t1min,t1max,t1int,t1att,t1lab,"ht1")
 
@@ -55,20 +55,6 @@ def goFigures3d():
   global k1,k2,k3
   k1,k2,k3 = 366,15,96 # good for 3D displays
   s = rimage("tpsz"); plot3d1(s,smin,smax,sint,slog,slab)
-  #plot3d1(s,vmin,vmax,vint,vlog,vlab)
-  #plot3d1(s,vmin,vmax,vint,vlog,vlab,["CrowMountainCRMT"])
-  #plot3d1(s,vmin,vmax,vint,vlog,vlab,["TensleepASand"])
-  #p = rimage("tppvb"); plot3d2(s,p,vmin,vmax,vint,vlog,vlab)
-  #p = rimage("tppdb"); plot3d2(s,p,dmin,dmax,dint,dlog,dlab)
-  #p = rimage("tpppb"); plot3d2(s,p,pmin,pmax,pint,plog,plab)
-  #p = rimage("tppgb"); plot3d2(s,p,gmin,gmax,gint,glog,glab)
-  #q = rimage("tpqvb"); plot3d2(s,q,vmin,vmax,vint,vlog,vlab)
-  #plot3d2(s,q,vmin,vmax,vint,vlog,vlab,["CrowMountainCRMT"])
-  #plot3d2(s,q,vmin,vmax,vint,vlog,vlab,["TensleepASand"])
-  #q = rimage("tpqdb"); plot3d2(s,q,dmin,dmax,dint,dlog,dlab)
-  #q = rimage("tpqpb"); plot3d2(s,q,pmin,pmax,pint,plog,plab)
-  #q = rimage("tpqgb"); plot3d2(s,q,gmin,gmax,gint,glog,glab)
-  #q = getImpedance();  plot3d2(s,q,zmin,zmax,zint,zlog,zlab)
 
 def setupForF3dSubset(subset):
   global s1,s2,s3
@@ -135,7 +121,7 @@ def plot3f(g,c=None,cmin=0,cmax=0,cint=None,cmap=None,clab=None,png=None):
     pp.setLineColor(Color.WHITE)
     cb = pp.addColorBar("Log amplitude")
     #cb.setInterval(2.0)
-  #pp.setInterval1(0.5)
+  pp.setInterval1(0.1)
   #pp.setInterval2(1.0)
   #pp.setInterval3(1.0)
   if c:
@@ -159,11 +145,11 @@ def plot3f(g,c=None,cmin=0,cmax=0,cint=None,cmap=None,clab=None,png=None):
     pp.pixelsView23.tile.addTiledView(pv23)
   pf = PlotFrame(pp)
   pf.setBackground(background)
-  pp.setColorBarWidthMinimum(70)
-  #pf.setFontSizeForPrint(8,240)
-  pf.setFontSizeForPrint(8,504)
+  pp.setColorBarWidthMinimum(120)
+  pf.setFontSizeForPrint(8,240)
+  #pf.setFontSizeForPrint(8,504)
   #pf.setSize(1008,800)
-  pf.setSize(1008,700)
+  pf.setSize(1008,672)
   pf.setVisible(True)
   if png and pngDir:
     #pf.paintToPng(720,3.3,pngDir+pngPre+dataPre+png+".png")
