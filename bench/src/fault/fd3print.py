@@ -23,7 +23,7 @@ from edu.mines.jtk.util.ArrayMath import *
 from fault import *
 
 gmin,gmax,gint,gatt,glab = -5.5,5.5,2.0,None,"Log amplitude"
-t1min,t1max,t1int,t1att = 0.0,15.0,2.0,None
+t1min,t1max,t1int,t1att = 0.0,15.0,1.0,None
 t1lab = "Vertical component of throw (ms)"
 flmin,flmax,flint,flatt,fllab = 0.5,1.0,0.05,None,"Fault likelihood"
 background = Color(255,255,255) # pure white for print
@@ -38,17 +38,17 @@ def goFigures3f():
   global k1,k2,k3,pngPre
   for subset in ["a","b"]:
     setupForF3dSubset(subset)
-    g = readImage("g")
-    gs = readImage("gs")
+    #g = readImage("g")
+    #gs = readImage("gs")
     h = readImage("h")
-    t1 = readImage("t1"); t1 = mul(4.0,t1)
-    fl = readImage("fl")
-    flt = readImage("flt")
+    t1 = readImageX("t1"); t1 = mul(4.0,t1)
+    #fl = readImage("fl")
+    #flt = readImage("flt")
     for kkk in kkks:
       k1,k2,k3,pngPre = kkk
       #plot3f(g,None,gmin,gmax,gint,gatt,glab,"g")
       #plot3f(gs,None,gmin,gmax,gint,gatt,glab,"gs")
-      plot3f(g,t1,t1min,t1max,t1int,t1att,t1lab,"gt1")
+      #plot3f(g,t1,t1min,t1max,t1int,t1att,t1lab,"gt1")
       plot3f(h,t1,t1min,t1max,t1int,t1att,t1lab,"ht1")
 
 def goFigures3d():
@@ -90,6 +90,13 @@ def setupForF3dSubset(subset):
   s1,s2,s3 = Sampling(n1,d1,f1),Sampling(n2,d2,f2),Sampling(n3,d3,f3)
 
 def readImage(fileName):
+  f = zerofloat(n1,n2,n3)
+  ais = ArrayInputStream(dataDir+dataPre+fileName+".dat")
+  ais.readFloats(f)
+  ais.close()
+  return f
+
+def readImageX(fileName):
   if dataPre=="b":
     f = zerofloat(n1+30,n2,n3)
   else:
@@ -145,11 +152,12 @@ def plot3f(g,c=None,cmin=0,cmax=0,cint=None,cmap=None,clab=None,png=None):
     pp.pixelsView23.tile.addTiledView(pv23)
   pf = PlotFrame(pp)
   pf.setBackground(background)
-  pp.setColorBarWidthMinimum(120)
-  pf.setFontSizeForPrint(8,240)
-  #pf.setFontSizeForPrint(8,504)
-  #pf.setSize(1008,800)
-  pf.setSize(1008,672)
+  #pp.setColorBarWidthMinimum(120) # SEG abstract
+  #pf.setFontSizeForPrint(8,240)
+  #pf.setSize(1008,672)
+  pp.setColorBarWidthMinimum(70) # CWP report
+  pf.setFontSizeForPrint(8,504)
+  pf.setSize(1008,700)
   pf.setVisible(True)
   if png and pngDir:
     #pf.paintToPng(720,3.3,pngDir+pngPre+dataPre+png+".png")

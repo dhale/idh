@@ -44,16 +44,16 @@ def goSurfing():
   global dataDir,dataPre
   dataDir = "/data/seis/f3d/faults/"
   dataPre = ""
-  #n1,n2,n3 = 90,221,220 # deeper coherent
-  n1,n2,n3 = 120,221,220 # shallow incoherent
+  n1,n2,n3 = 90,221,220 # deeper coherent
+  #n1,n2,n3 = 120,221,220 # shallow incoherent
   s1,s2,s3 = Sampling(n1,1.0,0.0),Sampling(n2,1.0,0.0),Sampling(n3,1.0,0.0)
-  #g = readImage(s1,s2,s3,"ag")
+  g = readImage(s1,s2,s3,"ag")
   #h = readImage(s1,s2,s3,"ah")
-  g = readImage(s1,s2,s3,"bg"); g = copy(90,n2,n3,15,0,0,g); n1 = 90
-  h = readImage(s1,s2,s3,"bh"); h = copy(90,n2,n3,15,0,0,h); n1 = 90
+  #g = readImage(s1,s2,s3,"bg"); g = copy(90,n2,n3,15,0,0,g); n1 = 90
+  #h = readImage(s1,s2,s3,"bh"); h = copy(90,n2,n3,15,0,0,h); n1 = 90
   def subset(s1,s2,s3,g):
-    #n1,j1 = 90,130 # deeper coherent
-    n1,j1 = 90,15 # shallow incoherent
+    n1,j1 = 90,130 # deeper coherent
+    #n1,j1 = 90,15 # shallow incoherent
     #n1,j1 = 120,0 # shallow incoherent
     s1 = Sampling(n1,s1.delta,s1.first+j1*s1.delta)
     g = copy(n1,s2.count,s3.count,j1,0,0,g)
