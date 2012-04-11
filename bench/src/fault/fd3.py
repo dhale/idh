@@ -26,56 +26,36 @@ from fault import *
 #############################################################################
 
 def main(args):
+  goS1()
+  #goS1A()
+  #goS1B()
+def goS1():
+  samplingS1()
+  #goSurfingFake()
   #goBenchmarkSmoothers()
   #goSlopes()
   #goAlign()
   #goSemblance()
-  #goScan()
+  goScan()
   #goThin()
   #goSmooth()
-  #goShifts()
-  #goSurfingFake()
+  #goPartsAB()
+def goS1A():
+  samplingS1A()
   #goSurfing()
   #goUnfault()
-  #goSubsets()
-
-def go120to90():
-  global dataDir,dataPre
-  dataDir = "/data/seis/f3d/faults/"
-  dataPre = ""
-  def subset(fileName):
-    n1,n2,n3 = 120,221,220 # shallow incoherent
-    s1,s2,s3 = Sampling(n1,1.0,0.0),Sampling(n2,1.0,0.0),Sampling(n3,1.0,0.0)
-    x = readImage(n1,n2,n3,fileName)
-    x = copy(90,n2,n3,15,0,0,x)
-    writeImage(x,fileName)
-  subset("bfl")
-  subset("bflt")
-  subset("bfp")
-  subset("bft")
-  subset("bg")
-  subset("bgs")
-  #subset("bh")
-  subset("bt1")
-  subset("bt2")
-  subset("bt3")
+def goS1B():
+  samplingS1B()
+  #goSurfing()
+  #goUnfault()
 
 def goSurfing():
-  global dataDir,dataPre
-  dataDir = "/data/seis/f3d/faults/"
-  dataPre = "b"
-  n1,n2,n3 = 90,221,220 # deeper coherent
-  s1,s2,s3 = Sampling(n1,1.0,0.0),Sampling(n2,1.0,0.0),Sampling(n3,1.0,0.0)
-  g = readImage(n1,n2,n3,"g")
-  #h = readImage(n1,n2,n3,"h")
-  s1,s2,s3,gignore = imageF3d()
-  gs = readImage(n1,n2,n3,"gs")
-  fl = readImage(n1,n2,n3,"fl")
-  fp = readImage(n1,n2,n3,"fp")
-  ft = readImage(n1,n2,n3,"ft")
-  print "s1:",s1.count,s1.delta,s1.first
-  print "s2:",s2.count,s2.delta,s2.first
-  print "s3:",s3.count,s3.delta,s3.first
+  g = readImage("g"); g = slog(g)
+  #h = readImage("h"); h = slog(h)
+  gs = readImage("gs")
+  fl = readImage("fl")
+  fp = readImage("fp")
+  ft = readImage("ft")
   fs = FaultSurfer3([fl,fp,ft])
   fs.setThreshold(0.5)
   quads = fs.findQuads()
@@ -96,60 +76,11 @@ def goSurfing():
   plot3(g,s,-5,5,gmap=bwrNotch(1.0))
   plot3(g)
 
-def goSubsets():
-  def subset(s1,s2,s3,g):
-    n1,j1 = 90,130 # deeper coherent
-    #n1,j1 = 120,0 # shallow incoherent
-    s1 = Sampling(n1,s1.delta,s1.first+j1*s1.delta)
-    g = copy(n1,s2.count,s3.count,j1,0,0,g)
-    return s1,s2,s3,g
-  s1,s2,s3,g = imageF3d()
-  g = slog(g)
-  gs = readImage(n1,n2,n3,"gs")
-  fl = readImage(n1,n2,n3,"fl")
-  fp = readImage(n1,n2,n3,"fp")
-  ft = readImage(n1,n2,n3,"ft")
-  flt = readImage(n1,n2,n3,"flt")
-  s1,s2,s3,g  = subset(s1,s2,s3,g)
-  s1,s2,s3,gs = subset(s1,s2,s3,gs)
-  s1,s2,s3,fl = subset(s1,s2,s3,fl)
-  s1,s2,s3,fp = subset(s1,s2,s3,fp)
-  s1,s2,s3,ft = subset(s1,s2,s3,ft)
-  s1,s2,s3,flt = subset(s1,s2,s3,flt)
-  global dataDir,dataPre
-  dataDir = "/data/seis/f3d/faults/"
-  dataPre = "a"
-  writeImage(gs,"gs")
-  writeImage(fl,"fl")
-  writeImage(fp,"fp")
-  writeImage(ft,"ft")
-  writeImage(flt,"flt")
-
 def goUnfault():
-  global dataDir,dataPre
-  dataDir = "/data/seis/f3d/faults/"
-  dataPre = ""
-  n1,n2,n3 = 90,221,220
-  #n1,n2,n3 = 120,221,220
-  s1 = Sampling(n1,1.0,0.0)
-  s2 = Sampling(n2,1.0,0.0)
-  s3 = Sampling(n3,1.0,0.0)
-  g = readImage(n1,n2,n3,"ag")
-  h = readImage(n1,n2,n3,"ah")
-  #g = readImage(n1,n2,n3,"bg")
-  #h = readImage(n1,n2,n3,"bh")
+  g = readImage("g")
+  # Simon did the unfaulting
+  h = readImage("h")
   plot3(g,h=h)
-  #g = slog(g)
-  #q1 = zerofloat(n1,n2,n3)
-  #t1 = readImage(n1,n2,n3,"at1")
-  #plot3(g,t1,-10.0,10.0,gmap=bwrFill(0.7))
-  #st1,sx1,sx2,sx3 = SimpleGridder3.getGriddedSamples(-0.12345,s1,s2,s3,t1)
-  #bg = BlendedGridder3()
-  #d1 = bg.gridNearest(-0.12345,t1)
-  #bg.gridBlended(d1,t1,q1)
-  #sg = SibsonGridder3(st1,sx1,sx2,sx3)
-  #q1 = sg.grid(s1,s2,s3)
-  #plot3(g,q1,-10.0,10.0,gmap=bwrFill(0.7))
 
 def goSurfingFake():
   #n1,n2,n3 = 101,102,103
@@ -175,89 +106,77 @@ def goSurfingFake():
   #pv.setColorModel(ColorMap.JET)
   #pv.setInterpolation(PixelsView.Interpolation.NEAREST)
 
-def goShifts():
-  s1,s2,s3,g = imageF3d()
-  f = readImage(n1,n2,n3,"fl")
-  p = readImage(n1,n2,n3,"fp")
-  t = readImage(n1,n2,n3,"ft")
-  #f,p,t = FaultScanner3.fakeFpt(s1.count,s2.count,s3.count)
-  #plot3(sub(1.0,f),None,0,1)
-  g = slog(g)
-  #g = readImage(n1,n2,n3,"gs")
-  #plot3(sub(1.0,f),None,0,1)
-  #plot3(g,f,0,1)
-  #plot3(g,p)
-  faults = FaultScanner3.findFaults([f,p,t],1000)
-  print "faults: count =",faults.count
-  f = faults.getLikelihoods()
-  plot3(g,f,0,1)
-  #s = faults.getShifts()
-  #plot3(g,s)
-  return
-
 def goSmooth():
-  s1,s2,s3,g = imageF3d()
-  g = slog(g)
-  fl = readImage(n1,n2,n3,"flt")
-  #p2 = readImage(n1,n2,n3,"p2")
-  #p3 = readImage(n1,n2,n3,"p3")
-  #gs = FaultScanner3.smooth(16.0,p2,p3,fl,g)
-  #writeImage(gs,"gs")
-  gs = readImage(n1,n2,n3,"gs")
-  #plot3(g,fl,0,1)
+  doSmooth = False
+  if doSmooth:
+    g = readImage("g")
+    fl = readImage("flt")
+    p2 = readImage("p2")
+    p3 = readImage("p3")
+    gs = FaultScanner3.smooth(16.0,p2,p3,fl,g)
+    writeImage(gs,"gs")
+  g = readImage("g"); g = slog(g)
+  gs = readImage("gs"); gs = slog(gs)
   plot3(g)
   plot3(gs)
-  plot3(sub(1.0,pow(fl,4)))
 
 def goThin():
-  s1,s2,s3,g = imageF3d()
-  g = slog(g)
-  f = readImage(n1,n2,n3,"fl")
-  p = readImage(n1,n2,n3,"fp")
-  t = readImage(n1,n2,n3,"ft")
-  #rgf = RecursiveGaussianFilter(1)
-  #rgf.applyXX0(f,f)
-  #rgf.applyX0X(f,f)
-  ref = RecursiveExponentialFilter(1.0)
-  ref.setEdges(RecursiveExponentialFilter.Edges.INPUT_ZERO_SLOPE)
-  ref.apply2(f,f); ref.apply2(f,f)
-  ref.apply3(f,f); ref.apply3(f,f)
-  f,p,t = FaultScanner3.thin([f,p,t])
-  writeImage(f,"flt")
-  writeImage(p,"fpt")
-  writeImage(t,"ftt")
+  doThin = False
+  if doThin:
+    f = readImage("fl")
+    p = readImage("fp")
+    t = readImage("ft")
+    #rgf = RecursiveGaussianFilter(1)
+    #rgf.applyXX0(f,f)
+    #rgf.applyX0X(f,f)
+    ref = RecursiveExponentialFilter(1.0)
+    ref.setEdges(RecursiveExponentialFilter.Edges.INPUT_ZERO_SLOPE)
+    ref.apply2(f,f); ref.apply2(f,f)
+    ref.apply3(f,f); ref.apply3(f,f)
+    f,p,t = FaultScanner3.thin([f,p,t])
+    writeImage(f,"flt")
+    writeImage(p,"fpt")
+    writeImage(t,"ftt")
+  g = readImage("g"); g = slog(g)
+  f = readImage("flt")
+  p = readImage("fpt")
+  t = readImage("ftt")
   plot3(g,f,0,1)
   plot3(g,p,-90,90)
   plot3(g,t,-15,15)
 
 def goScan():
-  s1,s2,s3,g = imageF3d()
-  g = slog(g)
-  fse = FaultSemblance()
-  #g = fse.taper(10,g)
-  sn = readImage(n1,n2,n3,"sn")
-  sd = readImage(n1,n2,n3,"sd")
-  sigmaPhi,sigmaTheta = 4,20
-  fsc = FaultScanner3(sigmaPhi,sigmaTheta,[sn,sd])
-  print "scanning ..."
-  sw = Stopwatch()
-  sw.restart()
-  f,p,t = fsc.scan(-90,90,-15,15)
-  sw.stop()
-  print "time =",sw.time(),", f min =",min(f)," max =",max(f)
-  writeImage(f,"fl")
-  writeImage(p,"fp")
-  writeImage(t,"ft")
-  plot3(g,f,0,1)
-  plot3(g,p,-90,90)
-  plot3(g,t,-15,15)
+  doScan = False
+  if doScan:
+    g = readImage("g"); g = slog(g)
+    fse = FaultSemblance()
+    #g = fse.taper(10,g)
+    sn = readImage("sn")
+    sd = readImage("sd")
+    sigmaPhi,sigmaTheta = 4,20
+    fsc = FaultScanner3(sigmaPhi,sigmaTheta,[sn,sd])
+    print "scanning ..."
+    sw = Stopwatch()
+    sw.restart()
+    fl,fp,ft = fsc.scan(-90,90,-15,15)
+    sw.stop()
+    print "time =",sw.time(),", fl min =",min(fl)," max =",max(fl)
+    writeImage(fl,"fl")
+    writeImage(fp,"fp")
+    writeImage(ft,"ft")
+  g = readImage("g"); g = slog(g)
+  fl = readImage("fl")
+  fp = readImage("fp")
+  ft = readImage("ft")
+  plot3(g,fl,0,1)
+  plot3(g,fp,-90,90)
+  plot3(g,ft,-15,15)
 
 def goSemblance():
-  s1,s2,s3,g = imageF3d()
-  g = slog(g)
+  g = readImage("g"); g = slog(g)
   print "reading slopes ..."
-  p2 = readImage(n1,n2,n3,"p2")
-  p3 = readImage(n1,n2,n3,"p3")
+  p2 = readImage("p2")
+  p3 = readImage("p3")
   print "computing semblance num/den"
   fse = FaultSemblance()
   g = fse.taper(10,g)
@@ -278,13 +197,11 @@ def goSemblance():
     plot3(g,s,0,1)
 
 def goAlign():
-  s1,s2,s3,g = imageF3d()
-  g = slog(g)
-  n1,n2,n3 = len(g[0][0]),len(g[0]),len(g)
+  g = readImage("g"); g = slog(g)
   fse = FaultSemblance()
   ref = RecursiveExponentialFilter(4)
-  p2 = readImage(n1,n2,n3,"p2") # semblance with estimated slopes
-  p3 = readImage(n1,n2,n3,"p3")
+  p2 = readImage("p2") # semblance with estimated slopes
+  p3 = readImage("p3")
   sn,sd = fse.semblanceNumDen(p2,p3,g)
   ref.apply1(sn,sn)
   ref.apply1(sd,sd)
@@ -299,8 +216,7 @@ def goAlign():
   plot3(g,s,0,1)
 
 def goSlopes():
-  s1,s2,s3,g = imageF3d()
-  g = slog(g)
+  g = readImage("g"); g = slog(g)
   plot3(g)
   fse = FaultSemblance()
   p2,p3 = fse.slopes(g)
@@ -312,12 +228,11 @@ def goSlopes():
   writeImage(p3,"p3")
 
 def goBenchmarkSmoothers():
-  s1,s2,s3,g = imageF3d()
-  g = slog(g)
+  g = readImage("g"); g = slog(g)
   fse = FaultSemblance()
   #g = fse.taper(10,g)
-  sn = readImage(n1,n2,n3,"sn")
-  sd = readImage(n1,n2,n3,"sd")
+  sn = readImage("sn")
+  sd = readImage("sd")
   smoothers = [
     (FaultScanner3.Smoother.ROTATE_AND_SHEAR,"ras"),
     (FaultScanner3.Smoother.FFT_GAUSSIAN,"fft")
@@ -333,6 +248,27 @@ def goBenchmarkSmoothers():
     print "  time =",sw.time(),", f min =",min(f)," max =",max(f)
     plot3(g,f,0,1)
 
+def goPartsAB():
+  samplingS1A()
+  n1a,n2a,n3a = n1,n2,n3
+  j1a,j2a,j3a = 130,0,0
+  samplingS1B()
+  n1b,n2b,n3b = n1,n2,n3
+  j1b,j2b,j3b = 15,0,0
+  samplingS1()
+  global dataSub
+  for fileName in ["fl","fp","ft","flt","g","gs"]:
+    dataSub = "s1/"
+    x = readImage(fileName)
+    x = copy(n1a,n2a,n3a,j1a,j2a,j3a,x)
+    dataSub = "s1a/"
+    writeImage(x,fileName)
+    dataSub = "s1/"
+    x = readImage(fileName)
+    x = copy(n1b,n2b,n3b,j1b,j2b,j3b,x)
+    dataSub = "s1b/"
+    writeImage(x,fileName)
+
 def spow(p,f):
   return mul(sgn(f),pow(abs(f),p))
 
@@ -345,104 +281,57 @@ def sexp(f):
 #############################################################################
 # data read/write
 
-dataDir,dataPre = "",""
-
-def readImage(n1,n2,n3,fileName):
+dataDir,dataSub = "",""
+def readImage(fileName):
   f = zerofloat(n1,n2,n3)
-  ais = ArrayInputStream(dataDir+dataPre+fileName+".dat")
+  ais = ArrayInputStream(dataDir+dataSub+fileName+".dat")
   ais.readFloats(f)
   ais.close()
+  print "readImage: min =",min(f)," max =",max(f)
   return f
-
 def writeImage(f,fileName):
-  aos = ArrayOutputStream(dataDir+dataPre+fileName+".dat")
+  aos = ArrayOutputStream(dataDir+dataSub+fileName+".dat")
   aos.writeFloats(f)
   aos.close()
-
-def imageF3d():
-  global dataDir,dataPre
+def samplingS1():
+  global n1,n2,n3
+  global s1,s2,s3
+  global dataDir,dataSub
   dataDir = "/data/seis/f3d/faults/"
-  dataPre = "s1"
-  n1,n2,n3 = 462,951,591
-  #j1,j2,j3 = 240,0,0
-  #m1,m2,m3 = 222,440,440
-  j1,j2,j3 = 240, 50,100
-  m1,m2,m3 = 222,221,220
+  dataSub = "s1/"
+  n1,n2,n3 = 222,221,220
   d1,d2,d3 = 0.004,0.025,0.025
-  f1,f2,f3 = 0.004,0.000,0.000
-  firstTime = False
-  if firstTime:
-    af = ArrayFile(dataDir+"f3d.dat","r")
-    x = zerofloat(m1,m2,m3)
-    for i3 in range(m3):
-      for i2 in range(m2):
-        af.seek(4*(j1+n1*(i2+j2+n2*(i3+j3))))
-        af.readFloats(x[i3][i2])
-    af.close()
-    writeImage(x,"g")
-  n1,n2,n3 = m1,m2,m3
-  f1,f2,f3 = f1+j1*d1,f2+j2*d2,f3+j3*d3
+  f1,f2,f3 = 0.964,1.250,2.500
+  s1,s2,s3 = samplings(n1,d1,f1,n2,d2,f2,n3,d3,f3)
+def samplingS1A():
+  global n1,n2,n3
+  global s1,s2,s3
+  global dataDir,dataSub
+  dataDir = "/data/seis/f3d/faults/"
+  dataSub = "s1a/"
+  n1,n2,n3 = 90,221,220
+  d1,d2,d3 = 0.004,0.025,0.025
+  f1,f2,f3 = 1.484,1.250,2.500
+  s1,s2,s3 = samplings(n1,d1,f1,n2,d2,f2,n3,d3,f3)
+def samplingS1B():
+  global n1,n2,n3
+  global s1,s2,s3
+  global dataDir,dataSub
+  dataDir = "/data/seis/f3d/faults/"
+  dataSub = "s1b/"
+  n1,n2,n3 = 90,221,220
+  d1,d2,d3 = 0.004,0.025,0.025
+  f1,f2,f3 = 1.024,1.250,2.500
+  s1,s2,s3 = samplings(n1,d1,f1,n2,d2,f2,n3,d3,f3)
+def samplings(n1,d1,f1,n2,d2,f2,n3,d3,f3):
   s1,s2,s3 = Sampling(n1,d1,f1),Sampling(n2,d2,f2),Sampling(n3,d3,f3)
-  x = readImage(n1,n2,n3,"g")
-  return s1,s2,s3,x
+  print "s1:",s1.count,s1.delta,s1.first
+  print "s2:",s2.count,s2.delta,s2.first
+  print "s3:",s3.count,s3.delta,s3.first
+  return s1,s2,s3
 
 #############################################################################
 # plotting
-
-def plot2(f,x23p=None,x23l=None,fmin=None,fmax=None,
-          label=None,title=None,png=None):
-  n1 = len(f[0])
-  n2 = len(f)
-  panel = panel2()
-  if label:
-    panel.addColorBar(label)
-  else:
-    panel.addColorBar()
-  if title:
-    panel.setTitle(title)
-  panel.setColorBarWidthMinimum(100)
-  panel.setLimits(0,0,n1-1,n2-1)
-  #panel.setLimits(0,0,100,100)
-  #panel.setLimits(100,160,130,190)
-  pv = panel.addPixels(f)
-  pv.setInterpolation(PixelsView.Interpolation.NEAREST)
-  pv.setColorModel(ColorMap.JET)
-  if fmin==None: fmin = min(f)
-  if fmax==None: fmax = max(f)
-  pv.setClips(fmin,fmax)
-  if x23p:
-    x2p,x3p = x23p
-    pv = panel.addPoints(x2p,x3p)
-    pv.setLineStyle(PointsView.Line.NONE)
-    pv.setMarkStyle(PointsView.Mark.FILLED_CIRCLE)
-    pv.setMarkSize(5.0)
-  if x23l:
-    x2l,x3l = x23l
-    pv = panel.addPoints(x2l,x3l)
-    pv.setLineWidth(2.0)
-  frame2(panel,png)
-
-def panel2():
-  #panel = PlotPanel(1,1,
-  #  PlotPanel.Orientation.X1DOWN_X2RIGHT,
-  #  PlotPanel.AxesPlacement.NONE)
-  panel = PlotPanel(1,1,
-    PlotPanel.Orientation.X1DOWN_X2RIGHT)
-  return panel
-
-def frame2(panel,png=None):
-  frame = PlotFrame(panel)
-  frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE)
-  #frame.setFontSizeForPrint(8,240)
-  #frame.setSize(1240,774)
-  #frame.setFontSizeForSlide(1.0,0.8)
-  #frame.setSize(1290,777)
-  #frame.setSize(1490,977)
-  frame.setSize(980,890)
-  frame.setVisible(True)
-  if png and pngDir:
-    frame.paintToPng(400,3.2,pngDir+"/"+png+".png")
-  return frame
 
 def jetFill(alpha):
   return ColorMap.setAlpha(ColorMap.JET,alpha)

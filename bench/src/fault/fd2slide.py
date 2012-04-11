@@ -21,8 +21,8 @@ from fault import FaultScanner2,FaultSemblance
 
 #############################################################################
 
-#pngDir = "./png"
-pngDir = None
+pngDir = "./png"
+#pngDir = None
 
 sigmaTheta = 20
 smoother = FaultScanner2.Smoother.SHEAR
@@ -33,8 +33,8 @@ def main(args):
   #goAlign()
   #goSemblance()
   #goScan()
-  #goThin()
-  goShifts()
+  goThin()
+  #goShifts()
 
 def getImage():
   #return imageSyn()
@@ -89,12 +89,13 @@ def goThin():
     #plot2(s1,s2,g,t,title="fault dip (degrees)")
     fs = copy(f); RecursiveGaussianFilter(1.0).apply00(fs,fs)
     #plot2(s1,s2,g,fs,gmin=0,gmax=1,title="fault likelihood smoothed")
-    plot2(s1,s2,g,fs,gmin=0,gmax=1,label="Fault likelihood")
+    plot2(s1,s2,g,fs,gmin=0.5,gmax=1,gmap=jetr,label="Fault likelihood")
     ft,tt = fsc.thin([f,t])
     #plot2(s1,s2,g,ft,gmin=0,gmax=1,title="fault likelihood thinned")
     #plot2(s1,s2,g,tt,title="fault dip (degrees) thinned")
-    plot2(s1,s2,g,ft,gmin=0,gmax=1,label="Fault likelihood",png="flt")
-    plot2(s1,s2,g,tt,label="Fault dip (degrees)",png="ftt")
+    plot2(s1,s2,g,ft,gmin=0.5,gmax=1,gmap=jetr,
+          label="Fault likelihood",png="flt")
+    plot2(s1,s2,g,tt,gmap=bwrn,label="Fault dip (degrees)",png="ftt")
     g = fsc.smooth(8,p,ft,g)
     #plot2(s1,s2,g,title="input smoothed")
     plot2(s1,s2,g,label="Log amplitude",png="gs")
@@ -112,13 +113,14 @@ def goScan():
     f = fsc.likelihood(theta)
     #plot2(s1,s2,g,f,gmin=0,gmax=1,title="theta = "+str(int(theta)))
     png = "fl"+str(int(theta))
-    plot2(s1,s2,g,f,gmin=0,gmax=1,label="Fault likelihood",png=png)
+    plot2(s1,s2,g,f,gmin=0.5,gmax=1,gmap=jetr,label="Fault likelihood",png=png)
   tmin,tmax = st.first,st.last
   f,t = fsc.scan(tmin,tmax)
   #plot2(s1,s2,g,f,gmin=0,gmax=1,title="fault likelihood")
   #plot2(s1,s2,g,t,gmin=tmin,gmax=tmax,title="fault dip (degrees)")
-  plot2(s1,s2,g,f,gmin=0,gmax=1,label="Fault likelihood",png="fl")
-  plot2(s1,s2,g,t,gmin=tmin,gmax=tmax,label="Fault dip (degrees)",png="ft")
+  plot2(s1,s2,g,f,gmin=0.5,gmax=1,gmap=jetr,label="Fault likelihood",png="fl")
+  plot2(s1,s2,g,t,gmin=tmin,gmax=tmax,gmap=bwrn,
+        label="Fault dip (degrees)",png="ft")
 
 def goSemblance():
   s1,s2,g = getImage()
@@ -173,7 +175,7 @@ def goSlopes():
   p = fse.slopes(g)
   p = mul(s1.delta/s2.delta,p)
   #plot2(s1,s2,g,p,gmin=-0.9,gmax=0.9,title="slopes")
-  plot2(s1,s2,g,p,gmin=-0.15,gmax=0.15,label="Slope (s/km)",png="p")
+  plot2(s1,s2,g,p,gmin=-0.15,gmax=0.15,gmap=bwrf,label="Slope (s/km)",png="p")
 
 ###
 def xfindShifts(sigma,min1,max1,lag2,f):
@@ -281,7 +283,7 @@ def randomNoise(a,n1,n2):
 #############################################################################
 # plotting
 
-def plot2(s1,s2,f,g=None,gmin=None,gmax=None,
+def plot2(s1,s2,f,g=None,gmin=None,gmax=None,gmap=None,
           label=None,title=None,png=None):
   n1 = len(f[0])
   n2 = len(f)
@@ -292,14 +294,17 @@ def plot2(s1,s2,f,g=None,gmin=None,gmax=None,
     panel.addColorBar()
   #if title:
   #  panel.setTitle(title)
-  panel.setColorBarWidthMinimum(180)
+  panel.setColorBarWidthMinimum(200)
   panel.setHLabel("Inline (km)")
   panel.setVLabel("Time (s)")
   pv = panel.addPixels(s1,s2,f)
   #pv = panel.addPixels(f)
   pv.setInterpolation(PixelsView.Interpolation.NEAREST)
   pv.setColorModel(ColorMap.GRAY)
-  #pv.setClips(-4.5,4.5)
+  if max(f)>5:
+    pv.setClips(-22,22)
+  else:
+    pv.setClips(-4.3,4.3)
   if g:
     alpha = 0.5
     pv = panel.addPixels(s1,s2,g)
@@ -307,11 +312,29 @@ def plot2(s1,s2,f,g=None,gmin=None,gmax=None,
     pv.setInterpolation(PixelsView.Interpolation.NEAREST)
     if gmin==None: gmin = min(g)
     if gmax==None: gmax = max(g)
+    if gmap==None: gmap = jetf
     pv.setClips(gmin,gmax)
-    pv.setColorModel(ColorMap.getJet(alpha))
-    if gmin==0:
-      updateColorModel(pv,0.9)
+    pv.setColorModel(gmap)
   frame2(panel,png)
+
+def jetFill(alpha):
+  return ColorMap.setAlpha(ColorMap.JET,alpha)
+def bwrFill(alpha):
+  return ColorMap.setAlpha(ColorMap.BLUE_WHITE_RED,alpha)
+def jetRamp(alpha):
+  return ColorMap.setAlpha(ColorMap.JET,rampfloat(0.0,alpha/256,256))
+def bwrNotch(alpha):
+  a = zerofloat(256)
+  for i in range(len(a)):
+    if i<128:
+      a[i] = alpha*(128.0-i)/128.0
+    else:
+      a[i] = alpha*(i-127.0)/128.0
+  return ColorMap.setAlpha(ColorMap.BLUE_WHITE_RED,a)
+jetf = jetFill(0.5)
+jetr = jetRamp(1.0)
+bwrf = bwrFill(0.5)
+bwrn = bwrNotch(1.0)
 
 def updateColorModel(pv,alpha):
     n = 256
@@ -357,7 +380,7 @@ def frame2(panel,png=None):
   #frame.setSize(1290,777)
   #frame.setSize(1490,977)
   #frame.setSize(1490,815)
-  frame.setSize(1280,815)
+  frame.setSize(1280,900)
   frame.setVisible(True)
   if png and pngDir:
     frame.paintToPng(400,3.2,pngDir+"/"+png+".png")
