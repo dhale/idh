@@ -1,6 +1,11 @@
 package segy;
 
 public class IbmIeee {
+  public static void shortToFloat(short[] s, float[] f) {
+    int n = s.length;
+    for (int i=0; i<n; ++i)
+      f[i] = s[i];
+  }
   public static void ieeeToFloat(int[] ieee, float[] f) {
     int n = ieee.length;
     for (int i=0; i<n; ++i)

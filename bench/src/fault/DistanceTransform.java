@@ -327,8 +327,8 @@ public class DistanceTransform {
   public static void main(String[] args) {
     SwingUtilities.invokeLater(new Runnable() {
       public void run() {
-        //test2Random();
-        test3Random();
+        test2Random();
+        //test3Random();
       }
     });
   }
@@ -374,9 +374,9 @@ public class DistanceTransform {
     spp.addColorBar();
   }
   private static void test3Random() {
-    int n1 = 401;
-    int n2 = 402;
-    int n3 = 403;
+    int n1 = 501;
+    int n2 = 502;
+    int n3 = 503;
     int n = 10000;
     Random r = new Random();
     int seed = r.nextInt();

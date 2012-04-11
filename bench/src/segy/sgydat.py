@@ -11,31 +11,84 @@ from imports import *
 nhead=3200 # number of bytes in EBCDIC header
 nbhed=400 # number of bytes in binary header
 nthed=240 # number of bytes in trace header
+global n1,n2,n3
 
 #############################################################################
 def main(args):
-  goParihaka()
+  #goParihaka()
+  goF3d()
+
+def goF3d():
+  """
+  TIME: 462 samples (1.848 sec, interval 4 ms)
+  nbytes = 699,003,060
+  ntrace = (nbytes-nhead-nbhed)/(240+2*n1)
+  """
+  fmt = 3 # 2-byte shorts in [-32767,32767]
+  global n1,n2,n3
+  n1,n2,n3 = 462,951,591
+  nbytes = 699003060
+  datdir = "/data/seis/f3d/"
+  sgyfile = datdir+"f3draw.sgy"
+  mapfile = datdir+"f3dmap.dat"
+  datfile = datdir+"f3draw.dat"
+  displayF3d(datfile)
+  #displayF3dTrace(datfile)
+  #makeSubsetsF3d(datdir)
+  #displaySubsetF3d(datfile,0,500,500,751,501,501)
+  #bigSubsetF3d(n1,sgyfile,datfile)
+  #readFormat(sgyfile)
+  #makeMap(sgyfile,mapfile,nbytes,fmt,n1)
+  #dumpTraceHeaders(sgyfile,fmt,n1)
+  #convert3(n1,n2,n3,sgyfile,datfile)
+
+def displayF3d(datfile):
+  x = readImage(datfile,n1,n2,n3)
+  xmax = 30767.0
+  display3d(sub(x,clip(-xmax,xmax,x)),1.0)
+  #mul(0.001,x,x)
+  #display3d(x,10.0)
+  #display3d(slog(x),3.0)
+
+
+def displayF3dTrace(datfile):
+  x = readImage(datfile,n1,n2,n3)
+  mul(0.001,x,x)
+  x = x[170][252]
+  SimplePlot.asPoints(x)
+  SimplePlot.asPoints(spow(0.5,x))
+  SimplePlot.asPoints(slog(x))
+
+def spow(p,f):
+  return mul(sgn(f),pow(abs(f),p))
+
+def slog(f):
+  return mul(sgn(f),log(add(1.0,abs(f))))
+
+def sexp(f):
+  return mul(sgn(f),sub(exp(abs(f)),1.0))
 
 def goParihaka():
   """
   INLINES  : 1665 - 5599 (INC 1)   CROSSLINES : 2050 - 14026 (INC 2)
   TIME: 1501 samples  (6 sec, interval 4ms)
-  n1 = 1501
   nbytes = 69,479,807,644
   ntrace = (nbytes-nhead-nbhed)/(240+4*n1)
-  nbytes = 69479807644
   """
+  fmt = 1
+  n1 = 1501
+  nbytes = 69479807644
   datdir = "/data/seis/nz/par/"
   sgyfile = datdir+"Parihaka3d_raw.sgy"
   mapfile = datdir+"map.dat"
   datfile = datdir+"par11.dat"
-  displayParihaka(datfile)
+  #displayParihaka(datfile)
   #makeSubsetsParihaka(datdir)
   #displaySubsetParihaka(datfile,0,500,500,751,501,501)
   #bigSubsetParihaka(n1,sgyfile,datfile)
-  #readFormat(sgyfile)
+  readFormat(sgyfile)
   #makeMap(sgyfile,mapfile,nbytes,n1)
-  #dumpTraceHeaders(sgyfile,n1)
+  #dumpTraceHeaders(sgyfile,fmt,n1)
   #testFormat(n1,n2,n3,sgyfile)
   #convert(n1,n2,n3,sgyfile,datfile)
 
@@ -147,34 +200,40 @@ def bigSubsetParihaka(n1,sgyfile,datfile):
   ais.close()
   aos.close()
 
-def makeMap(sgyfile,mapfile,nbytes,n1):
-  ntrace = (nbytes-nhead-nbhed)/(240+4*n1)
+def makeMap(sgyfile,mapfile,nbytes,fmt,n1):
+  if fmt==3:
+    bps = 2
+  else:
+    bps = 4
+  ntrace = (nbytes-nhead-nbhed)/(240+bps*n1)
   af = ArrayFile(sgyfile,"r")
   af.skipBytes(nhead)
   af.skipBytes(nbhed)
   h = zeroint(nthed/4)
-  m2,m3 = 8000,16000
+  #m2,m3 = 8000,16000 # Parihaka
+  m2,m3 = 800,1300 # F3D
   m = zerofloat(m2,m3)
   i2min =  Integer.MAX_VALUE
   i2max = -Integer.MAX_VALUE
   i3min =  Integer.MAX_VALUE
   i3max = -Integer.MAX_VALUE
-  for i in range(ntrace/100):
+  for i in range(ntrace/10):
     if i%100==0:
       print "i =",i
       print "i2:  min =",i2min," max =",i2max
       print "i3:  min =",i3min," max =",i3max
     af.readInts(h)
-    i2,i3 = h[49],h[50]
-    if i2<m2 and i3<m3:
+    #i2,i3 = h[49],h[50] # Parihaka
+    i2,i3 = h[47],h[48] # F3D
+    if 0<=i2 and i2<m2 and 0<=i3 and i3<m3:
       m[i3][i2] = 1.0
     #print "i =",i," i2 =",i2," i3 =",i3
     if i2<i2min: i2min = i2
     if i2>i2max: i2max = i2
     if i3<i3min: i3min = i3
     if i3>i3max: i3max = i3
-    af.skipBytes(4*n1)
-    af.seek(af.filePointer+100*(nthed+4*n1))
+    af.skipBytes(bps*n1)
+    af.seek(af.filePointer+100*(nthed+bps*n1))
   af.close()
   print "i2:  min =",i2min," max =",i2max
   print "i3:  min =",i3min," max =",i3max
@@ -186,7 +245,7 @@ def makeMap(sgyfile,mapfile,nbytes,n1):
   aos.close()
 
 
-def dumpTraceHeaders(sgyfile,n1):
+def dumpTraceHeaders(sgyfile,fmt,n1):
   af = ArrayFile(sgyfile,"r")
   af.skipBytes(nhead)
   af.skipBytes(nbhed)
@@ -205,20 +264,11 @@ def dumpTraceHeaders(sgyfile,n1):
     print "iline,xline =",hi[49],hi[50]
     #dump(hi)
     #dump(hs)
-    af.skipBytes(4*n1)
+    if fmt==3:
+      af.skipBytes(2*n1)
+    else:
+      af.skipBytes(4*n1)
   af.close()
-
-def dumpTraceHeadersX(sgyfile,n1):
-  ais = ArrayInputStream(sgyfile)
-  ais.skipBytes(nhead)
-  ais.skipBytes(nbhed)
-  h = zeroint(nthed/4)
-  for i in range(10):
-    ais.readInts(h)
-    dump(h)
-    print "i =",i," iline =",h[49]," xline =",h[50]
-    ais.skipBytes(4*n1)
-  ais.close()
 
 def goParihakaSubsets():
   #n1,n2,n3 = 751,1501,701
@@ -270,6 +320,23 @@ def convert(n1,n2,n3,sgyfile,datfile):
   ais.close()
   aos.close()
 
+def convert3(n1,n2,n3,sgyfile,datfile):
+  print "converting",(n2*n3),"traces"
+  ais = ArrayInputStream(sgyfile)
+  aos = ArrayOutputStream(datfile)
+  ais.skipBytes(nhead+nbhed)
+  x = zeroshort(n1)
+  y = zerofloat(n1)
+  for i3 in range(n3):
+    for i2 in range(n2):
+      ais.skipBytes(nthed) # skip trace header
+      ais.readShorts(x) # read trace samples
+      IbmIeee.shortToFloat(x,y) # convert
+      aos.writeFloats(y) # write trace samples
+    print "converted: i3 =",i3
+  ais.close()
+  aos.close()
+
 def display3d(x,clip=0):
   n1,n2,n3 = len(x[0][0]),len(x[0]),len(x)
   print "x min =",min(x)," max =",max(x)
@@ -304,6 +371,8 @@ def readFormat(sgyfile):
   format = h[12]
   if format==1:
     print "format = 1 = IBM floating point"
+  elif format==3:
+    print "format = 3 = 2-byte two's complement integer"
   elif format==5:
     print "format = 5 = IEEE floating point"
   else:
