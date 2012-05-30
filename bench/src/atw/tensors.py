@@ -13,8 +13,8 @@ from edu.mines.jtk.util import *
 from edu.mines.jtk.util.ArrayMath import *
 
 def main(args):
-  #goTensors()
-  goGradients()
+  goTensors()
+  #goGradients()
 
 def goGradients():
   f,s1,s2 = readAwImage()
@@ -54,7 +54,6 @@ def goTensors():
     pref = prefs[i]
     g,s1,s2 = read()
     plot(g,s1,s2,png=pref)
-    return
     lof = LocalOrientFilter(4.0)
     s = lof.applyForTensors(g)
     d00 = EigenTensors2(s); d00.invertStructure(0.0,0.0)
@@ -76,8 +75,8 @@ def goTensors():
 #############################################################################
 # plotting
 
-pngDir = "../../png/" # where to put PNG images of plots
-#pngDir = None # for no PNG images
+#pngDir = "../../png/" # where to put PNG images of plots
+pngDir = None # for no PNG images
 
 backgroundColor = Color(0xfd,0xfe,0xff) # easy to make transparent
 

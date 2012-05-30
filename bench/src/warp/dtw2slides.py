@@ -22,25 +22,7 @@ nrms=1,npass=5: diw for noisy range of shifts (2c, 2x4)
   v01,v10,v20,v40
 """
 
-import sys
-from java.awt import *
-from java.awt.image import *
-from java.io import *
-from java.lang import *
-from java.util import *
-from java.nio import *
-from javax.swing import *
-
-from edu.mines.jtk.awt import *
-from edu.mines.jtk.dsp import *
-from edu.mines.jtk.io import *
-from edu.mines.jtk.mosaic import *
-from edu.mines.jtk.sgl import *
-from edu.mines.jtk.util import *
-from edu.mines.jtk.util.ArrayMath import *
-
-from fault import *
-from fault.Util import *
+from imports import *
 from util import FakeData
 
 #############################################################################

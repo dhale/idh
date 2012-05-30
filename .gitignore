@@ -4,6 +4,9 @@
 /.idea
 
 build/
+new/
+old/
+*.png
 *.swp
 *.class
 *.DS_Store

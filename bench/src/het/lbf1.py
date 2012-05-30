@@ -37,11 +37,9 @@ def goSimple():
   ay = cabs(fft.applyForward(y))
   SimplePlot.asPoints(sf,ax)
   SimplePlot.asPoints(sf,ay)
-  shift = 0.00
-  gx = makeBurgModulator(shift,x)
-  gy = makeBurgModulator(shift,y)
-  gx = x
-  gy = y
+  shift = 0.05
+  gx = makeCosineModulator(shift,x)
+  gy = makeCosineModulator(shift,y)
   SimplePlot.asPoints(st,gx)
   SimplePlot.asPoints(st,gy)
   xgx = mul(x,gx)
@@ -52,10 +50,10 @@ def goSimple():
   aygy = cabs(fft.applyForward(ygy))
   SimplePlot.asPoints(sf,axgx)
   SimplePlot.asPoints(sf,aygy)
-  #xgx = lowPassFilter(fpeak,xgx)
-  #ygy = lowPassFilter(fpeak,ygy)
-  xgx = smoothingFilter(25.0,xgx)
-  ygy = smoothingFilter(25.0,ygy)
+  xgx = lowPassFilter(fpeak,xgx)
+  ygy = lowPassFilter(fpeak,ygy)
+  #xgx = smoothingFilter(25.0,xgx)
+  #ygy = smoothingFilter(25.0,ygy)
   SimplePlot.asPoints(st,xgx)
   SimplePlot.asPoints(st,ygy)
 
@@ -118,7 +116,7 @@ def makeCosineModulator(shift,x):
   n = len(x)
   fpeak = getPeakFrequency(x)
   fpeak += shift
-  phase = rampfloat(0.0,2.0*PI*fpeak,0.0,n)
+  phase = rampfloat(0.0,2.0*PI*fpeak,n)
   return cos(phase)
 
 def makeBandModulator(shift,x):

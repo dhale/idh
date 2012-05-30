@@ -45,8 +45,8 @@ from util import FakeData
 
 #############################################################################
 
-pngDir = "./png"
-#pngDir = None
+#pngDir = "./png"
+pngDir = None
 
 seed = abs(Random().nextInt()/1000000)
 seed = 580
@@ -75,8 +75,8 @@ def main(args):
   #goOzImages()
   #goOzTeaser()
   #goOzFiguresFgus()
-  #goOzFiguresNpass()
-  goOzFiguresDtwUv()
+  goOzFiguresNpass()
+  #goOzFiguresDtwUv()
 
 def goOzTeaser():
   global stretchMax1,stretchMax2,smoothShifts,nrms,teaser

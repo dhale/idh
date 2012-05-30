@@ -21,8 +21,8 @@ from fault import FaultScanner2,FaultSemblance
 
 #############################################################################
 
-pngDir = "./png"
-#pngDir = None
+#pngDir = "./png"
+pngDir = None
 
 sigmaTheta = 20
 smoother = FaultScanner2.Smoother.SHEAR
@@ -33,8 +33,8 @@ def main(args):
   #goAlign()
   #goSemblance()
   #goScan()
-  goThin()
-  #goShifts()
+  #goThin()
+  goShifts()
 
 def getImage():
   #return imageSyn()
@@ -44,7 +44,7 @@ def getImage():
 def goShifts():
   s1,s2,g = getImage()
   g = slog(g)
-  #plot2(s1,s2,g,title="log input")
+  plot2(s1,s2,g,title="log input")
   fse = FaultSemblance()
   g = fse.taper(10,g)
   p = fse.slopes(g)
@@ -58,10 +58,10 @@ def goShifts():
   faults = fsc.findFaults([f,t],shiftMax-shiftMin);
   ff = faults.getLikelihoods()
   #plot2(s1,s2,g,ff,gmin=0,gmax=1,title="fault likelihood")
-  plot2(s1,s2,g,ff,gmin=0,gmax=1,label="Fault likelihood",png="flg")
+  #plot2(s1,s2,g,ff,gmin=0,gmax=1,label="Fault likelihood",png="flg")
   g = fsc.smooth(4,p,ff,g)
   #plot2(s1,s2,g,ff,gmin=0,gmax=1,title="input smoothed")
-  plot2(s1,s2,g,ff,gmin=0,gmax=1,label="Fault likelihood",png="flgs")
+  #plot2(s1,s2,g,ff,gmin=0,gmax=1,label="Fault likelihood",png="flgs")
   plot2(s1,s2,g,label="Log amplitude",png="gs")
   p = fse.slopes(g)
   faults.findShifts(g,p,shiftMin,shiftMax)
@@ -70,8 +70,8 @@ def goShifts():
   s = mul(s1.delta*1000.0,s)
   print "s min =",min(s)," max =",max(s)
   #plot2(s1,s2,g,s,gmin=-8,gmax=8,title="fault shifts")
-  plot2(s1,s2,g,s,gmin=-28,gmax=28,label="Fault throw (ms)",png="fs")
-  plot2(s1,s2,g,s,gmin=-8,gmax=8,label="Fault throw (ms)",png="fs8")
+  #plot2(s1,s2,g,s,gmin=-28,gmax=28,label="Fault throw (ms)",png="fs")
+  #plot2(s1,s2,g,s,gmin=-8,gmax=8,label="Fault throw (ms)",png="fs8")
 
 def goThin():
   s1,s2,g = getImage()

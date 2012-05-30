@@ -358,6 +358,32 @@ public class DynamicWarping {
     }
   }
 
+  public static float[][] transposeLag(float[][] e) {
+    int nl = e[0].length;
+    int n1 = e.length;
+    float[][] t = new float[nl][n1];
+    for (int il=0; il<nl; ++il) {
+      for (int i1=0; i1<n1; ++i1) {
+        t[il][i1] = e[i1][il];
+      }
+    }
+    return t;
+  }
+  public static float[][][] transposeLag(float[][][] e) {
+    int nl = e[0][0].length;
+    int n1 = e[0].length;
+    int n2 = e.length;
+    float[][][] t = new float[nl][n2][n1];
+    for (int il=0; il<nl; ++il) {
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          t[il][i2][i1] = e[i2][i1][il];
+        }
+      }
+    }
+    return t;
+  }
+
   ///////////////////////////////////////////////////////////////////////////
   // private
 

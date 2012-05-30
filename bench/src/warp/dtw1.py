@@ -1,24 +1,7 @@
 #############################################################################
 # Dynamic time warping for 1D sequences
 
-import sys
-from java.awt import *
-from java.awt.image import *
-from java.io import *
-from java.lang import *
-from java.util import *
-from java.nio import *
-from javax.swing import *
-
-from edu.mines.jtk.awt import *
-from edu.mines.jtk.dsp import *
-from edu.mines.jtk.io import *
-from edu.mines.jtk.mosaic import *
-from edu.mines.jtk.util import *
-from edu.mines.jtk.util.ArrayMath import *
-
-from fault import *
-from fault.Util import *
+from imports import *
 
 #############################################################################
 
@@ -32,49 +15,57 @@ seed = abs(Random().nextInt()/1000000)
 seed = 877 
 print "seed =",seed
 
-nrms = 0.0
-stretchMax = 1.0
+nrms = 0.5
+strainMax = 0.2
 
 def main(args):
   #goCostMatrix()
   #goDistanceMatrix()
   #goDistance()
-  goAccumulate()
+  #goAccumulate()
+  goFindShifts()
+
+def goFindShifts():
+  ml = 33
+  f,g,s = makeSequences()
+  dw = DynamicWarping(-ml,ml)
+  dw.setStrainMax(strainMax)
+  dw.setErrorSmoothing(0)
+  e = dw.computeErrors(f,g)
+  u = dw.findShifts(f,g)
+  dw.smoothShifts(u,u)
+  plot(f,g,etran(e),s,u)
+  dw.setErrorSmoothing(1)
+  e = dw.smoothErrors(e)
+  u = dw.findShifts(f,g)
+  dw.smoothShifts(u,u)
+  plot(f,g,etran(e),s,u)
 
 def goAccumulate():
   ml = 33
   f,g,s = makeSequences()
   dw = DynamicWarping(-ml,ml)
-  dw.setStretchMax(stretchMax)
+  dw.setStrainMax(strainMax)
   e = dw.computeErrors(f,g)
   #e = normalize(e)
   d = dw.accumulateForward(e)
-  u = dw.findShiftsReverse(d,e)
-  #u = smooth(u)
-  ea = dw.accumulate(e)
-  #ea = normalize(ea)
-  da = dw.accumulateForward(ea)
-  ua = dw.findShiftsReverse(da,ea)
-  #ua = smooth(ua)
-  print " esumu =",dw.sumErrors(e,u), "  esums =",dw.sumErrors(e,s);
-  print "easumu =",dw.sumErrors(ea,u)," easums =",dw.sumErrors(ea,s);
-  #plot(f,g,etran(e),cbar="Alignment error",png="ce")
-  #plot(f,g,etran(e),s=None,u=u,cbar="Alignment error",png="ceu")
-  #plot(f,g,etran(e),s,u=u,cbar="Alignment error",png="cesu")
-  #plot(f,g,etran(d),cbar="Accumulated error",png="cd")
-  #plot(f,g,etran(d),s=None,u=u,cbar="Accumulated error",png="cdu")
-  plot(f,g,etran(d),s,u,cbar="Accumulated error",png="cdsu")
-  plot(f,g,etran(ea),cbar="Smoothed error",png="cea")
-  plot(f,g,etran(e),s,u,cbar="Alignment error",png="cesu")
-  plot(f,g,etran(ea),s,ua,cbar="Smoothed error",png="ceasu")
-  """
-  ef = dw.accumulateForward(e)
-  er = dw.accumulateReverse(e)
-  es = dw.accumulate(e)
-  plotc(dtran(ef),None,None,perc=97,png="cef")
-  plotc(dtran(er),None,None,perc=97,png="cer")
-  plotc(dtran(es),None,None,perc=97,png="ces")
-  """
+  #u = dw.backtrackReverse(d,e)
+  u1 = dw.backtrackReverse(d,e)
+  #u = dw.smooth(u)
+  es = dw.smoothErrors(e)
+  #es = normalize(es)
+  ds = dw.accumulateForward(es)
+  #u = dw.backtrackReverse(ds,es)
+  u11 = dw.backtrackReverse(ds,es)
+  print "max|u11-u1| = ",max(abs(sub(u11,u1)))
+  #u = dw.smooth(u)
+  print " esumu =",dw.sumErrors(e,u1), "  esums =",dw.sumErrors(e,s);
+  print "essumu =",dw.sumErrors(es,u11)," essums =",dw.sumErrors(es,s);
+  plot(f,g,etran(e))
+  plot(f,g,etran(d))
+  plot(f,g,etran(es))
+  plot(f,g,etran(e),s,u1)
+  plot(f,g,etran(es),s,u11)
 
 def smooth(u):
   v = copy(u)
@@ -88,11 +79,8 @@ def normalize(e):
   return mul(sub(e,emin),1.0/(emax-emin))
 
 def etran(e):
-  #e = normalize(e)
+  e = normalize(e)
   return transpose(pow(e,0.25))
-
-def dtran(d):
-  return transpose(d)
 
 def goDistance():
   ref = RecursiveExponentialFilter(8.0)
@@ -102,13 +90,12 @@ def goDistance():
   c = dtwCost(-ml,ml,f,g)
   #for cl in c:
   #  ref.apply(cl,cl)
-  for limit in [1]:
+  for limit in [1,2,3]:
     d = dtwDistance(c,limit)
     u = dtwShifts(-ml,ml,d)
-    #ref.apply(u,u)
-    plot(f,g,pow(c,0.25),png="cl")
-    plot(f,g,pow(c,0.25),s,u,png="clsu")
-    #plot(f,g,pow(d,0.25),s,u)
+    ref.apply(u,u)
+    #plot(f,g,pow(c,0.5),s,u)
+    plot(f,g,pow(d,0.5),s,u)
 
 def makeSequences():
   n = 501
@@ -136,6 +123,11 @@ def makeCostMatrix(f,g):
     mul(c[i],c[i],c[i])
   return c
 
+def goCostMatrix():
+  f,g,s = makeSequences()
+  c = makeCostMatrix(f,g)
+  plotWithMatrix(f,g,sqrt(c))
+
 def goDistanceMatrix():
   f,g,s = makeSequences()
   c = makeCostMatrix(f,g)
@@ -144,9 +136,8 @@ def goDistanceMatrix():
   #ref = RecursiveExponentialFilter(4.0)
   #ref.apply1(uf,uf)
   #ref.apply1(ug,ug)
-  plotWithMatrix(f,g,pow(c,0.25),None,None,fg=False,png="cm")
-  plotWithMatrix(f,g,pow(c,0.25),None,None,fg=True,png="cmfg")
-  plotWithMatrix(f,g,pow(c,0.25),uf,ug,fg=True,png="cmfgu")
+  plotWithMatrix(f,g,pow(c,0.25),uf,ug)
+  plotWithMatrix(f,g,pow(d,0.25),uf,ug)
 
 def makeCosine(freq,n):
   return cos(mul(2.0*PI*freq,rampfloat(0.0,1.0,n)))
@@ -192,65 +183,38 @@ def addNoise(nrms,fpeak,f,seed=0):
 #############################################################################
 # plotting
 
-backgroundColor = Color(0xfd,0xfe,0xff) # easy to make transparent
-def plotWithMatrix(f,g,c,uf,ug,fg=True,png=None):
+def plotWithMatrix(f,g,c,uf,ug):
   n = len(f)
   panel = PlotPanel(2,2,PlotPanel.Orientation.X1DOWN_X2RIGHT)
   panel.mosaic.setWidthElastic(0,25)
   panel.mosaic.setHeightElastic(0,25)
   panel.mosaic.setWidthElastic(1,100)
   panel.mosaic.setHeightElastic(1,100)
-  if fg:
-    fgColor = Color.RED
-  else:
-    fgColor = backgroundColor
-  gv = panel.addPoints(1,0,g)
-  gv.setLineColor(fgColor)
-  fv = panel.addPoints(1,0,f)
-  fv.setLineColor(Color.BLACK)
-  fv.setLineWidth(2)
-  gv.setLineWidth(2)
   fv = panel.addPoints(0,1,f)
-  fv.setLineColor(fgColor)
   gv = panel.addPoints(0,1,g)
-  gv.setLineColor(Color.BLACK)
-  fv.setLineWidth(2)
-  gv.setLineWidth(2)
+  gv.setLineColor(Color.RED)
   fv.setOrientation(PointsView.Orientation.X1RIGHT_X2UP)
   gv.setOrientation(PointsView.Orientation.X1RIGHT_X2UP)
+  gv = panel.addPoints(1,0,g)
+  fv = panel.addPoints(1,0,f)
+  fv.setLineColor(Color.RED)
   cv = panel.addPixels(1,1,c)
   cv.setInterpolation(PixelsView.Interpolation.NEAREST)
   #cv.setClips(-1.0,1.0)
-  cv.setColorModel(ColorMap.JET)
-  if ug and ug:
-    uv = panel.addPoints(1,1,ug,uf)
-    uv.setLineColor(Color.RED)
-    uv.setLineWidth(3.0)
-    #dv = panel.addPoints(1,1,(0.0,n-1.0),(0.0,n-1.0))
-    #dv.setLineColor(Color.WHITE)
-  panel.setHLabel(1,"sample index j")
-  panel.setVLabel(1,"sample index i")
-  panel.setHInterval(0,100.0)
-  panel.setVInterval(0,100.0)
-  panel.setHInterval(1,200.0)
-  panel.setVInterval(1,200.0)
-  panel.setHLimits(1,0,n-1)
-  panel.setVLimits(1,0,n-1)
-  panel.addColorBar("| f(i) - g(j) |")
+  cv.setColorModel(ColorMap.GRAY)
+  uv = panel.addPoints(1,1,ug,uf)
+  uv.setLineColor(Color.RED)
+  dv = panel.addPoints(1,1,(0.0,n-1.0),(0.0,n-1.0))
+  dv.setLineColor(Color.WHITE)
+  panel.setHLabel(1,"sample")
+  panel.setVLabel(1,"sample")
   frame = PlotFrame(panel)
   frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE)
-  frame.setBackground(backgroundColor)
-  frame.setFontSizeForSlide(1.0,0.9)
-  frame.setSize(1240,980)
+  frame.setFontSize(18)
+  frame.setSize(1000,1000)
   frame.setVisible(True)
-  axis = panel.mosaic.getTileAxisLeft(0)
-  axis.setFont(axis.getFont().deriveFont(0.001))
-  if png and pngDir:
-    png += "n"+str(int(10*nrms))
-    png += "s"+str(int(10*stretchMax))
-    frame.paintToPng(400,3.2,pngDir+"/"+png+".png")
 
-def plot(f,g,c,s=None,u=None,clip=None,cbar=None,png=None):
+def plot(f,g,c,s=None,u=None,clip=None):
   n,nlag = len(c[0]),len(c)
   s1 = Sampling(n,1.0,0.0)
   slag = Sampling(nlag,1.0,-(nlag-1)/2)
@@ -258,13 +222,9 @@ def plot(f,g,c,s=None,u=None,clip=None,cbar=None,png=None):
   panel.mosaic.setHeightElastic(0,25)
   panel.mosaic.setHeightElastic(1,100)
   panel.setVLimits(1,slag.first,slag.last)
-  panel.setHLimits(0,0,n-1)
-  gv = panel.addPoints(0,0,s1,g)
   fv = panel.addPoints(0,0,s1,f)
+  gv = panel.addPoints(0,0,s1,g)
   gv.setLineColor(Color.RED)
-  fv.setLineWidth(2)
-  gv.setLineWidth(2)
-  panel.setVInterval(0,100.0)
   cv = panel.addPixels(1,0,s1,slag,c)
   cv.setInterpolation(PixelsView.Interpolation.NEAREST)
   if clip:
@@ -277,26 +237,16 @@ def plot(f,g,c,s=None,u=None,clip=None,cbar=None,png=None):
     sv.setLineWidth(3)
   if u:
     uv = panel.addPoints(1,0,u)
-    uv.setLineColor(Color.RED)
+    uv.setLineColor(Color.WHITE)
     uv.setLineWidth(3)
-  panel.setHLabel("sample index i")
+  panel.setHLabel("sample")
   panel.setVLabel(0,"f & g")
-  panel.setVLabel(1,"lag l")
-  if cbar:
-    panel.addColorBar(cbar)
-  else:
-    panel.addColorBar("Alignment error")
-    #panel.addColorBar("| f(i) - g(i+l) |")
+  panel.setVLabel(1,"lag")
   frame = PlotFrame(panel)
   frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE)
-  frame.setBackground(backgroundColor)
-  frame.setFontSizeForSlide(1.0,0.9)
-  frame.setSize(1000,650)
+  frame.setFontSize(18)
+  frame.setSize(1000,800)
   frame.setVisible(True)
-  if png and pngDir:
-    png += "n"+str(int(10*nrms))
-    png += "s"+str(int(10*stretchMax))
-    frame.paintToPng(400,3.2,pngDir+"/"+png+".png")
 
 #############################################################################
 # Do everything on Swing thread.

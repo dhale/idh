@@ -22,31 +22,13 @@ nrms=1,npass=5: diw for noisy range of shifts (2c, 2x4)
   v01,v10,v20,v40
 """
 
-import sys
-from java.awt import *
-from java.awt.image import *
-from java.io import *
-from java.lang import *
-from java.util import *
-from java.nio import *
-from javax.swing import *
-
-from edu.mines.jtk.awt import *
-from edu.mines.jtk.dsp import *
-from edu.mines.jtk.io import *
-from edu.mines.jtk.mosaic import *
-from edu.mines.jtk.sgl import *
-from edu.mines.jtk.util import *
-from edu.mines.jtk.util.ArrayMath import *
-
-from fault import *
-from fault.Util import *
+from imports import *
 from util import FakeData
 
 #############################################################################
 
-#pngDir = "./png"
-pngDir = None
+pngDir = "./png"
+#pngDir = None
 
 seed = abs(Random().nextInt()/1000000)
 seed = 580
@@ -66,7 +48,6 @@ teaser = False
 
 s1,s2 = None,None
 label1,label2 = None,None
-fclips = (-3.0,3.0)
 
 def main(args):
   #goTestImages()
@@ -76,7 +57,6 @@ def main(args):
   #goOzImages()
   #goOzTeaser()
   #goOzFiguresFgus()
-  #goOzFiguresSmooth()
   #goOzFiguresNpass()
   goOzFiguresDtwUv()
 
@@ -127,18 +107,14 @@ def goOzFiguresFgus():
     f,g,s = makeOzImages(shift)
     n1,n2 = s1.count,s2.count
     fclips = (-3.0,3.0)
-    plot2(f,mul(4,s),uclips,label="Shift (ms)",png="oz02fs")
-    plot2(g,mul(4,s),uclips,label="Shift (ms)",png="oz02gs")
+    plot2(f,g,fclips,label="Amplitude",png="oz02fg")
     e = dw.computeErrors(f,g)
     if npass==1: u = shifts1(dw,e)
     elif npass==2: u = shifts12(dw,e)
     elif npass==3: u = shifts121(dw,e)
     elif npass==4: u = shifts1212(dw,e)
     elif npass==5: u = shifts12121(dw,e)
-    h = align(u,g)
-    plot2(g,mul(4,u),uclips,label="Shift (ms)",png="oz02gu")
-    plot2(h,mul(4,u),uclips,label="Shift (ms)",png="oz02hu")
-    plot2(f,mul(4,u),uclips,label="Shift (ms)",png="oz02fu")
+    plot2(mul(4,u),mul(4,s),uclips,label="Shift (ms)",png="oz02us")
 
 def goOzFiguresNpass():
   global smoothShifts,smoothSigma1,smoothSigma2,nrms,npass,shiftMax
@@ -155,56 +131,23 @@ def goOzFiguresNpass():
   dw.setStretchMax(stretchMax1,stretchMax2)
   f,g,s = makeOzImages(shift)
   e = dw.computeErrors(f,g)
-  u0 = shifts1(dw,e)
-  u1 = shifts121(dw,e)
-  u2 = shifts12121(dw,e)
-  h0 = align(u0,g)
-  h1 = align(u1,g)
-  h2 = align(u2,g)
-  plot2(f,mul(4,u0),uclips,label="Shift (ms)",png="oz02fu0")
-  plot2(f,mul(4,u1),uclips,label="Shift (ms)",png="oz02fu1")
-  plot2(f,mul(4,u2),uclips,label="Shift (ms)",png="oz02fu2")
-  plot2(g,mul(4,u1),uclips,label="Shift (ms)",png="oz02gu1")
-  plot2(g,mul(4,u0),uclips,label="Shift (ms)",png="oz02gu0")
-  plot2(g,mul(4,u2),uclips,label="Shift (ms)",png="oz02gu2")
-  plot2(h0,mul(4,u0),uclips,label="Shift (ms)",png="oz02hu0")
-  plot2(h1,mul(4,u1),uclips,label="Shift (ms)",png="oz02hu1")
-  plot2(h2,mul(4,u2),uclips,label="Shift (ms)",png="oz02hu2")
-
-def goOzFiguresSmooth():
-  global smoothShifts,smoothSigma1,smoothSigma2,nrms,npass,shiftMax
-  stretchMax1 = 0.25
-  stretchMax2 = 1.00
-  smoothShifts = True
-  smoothSigma1 = 2.0/stretchMax1
-  smoothSigma2 = 2.0/stretchMax2
-  nrms = 1.00
-  shift = 40
-  ml = 3*shift
-  uclips = (0,shift*8)
-  dw = DynamicWarping(-ml,ml)
-  dw.setStretchMax(stretchMax1,stretchMax2)
-  f,g,s = makeOzImages(shift)
-  d1 = s1.getDelta()
-  sl = Sampling(1+2*ml,d1,-ml*d1)
-  e0 = dw.computeErrors(f,g)
-  e0 = normalize(e0)
-  plot3(dw.transposeLag(e0),None,s1,s2,sl,perc=95,png="oze0")
-  plot3(dw.transposeLag(e0),s,s1,s2,sl,perc=95,png="oze0s")
-  e1 = dw.accumulate1(e0)
-  e1 = normalize(e1)
-  plot3(dw.transposeLag(e1),None,s1,s2,sl,perc=95,png="oze1")
-  plot3(dw.transposeLag(e1),s,s1,s2,sl,perc=95,png="oze1s")
-  e2 = dw.accumulate2(e1)
-  e2 = normalize(e2)
-  plot3(dw.transposeLag(e2),None,s1,s2,sl,perc=95,png="oze2")
-  plot3(dw.transposeLag(e2),s,s1,s2,sl,perc=95,png="oze2s")
+  u1 = shifts1(dw,e)
+  u2 = shifts12(dw,e)
+  u3 = shifts121(dw,e)
+  u4 = shifts1212(dw,e)
+  u5 = shifts12121(dw,e)
+  plot2(mul(4,u2),mul(4,u3),uclips,label="Shift (ms)",png="oz02p23")
+  plot2(mul(4,u4),mul(4,u5),uclips,label="Shift (ms)",png="oz02p45")
+  print "u1-u5: min/max =",min(sub(u1,u5)),max(sub(u1,u5))
+  print "u2-u5: min/max =",min(sub(u2,u5)),max(sub(u2,u5))
+  print "u3-u5: min/max =",min(sub(u3,u5)),max(sub(u3,u5))
+  print "u4-u5: min/max =",min(sub(u4,u5)),max(sub(u4,u5))
 
 def goOzFiguresDtwUv():
   global smoothShifts,smoothSigma1,smoothSigma2,nrms,npass,shiftMax
   smoothShifts = True
-  for nrms in [0.0]:
-    for shiftMax in [40]:
+  for nrms in [1.0]:
+    for shiftMax in [2,20,40]:
       stretchMax1 = min(1.00,0.25*shiftMax/40.0)
       stretchMax2 = min(1.00,1.00*shiftMax/40.0)
       smoothSigma1 = 1.0/stretchMax1
@@ -234,8 +177,7 @@ def goOzFiguresDtwUv():
           lsf.find1(-ml,ml,f[i2],g[i2],v[i2])
       else:
         lsf.find1(-ml,ml,f,g,v)
-      plot2(align(u,g),mul(4,u),uclips,label="Shift (ms)",png="oz02hu")
-      plot2(align(v,g),mul(4,v),uclips,label="Shift (ms)",png="oz02hv")
+      plot2(mul(4,u),mul(4,v),uclips,label="Shift (ms)",png="oz02uv")
 
 def goTestShifts():
   shift = 16
@@ -359,8 +301,7 @@ def makeTestImages():
 
 def makeOzImages(shift):
   n1,d1,f1 = 1025,0.004,0.004
-  n2,d2,f2 = 127,0.030480,-0.999
-  #n2,d2,f2 = 127,0.030480,-1.005840 # correct
+  n2,d2,f2 = 127,0.030480,-1.005840
   #n2,d2,f2 = 127,0.030480,-2.834640
   fileName = "/data/seis/oz/oz02.F" # suffix F implies floats
   f = readImage(fileName,n1,n2)
@@ -558,7 +499,7 @@ def plot(f,clips=None,title=None,label=None,png=None):
   sp.setHLabel(label2)
   #if clips[0]==0.0:
   #  pv.setColorModel(ColorMap.JET)
-  sp.setFontSizeForSlide(0.5,0.8)
+  sp.setFontSizeForPrint(8,120)
   sp.setSize(width,height)
   sp.setVisible(True)
   if png and pngDir:
@@ -567,8 +508,8 @@ def plot(f,clips=None,title=None,label=None,png=None):
     png += str(int(shiftMax))
     sp.paintToPng(720,1.25,pngDir+"/"+png+".png")
 
-def plot2(f,g,gclips=None,label=None,png=None):
-  width,height,cbwm = 1095,815,200
+def plot2(f,g,clips=None,label=None,png=None):
+  width,height,cbwm = 1095,815,145
   n1,n2 = len(f[0]),len(f)
   global s1,s2
   if s1==None: s1 = Sampling(n1,1.0,0.0)
@@ -577,14 +518,12 @@ def plot2(f,g,gclips=None,label=None,png=None):
   panel.mosaic.setWidthTileSpacing(10);
   pv0 = panel.addPixels(0,0,s1,s2,f)
   pv1 = panel.addPixels(0,1,s1,s2,g)
-  pv0.setClips(fclips[0],fclips[1])
-  if gclips:
-    pv1.setClips(gclips[0],gclips[1])
-  pv1.setColorModel(ColorMap.JET)
+  if clips:
+    pv0.setClips(clips[0],clips[1])
+    pv1.setClips(clips[0],clips[1])
+  panel.addColorBar()
   if label:
     panel.addColorBar(label)
-  else:
-    panel.addColorBar()
   panel.setVLabel(0,label1)
   panel.setHLabel(0,label2)
   panel.setHLabel(1,label2)
@@ -592,7 +531,7 @@ def plot2(f,g,gclips=None,label=None,png=None):
   frame = PlotFrame(panel)
   frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE)
   frame.setBackground(Color(0xfd,0xfe,0xff)) # easy to make transparent
-  frame.setFontSizeForSlide(1.0,0.8)
+  frame.setFontSizeForPrint(8,240)
   frame.setSize(width,height)
   frame.setVisible(True)
   if png and pngDir:
@@ -604,68 +543,35 @@ def plot2(f,g,gclips=None,label=None,png=None):
       png += str(int(shiftMax))
     frame.paintToPng(720,3.3,pngDir+"/"+png+".png")
 
-def plot3(e,s,s1,s2,sl,perc=None,png=None):
-  width,height,cbwm = 860,825,200
-  n1,n2,nl = s1.count,s2.count,sl.count
-  k1,k2,kl = 300,n2/2,nl/2
-  orient = PlotPanelPixels3.Orientation.X1DOWN_X2RIGHT;
-  axespl = PlotPanelPixels3.AxesPlacement.LEFT_BOTTOM
-  panel = PlotPanelPixels3(orient,axespl,s1,s2,sl,e)
-  if perc:
-    panel.setPercentiles(0.0,perc)
-  panel.mosaic.setWidthElastic(0,100)
-  panel.mosaic.setWidthElastic(1,75)
-  panel.mosaic.setHeightElastic(0,75)
-  panel.mosaic.setHeightElastic(1,100)
-  panel.setSlice23(k1)
-  panel.setSlice13(k2)
-  panel.setSlice12(kl)
-  if s:
-    st1,sl1 = zerofloat(n1),zerofloat(n1)
-    sx2,sl2 = zerofloat(n2),zerofloat(n2)
-    for i1 in range(n1): 
-      st1[i1] = s1.getValue(i1)
-      sl1[i1] = s[k2][i1]*sl.delta
-    for i2 in range(n2): 
-      sx2[i2] = s2.getValue(i2)
-      sl2[i2] = s[i2][k1]*sl.delta
-  #panel.setSlice13(70)
-  panel.setLabel1("Time (s)")
-  panel.setLabel2("Offset (km)")
-  panel.setLabel3("Lag (s)")
-  panel.setInterval2(2.0)
-  panel.setInterval3(0.4)
-  panel.setColorModel(ColorMap.JET)
-  panel.setLineColor(Color.WHITE)
-  if s:
-    pv1 = PointsView(st1,sl1)
-    pv1.setOrientation(PointsView.Orientation.X1DOWN_X2RIGHT)
-    pv1.setLineColor(Color.WHITE)
-    pv1.setLineWidth(5)
-    pv1.setLineStyle(PointsView.Line.DASH)
-    pv2 = PointsView(sx2,sl2)
-    pv2.setOrientation(PointsView.Orientation.X1RIGHT_X2UP)
-    pv2.setLineColor(Color.WHITE)
-    pv2.setLineWidth(5)
-    pv2.setLineStyle(PointsView.Line.DASH)
-    panel.addTiledView(1,1,pv1)
-    panel.addTiledView(0,0,pv2)
-  panel.setHLimits(0,s2.first,s2.last)
-  panel.setVLimits(1,s1.first,s1.last)
+def plot4(u,clips=None,label=None,png=None):
+  width,height,cbwm = 1095,815,145
+  n1,n2 = len(u[0][0]),len(u[0])
+  global s1,s2
+  if s1==None: s1 = Sampling(n1,1.0,0.0)
+  if s2==None: s2 = Sampling(n2,1.0,0.0)
+  panel = PlotPanel(1,4,PlotPanel.Orientation.X1DOWN_X2RIGHT)
+  panel.mosaic.setWidthTileSpacing(10);
+  panel.setVLabel(0,label1)
+  for i in range(len(u)):
+    pv = panel.addPixels(0,i,s1,s2,u[i])
+    if clips:
+      pv.setClips(clips[0],clips[1])
+  panel.setHLabel(i,label2)
+  panel.addColorBar()
+  if label:
+    panel.addColorBar(label)
+  panel.setColorBarWidthMinimum(cbwm)
   frame = PlotFrame(panel)
   frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE)
   frame.setBackground(Color(0xfd,0xfe,0xff)) # easy to make transparent
-  frame.setFontSizeForSlide(1.0,0.8)
+  frame.setFontSizeForPrint(8,504)
   frame.setSize(width,height)
   frame.setVisible(True)
   if png and pngDir:
     if nrms>0.0:
       png += "n"
-    if shiftMax<10:
-      png += "0"+str(int(shiftMax))
-    else:
-      png += str(int(shiftMax))
     frame.paintToPng(720,3.3,pngDir+"/"+png+".png")
+
 
 #############################################################################
 # Do everything on Swing thread.

@@ -1,29 +1,12 @@
 #############################################################################
 # Dynamic time warping for 1D sequences
 
-import sys
-from java.awt import *
-from java.awt.image import *
-from java.io import *
-from java.lang import *
-from java.util import *
-from java.nio import *
-from javax.swing import *
-
-from edu.mines.jtk.awt import *
-from edu.mines.jtk.dsp import *
-from edu.mines.jtk.io import *
-from edu.mines.jtk.mosaic import *
-from edu.mines.jtk.util import *
-from edu.mines.jtk.util.ArrayMath import *
-
-from fault import *
-from fault.Util import *
+from imports import *
 
 #############################################################################
 
-#pngDir = "./png"
-pngDir = None
+pngDir = "./png"
+#pngDir = None
 
 seed = 99 
 seed = 954 
@@ -54,8 +37,8 @@ def goAccumulate():
   ea = dw.accumulate(e)
   #ea = normalize(ea)
   da = dw.accumulateForward(ea)
-  ua = dw.findShiftsReverse(da,ea)
-  #ua = smooth(ua)
+  u = dw.findShiftsReverse(da,ea)
+  #u = smooth(u)
   print " esumu =",dw.sumErrors(e,u), "  esums =",dw.sumErrors(e,s);
   print "easumu =",dw.sumErrors(ea,u)," easums =",dw.sumErrors(ea,s);
   #plot(f,g,etran(e),cbar="Alignment error",png="ce")
@@ -66,7 +49,7 @@ def goAccumulate():
   plot(f,g,etran(d),s,u,cbar="Accumulated error",png="cdsu")
   plot(f,g,etran(ea),cbar="Smoothed error",png="cea")
   plot(f,g,etran(e),s,u,cbar="Alignment error",png="cesu")
-  plot(f,g,etran(ea),s,ua,cbar="Smoothed error",png="ceasu")
+  plot(f,g,etran(ea),s,u,cbar="Smoothed error",png="ceasu")
   """
   ef = dw.accumulateForward(e)
   er = dw.accumulateReverse(e)

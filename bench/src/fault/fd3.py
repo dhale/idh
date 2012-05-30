@@ -26,9 +26,9 @@ from fault import *
 #############################################################################
 
 def main(args):
-  goS1()
+  #goS1()
   #goS1A()
-  #goS1B()
+  goS1B()
 def goS1():
   samplingS1()
   #goSurfingFake()
@@ -36,7 +36,7 @@ def goS1():
   #goSlopes()
   #goAlign()
   #goSemblance()
-  goScan()
+  #goScan()
   #goThin()
   #goSmooth()
   #goPartsAB()
@@ -46,7 +46,7 @@ def goS1A():
   #goUnfault()
 def goS1B():
   samplingS1B()
-  #goSurfing()
+  goSurfing()
   #goUnfault()
 
 def goSurfing():
@@ -61,19 +61,23 @@ def goSurfing():
   quads = fs.findQuads()
   quads = fs.linkQuads(quads)
   surfs = fs.findSurfs(quads)
+  #surfs = fs.getSurfsWithSize(surfs,2000)
   surfs = fs.getSurfsWithSize(surfs,2000)
   s = fs.findShifts(20.0,surfs,gs)
   print "s: min =",min(s)," max =",max(s)
   #t1,t2,t3 = fs.findThrows(-0.12345,surfs)
   #plot3(g,surfs=surfs)
   #plot3(g,surfs=surfs,smax=-3.75)
+  #plot3(g,surfs=surfs,smax= 3.75)
   plot3(g,surfs=surfs,smax= 3.75)
   #plot3(h,surfs=surfs,smax= 3.75)
   #plot3(g,s,-10,10,gmap=bwrFill(0.7))
   #plot3(g,t1,-10.0,10.0,gmap=bwrFill(0.7))
   #plot3(g,t2,-0.50,0.50,gmap=bwrFill(0.7))
   #plot3(g,t3,-0.50,0.50,gmap=bwrFill(0.7))
-  plot3(g,s,-5,5,gmap=bwrNotch(1.0))
+  #plot3(g,s,-5,5,gmap=bwrNotch(1.0))
+  #plot3(g,s,-5,5,gmap=bwrNotch(1.0))
+  plot3(g,s,-1,1,gmap=bwrNotch(1.0))
   plot3(g)
 
 def goUnfault():

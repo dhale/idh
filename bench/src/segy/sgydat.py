@@ -11,13 +11,68 @@ from imports import *
 nhead=3200 # number of bytes in EBCDIC header
 nbhed=400 # number of bytes in binary header
 nthed=240 # number of bytes in trace header
+bo=ByteOrder.BIG_ENDIAN # SEG-Y standard
 global n1,n2,n3
 
 #############################################################################
 def main(args):
+  goSinopec()
   #goParihaka()
-  goF3d()
+  #goF3d()
 
+def goSinopec():
+  global bo
+  bo = ByteOrder.LITTLE_ENDIAN # non-standard byte-order
+  """
+  nt = 2001, dt = 0.004 s, (ft = 0.000 s?)
+  """
+  n1,n2,n3 = 2001,721,1
+  datdir = "/data/seis/sinopec/"
+  for component in ["x","z"]:
+    sgyfile = datdir+"260_"+component+"_201-921_stack.segy"
+    datfile = datdir+component+"260.dat"
+    #readFormat(sgyfile)
+    #testFormat(n1,n2,n3,sgyfile)
+    #convert(n1,n2,n3,sgyfile,datfile)
+    f = readImage(datfile,n1,n2)
+    if component=="z":
+      stretch(1.6,f)
+      #mul(pow(rampfloat(0.0,1.0,0.0,n1,n2),2.0),f,f)
+    else:
+      #mul(pow(rampfloat(0.0,1.0,0.0,n1,n2),0.0),f,f)
+      pass
+    lowpass(0.10,f)
+    gain(50,f)
+    plot2(f,title=component+" component")
+
+def lowpass(f3db,f):
+  bf = ButterworthFilter(f3db,6,ButterworthFilter.Type.LOW_PASS)
+  bf.apply1ForwardReverse(f,f)
+
+def gain(hw,f):
+  g = mul(f,f)
+  RecursiveExponentialFilter(hw).apply1(g,g)
+  div(f,sqrt(g),f)
+
+def stretch(c,f):
+  n1,n2 = len(f[0]),len(f)
+  t = rampfloat(0.0,1.0/c,n1)
+  si = SincInterpolator()
+  si.setUniformSampling(n1,1.0,0.0)
+  g = zerofloat(n1)
+  for i2 in range(n2):
+    si.setUniformSamples(f[i2])
+    si.interpolate(n1,1.0/c,0.0,g)
+    copy(g,f[i2])
+
+def plot2(x,title=None):
+  sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
+  sp.setSize(350,1100)
+  if title:
+    sp.setTitle(title)
+  pv = sp.addPixels(x)
+  pv.setPercentiles(2,98)
+  
 def goF3d():
   """
   TIME: 462 samples (1.848 sec, interval 4 ms)
@@ -116,8 +171,11 @@ def displaySubsetParihaka(datfile,j1,j2,j3,m1,m2,m3):
   x = readSubsetParihaka(datfile,j1,j2,j3,m1,m2,m3)
   display3d(x,1.0e5)
 
-def readImage(datfile,n1,n2,n3):
-  x = zerofloat(n1,n2,n3)
+def readImage(datfile,n1,n2,n3=1):
+  if n3==1:
+    x = zerofloat(n1,n2)
+  else:
+    x = zerofloat(n1,n2,n3)
   ais = ArrayInputStream(datfile)
   ais.readFloats(x)
   ais.close()
@@ -173,7 +231,7 @@ def bigSubsetParihaka(n1,sgyfile,datfile):
   m2 = 1+(i2max-i2min)/2
   m3 = 1+i3max-i3min
   m23 = m2*m3
-  ais = ArrayInputStream(sgyfile)
+  ais = ArrayInputStream(sgyfile,bo)
   aos = ArrayOutputStream(datfile)
   ais.skipBytes(nhead)
   ais.skipBytes(nbhed)
@@ -288,7 +346,7 @@ def checkSubset(n1,n2,n3,sgyfile):
   nx = n1
   h = zeroshort(nh)
   x = zeroint(nx)
-  ais = ArrayInputStream(sgyfile)
+  ais = ArrayInputStream(sgyfile,bo)
   ais.skipBytes(nhead+nbhed)
   for i3 in range(n3):
     for i2 in range(n2):
@@ -305,7 +363,7 @@ def checkSubset(n1,n2,n3,sgyfile):
 
 def convert(n1,n2,n3,sgyfile,datfile):
   print "converting",(n2*n3),"traces"
-  ais = ArrayInputStream(sgyfile)
+  ais = ArrayInputStream(sgyfile,bo)
   aos = ArrayOutputStream(datfile)
   ais.skipBytes(nhead+nbhed)
   x = zeroint(n1)
@@ -316,13 +374,13 @@ def convert(n1,n2,n3,sgyfile,datfile):
       ais.readInts(x) # read trace samples
       IbmIeee.ibmToFloat(x,y) # convert
       aos.writeFloats(y) # write trace samples
-    print "converted: i3 =",i3
+    print "converted: i3 =",i3," n2 =",n2
   ais.close()
   aos.close()
 
 def convert3(n1,n2,n3,sgyfile,datfile):
   print "converting",(n2*n3),"traces"
-  ais = ArrayInputStream(sgyfile)
+  ais = ArrayInputStream(sgyfile,bo)
   aos = ArrayOutputStream(datfile)
   ais.skipBytes(nhead+nbhed)
   x = zeroshort(n1)
@@ -355,7 +413,7 @@ def displayFile3d(datfile,n1,n2,n3,clip=0):
   display3d(x,clip)
 
 def readFormat(sgyfile):
-  ais = ArrayInputStream(sgyfile)
+  ais = ArrayInputStream(sgyfile,bo)
   ais.skipBytes(nhead)
 # floating point format code should be in bytes 3225-6
 # 1 for IBM floating point, 5 for IEEE floating point
@@ -382,7 +440,7 @@ def testFormat(n1,n2,n3,sgyfile):
   xi = zeroint(n1)
   x1 = zerofloat(n1)
   x2 = zerofloat(n1)
-  ais = ArrayInputStream(sgyfile)
+  ais = ArrayInputStream(sgyfile,bo)
   ais.skipBytes(nhead+nbhed)
   ais.skipBytes(n3/2*n2*(nthed+4*n1))
   ais.skipBytes(n2/2*(nthed+4*n1))
