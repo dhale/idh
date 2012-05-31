@@ -27,7 +27,11 @@ from fault import *
 
 def main(args):
   #goS1()
+<<<<<<< HEAD
   #goS1A()
+=======
+  goS1A()
+>>>>>>> scripting
   goS1B()
 def goS1():
   samplingS1()
@@ -42,7 +46,7 @@ def goS1():
   #goPartsAB()
 def goS1A():
   samplingS1A()
-  #goSurfing()
+  goSurfing()
   #goUnfault()
 def goS1B():
   samplingS1B()
