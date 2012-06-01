@@ -293,8 +293,10 @@ public class DynamicWarping {
     System.out.println("findShifts: begin");
     AlignmentErrors3 ae = computeErrors(f,g);
     System.out.println("findShifts: errors computed");
-    for (int is=0; is<_esmooth; ++is)
+    for (int is=0; is<_esmooth; ++is) {
       smoothErrors(ae);
+      System.out.println("findShifts: smooth "+(is+1));
+    }
     System.out.println("findShifts: errors smoothed");
     computeShifts(ae,u);
     System.out.println("findShifts: shifts computed");
@@ -1177,8 +1179,8 @@ public class DynamicWarping {
    * memory than is available. This class provides efficient access 
    * to slices of these arrays stored in a random-access file.
    */
-  static class AlignmentErrors3 {
-    AlignmentErrors3(File dir, int nl, int n1, int n2, int n3) {
+  static class xAlignmentErrors3 {
+    xAlignmentErrors3(File dir, int nl, int n1, int n2, int n3) {
       _nl = nl;
       _n1 = n1;
       _n2 = n2;
@@ -1253,8 +1255,8 @@ public class DynamicWarping {
     }
   }
   // In-memory version, for debugging only.
-  static class xAlignmentErrors3 {
-    xAlignmentErrors3(File dir, int nl, int n1, int n2, int n3) {
+  static class AlignmentErrors3 {
+    AlignmentErrors3(File dir, int nl, int n1, int n2, int n3) {
       _nl = nl;
       _n1 = n1;
       _n2 = n2;
@@ -1349,7 +1351,6 @@ public class DynamicWarping {
   private static void shiftAndScale(
     float emin, float emax, AlignmentErrors3 ae) 
   {
-    System.out.println("sAS: emin="+emin+" emax="+emax);
     final int nl = ae.getNL();
     final int n1 = ae.getN1();
     final int n2 = ae.getN2();

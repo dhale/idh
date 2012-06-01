@@ -38,7 +38,7 @@ def goFakeShifts():
   #f = readImage(dataDir+"fakef.dat",n1,n2,n3)
   #g = readImage(dataDir+"fakeg.dat",n1,n2,n3)
   #s = readImage(dataDir+"fakes.dat",n1,n2,n3)
-  f,g,s = makeFakeImages(6,0.5)
+  f,g,s = makeFakeImages(6,1.0)
   smin,smax = min(s),max(s)
   print "s: min =",smin,"max =",smax
   esmooth = 2
