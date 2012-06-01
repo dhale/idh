@@ -1423,4 +1423,44 @@ public class DynamicWarping {
     _ref2.apply2(u,u);
     _ref3.apply3(u,u);
   }
+
+  private static class OverlappingWindows {
+    OverlappingWindows(int l, int n) {
+      _l = l;
+      _m = l*2;
+      _n = n;
+      _w = new float[_m];
+      init();
+    }
+    void init() {
+      _k = 0;
+      if (_n<_m) {
+        _w = new float[_n];
+        for (int i=0; i<_n; ++i)
+          _w[i] = 1.0f;
+      } else {
+        _w = new float[_m];
+        for (int i=0; i<_m; ++i)
+          _w[i] = min(1.0f,1.0f-(float)(i-_l)/_l);
+      }
+    }
+    int next() {
+      _k += _l;
+      if (_n<_m) {
+        return -1;
+      return
+    }
+    float[] weights() {
+      return _w;
+    }
+    private int _m;
+    private int _n;
+    private float[] _w;
+  }
+  private static class WindowSum23 {
+    WindowSum23(int m2, int m3, int n2, int n3) {
+    }
+  }
+
+  //
 }
