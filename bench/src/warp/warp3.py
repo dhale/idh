@@ -13,7 +13,7 @@ seed = abs(Random().nextInt()/1000000)
 seed = 588
 print "seed =",seed
 
-n1,n2,n3 = 101,101,101
+n1,n2,n3 = 401,401,401
 d1,d2,d3 = 0.004,0.025,0.025
 f1,f2,f3 = 0.000,0.000,0.000
 s1,s2,s3 = Sampling(n1,d1,f1),Sampling(n2,d2,f2),Sampling(n3,d3,f3)

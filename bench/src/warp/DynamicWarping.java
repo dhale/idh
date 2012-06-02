@@ -33,6 +33,16 @@ import static edu.mines.jtk.util.ArrayMath.*;
  * subject to bounds b1 and b2 on strains, the rates at which shifts 
  * u[i2][i1] vary with samples indices i1 and i2, respectively.
  * <p>
+ * For 3D images f and g, dynamic warping finds a 3D array of integer 
+ * shifts u[i3][i2][i1] in a similar way. However, dynamic warping 
+ * for 3D images may require an excessive amount of memory. Dynamic 
+ * image warping requires a temporary array of nlag*nsample floats, 
+ * where the number of lags nlag = 1+shiftMax-shiftMin and nsample is 
+ * the number of image samples. For 3D images, the product nlag*nsample 
+ * is likely to be too large for the temporary array to fit in random-
+ * access memory (RAM), and shifts u are obtained by blending together 
+ * shifts computed from overlapping subsets of the 3D image.
+ * <p>
  * Estimated shifts u are integers, but can be smoothed to obtain
  * non-integer shifts. The extent of smoothing along each dimension 
  * is inversely proportional to the strain limit for that dimension, 
@@ -40,21 +50,13 @@ import static edu.mines.jtk.util.ArrayMath.*;
  * less smoothing. The default scale factors are zero, for no 
  * smoothing.
  * <p>
- * Dynamic image warping may require a large amount of memory.
- * Specifically, a temporary array of nlag*nimage floats is required,
- * where the number of lags nlag = 1+shiftMax-shiftMin and nimage is 
- * the number of floats in the image. For 3D images, the product 
- * nlag*nimage is assumed to be too large for the array to fit in 
- * random-access memory (RAM), and this large array is instead stored 
- * in a temporary random-access file on disk.
- * <p>
  * This class provides numerous methods, but typical applications
- * require only several of these, including the methods that find
+ * require only several of these, usually only the methods that find
  * and apply shifts. The many other methods are provided only for 
  * research and atypical applications.
  *
  * @author Dave Hale, Colorado School of Mines
- * @version 2012.05.25
+ * @version 2012.06.01
  */
 public class DynamicWarping {
 
@@ -290,6 +292,7 @@ public class DynamicWarping {
    * @param u output array of shifts u.
    */
   public void findShifts(float[][][] f, float[][][] g, float[][][] u) {
+<<<<<<< HEAD
     System.out.println("findShifts: begin");
     AlignmentErrors3 ae = computeErrors(f,g);
     System.out.println("findShifts: errors computed");
@@ -300,9 +303,45 @@ public class DynamicWarping {
     System.out.println("findShifts: errors smoothed");
     computeShifts(ae,u);
     System.out.println("findShifts: shifts computed");
+=======
+    int n1 = f[0][0].length;
+    int n2 = f[0].length;
+    int n3 = f.length;
+    int l2 = 50, l3 = 50;
+    double f2 = 0.5, f3 = 0.5;
+    OverlappingWindows2 ow = new OverlappingWindows2(n2,n3,l2,l3,f2,f3);
+    int m2 = ow.getM1();
+    int m3 = ow.getM2();
+    float[][][] fw = new float[l3][l2][];
+    float[][][] gw = new float[l3][l2][];
+    float[][][] uw = new float[l3][l2][n1];
+    float[][][][] ew = new float[l3][l2][n1][_nl];
+    for (int k3=0; k3<m3; ++k3) {
+      int i3 = ow.getI2(k3);
+      for (int k2=0; k2<m2; ++k2) {
+        int i2 = ow.getI1(k2);
+        for (int j3=0; j3<l3; ++j3) {
+          for (int j2=0; j2<l2; ++j2) {
+            fw[j3][j2] = f[i3+j3][i2+j2];
+            gw[j3][j2] = g[i3+j3][i2+j2];
+          }
+        }
+        computeErrors(fw,gw,ew);
+        for (int is=0; is<_esmooth; ++is)
+          smoothErrors(ew);
+        computeShifts(ew,uw);
+        for (int j3=0; j3<l3; ++j3) {
+          for (int j2=0; j2<l2; ++j2) {
+            float wij = ow.getWeight(i2,i3,j2,j3);
+            float[] u32 = u[i3+j3][i2+j2];
+            for (int i1=0; i1<n1; ++i1)
+              u32[i1] += wij*uw[j3][j2][i1];
+          }
+        }
+      }
+    }
+>>>>>>> New 3D warping in overlapping windows.
     smoothShifts(u);
-    System.out.println("findShifts: shifts smoothed");
-    ae.delete();
   }
 
   /**
@@ -1173,6 +1212,7 @@ public class DynamicWarping {
   ///////////////////////////////////////////////////////////////////////////
   // for 3D image warping
 
+<<<<<<< HEAD
   /**
    * File-based array of alignment errors for 3D image warping.
    * Alignment errors for 3D image warping are likely to require more
@@ -1245,15 +1285,25 @@ public class DynamicWarping {
         _af.writeFloats(e);
       } catch (IOException exception) {
         throw new RuntimeException(exception);
+=======
+  private void computeErrors(float[][][] f, float[][][] g, float[][][][] e) {
+    final int nl = e[0][0][0].length;
+    final int n1 = e[0][0].length;
+    final int n2 = e[0].length;
+    final int n3 = e.length;
+    final float[][][] ff = f;
+    final float[][][] gf = g;
+    final float[][][][] ef = e;
+    Parallel.loop(n3,new Parallel.LoopInt() {
+    public void compute(int i3) {
+      for (int i2=0; i2<n2; ++i2) {
+        computeErrors(ff[i3][i2],gf[i3][i2],ef[i3][i2]);
+>>>>>>> New 3D warping in overlapping windows.
       }
-    }
-    private long _nl,_n1,_n2,_n3; // number of lags, dimensions of 3D array
-    private ArrayFile _af; // random-access file for alignment errors
-    private File _file; // file name for random-access file
-    private void seek(int i2, int i3) throws IOException {
-      _af.seek(4L*_nl*_n1*(i2+_n2*i3));
-    }
+    }});
+    normalizeErrors(e);
   }
+<<<<<<< HEAD
   // In-memory version, for debugging only.
   static class AlignmentErrors3 {
     AlignmentErrors3(File dir, int nl, int n1, int n2, int n3) {
@@ -1322,31 +1372,35 @@ public class DynamicWarping {
       public MinMax compute(int i2) {
         float emin =  Float.MAX_VALUE;
         float emax = -Float.MAX_VALUE;
+=======
+  private static void normalizeErrors(float[][][][] e) {
+    final int nl = e[0][0][0].length;
+    final int n1 = e[0][0].length;
+    final int n2 = e[0].length;
+    final int n3 = e.length;
+    final float[][][][] ef = e;
+    MinMax mm = Parallel.reduce(n3,new Parallel.ReduceInt<MinMax>() {
+    public MinMax compute(int i3) {
+      float emin =  Float.MAX_VALUE;
+      float emax = -Float.MAX_VALUE;
+      for (int i2=0; i2<n2; ++i2) {
+>>>>>>> New 3D warping in overlapping windows.
         for (int i1=0; i1<n1; ++i1) {
           for (int il=0; il<nl; ++il) {
-            float ei = e[i2][i1][il];
+            float ei = ef[i3][i2][i1][il];
             if (ei<emin) emin = ei;
             if (ei>emax) emax = ei;
           }
         }
-        return new MinMax(emin,emax);
       }
-      public MinMax combine(MinMax mm1, MinMax mm2) {
-        return new MinMax(min(mm1.emin,mm2.emin),max(mm1.emax,mm2.emax));
-      }});
-      emin = min(emin,mm.emin);
-      emax = max(emax,mm.emax);
-      ae.set3(i3,e);
+      return new MinMax(emin,emax);
     }
-    shiftAndScale(emin,emax,ae);
+    public MinMax combine(MinMax mm1, MinMax mm2) {
+      return new MinMax(min(mm1.emin,mm2.emin),max(mm1.emax,mm2.emax));
+    }});
+    shiftAndScale(mm.emin,mm.emax,e);
   }
-  private static class MinMax {
-    float emin,emax;
-    MinMax(float emin, float emax) {
-      this.emin = emin;
-      this.emax = emax;
-    }
-  }
+<<<<<<< HEAD
 
   private static void shiftAndScale(
     float emin, float emax, AlignmentErrors3 ae) 
@@ -1355,113 +1409,156 @@ public class DynamicWarping {
     final int n1 = ae.getN1();
     final int n2 = ae.getN2();
     final int n3 = ae.getN3();
+=======
+  private static void shiftAndScale(float emin, float emax, float[][][][] e) {
+    final int nl = e[0][0][0].length;
+    final int n1 = e[0][0].length;
+    final int n2 = e[0].length;
+    final int n3 = e.length;
+>>>>>>> New 3D warping in overlapping windows.
     final float eshift = emin;
     final float escale = (emax>emin)?1.0f/(emax-emin):1.0f;
-    final float[][][] e = new float[n2][n1][nl];
-    for (int i3=0; i3<n3; ++i3) {
-      ae.get3(i3,e);
-      Parallel.loop(n2,new Parallel.LoopInt() {
-      public void compute(int i2) {
+    final float[][][][] ef = e;
+    Parallel.loop(n3,new Parallel.LoopInt() {
+    public void compute(int i3) {
+      for (int i2=0; i2<n2; ++i2) {
         for (int i1=0; i1<n1; ++i1) {
           for (int il=0; il<nl; ++il) {
-            e[i2][i1][il] = (e[i2][i1][il]-eshift)*escale;
+            ef[i3][i2][i1][il] = (ef[i3][i2][i1][il]-eshift)*escale;
           }
         }
-      }});
-      ae.set3(i3,e);
-    }
+      }
+    }});
   }
-
-  private void smoothErrors(AlignmentErrors3 ae) {
-    int nl = ae.getNL();
-    int n1 = ae.getN1();
-    int n2 = ae.getN2();
-    int n3 = ae.getN3();
-    float[][][] e = new float[n2][n1][nl];
-    for (int i3=0; i3<n3; ++i3) {
-      ae.get3(i3,e);
-      smoothErrors1(_bstrain1,e,e);
-      ae.set3(i3,e);
-    }
-    normalizeErrors(ae);
-    for (int i3=0; i3<n3; ++i3) {
-      ae.get3(i3,e);
-      smoothErrors2(_bstrain2,e,e);
-      ae.set3(i3,e);
-    }
-    normalizeErrors(ae);
-    e = new float[n3][n1][nl];
-    for (int i2=0; i2<n2; ++i2) {
-      ae.get2(i2,e);
-      smoothErrors2(_bstrain3,e,e);
-      ae.set2(i2,e);
-    }
-    normalizeErrors(ae);
+  private void smoothErrors(float[][][][] e) {
+    final int nl = e[0][0][0].length;
+    final int n1 = e[0][0].length;
+    final int n2 = e[0].length;
+    final int n3 = e.length;
+    final float[][][][] ef = e;
+    Parallel.loop(n3,new Parallel.LoopInt() {
+    public void compute(int i3) {
+      smoothErrors1(_bstrain1,ef[i3],ef[i3]);
+    }});
+    normalizeErrors(e);
+    Parallel.loop(n3,new Parallel.LoopInt() {
+    public void compute(int i3) {
+      smoothErrors2(_bstrain2,ef[i3],ef[i3]);
+    }});
+    normalizeErrors(e);
+    Parallel.loop(n2,new Parallel.LoopInt() {
+    public void compute(int i2) {
+      float[][][] ei2 = new float[n3][][];
+      for (int i3=0; i3<n3; ++i3)
+        ei2[i3] = ef[i3][i2];
+      smoothErrors2(_bstrain3,ei2,ei2);
+    }});
+    normalizeErrors(e);
   }
-
-  private void computeShifts(AlignmentErrors3 ae, float[][][] u) {
-    final int nl = ae.getNL();
-    final int n1 = ae.getN1();
-    final int n2 = ae.getN2();
-    final int n3 = ae.getN3();
-    final float[][][] e = new float[n2][n1][nl];
+  private void computeShifts(float[][][][] e, float[][][] u) {
+    final int nl = e[0][0][0].length;
+    final int n1 = e[0][0].length;
+    final int n2 = e[0].length;
+    final int n3 = e.length;
+    final float[][][][] ef = e;
+    final float[][][] uf = u;
     final Parallel.Unsafe<float[][]> du = new Parallel.Unsafe<float[][]>();
-    for (int i3=0; i3<n3; ++i3) {
-      ae.get3(i3,e);
-      final float[][] ui3 = u[i3];
-      Parallel.loop(n2,new Parallel.LoopInt() {
-      public void compute(int i2) {
-        float[][] d = du.get();
-        if (d==null) du.set(d=new float[n1][nl]);
-        accumulateForward(e[i2],d);
-        backtrackReverse(d,e[i2],ui3[i2]);
-      }});
-    }
+    Parallel.loop(n3,new Parallel.LoopInt() {
+    public void compute(int i3) {
+      float[][] d = du.get();
+      if (d==null) du.set(d=new float[n1][nl]);
+      for (int i2=0; i2<n2; ++i2) {
+        accumulateForward(ef[i3][i2],d);
+        backtrackReverse(d,ef[i3][i2],uf[i3][i2]);
+      }
+    }});
   }
-
   private void smoothShifts(float[][][] u) {
     _ref1.apply1(u,u);
     _ref2.apply2(u,u);
     _ref3.apply3(u,u);
   }
-
-  private static class OverlappingWindows {
-    OverlappingWindows(int l, int n) {
-      _l = l;
-      _m = l*2;
-      _n = n;
-      _w = new float[_m];
-      init();
+  private static class MinMax {
+    float emin,emax;
+    MinMax(float emin, float emax) {
+      this.emin = emin;
+      this.emax = emax;
     }
-    void init() {
-      _k = 0;
-      if (_n<_m) {
-        _w = new float[_n];
-        for (int i=0; i<_n; ++i)
-          _w[i] = 1.0f;
+  }
+  private static class OverlappingWindows2 {
+    public OverlappingWindows2(
+      int n1, int n2, int l1, int l2, double f1, double f2) 
+    {
+      Check.argument(0.0<=f1 && f1<1.0,"0 <= f1 < 1");
+      Check.argument(0.0<=f2 && f2<1.0,"0 <= f2 < 1");
+      _n1 = n1;
+      _n2 = n2;
+      _l1 = l1;
+      _l2 = l2;
+      if (l1<n1) {
+        _m1 = 1+(int)ceil((n1-l1)/(l1*(1.0-f1)));
+        _s1 = (double)(n1-l1)/(_m1-1);
       } else {
-        _w = new float[_m];
-        for (int i=0; i<_m; ++i)
-          _w[i] = min(1.0f,1.0f-(float)(i-_l)/_l);
+        _m1 = 1;
+        _s1 = 0.0;
+      }
+      if (l2<n2) {
+        _m2 = 1+(int)ceil((n2-l2)/(l2*(1.0-f2)));
+        _s2 = (double)(n2-l2)/(_m2-1);
+      } else {
+        _m2 = 1;
+        _s2 = 0.0;
+      }
+      makeWeights();
+      makeScalars();
+    }
+    public int getN1() { return _n1; }
+    public int getN2() { return _n2; }
+    public int getL1() { return _l1; }
+    public int getL2() { return _l2; }
+    public int getM1() { return _m1; }
+    public int getM2() { return _m2; }
+    public int getI1(int k1) { return (int)(k1*_s1+0.5); }
+    public int getI2(int k2) { return (int)(k2*_s2+0.5); }
+    public float getWeight(int i1, int i2, int j1, int j2) {
+      return _w[j2][j1]*_s[i2+j2][i1+j1];
+    }
+    public float[][] getWeights() { return _w; }
+    public float[][] getScalars() { return _s; }
+    private int _n1,_n2; // numbers of samples
+    private int _l1,_l2; // window lengths
+    private int _m1,_m2; // numbers of windows
+    private double _s1,_s2; // nominal window spacings
+    private float[][] _w; // weights[l2][l1] for windowing
+    private float[][] _s; // scalars[n2][n1] for normalization
+    private void makeWeights() {
+      _w = new float[_l2][_l1];
+      for (int i2=0; i2<_l2; ++i2) {
+        for (int i1=0; i1<_l1; ++i1) {
+          double s1 = sin((i1+0.5)*PI/_l1);
+          double s2 = sin((i2+0.5)*PI/_l2);
+          _w[i2][i1] = (float)(s1*s1*s2*s2);
+        }
       }
     }
-    int next() {
-      _k += _l;
-      if (_n<_m) {
-        return -1;
-      return
+    private void makeScalars() {
+      _s = new float[_n2][_n1];
+      for (int k2=0; k2<_m2; ++k2) {
+        int i2 = getI2(k2);
+        for (int k1=0; k1<_m1; ++k1) {
+          int i1 = getI1(k1);
+          for (int j2=0; j2<_l2; ++j2) {
+            for (int j1=0; j1<_l1; ++j1) {
+              _s[i2+j2][i1+j1] += _w[j2][j1];
+            }
+          }
+        }
+      }
+      for (int i2=0; i2<_n2; ++i2) {
+        for (int i1=0; i1<_n1; ++i1) {
+          _s[i2][i1] = 1.0f/_s[i2][i1];
+        }
+      }
     }
-    float[] weights() {
-      return _w;
-    }
-    private int _m;
-    private int _n;
-    private float[] _w;
   }
-  private static class WindowSum23 {
-    WindowSum23(int m2, int m3, int n2, int n3) {
-    }
-  }
-
-  //
 }
