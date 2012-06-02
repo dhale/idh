@@ -292,18 +292,6 @@ public class DynamicWarping {
    * @param u output array of shifts u.
    */
   public void findShifts(float[][][] f, float[][][] g, float[][][] u) {
-<<<<<<< HEAD
-    System.out.println("findShifts: begin");
-    AlignmentErrors3 ae = computeErrors(f,g);
-    System.out.println("findShifts: errors computed");
-    for (int is=0; is<_esmooth; ++is) {
-      smoothErrors(ae);
-      System.out.println("findShifts: smooth "+(is+1));
-    }
-    System.out.println("findShifts: errors smoothed");
-    computeShifts(ae,u);
-    System.out.println("findShifts: shifts computed");
-=======
     int n1 = f[0][0].length;
     int n2 = f[0].length;
     int n3 = f.length;
@@ -340,7 +328,6 @@ public class DynamicWarping {
         }
       }
     }
->>>>>>> New 3D warping in overlapping windows.
     smoothShifts(u);
   }
 
@@ -1212,80 +1199,6 @@ public class DynamicWarping {
   ///////////////////////////////////////////////////////////////////////////
   // for 3D image warping
 
-<<<<<<< HEAD
-  /**
-   * File-based array of alignment errors for 3D image warping.
-   * Alignment errors for 3D image warping are likely to require more
-   * memory than is available. This class provides efficient access 
-   * to slices of these arrays stored in a random-access file.
-   */
-  static class xAlignmentErrors3 {
-    xAlignmentErrors3(File dir, int nl, int n1, int n2, int n3) {
-      _nl = nl;
-      _n1 = n1;
-      _n2 = n2;
-      _n3 = n3;
-      _file = null;
-      try {
-        if (dir!=null) {
-          _file = File.createTempFile("tmpae",".tmp",dir);
-        } else {
-          _file = File.createTempFile("tmpae",".tmp");
-        }
-        _af = new ArrayFile(_file,"rw");
-      } catch (IOException exception) {
-        throw new RuntimeException(exception);
-      }
-    }
-    int getNL() { return (int)_nl; }
-    int getN1() { return (int)_n1; }
-    int getN2() { return (int)_n2; }
-    int getN3() { return (int)_n3; }
-    void close() {
-      try {
-        _af.close();
-      } catch (IOException exception) {
-        throw new RuntimeException(exception);
-      }
-    }
-    void delete() {
-      _file.delete();
-    }
-    void get2(int i2, float[][][] e) {
-      try {
-        for (int i3=0; i3<_n3; ++i3) {
-          seek(i2,i3);
-          _af.readFloats(e[i3]);
-        }
-      } catch (IOException exception) {
-        throw new RuntimeException(exception);
-      }
-    }
-    void set2(int i2, float[][][] e) {
-      try {
-        for (int i3=0; i3<_n3; ++i3) {
-          seek(i2,i3);
-          _af.writeFloats(e[i3]);
-        }
-      } catch (IOException exception) {
-        throw new RuntimeException(exception);
-      }
-    }
-    void get3(int i3, float[][][] e) {
-      try {
-        seek(0,i3);
-        _af.readFloats(e);
-      } catch (IOException exception) {
-        throw new RuntimeException(exception);
-      }
-    }
-    void set3(int i3, float[][][] e) {
-      try {
-        seek(0,i3);
-        _af.writeFloats(e);
-      } catch (IOException exception) {
-        throw new RuntimeException(exception);
-=======
   private void computeErrors(float[][][] f, float[][][] g, float[][][][] e) {
     final int nl = e[0][0][0].length;
     final int n1 = e[0][0].length;
@@ -1298,81 +1211,10 @@ public class DynamicWarping {
     public void compute(int i3) {
       for (int i2=0; i2<n2; ++i2) {
         computeErrors(ff[i3][i2],gf[i3][i2],ef[i3][i2]);
->>>>>>> New 3D warping in overlapping windows.
       }
     }});
     normalizeErrors(e);
   }
-<<<<<<< HEAD
-  // In-memory version, for debugging only.
-  static class AlignmentErrors3 {
-    AlignmentErrors3(File dir, int nl, int n1, int n2, int n3) {
-      _nl = nl;
-      _n1 = n1;
-      _n2 = n2;
-      _n3 = n3;
-      _ae = new float[n3][n2][n1][nl];
-    }
-    int getNL() { return (int)_nl; }
-    int getN1() { return (int)_n1; }
-    int getN2() { return (int)_n2; }
-    int getN3() { return (int)_n3; }
-    void close() {
-    }
-    void delete() {
-    }
-    void get2(int i2, float[][][] e) {
-      for (int i3=0; i3<_n3; ++i3)
-        copy(_ae[i3][i2],e[i3]);
-    }
-    void set2(int i2, float[][][] e) {
-      for (int i3=0; i3<_n3; ++i3)
-        copy(e[i3],_ae[i3][i2]);
-    }
-    void get3(int i3, float[][][] e) {
-      copy(_ae[i3],e);
-    }
-    void set3(int i3, float[][][] e) {
-      copy(e,_ae[i3]);
-    }
-    private long _nl,_n1,_n2,_n3; // number of lags, dimensions of 3D array
-    float[][][][] _ae;
-  }
-
-  private AlignmentErrors3 computeErrors(float[][][] f, float[][][] g) {
-    final int n1 = f[0][0].length;
-    final int n2 = f[0].length;
-    final int n3 = f.length;
-    final float[][][] e = new float[n2][n1][_nl];
-    AlignmentErrors3 ae = new AlignmentErrors3(_edir,_nl,n1,n2,n3);
-    for (int i3=0; i3<n3; ++i3) {
-      final float[][] f3 = f[i3];
-      final float[][] g3 = g[i3];
-      Parallel.loop(n2,new Parallel.LoopInt() {
-      public void compute(int i2) {
-        computeErrors(f3[i2],g3[i2],e[i2]);
-      }});
-      ae.set3(i3,e);
-    }
-    normalizeErrors(ae);
-    return ae;
-  }
-
-  private static void normalizeErrors(AlignmentErrors3 ae) {
-    final int nl = ae.getNL();
-    final int n1 = ae.getN1();
-    final int n2 = ae.getN2();
-    final int n3 = ae.getN3();
-    final float[][][] e = new float[n2][n1][nl];
-    float emin =  Float.MAX_VALUE;
-    float emax = -Float.MAX_VALUE;
-    for (int i3=0; i3<n3; ++i3) {
-      ae.get3(i3,e);
-      MinMax mm = Parallel.reduce(n2,new Parallel.ReduceInt<MinMax>() {
-      public MinMax compute(int i2) {
-        float emin =  Float.MAX_VALUE;
-        float emax = -Float.MAX_VALUE;
-=======
   private static void normalizeErrors(float[][][][] e) {
     final int nl = e[0][0][0].length;
     final int n1 = e[0][0].length;
@@ -1384,7 +1226,6 @@ public class DynamicWarping {
       float emin =  Float.MAX_VALUE;
       float emax = -Float.MAX_VALUE;
       for (int i2=0; i2<n2; ++i2) {
->>>>>>> New 3D warping in overlapping windows.
         for (int i1=0; i1<n1; ++i1) {
           for (int il=0; il<nl; ++il) {
             float ei = ef[i3][i2][i1][il];
@@ -1400,22 +1241,11 @@ public class DynamicWarping {
     }});
     shiftAndScale(mm.emin,mm.emax,e);
   }
-<<<<<<< HEAD
-
-  private static void shiftAndScale(
-    float emin, float emax, AlignmentErrors3 ae) 
-  {
-    final int nl = ae.getNL();
-    final int n1 = ae.getN1();
-    final int n2 = ae.getN2();
-    final int n3 = ae.getN3();
-=======
   private static void shiftAndScale(float emin, float emax, float[][][][] e) {
     final int nl = e[0][0][0].length;
     final int n1 = e[0][0].length;
     final int n2 = e[0].length;
     final int n3 = e.length;
->>>>>>> New 3D warping in overlapping windows.
     final float eshift = emin;
     final float escale = (emax>emin)?1.0f/(emax-emin):1.0f;
     final float[][][][] ef = e;
