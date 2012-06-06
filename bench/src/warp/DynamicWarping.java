@@ -134,7 +134,10 @@ public class DynamicWarping {
    * In dynamic warping, alignment errors are smoothed the specified 
    * number of times, along all dimensions (in order 1, 2, ...), 
    * before estimating shifts by accumulating and backtracking along 
-   * only the 1st dimension. The default number of smoothings is zero.
+   * only the 1st dimension. 
+   * <p> 
+   * The default number of smoothings is zero, which is best for 1D
+   * sequences. For 2D and 3D images, two smoothings are recommended.
    * @param esmooth number of nonlinear smoothings.
    */
   public void setErrorSmoothing(int esmooth) {
@@ -1379,8 +1382,8 @@ public class DynamicWarping {
       _w = new float[_l2][_l1];
       for (int i2=0; i2<_l2; ++i2) {
         for (int i1=0; i1<_l1; ++i1) {
-          double s1 = sin((i1+0.5)*PI/_l1);
-          double s2 = sin((i2+0.5)*PI/_l2);
+          double s1 = sin((i1+1.0)*PI/(_l1+1.0));
+          double s2 = sin((i2+1.0)*PI/(_l2+1.0));
           _w[i2][i1] = (float)(s1*s1*s2*s2);
         }
       }

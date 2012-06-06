@@ -9,13 +9,18 @@ from util import FakeData
 #pngDir = "./png"
 pngDir = None
 
-seed = abs(Random().nextInt()/1000000)
+#seed = abs(Random().nextInt()/1000000)
 seed = 588
 print "seed =",seed
 
-n1,n2,n3 = 201,201,201
-d1,d2,d3 = 0.004,0.025,0.025
-f1,f2,f3 = 0.000,0.000,0.000
+smax = 12 # max shift for synthetic test
+nrms = 0.0 # rms noise/signal ratio
+strainMax1 = 0.25 # not less than smax*2*pi/n1
+strainMax2 = 0.20 # not less than smax*pi/n2
+strainMax3 = 0.20 # not less than smax*pi/n3
+n1,n2,n3 = 201,201,201 # numbers of samples
+d1,d2,d3 = 0.004,0.025,0.025 # sampling intervals
+f1,f2,f3 = 0.000,0.000,0.000 # first samples
 s1,s2,s3 = Sampling(n1,d1,f1),Sampling(n2,d2,f2),Sampling(n3,d3,f3)
 label1,label2,label3 = "Time (s)","Inline (km)","Crossline (km)"
 dataDir = "/data/seis/fake/"
@@ -25,7 +30,7 @@ def main(args):
   goFakeShifts()
 
 def goFakeImages():
-  f,g,s = makeFakeImages(6,0.0) # max strain1 is 6*2*pi/200 ~ 0.188
+  f,g,s = makeFakeImages(smax,nrms)
   print "s: min =",min(s),"max =",max(s)
   writeImage(dataDir+"fakef.dat",f)
   writeImage(dataDir+"fakeg.dat",g)
@@ -35,18 +40,14 @@ def goFakeImages():
   #show(s)
 
 def goFakeShifts():
-  #f = readImage(dataDir+"fakef.dat",n1,n2,n3)
-  #g = readImage(dataDir+"fakeg.dat",n1,n2,n3)
-  #s = readImage(dataDir+"fakes.dat",n1,n2,n3)
-  f,g,s = makeFakeImages(6,1.0)
-  smin,smax = min(s),max(s)
-  print "s: min =",smin,"max =",smax
+  f = readImage(dataDir+"fakef.dat",n1,n2,n3)
+  g = readImage(dataDir+"fakeg.dat",n1,n2,n3)
+  s = readImage(dataDir+"fakes.dat",n1,n2,n3)
+  #f,g,s = makeFakeImages(smax,nrms)
+  print "s: min =",min(s),"max =",max(s)
   esmooth = 2
   usmooth = 1.0
-  strainMax1 = 0.25
-  strainMax2 = 0.20
-  strainMax3 = 0.20
-  mlag = 4+int(max(-smin,smax))
+  mlag = 4+smax
   dw = DynamicWarping(-mlag,mlag)
   dw.setStrainMax(strainMax1,strainMax2,strainMax3)
   dw.setErrorSmoothing(esmooth)
@@ -62,10 +63,10 @@ def goFakeShifts():
   show(f)
   show(h)
 
-def makeFakeImages(shift,nrms):
+def makeFakeImages(smax,nrms):
   f = FakeData.seismic3d2010A(n1,n2,n3,20.0,10.0,30.0,0.5,0.0);
-  w = Warp3.sinusoid(shift,0.0,0.0,shift,0.0,0.0,n1,n2,n3)
-  #w = Warp3.constant(shift,0.0,0.0,n1,n2,n3)
+  w = Warp3.sinusoid(0.5*smax,0.0,0.0,0.5*smax,0.0,0.0,n1,n2,n3)
+  #w = Warp3.constant(smax,0.0,0.0,n1,n2,n3)
   g = w.warp1(f)
   f = addNoise(nrms,f,seed=10*seed+1)
   g = addNoise(nrms,g,seed=10*seed+2)
@@ -129,107 +130,6 @@ def show(f):
   ip.setSlices(n1-1,n2/2,n3/2)
   frame.getOrbitView().setScale(2.0)
   frame.setSize(900,900)
-
-def plot(f,clips=None,title=None,label=None,png=None):
-  n1,n2 = len(f[0]),len(f)
-  width,height,cbwm = 610,815,145
-  sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
-  sp.setBackground(Color(0xfd,0xfe,0xff)) # easy to make transparent
-  sp.plotPanel.setColorBarWidthMinimum(cbwm)
-  global s1,s2
-  if s1==None: 
-    s1 = Sampling(n1,1.0,0.0)
-  if s2==None: 
-    s2 = Sampling(n2,1.0,0.0)
-  pv = sp.addPixels(s1,s2,f)
-  #gv = sp.addGrid("H-")
-  #gv.setColor(Color.YELLOW)
-  if clips:
-    pv.setClips(clips[0],clips[1])
-  #title = png
-  if title:
-    sp.setTitle(title)
-  if label:
-    sp.addColorBar(label)
-  sp.setVLabel(label1)
-  sp.setHLabel(label2)
-  #if clips[0]==0.0:
-  #  pv.setColorModel(ColorMap.JET)
-  sp.setFontSizeForPrint(8,120)
-  sp.setSize(width,height)
-  sp.setVisible(True)
-  if png and pngDir:
-    if nrms>0.0:
-      png += "n"
-    png += str(int(shiftMax))
-    sp.paintToPng(720,1.25,pngDir+"/"+png+".png")
-
-def plot2(f,g,clips=None,label=None,png=None):
-  width,height,cbwm = 1095,815,145
-  n1,n2 = len(f[0]),len(f)
-  global s1,s2
-  if s1==None: s1 = Sampling(n1,1.0,0.0)
-  if s2==None: s2 = Sampling(n2,1.0,0.0)
-  panel = PlotPanel(1,2,PlotPanel.Orientation.X1DOWN_X2RIGHT)
-  panel.mosaic.setWidthTileSpacing(10);
-  pv0 = panel.addPixels(0,0,s1,s2,f)
-  pv1 = panel.addPixels(0,1,s1,s2,g)
-  pv0.setInterpolation(PixelsView.Interpolation.NEAREST)
-  pv1.setInterpolation(PixelsView.Interpolation.NEAREST)
-  if clips:
-    pv0.setClips(clips[0],clips[1])
-    pv1.setClips(clips[0],clips[1])
-  panel.addColorBar()
-  if label:
-    panel.addColorBar(label)
-  panel.setVLabel(0,label1)
-  panel.setHLabel(0,label2)
-  panel.setHLabel(1,label2)
-  panel.setColorBarWidthMinimum(cbwm)
-  frame = PlotFrame(panel)
-  frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE)
-  frame.setBackground(Color(0xfd,0xfe,0xff)) # easy to make transparent
-  frame.setFontSizeForPrint(8,240)
-  frame.setSize(width,height)
-  frame.setVisible(True)
-  if png and pngDir:
-    if nrms>0.0:
-      png += "n"
-    if shiftMax<10:
-      png += "0"+str(int(shiftMax))
-    else:
-      png += str(int(shiftMax))
-    frame.paintToPng(720,3.3,pngDir+"/"+png+".png")
-
-def plot4(u,clips=None,label=None,png=None):
-  width,height,cbwm = 1095,815,145
-  n1,n2 = len(u[0][0]),len(u[0])
-  global s1,s2
-  if s1==None: s1 = Sampling(n1,1.0,0.0)
-  if s2==None: s2 = Sampling(n2,1.0,0.0)
-  panel = PlotPanel(1,4,PlotPanel.Orientation.X1DOWN_X2RIGHT)
-  panel.mosaic.setWidthTileSpacing(10);
-  panel.setVLabel(0,label1)
-  for i in range(len(u)):
-    pv = panel.addPixels(0,i,s1,s2,u[i])
-    if clips:
-      pv.setClips(clips[0],clips[1])
-  panel.setHLabel(i,label2)
-  panel.addColorBar()
-  if label:
-    panel.addColorBar(label)
-  panel.setColorBarWidthMinimum(cbwm)
-  frame = PlotFrame(panel)
-  frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE)
-  frame.setBackground(Color(0xfd,0xfe,0xff)) # easy to make transparent
-  frame.setFontSizeForPrint(8,504)
-  frame.setSize(width,height)
-  frame.setVisible(True)
-  if png and pngDir:
-    if nrms>0.0:
-      png += "n"
-    frame.paintToPng(720,3.3,pngDir+"/"+png+".png")
-
 
 #############################################################################
 # Do everything on Swing thread.
