@@ -14,12 +14,12 @@ import static edu.mines.jtk.util.ArrayMath.*;
  * bound b1 on strain, the rate at which the shifts u[i1] vary 
  * with sample index i1.
  * <p>
- * An increasing u[i1] = u[i1-1] + 1 implies that g[i1] between 
- * indices i1-1 and i1 is a stretched version of f[i1] ~ g[i1+u[i1]].
- * Values in f for indices i1 and i1-1 are one sample apart, but
- * corresponding values in g are two samples apart, which implies 
- * stretching by 100%. Likewise, a decreasing u[i1] = u[i1-1] - 1 
- * implies squeezing by 100%.
+ * An increasing u[i1] = u[i1-1] + 1 implies that, between indices
+ * i1-1 and i1, g[i1] is a stretched version of f[i1] ~ g[i1+u[i1]].
+ * For, in this case, values in f for indices i1 and i1-1 are one 
+ * sample apart, but corresponding values in g are two samples 
+ * apart, which implies stretching by 100%. Likewise, a decreasing 
+ * u[i1] = u[i1-1] - 1 implies squeezing by 100%.
  * <p>
  * In practice, 100% strain (stretching or squeezing) may be extreme.
  * Therefore, the upper bound on strain may be smaller than one. For 
@@ -34,14 +34,14 @@ import static edu.mines.jtk.util.ArrayMath.*;
  * u[i2][i1] vary with samples indices i1 and i2, respectively.
  * <p>
  * For 3D images f and g, dynamic warping finds a 3D array of integer 
- * shifts u[i3][i2][i1] in a similar way. However, dynamic warping 
- * for 3D images may require an excessive amount of memory. Dynamic 
- * image warping requires a temporary array of nlag*nsample floats, 
- * where the number of lags nlag = 1+shiftMax-shiftMin and nsample is 
- * the number of image samples. For 3D images, the product nlag*nsample 
+ * shifts u[i3][i2][i1] in a similar way. However, finding shifts for 
+ * 3D images may require an excessive amount of memory. Dynamic image 
+ * warping requires a temporary array of nlag*nsample floats, where 
+ * the number of lags nlag = 1+shiftMax-shiftMin and nsample is the 
+ * number of image samples. For 3D images, the product nlag*nsample 
  * is likely to be too large for the temporary array to fit in random-
- * access memory (RAM), and shifts u are obtained by blending together 
- * shifts computed from overlapping subsets of the 3D image.
+ * access memory (RAM). In this case, shifts u are obtained by blending 
+ * together shifts computed from overlapping subsets of the 3D image.
  * <p>
  * Estimated shifts u are integers, but can be smoothed to obtain
  * non-integer shifts. The extent of smoothing along each dimension 
@@ -53,7 +53,7 @@ import static edu.mines.jtk.util.ArrayMath.*;
  * This class provides numerous methods, but typical applications
  * require only several of these, usually only the methods that find
  * and apply shifts. The many other methods are provided only for 
- * research and atypical applications.
+ * atypical applications and research.
  *
  * @author Dave Hale, Colorado School of Mines
  * @version 2012.06.01
@@ -71,7 +71,6 @@ public class DynamicWarping {
     _lmax = shiftMax;
     _nl = 1+_lmax-_lmin;
     _si = new SincInterpolator();
-    _ref1 = _ref2 = _ref3 = new RecursiveExponentialFilter(0.0);
   }
 
   /**
@@ -118,9 +117,7 @@ public class DynamicWarping {
     _bstrain1 = (int)ceil(1.0/strainMax1);
     _bstrain2 = (int)ceil(1.0/strainMax2);
     _bstrain3 = (int)ceil(1.0/strainMax3);
-    _ref1 = new RecursiveExponentialFilter(_usmooth1*2.0*_bstrain1);
-    _ref2 = new RecursiveExponentialFilter(_usmooth2*2.0*_bstrain2);
-    _ref3 = new RecursiveExponentialFilter(_usmooth3*2.0*_bstrain3);
+    updateSmoothingFilters();
   }
 
   /**
@@ -182,31 +179,37 @@ public class DynamicWarping {
     _usmooth1 = usmooth1;
     _usmooth2 = usmooth2;
     _usmooth3 = usmooth3;
-    _ref1 = new RecursiveExponentialFilter(usmooth1*2.0*_bstrain1);
-    _ref2 = new RecursiveExponentialFilter(usmooth2*2.0*_bstrain2);
-    _ref3 = new RecursiveExponentialFilter(usmooth3*2.0*_bstrain3);
+    updateSmoothingFilters();
   }
 
   /**
-   * Sets the directory used for temporary random-access files.
-   * Such files are used for arrays too large to fit in memory.
-   * The specified directory should be within a partition with a
-   * large amount of unused space available.
-   * @param directory the directory used for temporary files.
+   * Sets the size and overlap of windows used for 3D image warping.
+   * Window size determines the amount of memory required to store
+   * a temporary array[l3][l2][n1][nl] of floats used to compute
+   * shifts. Here, nl is the number of lags and n1, l2 and l3 are 
+   * the numbers of samples in the 1st, 2nd and 3rd dimensions of 
+   * 3D image subsets. Let n1, n2 and n3 denote numbers of samples 
+   * for all three dimensions of a complete 3D image. Typically, 
+   * l2&lt;n2 and l3&lt;n3, because insufficient memory is available 
+   * for a temporary array of nl*n1*n2*n3 floats. 
+   * <p>
+   * Image subsets overlap in the 2nd and 3rd dimensions by specified 
+   * fractions f2 and f3, which must be less than one. Because window 
+   * sizes are integers, the actual overlap be greater than (but never 
+   * less than) these fractions.
+   * <p>
+   * Default window sizes are 50 samples; default overlap fractions 
+   * are 0.5, which corresponds to 50% overlap in both dimensions.
+   * @param l2 length of window in 2nd dimension.
+   * @param l3 length of window in 3rd dimension.
+   * @param f2 fraction of window overlap in 2nd dimension.
+   * @param f3 fraction of window overlap in 3rd dimension.
    */
-  public void setTempFileDirectory(String directory) {
-    _edir = new File(directory);
-  }
-
-  /**
-   * Sets the directory used for temporary random-access files.
-   * Such files are used for arrays too large to fit in memory.
-   * The specified directory should be within a partition with a
-   * large amount of unused space available.
-   * @param directory the directory used for temporary files.
-   */
-  public void setTempFileDirectory(File directory) {
-    _edir = directory;
+  public void setWindowSizeAndOverlap(int l2, int l3, double f2, double f3) {
+    _owl2 = l2;
+    _owl3 = l3;
+    _owf2 = f2;
+    _owf3 = f3;
   }
 
   /**
@@ -295,15 +298,15 @@ public class DynamicWarping {
     int n1 = f[0][0].length;
     int n2 = f[0].length;
     int n3 = f.length;
-    int l2 = 50, l3 = 50;
-    double f2 = 0.5, f3 = 0.5;
-    OverlappingWindows2 ow = new OverlappingWindows2(n2,n3,l2,l3,f2,f3);
-    int m2 = ow.getM1();
-    int m3 = ow.getM2();
+    int l2 = _owl2, l3 = _owl3;
+    double f2 = _owf2, f3 = _owf3;
     float[][][] fw = new float[l3][l2][];
     float[][][] gw = new float[l3][l2][];
     float[][][] uw = new float[l3][l2][n1];
     float[][][][] ew = new float[l3][l2][n1][_nl];
+    OverlappingWindows2 ow = new OverlappingWindows2(n2,n3,l2,l3,f2,f3);
+    int m2 = ow.getM1();
+    int m3 = ow.getM2();
     for (int k3=0; k3<m3; ++k3) {
       int i3 = ow.getI2(k3);
       for (int k2=0; k2<m2; ++k2) {
@@ -550,7 +553,11 @@ public class DynamicWarping {
    * @param us output array of smoothed shifts.
    */
   public void smoothShifts(float[] u, float[] us) {
-    _ref1.apply(u,us);
+    if (_ref1!=null) {
+      _ref1.apply(u,us); 
+    } else if (u!=us) {
+      copy(u,us);
+    }
   }
 
   /**
@@ -560,8 +567,13 @@ public class DynamicWarping {
    * @param us output array of smoothed shifts.
    */
   public void smoothShifts(float[][] u, float[][] us) {
-    _ref1.apply1(u,us);
-    _ref2.apply2(us,us);
+    if (_ref1!=null) {
+      _ref1.apply1(u,us);
+    } else {
+      copy(u,us);
+    }
+    if (_ref2!=null)
+      _ref2.apply2(us,us);
   }
 
   /**
@@ -924,10 +936,22 @@ public class DynamicWarping {
   private RecursiveExponentialFilter _ref2; // for smoothing shifts
   private RecursiveExponentialFilter _ref3; // for smoothing shifts
   private SincInterpolator _si; // for warping with non-integer shifts
-  private File _edir; // directory used for temporary files; null for default
+  private int _owl2 = 50; // window size in 2nd dimension for 3D images
+  private int _owl3 = 50; // window size in 3rd dimension for 3D images
+  private double _owf2 = 0.5; // fraction of window overlap in 2nd dimension
+  private double _owf3 = 0.5; // fraction of window overlap in 3rd dimension
 
   private float error(float f, float g) {
     return pow(abs(f-g),_epow);
+  }
+
+  private void updateSmoothingFilters() {
+    _ref1 = (_usmooth1<=0.0) ? null :
+      new RecursiveExponentialFilter(_usmooth1*_bstrain1);
+    _ref2 = (_usmooth2<=0.0) ? null :
+      new RecursiveExponentialFilter(_usmooth2*_bstrain2);
+    _ref3 = (_usmooth3<=0.0) ? null :
+      new RecursiveExponentialFilter(_usmooth3*_bstrain3);
   }
 
   /**
@@ -1039,7 +1063,7 @@ public class DynamicWarping {
       float dm = d[jb][ilm1];
       float di = d[ji][il  ];
       float dp = d[jb][ilp1];
-      for (int kb=ji; kb!=jb; kb+=is) { // ii-1
+      for (int kb=ji; kb!=jb; kb+=is) {
         dm += e[kb][ilm1];
         dp += e[kb][ilp1];
       }
@@ -1304,9 +1328,9 @@ public class DynamicWarping {
     }});
   }
   private void smoothShifts(float[][][] u) {
-    _ref1.apply1(u,u);
-    _ref2.apply2(u,u);
-    _ref3.apply3(u,u);
+    if (_ref1!=null) _ref1.apply1(u,u);
+    if (_ref2!=null) _ref2.apply2(u,u);
+    if (_ref3!=null) _ref3.apply3(u,u);
   }
   private static class MinMax {
     float emin,emax;
@@ -1323,22 +1347,12 @@ public class DynamicWarping {
       Check.argument(0.0<=f2 && f2<1.0,"0 <= f2 < 1");
       _n1 = n1;
       _n2 = n2;
-      _l1 = l1;
-      _l2 = l2;
-      if (l1<n1) {
-        _m1 = 1+(int)ceil((n1-l1)/(l1*(1.0-f1)));
-        _s1 = (double)(n1-l1)/(_m1-1);
-      } else {
-        _m1 = 1;
-        _s1 = 0.0;
-      }
-      if (l2<n2) {
-        _m2 = 1+(int)ceil((n2-l2)/(l2*(1.0-f2)));
-        _s2 = (double)(n2-l2)/(_m2-1);
-      } else {
-        _m2 = 1;
-        _s2 = 0.0;
-      }
+      _l1 = min(l1,n1);
+      _l2 = min(l2,n2);
+      _m1 = 1+(int)ceil((_n1-_l1)/(_l1*(1.0-f1)));
+      _m2 = 1+(int)ceil((_n2-_l2)/(_l2*(1.0-f2)));
+      _s1 = (double)(_n1-_l1)/max(1,_m1-1);
+      _s2 = (double)(_n2-_l2)/max(1,_m2-1);
       makeWeights();
       makeScalars();
     }

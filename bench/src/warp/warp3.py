@@ -13,7 +13,7 @@ seed = abs(Random().nextInt()/1000000)
 seed = 588
 print "seed =",seed
 
-n1,n2,n3 = 401,401,401
+n1,n2,n3 = 201,201,201
 d1,d2,d3 = 0.004,0.025,0.025
 f1,f2,f3 = 0.000,0.000,0.000
 s1,s2,s3 = Sampling(n1,d1,f1),Sampling(n2,d2,f2),Sampling(n3,d3,f3)
@@ -25,7 +25,7 @@ def main(args):
   goFakeShifts()
 
 def goFakeImages():
-  f,g,s = makeFakeImages(6,0.0) # max strain is 6*2*pi/200 ~ 0.188
+  f,g,s = makeFakeImages(6,0.0) # max strain1 is 6*2*pi/200 ~ 0.188
   print "s: min =",min(s),"max =",max(s)
   writeImage(dataDir+"fakef.dat",f)
   writeImage(dataDir+"fakeg.dat",g)
@@ -42,16 +42,16 @@ def goFakeShifts():
   smin,smax = min(s),max(s)
   print "s: min =",smin,"max =",smax
   esmooth = 2
-  usmooth = 0.5
-  strainMax1 = 0.50
-  strainMax2 = 0.25
-  strainMax3 = 0.25
+  usmooth = 1.0
+  strainMax1 = 0.25
+  strainMax2 = 0.20
+  strainMax3 = 0.20
   mlag = 4+int(max(-smin,smax))
   dw = DynamicWarping(-mlag,mlag)
-  dw.setTempFileDirectory(dataDir);
   dw.setStrainMax(strainMax1,strainMax2,strainMax3)
   dw.setErrorSmoothing(esmooth)
   dw.setShiftSmoothing(usmooth)
+  dw.setWindowSizeAndOverlap(51,51,0.5,0.5)
   u = dw.findShifts(f,g)
   h = dw.applyShifts(u,g)
   print "s: min =",min(s),"max =",max(s)
