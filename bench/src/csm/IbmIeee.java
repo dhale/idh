@@ -1,4 +1,4 @@
-package segy;
+package csm;
 
 public class IbmIeee {
   public static void shortToFloat(short[] s, float[] f) {
