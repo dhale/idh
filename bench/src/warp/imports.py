@@ -1,4 +1,4 @@
-import sys
+import os,sys
 from org.python.util import PythonObjectInputStream
 from java.awt import *
 from java.awt.image import *

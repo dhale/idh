@@ -13,11 +13,13 @@ pngDir = None
 seed = 588
 print "seed =",seed
 
-smax = 12 # max shift for synthetic test
+smax = 12 # shifts for fake images are in [0,smax]
 nrms = 0.0 # rms noise/signal ratio
-strainMax1 = 0.25 # not less than smax*2*pi/n1
-strainMax2 = 0.20 # not less than smax*pi/n2
-strainMax3 = 0.20 # not less than smax*pi/n3
+strainMax1 = 0.250 # not less than     smax*pi/n1
+strainMax2 = 0.125 # not less than 0.5*smax*pi/n2
+strainMax3 = 0.125 # not less than 0.5*smax*pi/n3
+esmooth = 2 # number of smoothings of alignment errors
+usmooth = 1.0 # extent of smoothing of shifts
 n1,n2,n3 = 201,201,201 # numbers of samples
 d1,d2,d3 = 0.004,0.025,0.025 # sampling intervals
 f1,f2,f3 = 0.000,0.000,0.000 # first samples
@@ -44,9 +46,6 @@ def goFakeShifts():
   g = readImage(dataDir+"fakeg.dat",n1,n2,n3)
   s = readImage(dataDir+"fakes.dat",n1,n2,n3)
   #f,g,s = makeFakeImages(smax,nrms)
-  print "s: min =",min(s),"max =",max(s)
-  esmooth = 2
-  usmooth = 1.0
   mlag = 4+smax
   dw = DynamicWarping(-mlag,mlag)
   dw.setStrainMax(strainMax1,strainMax2,strainMax3)
@@ -57,8 +56,9 @@ def goFakeShifts():
   h = dw.applyShifts(u,g)
   print "s: min =",min(s),"max =",max(s)
   print "u: min =",min(u),"max =",max(u)
-  show(s)
-  show(u)
+  usmin,usmax = min(s),max(s)
+  show(s,usmin,usmax)
+  show(u,usmin,usmax)
   show(g)
   show(f)
   show(h)
@@ -124,10 +124,12 @@ def addNoise(nrms,f,seed=0):
 #############################################################################
 # plotting
 
-def show(f):
+def show(f,cmin=0.0,cmax=0.0):
   frame = SimpleFrame()
   ip = frame.addImagePanels(f)
   ip.setSlices(n1-1,n2/2,n3/2)
+  if cmin<cmax:
+    ip.setClips(cmin,cmax)
   frame.getOrbitView().setScale(2.0)
   frame.setSize(900,900)
 

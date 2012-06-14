@@ -16,11 +16,59 @@ global n1,n2,n3
 
 #############################################################################
 def main(args):
-  goSinopec()
+  goNorne()
+  #goSino()
   #goParihaka()
   #goF3d()
 
-def goSinopec():
+""" 
+Full Norne corner coordinates
+line	trace	X	Y
+970	2300	461652	7329340.16
+970	1300	453320	7320021.12
+1290	1300	456302	7317355
+1290	2300	464634	7326674
+Knut 16/7-09
+"""
+def goNorne():
+  """
+  E-Segment
+  n1,nt = 1001, dt = 0.0040, ft = 0.0 (s)
+  n2,ny =  401, dy = 0.0125, fy = 0.0 (km)
+  n3,nx =  101, dx = 0.0125, fx = 0.0 (km)
+  Full
+  n1,nt = 1001, dt = 0.0040, ft = 0.0 (s)
+  n2,ny = 1001, dy = 0.0125, fy = 0.0 (km)
+  n3,nx =  321, dx = 0.0125, fx = 0.0 (km)
+  """
+  global n1,n2,n3
+  #n1,n2,n3 = 1001,401,101
+  #datdir = "/data/seis/norne/eseg/"
+  #sgyfile = datdir+"ESEG-NORNE-2004-FULL.sgy"
+  #datfile = datdir+"eseg2004full.dat"
+  n1,n2,n3 = 1001,1001,321
+  datdir = "/data/seis/norne/all/"
+  sgyfile = datdir+"norne4d_2006-full.sgy"
+  datfile = datdir+"all2006full.dat"
+  #readFormat(sgyfile) # format is 1, IBM floats
+  #dumpTraceHeaders(sgyfile,1,1001)
+  #testFormat(n1,n2,n3,sgyfile) # yes, looks like IBM format
+  #convert(n1,n2,n3,sgyfile,datfile)
+  displayNorne(datfile)
+
+def displayNorne(datfile):
+  global n1
+  clip = 1000.0
+  x = readImage(datfile,n1,n2,n3)
+  #n1,j1 = 601,320
+  #x = copy(n1,n2,n3,j1,0,0,x)
+  #print "x min =",min(x)," max =",max(x)
+  s1,s2,s3 = Sampling(n1),Sampling(n2),Sampling(n3)
+  frame = SimpleFrame(AxesOrientation.XRIGHT_YIN_ZDOWN)
+  ipg = frame.addImagePanels(s1,s2,s3,x)
+  ipg.setClips(-clip,clip)
+
+def goSino():
   global bo
   bo = ByteOrder.LITTLE_ENDIAN # non-standard byte-order
   """
@@ -269,7 +317,8 @@ def makeMap(sgyfile,mapfile,nbytes,fmt,n1):
   af.skipBytes(nbhed)
   h = zeroint(nthed/4)
   #m2,m3 = 8000,16000 # Parihaka
-  m2,m3 = 800,1300 # F3D
+  #m2,m3 = 800,1300 # F3D
+  m2,m3 = 800,1300 # Norne
   m = zerofloat(m2,m3)
   i2min =  Integer.MAX_VALUE
   i2max = -Integer.MAX_VALUE
@@ -282,7 +331,7 @@ def makeMap(sgyfile,mapfile,nbytes,fmt,n1):
       print "i3:  min =",i3min," max =",i3max
     af.readInts(h)
     #i2,i3 = h[49],h[50] # Parihaka
-    i2,i3 = h[47],h[48] # F3D
+    i2,i3 = h[47],h[48] # F3D, Norne
     if 0<=i2 and i2<m2 and 0<=i3 and i3<m3:
       m[i3][i2] = 1.0
     #print "i =",i," i2 =",i2," i3 =",i3
@@ -319,7 +368,7 @@ def dumpTraceHeaders(sgyfile,fmt,n1):
     print "coord scale factor =",hs[35]
     print "x,y coord =",hi[45],hi[46]
     print "iline,xline =",hi[47],hi[48]
-    print "iline,xline =",hi[49],hi[50]
+    #print "iline,xline =",hi[49],hi[50]
     #dump(hi)
     #dump(hs)
     if fmt==3:
