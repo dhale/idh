@@ -16,10 +16,101 @@ global n1,n2,n3
 
 #############################################################################
 def main(args):
-  goNorne()
+  goMbs()
+  #goNorne()
   #goSino()
   #goParihaka()
   #goF3d()
+
+def goMbs():
+  """
+  Subsets of PstmSmall:
+  n1,nt = 501, dt = 0.0020, ft = 0.3 (s)
+  n2,ny = 422, dy = 0.016764, fy = 0.0 (km) (dy = 55 ft), iline=1001:1422
+  n3,nx = 448, dx = 0.016764, fx = 0.0 (km) (dx = 55 ft), xline= 601:1048
+  Subsets of PstmLarge:
+  n1,nt = 501, dt = 0.0020, ft = 0.3 (s)
+  n2,ny = 422, dy = 0.016764, fy = 0.0 (km) (dy = 55 ft), iline=1001:1422
+  n3,nx = 448, dx = 0.016764, fx = 0.0 (km) (dx = 55 ft), xline= 601:1048
+  """
+  global n1,n2,n3
+  #n1,n2,n3 = 1500,422,448 # PstmSmall
+  n1,n2,n3 = 1400,422,448 # PstmLarge raw
+  fmt = 1 # IBM floats
+  #nbytes = 961880880 # PstmSmall/Marathon20070209
+  #nbytes = 959341200 # PstmSmall/Marathon20070228
+  #nbytes = 4582266720 # PstmLarge fs
+  nbytes = 4647376320 # PstmLarge raw
+  ntrace = (nbytes-nhead-nbhed)/(240+4*n1)
+  #sgydir = "/data/seis/mbs/PstmSmall/Marathon20070228/"
+  #sgydir = "/data/seis/mbs/PstmSmall/Marathon20070228/"
+  sgydir = "/data/seis/mbs/PstmLarge/"
+  datdir = "/data/seis/mbs/dat/"
+  #sgyfile = sgydir+"pstm_fraw.sgy"
+  sgyfile = sgydir+"pstm_raw_cut.sgy"
+  datfile = datdir+"pstm_raw_cut.dat"
+  #readFormat(sgyfile) # format is 1, IBM floats
+  #dumpTraceHeaders(sgyfile,fmt,n1,1000)
+  #makeMap(sgyfile,None,nbytes,fmt,n1)
+  #testFormat(n1,100,100,sgyfile) # yes, looks like IBM format
+  convertMbs(n1,ntrace,sgyfile,datfile)
+  #n1,n2,n3 = 501,422,448 # PstmSmall
+  n1,n2,n3 = 501,1190,1114 # PstmLarge
+  displayMbs(datfile,clip=5000.0)
+
+def displayMbs(datfile,clip=0.0):
+  x = readImage(datfile,n1,n2,n3)
+  print "x min =",min(x)," max =",max(x)
+  frame = SimpleFrame(AxesOrientation.XRIGHT_YIN_ZDOWN)
+  s1,s2,s3 = Sampling(n1),Sampling(n2),Sampling(n3)
+  ipg = frame.addImagePanels(s1,s2,s3,x)
+  if clip>0.0:
+    ipg.setClips(-clip,clip)
+
+def convertMbs(n1,ntrace,sgyfile,datfile):
+  #i1min,i1max =    0,1499 # PstmSmall
+  #i2min,i2max = 1001,1422
+  #i3min,i3max =  601,1048
+  #i1min,i1max =  150, 650 # PstmSmall
+  #i2min,i2max = 1001,1422
+  #i3min,i3max =  601,1048
+  i1min,i1max = 150, 650 # PstmLarge raw
+  i2min,i2max = 234,1422
+  i3min,i3max = 353,1468
+  m1 = 1+i1max-i1min
+  m2 = 1+i2max-i2min
+  m3 = 1+i3max-i3min
+  ais = ArrayInputStream(sgyfile,bo)
+  ais.skipBytes(nhead)
+  ais.skipBytes(nbhed)
+  h = zeroint(nthed/4)
+  x = zeroint(n1)
+  y = zeroint(m1)
+  z = zerofloat(m1,m2,m3)
+  nread = 0
+  nprev = 0
+  for itrace in range(ntrace):
+    nread += 1
+    nperc = int(100.0*nread/ntrace)
+    if nperc!=nprev and nperc%10==0:
+      print "percent:",nperc
+      nprev = nperc
+    ais.readInts(h)
+    i2,i3 = h[47],h[48]
+    #print "nread =",nread," i2 =",i2," i3 =",i3
+    #print "nread =",nread," i3min =",i3min," i3 =",i3," i3max =",i3max
+    if i2min<=i2 and i2<=i2max and i3min<=i3 and i3<=i3max:
+      #if i2==i2min:
+      #  print "nread =",nread," i3min =",i3min," i3 =",i3," i3max =",i3max
+      ais.readInts(x) # read trace samples
+      copy(m1,i1min,x,0,y) # keep only m1 samples
+      IbmIeee.ibmToFloat(y,z[i3-i3min][i2-i2min]) # ibm to ieee
+    else:
+      ais.skipBytes(4*n1)
+  aos = ArrayOutputStream(datfile)
+  aos.writeFloats(z) # write 3D image
+  ais.close()
+  aos.close()
 
 """ 
 Full Norne corner coordinates
@@ -318,20 +409,21 @@ def makeMap(sgyfile,mapfile,nbytes,fmt,n1):
   h = zeroint(nthed/4)
   #m2,m3 = 8000,16000 # Parihaka
   #m2,m3 = 800,1300 # F3D
-  m2,m3 = 800,1300 # Norne
+  #m2,m3 = 800,1300 # Norne
+  m2,m3 = 1422,1043 # Mbs
   m = zerofloat(m2,m3)
   i2min =  Integer.MAX_VALUE
   i2max = -Integer.MAX_VALUE
   i3min =  Integer.MAX_VALUE
   i3max = -Integer.MAX_VALUE
-  for i in range(ntrace/10):
-    if i%100==0:
-      print "i =",i
-      print "i2:  min =",i2min," max =",i2max
-      print "i3:  min =",i3min," max =",i3max
+  for i in range(ntrace):
+    #if i%100==0:
+    #  print "i =",i
+    #  print "i2:  min =",i2min," max =",i2max
+    #  print "i3:  min =",i3min," max =",i3max
     af.readInts(h)
     #i2,i3 = h[49],h[50] # Parihaka
-    i2,i3 = h[47],h[48] # F3D, Norne
+    i2,i3 = h[47],h[48] # F3D, Norne, Mbs
     if 0<=i2 and i2<m2 and 0<=i3 and i3<m3:
       m[i3][i2] = 1.0
     #print "i =",i," i2 =",i2," i3 =",i3
@@ -347,18 +439,19 @@ def makeMap(sgyfile,mapfile,nbytes,fmt,n1):
   sp = SimplePlot()
   pv = sp.addPixels(m)
   pv.setInterpolation(PixelsView.Interpolation.NEAREST)
-  aos = ArrayOutputStream(mapfile)
-  aos.writeFloats(m)
-  aos.close()
+  if mapfile:
+    aos = ArrayOutputStream(mapfile)
+    aos.writeFloats(m)
+    aos.close()
 
 
-def dumpTraceHeaders(sgyfile,fmt,n1):
+def dumpTraceHeaders(sgyfile,fmt,n1,ndump=5):
   af = ArrayFile(sgyfile,"r")
   af.skipBytes(nhead)
   af.skipBytes(nbhed)
   hi = zeroint(nthed/4)
   hs = zeroshort(nthed/2)
-  for i in range(5):
+  for i in range(ndump):
     fp = af.getFilePointer()
     af.readInts(hi)
     af.seek(fp)
