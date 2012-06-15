@@ -40,22 +40,27 @@ def goMbs():
   #nbytes = 961880880 # PstmSmall/Marathon20070209
   #nbytes = 959341200 # PstmSmall/Marathon20070228
   #nbytes = 4582266720 # PstmLarge fs
-  nbytes = 4647376320 # PstmLarge raw
+  #nbytes = 4647376320 # PstmLarge raw
+  nbytes = 4647417200 # PstmLarge fxy
   ntrace = (nbytes-nhead-nbhed)/(240+4*n1)
   #sgydir = "/data/seis/mbs/PstmSmall/Marathon20070228/"
   #sgydir = "/data/seis/mbs/PstmSmall/Marathon20070228/"
   sgydir = "/data/seis/mbs/PstmLarge/"
   datdir = "/data/seis/mbs/dat/"
   #sgyfile = sgydir+"pstm_fraw.sgy"
-  sgyfile = sgydir+"pstm_raw_cut.sgy"
-  datfile = datdir+"pstm_raw_cut.dat"
+  #sgyfile = sgydir+"pstm_raw_cut.sgy"
+  sgyfile = sgydir+"pstm_fxy_cut.sgy"
+  #datfile = datdir+"pstm_raw_cut.dat"
+  #datfile = datdir+"pstm_raw_s1.dat"
+  datfile = datdir+"pstm_fxy_s1.dat"
   #readFormat(sgyfile) # format is 1, IBM floats
   #dumpTraceHeaders(sgyfile,fmt,n1,1000)
   #makeMap(sgyfile,None,nbytes,fmt,n1)
   #testFormat(n1,100,100,sgyfile) # yes, looks like IBM format
   convertMbs(n1,ntrace,sgyfile,datfile)
   #n1,n2,n3 = 501,422,448 # PstmSmall
-  n1,n2,n3 = 501,1190,1114 # PstmLarge
+  #n1,n2,n3 = 501,1189,1116 # PstmLarge raw all
+  n1,n2,n3 = 501,560,763 # PstmLarge raw sub 1
   displayMbs(datfile,clip=5000.0)
 
 def displayMbs(datfile,clip=0.0):
@@ -74,9 +79,12 @@ def convertMbs(n1,ntrace,sgyfile,datfile):
   #i1min,i1max =  150, 650 # PstmSmall
   #i2min,i2max = 1001,1422
   #i3min,i3max =  601,1048
-  i1min,i1max = 150, 650 # PstmLarge raw
-  i2min,i2max = 234,1422
-  i3min,i3max = 353,1468
+  #i1min,i1max = 150, 650 # PstmLarge raw
+  #i2min,i2max = 234,1422
+  #i3min,i3max = 353,1468
+  i1min,i1max = 150, 650 # PstmLarge raw subset
+  i2min,i2max = 358, 917 # m2 = 560 (124:683 = 358: 917)
+  i3min,i3max = 490,1258 # m3 = 763 (137:905 = 490:1258)
   m1 = 1+i1max-i1min
   m2 = 1+i2max-i2min
   m3 = 1+i3max-i3min
