@@ -36,13 +36,6 @@ def goMbs():
   global n1,n2,n3
   #n1,n2,n3 = 1500,422,448 # PstmSmall
   n1,n2,n3 = 1400,422,448 # PstmLarge raw
-  fmt = 1 # IBM floats
-  #nbytes = 961880880 # PstmSmall/Marathon20070209
-  #nbytes = 959341200 # PstmSmall/Marathon20070228
-  #nbytes = 4582266720 # PstmLarge fs
-  #nbytes = 4647376320 # PstmLarge raw
-  nbytes = 4647417200 # PstmLarge fxy
-  ntrace = (nbytes-nhead-nbhed)/(240+4*n1)
   #sgydir = "/data/seis/mbs/PstmSmall/Marathon20070228/"
   #sgydir = "/data/seis/mbs/PstmSmall/Marathon20070228/"
   sgydir = "/data/seis/mbs/PstmLarge/"
@@ -53,16 +46,69 @@ def goMbs():
   #datfile = datdir+"pstm_raw_cut.dat"
   #datfile = datdir+"pstm_raw_s1.dat"
   datfile = datdir+"pstm_fxy_s1.dat"
+  printBinaryHeaderInfo(sgyfile)
   #readFormat(sgyfile) # format is 1, IBM floats
   #dumpTraceHeaders(sgyfile,fmt,n1,1000)
-  #makeMap(sgyfile,None,nbytes,fmt,n1)
+  #makeMap(sgyfile,None,fmt,n1)
   #testFormat(n1,100,100,sgyfile) # yes, looks like IBM format
-  convertMbs(n1,ntrace,sgyfile,datfile)
+  #convertMbs(n1,ntrace,sgyfile,datfile)
   #n1,n2,n3 = 501,422,448 # PstmSmall
   #n1,n2,n3 = 501,1189,1116 # PstmLarge raw all
-  n1,n2,n3 = 501,560,763 # PstmLarge raw sub 1
-  displayMbs(datfile,clip=5000.0)
+  #n1,n2,n3 = 501,560,763 # PstmLarge raw sub 1
+  #displayMbs(datfile,clip=5000.0)
 
+def getBinaryHeaderInfo(sgyfile,bo=ByteOrder.BIG_ENDIAN):
+  """
+  Returns essential information from the binary file header.
+  Returned information is a 5-tuple containing the
+    data sample format code (integer)
+    number of bytes per sample (integer)
+    number of traces (integer)
+    number of samples per trace (integer)
+    sampling interval in seconds (float)
+  """
+  h = zeroshort(200) # binary header contains 400 bytes = 200 shorts
+  ais = ArrayInputStream(sgyfile,bo)
+  ais.skipBytes(3200) # skip text header (3200 bytes)
+  ais.readShorts(h) # read binary header (400 bytes)
+  ais.close()
+  dt = h[8]*1e-6 # sampling interval, converted to seconds
+  nt = h[10] # number of samples per data trace
+  fmt = h[12] # data sample format code
+  if fmt==8:
+    bps = 1 # 1-byte, two's complement integer
+  elif fmt==3:
+    bps = 2 # 2-byte, two's complement integer
+  else:
+    bps = 4 # typically either IBM or IEEE floating point
+  nbytes = File(sgyfile).length() # number of bytes in file
+  ntrace = (nbytes-3200-400)/(240+bps*n1) # number of traces
+  return fmt,bps,ntrace,nt,dt
+
+def printBinaryHeaderInfo(sgyfile,bo=ByteOrder.BIG_ENDIAN):
+  """
+  Prints essential information found in the binary file header.
+  """
+  fmt,bps,ntrace,nt,dt = getBinaryHeaderInfo(sgyfile,bo)
+  if fmt==1:
+    print "data format code = 1 (IBM floating point)"
+  elif fmt==2:
+    print "data format code = 2 (4-byte two's complement integer)"
+  elif fmt==3:
+    print "data format code = 3 (2-byte two's complement integer)"
+  elif fmt==4:
+    print "data format code = 4 (4-byte fixed-point with gain)"
+  elif fmt==5:
+    print "data format code = 5 (IEEE floating point)"
+  elif fmt==8:
+    print "data format code = 8 (1-byte two's complement integer)"
+  else:
+    print "data format code =",fmt,"is unknown!"
+  print "number of bytes per sample =",bps
+  print "number of traces =",ntrace
+  print "number of samples per trace =",nt
+  print "time sampling interval (in seconds) =",dt
+  
 def displayMbs(datfile,clip=0.0):
   x = readImage(datfile,n1,n2,n3)
   print "x min =",min(x)," max =",max(x)
@@ -229,7 +275,6 @@ def goF3d():
   fmt = 3 # 2-byte shorts in [-32767,32767]
   global n1,n2,n3
   n1,n2,n3 = 462,951,591
-  nbytes = 699003060
   datdir = "/data/seis/f3d/"
   sgyfile = datdir+"f3draw.sgy"
   mapfile = datdir+"f3dmap.dat"
@@ -240,7 +285,7 @@ def goF3d():
   #displaySubsetF3d(datfile,0,500,500,751,501,501)
   #bigSubsetF3d(n1,sgyfile,datfile)
   #readFormat(sgyfile)
-  #makeMap(sgyfile,mapfile,nbytes,fmt,n1)
+  #makeMap(sgyfile,mapfile,fmt,n1)
   #dumpTraceHeaders(sgyfile,fmt,n1)
   #convert3(n1,n2,n3,sgyfile,datfile)
 
@@ -279,7 +324,6 @@ def goParihaka():
   """
   fmt = 1
   n1 = 1501
-  nbytes = 69479807644
   datdir = "/data/seis/nz/par/"
   sgyfile = datdir+"Parihaka3d_raw.sgy"
   mapfile = datdir+"map.dat"
@@ -289,7 +333,7 @@ def goParihaka():
   #displaySubsetParihaka(datfile,0,500,500,751,501,501)
   #bigSubsetParihaka(n1,sgyfile,datfile)
   readFormat(sgyfile)
-  #makeMap(sgyfile,mapfile,nbytes,n1)
+  #makeMap(sgyfile,mapfile,n1)
   #dumpTraceHeaders(sgyfile,fmt,n1)
   #testFormat(n1,n2,n3,sgyfile)
   #convert(n1,n2,n3,sgyfile,datfile)
@@ -405,11 +449,70 @@ def bigSubsetParihaka(n1,sgyfile,datfile):
   ais.close()
   aos.close()
 
-def makeMap(sgyfile,mapfile,nbytes,fmt,n1):
+def getLineSampling(sgyfile,bo=ByteOrder.BIG_ENDIAN):
+  """
+  Returns samplings (s3,s2) for the (inline,crossline) grid.
+  Note that the inline sampling corresponds to the 3rd (slowest)
+  dimension, and that the crossline sampling corresponds to the
+  2nd dimension of the 3D dataset.
+  """
+  fmt,bps,ntrace,nt,dt = getBinaryHeaderInfo(sgyfile,bo)
+  hi = zeroint(240/4) # 240-byte trace header as 4-byte ints
+  ais = ArrayInputStream(sgyfile)
+  ais.skipBytes(3200) # skip text file header
+  ais.skipBytes(400) # skip binary file header
+  x2min =  Integer.MAX_VALUE
+  x2max = -Integer.MAX_VALUE
+  x3min =  Integer.MAX_VALUE
+  x3max = -Integer.MAX_VALUE
+  for itrace in range(ntrace)
+    ais.readInts(hi)
+
+def getTraceHeaderInfo(sgyfile,bo=ByteOrder.BIG_ENDIAN):
+  fmt,bps,ntrace,nt,dt = getBinaryHeaderInfo(sgyfile,bo)
+  hi = zeroint(240/4) # 240-byte trace header as 4-byte ints
+  hs = zeroshort(240/2) # 240-byte trace header as 2-byte ints
+  af = ArrayFile(sgyfile,"r")
+  af.skipBytes(3200) # skip text file header
+  af.skipBytes(400) # skip binary file header
+
+  i2min =  Integer.MAX_VALUE
+  i2max = -Integer.MAX_VALUE
+  i3min =  Integer.MAX_VALUE
+  i3max = -Integer.MAX_VALUE
+  xmin =  Float.MAX_VALUE
+  xmax = -Float.MAX_VALUE
+  ymin =  Float.MAX_VALUE
+  ymax = -Float.MAX_VALUE
+  for itrace in range(ntrace):
+    fp = af.getFilePointer()
+    af.readInts(hi)
+    af.seek(fp)
+    af.readShorts(hs)
+
+    print "ensemble number =",hi[5]
+    print "trace in ensemble =",hi[6]
+    print "coord scale factor =",hs[35]
+    print "x,y coord =",hi[45],hi[46]
+    print "iline,xline =",hi[47],hi[48]
+    #print "iline,xline =",hi[49],hi[50]
+    #dump(hi)
+    #dump(hs)
+    if fmt==3:
+      af.skipBytes(2*n1)
+    else:
+      af.skipBytes(4*n1)
+  af.close()
+
+  
+
+
+def makeMap(sgyfile,mapfile,fmt,n1):
   if fmt==3:
     bps = 2
   else:
     bps = 4
+  nbytes = File(sgyfile).length
   ntrace = (nbytes-nhead-nbhed)/(240+bps*n1)
   af = ArrayFile(sgyfile,"r")
   af.skipBytes(nhead)
