@@ -11,8 +11,8 @@ global n1,n2,n3
 
 #############################################################################
 def main(args):
-  goMbs()
-  #goNorne()
+  #goMbs()
+  goNorne()
   #goSino()
   #goParihaka()
   #goF3d()
@@ -47,48 +47,133 @@ def goMbs():
   PstmLarge (pstm_raw_cut.sgy):
   number of bytes = 4647376320
   number of traces = 795783
-  data format code = 1 (4-byte IBM floating point)
+  format = 1 (4-byte IBM floating point)
   units for spatial coordinates: ft (will be converted to km)
-  n1 = 1400 (number of samples per trace)
-  n2 = 1119 (number of traces in inline direction)
-  n3 = 1189 (number of traces in crossline direction)
-  d1 = 0.0020 (time sampling interval)
-  d2 = 0.016764 (inline sampling interval)
-  d3 = 0.016764 (crossline sampling interval)
-  i2min = 350, i2max = 1468 (inline index bounds)
-  i3min = 234, i3max = 1422 (crossline index bounds)
-  xmin = 822.376308, xmax = 842.769561 (x coordinate bounds)
-  ymin = 235.175145, ymax = 255.588516 (y coordinate bounds)
-  grid azimuth = 31.88 degrees
+  n1 =  1400 (number of samples per trace)
+  n2 =  1119 (number of traces in inline direction)
+  n3 =  1189 (number of traces in crossline direction)
+  d1 = 0.002000 (time sampling interval, in s)
+  d2 = 0.016764 (inline sampling interval, in km)
+  d3 = 0.016764 (crossline sampling interval, in km)
+  i2min =   350, i2max =  1468 (inline index bounds)
+  i3min =   234, i3max =  1422 (crossline index bounds)
+  xmin = 822.376308, xmax = 842.769562 (x coordinate bounds, in km)
+  ymin = 235.175146, ymax = 255.588516 (y coordinate bounds, in km)
+  grid azimuth =  31.88 degrees
   grid reference point:
-    i2ref =  395, i3ref =  612, x = 826.698372, y = 238.441687
+    i2ref =   395, i3ref =   612, x = 826.698372, y = 238.441687
   grid corner points:
-    i2min =  350, i3min =  234, x = 829.404562, y = 232.662365
-    i2max = 1468, i3min =  234, x = 845.319592, y = 242.561104
-    i2min =  350, i3max = 1422, x = 818.886118, y = 249.573744
-    i2max = 1468, i3max = 1422, x = 834.801148, y = 259.472484
+    i2min =   350, i3min =   234, x = 829.404563, y = 232.662365
+    i2max =  1468, i3min =   234, x = 845.319592, y = 242.561105
+    i2min =   350, i3max =  1422, x = 818.886119, y = 249.573744
+    i2max =  1468, i3max =  1422, x = 834.801148, y = 259.472484
   good subset:
     i1min,i1max = 150, 650,  m1 = 501
     i2min,i2max = 490,1258,  m2 = 763
     i3min,i3max = 358, 917,  m3 = 560
   """
   mbsdir = "/data/seis/mbs/"
-  sgyfile = mbsdir+"PstmSmall/Marathon20070228/pstm_fraw.sgy"
-  datfile = mbsdir+"dat/pstm_fraw_s1.dat"
-  i1min,i1max,i2min,i2max,i3min,i3max = 150,650,601,1048,1001,1422
-  #sgyfile = mbsdir+"PstmLarge/pstm_raw_cut.sgy"
-  #datfile = mbsdir+"dat/pstm_raw_s1.dat"
-  #i1min,i1max,i2min,i2max,i3min,i3max = 150,650,490,1258,358,917
+  #sgyfile = mbsdir+"PstmSmall/Marathon20070228/pstm_fraw.sgy"
+  #datfile = mbsdir+"dat/pstm_fraw_s1.dat"
+  #i1min,i1max,i2min,i2max,i3min,i3max = 150,650,601,1048,1001,1422
+  sgyfile = mbsdir+"PstmLarge/pstm_raw_cut.sgy"
+  datfile = mbsdir+"dat/pstm_raw_s1.dat"
+  i1min,i1max,i2min,i2max,i3min,i3max = 150,650,490,1258,358,917
+  n1,n2,n3 = 1+i1max-i1min,1+i2max-i2min,1+i3max-i3min
+  #si = SegyImage(sgyfile)
+  #si.printInfo()
+  #plotIbmIeeeFloats(si)
+  #plotI2I3(si.getI2sAsFloats(),si.getI3sAsFloats())
+  #plotXY(si.getXs(),si.getYs())
+  #si.writeFloats(datfile,i1min,i1max,i2min,i2max,i3min,i3max)
+  #si.close()
+  x = readImage(datfile,n1,n2,n3)
+  show3d(x,clip=10000.0)
+
+def goNorne():
+  """
+  ***************************************************************************
+  norne4d_2006-full.sgy:
+  number of bytes = 1363689924
+  number of traces = 321321
+  format = 1 (4-byte IBM floating point)
+  units for spatial coordinates: m (will be converted to km)
+  n1 =  1001 (number of samples per trace)
+  n2 =  1001 (number of traces in inline direction)
+  n3 =   321 (number of traces in crossline direction)
+  d1 = 0.004000 (time sampling interval, in s)
+  d2 = 0.012501 (inline sampling interval, in km)
+  d3 = 0.012500 (crossline sampling interval, in km)
+  i2min =  1300, i2max =  2300 (inline index bounds)
+  i3min =   970, i3max =  1290 (crossline index bounds)
+  xmin =  453.320000, xmax =  464.634000 (x coordinate bounds, in km)
+  ymin = 7317.354880, ymax = 7329.340160 (y coordinate bounds, in km)
+  grid azimuth =  41.80 degrees
+  grid reference point:
+    i2ref =  1300, i3ref =   970, x =  453.320000, y = 7320.021120
+  grid corner points:
+    i2min =  1300, i3min =   970, x =  453.320000, y = 7320.021120
+    i2max =  2300, i3min =   970, x =  461.652000, y = 7328.353120
+    i2min =  1300, i3max =  1290, x =  456.302000, y = 7317.039120
+    i2max =  2300, i3max =  1290, x =  464.634000, y = 7325.371120
+  ***************************************************************************
+  Full Norne corner coordinates (Knut, 16/7-09)
+  line	trace	X	Y
+  970	2300	461652	7329340.16
+  970	1300	453320	7320021.12
+  1290	1300	456302	7317355
+  1290	2300	464634	7326674
+  Knut 16/7-09
+  ***************************************************************************
+  E-Segment
+  n1,nt = 1001, dt = 0.0040, ft = 0.0 (s)
+  n2,ny =  401, dy = 0.0125, fy = 0.0 (km)
+  n3,nx =  101, dx = 0.0125, fx = 0.0 (km)
+  ***************************************************************************
+  Full
+  n1,nt = 1001, dt = 0.0040, ft = 0.0 (s)
+  n2,ny = 1001, dy = 0.0125, fy = 0.0 (km)
+  n3,nx =  321, dx = 0.0125, fx = 0.0 (km)
+  """
+  basedir = "/data/seis/norne/"
+  sgyfile = basedir+"sgy/norne4d_2006-full.sgy"
+  datfile = basedir+"dat/full2006.dat"
+  i1min,i1max,i2min,i2max,i3min,i3max = 0,1000,1300,2300,970,1290
   n1,n2,n3 = 1+i1max-i1min,1+i2max-i2min,1+i3max-i3min
   si = SegyImage(sgyfile)
   si.printInfo()
-  compareIbmIeeeFloats(si)
+  #plotIbmIeeeFloats(si)
   plotI2I3(si.getI2sAsFloats(),si.getI3sAsFloats())
   plotXY(si.getXs(),si.getYs())
   #si.writeFloats(datfile,i1min,i1max,i2min,i2max,i3min,i3max)
   si.close()
-  x = readImage(datfile,n1,n2,n3)
-  show3d(x,clip=10000.0)
+  #x = readImage(datfile,n1,n2,n3)
+  #show3d(x,clip=1000.0)
+
+def goSino():
+  global bo
+  bo = ByteOrder.LITTLE_ENDIAN # non-standard byte-order
+  """
+  nt = 2001, dt = 0.004 s, (ft = 0.000 s?)
+  """
+  n1,n2,n3 = 2001,721,1
+  datdir = "/data/seis/sinopec/"
+  for component in ["x","z"]:
+    sgyfile = datdir+"260_"+component+"_201-921_stack.segy"
+    datfile = datdir+component+"260.dat"
+    #readFormat(sgyfile)
+    #testFormat(n1,n2,n3,sgyfile)
+    #convert(n1,n2,n3,sgyfile,datfile)
+    f = readImage(datfile,n1,n2)
+    if component=="z":
+      stretch(1.6,f)
+      #mul(pow(rampfloat(0.0,1.0,0.0,n1,n2),2.0),f,f)
+    else:
+      #mul(pow(rampfloat(0.0,1.0,0.0,n1,n2),0.0),f,f)
+      pass
+    lowpass(0.10,f)
+    gain(50,f)
+    plot2(f,title=component+" component")
   
 def show3d(x,clip=0.0):
   print "x min =",min(x)," max =",max(x)
@@ -129,7 +214,7 @@ def goodWidthHeight(x,y):
     w = int(w*(xmax-xmin)/(ymax-ymin))
   return w,h
 
-def compareIbmIeeeFloats(si):
+def plotIbmIeeeFloats(si):
   ntrace = si.countTraces()
   fmt = si.getFormat()
   si.setFormat(1) # IBM floats
@@ -139,92 +224,14 @@ def compareIbmIeeeFloats(si):
   si.setFormat(fmt)
   pp = PlotPanel(2,1)
   pp.setTitle("IBM (top) versus IEEE (bottom)")
+  pp.setHLabel(0,"Sample index")
+  pp.setVLabel(0,"IBM amplitude")
+  pp.setVLabel(1,"IEEE amplitude")
   pp.addPoints(0,0,fibm)
   pp.addPoints(1,0,fieee)
   pf = PlotFrame(pp)
   pf.setSize(1000,800)
   pf.setVisible(True)
-  
-def display(datfile,clip=0.0):
-  x = readImage(datfile,n1,n2,n3)
-  print "x min =",min(x)," max =",max(x)
-  frame = SimpleFrame(AxesOrientation.XRIGHT_YIN_ZDOWN)
-  s1,s2,s3 = Sampling(n1),Sampling(n2),Sampling(n3)
-  ipg = frame.addImagePanels(s1,s2,s3,x)
-  if clip>0.0:
-    ipg.setClips(-clip,clip)
-
-""" 
-Full Norne corner coordinates
-line	trace	X	Y
-970	2300	461652	7329340.16
-970	1300	453320	7320021.12
-1290	1300	456302	7317355
-1290	2300	464634	7326674
-Knut 16/7-09
-"""
-def goNorne():
-  """
-  E-Segment
-  n1,nt = 1001, dt = 0.0040, ft = 0.0 (s)
-  n2,ny =  401, dy = 0.0125, fy = 0.0 (km)
-  n3,nx =  101, dx = 0.0125, fx = 0.0 (km)
-  Full
-  n1,nt = 1001, dt = 0.0040, ft = 0.0 (s)
-  n2,ny = 1001, dy = 0.0125, fy = 0.0 (km)
-  n3,nx =  321, dx = 0.0125, fx = 0.0 (km)
-  """
-  global n1,n2,n3
-  #n1,n2,n3 = 1001,401,101
-  #datdir = "/data/seis/norne/eseg/"
-  #sgyfile = datdir+"ESEG-NORNE-2004-FULL.sgy"
-  #datfile = datdir+"eseg2004full.dat"
-  n1,n2,n3 = 1001,1001,321
-  datdir = "/data/seis/norne/all/"
-  sgyfile = datdir+"norne4d_2006-full.sgy"
-  datfile = datdir+"all2006full.dat"
-  #readFormat(sgyfile) # format is 1, IBM floats
-  #dumpTraceHeaders(sgyfile,1,1001)
-  #testFormat(n1,n2,n3,sgyfile) # yes, looks like IBM format
-  #convert(n1,n2,n3,sgyfile,datfile)
-  displayNorne(datfile)
-
-def displayNorne(datfile):
-  global n1
-  clip = 1000.0
-  x = readImage(datfile,n1,n2,n3)
-  #n1,j1 = 601,320
-  #x = copy(n1,n2,n3,j1,0,0,x)
-  #print "x min =",min(x)," max =",max(x)
-  s1,s2,s3 = Sampling(n1),Sampling(n2),Sampling(n3)
-  frame = SimpleFrame(AxesOrientation.XRIGHT_YIN_ZDOWN)
-  ipg = frame.addImagePanels(s1,s2,s3,x)
-  ipg.setClips(-clip,clip)
-
-def goSino():
-  global bo
-  bo = ByteOrder.LITTLE_ENDIAN # non-standard byte-order
-  """
-  nt = 2001, dt = 0.004 s, (ft = 0.000 s?)
-  """
-  n1,n2,n3 = 2001,721,1
-  datdir = "/data/seis/sinopec/"
-  for component in ["x","z"]:
-    sgyfile = datdir+"260_"+component+"_201-921_stack.segy"
-    datfile = datdir+component+"260.dat"
-    #readFormat(sgyfile)
-    #testFormat(n1,n2,n3,sgyfile)
-    #convert(n1,n2,n3,sgyfile,datfile)
-    f = readImage(datfile,n1,n2)
-    if component=="z":
-      stretch(1.6,f)
-      #mul(pow(rampfloat(0.0,1.0,0.0,n1,n2),2.0),f,f)
-    else:
-      #mul(pow(rampfloat(0.0,1.0,0.0,n1,n2),0.0),f,f)
-      pass
-    lowpass(0.10,f)
-    gain(50,f)
-    plot2(f,title=component+" component")
 
 def lowpass(f3db,f):
   bf = ButterworthFilter(f3db,6,ButterworthFilter.Type.LOW_PASS)
@@ -253,6 +260,15 @@ def plot2(x,title=None):
     sp.setTitle(title)
   pv = sp.addPixels(x)
   pv.setPercentiles(2,98)
+  
+def display(datfile,clip=0.0):
+  x = readImage(datfile,n1,n2,n3)
+  print "x min =",min(x)," max =",max(x)
+  frame = SimpleFrame(AxesOrientation.XRIGHT_YIN_ZDOWN)
+  s1,s2,s3 = Sampling(n1),Sampling(n2),Sampling(n3)
+  ipg = frame.addImagePanels(s1,s2,s3,x)
+  if clip>0.0:
+    ipg.setClips(-clip,clip)
   
 def goF3d():
   """

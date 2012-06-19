@@ -80,6 +80,8 @@ public class SegyImage {
    * SEG-Y headers.
    */
   public void printInfo() {
+    System.out.println("file name = "+_fileName);
+    System.out.println("byte order = "+_byteOrder);
     System.out.println("number of bytes = "+_nbyte);
     System.out.println("number of traces = "+_ntrace);
     if (_format==1) {
@@ -112,23 +114,23 @@ public class SegyImage {
     System.out.printf("i3min = %5d, i3max = %5d (crossline index bounds)%n",
       _i3min,_i3max);
     System.out.printf(
-      "xmin = %10.6f, xmax = %10.6f (x coordinate bounds, in km)%n",
+      "xmin = %11.6f, xmax = %11.6f (x coordinate bounds, in km)%n",
       _xmin,_xmax);
     System.out.printf(
-      "ymin = %10.6f, ymax = %10.6f (y coordinate bounds, in km)%n",
+      "ymin = %11.6f, ymax = %11.6f (y coordinate bounds, in km)%n",
       _ymin,_ymax);
-    System.out.printf("grid azimuth = %6.2f degrees%n",toDegrees(_azim));
+    System.out.printf("grid azimuth = %5.2f degrees%n",toDegrees(_azim));
     System.out.println("grid reference point:");
-    System.out.printf("  i2ref = %5d, i3ref = %5d, x = %10.6f, y = %10.6f%n",
+    System.out.printf("  i2ref = %5d, i3ref = %5d, x = %11.6f, y = %11.6f%n",
       _i2ref,_i3ref,_xref,_yref);
     System.out.println("grid corner points:");
-    System.out.printf("  i2min = %5d, i3min = %5d, x = %10.6f, y = %10.6f%n",
+    System.out.printf("  i2min = %5d, i3min = %5d, x = %11.6f, y = %11.6f%n",
       _i2min,_i3min,getX(_i2min,_i3min),getY(_i2min,_i3min));
-    System.out.printf("  i2max = %5d, i3min = %5d, x = %10.6f, y = %10.6f%n",
+    System.out.printf("  i2max = %5d, i3min = %5d, x = %11.6f, y = %11.6f%n",
       _i2max,_i3min,getX(_i2max,_i3min),getY(_i2max,_i3min));
-    System.out.printf("  i2min = %5d, i3max = %5d, x = %10.6f, y = %10.6f%n",
+    System.out.printf("  i2min = %5d, i3max = %5d, x = %11.6f, y = %11.6f%n",
       _i2min,_i3max,getX(_i2min,_i3max),getY(_i2min,_i3max));
-    System.out.printf("  i2max = %5d, i3max = %5d, x = %10.6f, y = %10.6f%n",
+    System.out.printf("  i2max = %5d, i3max = %5d, x = %11.6f, y = %11.6f%n",
       _i2max,_i3max,getX(_i2max,_i3max),getY(_i2max,_i3max));
   }
 
@@ -354,7 +356,7 @@ public class SegyImage {
    * @return the x coordinate.
    */
   public double getX(int i2, int i3) {
-    return _xref+(i2-_i2ref)*_d2*_cosa-(i3-_i3ref)*_d3*_sina;
+    return _xref+(i2-_i2ref)*_d2*_sin2+(i3-_i3ref)*_d3*_sin3;
   }
 
   /**
@@ -364,7 +366,7 @@ public class SegyImage {
    * @return the y coordinate.
    */
   public double getY(int i2, int i3) {
-    return _yref+(i2-_i2ref)*_d2*_sina+(i3-_i3ref)*_d3*_cosa;
+    return _yref+(i2-_i2ref)*_d2*_sin2-(i3-_i3ref)*_d3*_sin3;
   }
 
   /**
@@ -532,8 +534,8 @@ public class SegyImage {
   private int _i2ref,_i3ref; // grid indices for reference trace
   private double _xref,_yref; // coordinates for reference trace
   private double _azim = 0.0; // azimuth of sampling grid
-  private double _cosa = 1.0; // cosine of grid azimuth
-  private double _sina = 0.0; // sine of grid azimuth
+  private double _sin2 = 0.0; // sine of grid azimuth for 2nd dimension
+  private double _sin3 = 1.0; // sine of grid azimuth for 3rd dimension
   private int[] _ibuf; // buffer for trace samples as ints
   private short[] _sbuf; // buffer for trace samples as shorts
   private byte[] _bbuf; // buffer for trace samples as bytes
@@ -684,8 +686,12 @@ public class SegyImage {
         }
         _af.readInts(hi); // read the trace header
         _af.skipBytes(_n1*_bytesPerSample); // skip the trace samples
-        int pxy = hi[17]&0xffff; // power of 10 is a 2-byte short
-        double sxy = uxy*pow(10.0,pxy); // scale factor for x and y
+        double sxy = uxy; // scale factor for x and y
+        int pxy = (short)((hi[17])&0xffff); // scale factor is a short
+        if (pxy>0) // if positive, multiply
+          sxy *= pxy;
+        else if (pxy<0) // if negative, divide
+          sxy /= -pxy;
         double x = hi[45]*sxy; // x coordinate
         double y = hi[46]*sxy; // y coordinate
         int i2 = hi[48]; // xline number
@@ -750,9 +756,8 @@ public class SegyImage {
         _i3ref = j3;
         _xref = x(_i2ref,_i3ref);
         _yref = y(_i2ref,_i3ref);
-        _azim = atan2(dy,dx);
-        _cosa = cos(_azim);
-        _sina = sin(_azim);
+        _azim = atan2(dx,dy);
+        _sin2 = sin(_azim);
       }
     }
     _d3 = 1.0;
@@ -769,6 +774,7 @@ public class SegyImage {
         double dx = x(j2,j3hi)-x(j2,j3lo);
         double dy = y(j2,j3hi)-y(j2,j3lo);
         _d3 = sqrt(dx*dx+dy*dy)/k3;
+        _sin3 = sin(atan2(dx,dy));
       }
     }
   }
