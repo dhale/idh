@@ -1,17 +1,12 @@
 """
-Converts sgy files (SEG-Y format) to dat files (3D arrays of floats)
-Removes all SEG-Y headers and, if necessary, converts IBM floats to 
+Converts sgy image files (SEG-Y format) to dat files (3D arrays of floats)
+Removes all SEG-Y headers and, if necessary, converts the data format to
 IEEE floats. The byte order for floats in dat files is BIG_ENDIAN. 
 
 Author: Dave Hale, Colorado School of Mines
-Version: 2010.11.05
+Version: 2012.06.18
 """
 from imports import *
-
-nhead=3200 # number of bytes in EBCDIC header
-nbhed=400 # number of bytes in binary header
-nthed=240 # number of bytes in trace header
-bo=ByteOrder.BIG_ENDIAN # SEG-Y standard
 global n1,n2,n3
 
 #############################################################################
@@ -24,92 +19,133 @@ def main(args):
 
 def goMbs():
   """
-  Subsets of PstmSmall:
-  n1,nt = 501, dt = 0.0020, ft = 0.3 (s)
-  n2,ny = 422, dy = 0.016764, fy = 0.0 (km) (dy = 55 ft), iline=1001:1422
-  n3,nx = 448, dx = 0.016764, fx = 0.0 (km) (dx = 55 ft), xline= 601:1048
-  Subsets of PstmLarge:
-  n1,nt = 501, dt = 0.0020, ft = 0.3 (s)
-  n2,ny = 422, dy = 0.016764, fy = 0.0 (km) (dy = 55 ft), iline=1001:1422
-  n3,nx = 448, dx = 0.016764, fx = 0.0 (km) (dx = 55 ft), xline= 601:1048
+  ***************************************************************************
+  PstmSmall (pstm_fraw.sgy):
+  number of bytes = 959341200
+  number of traces = 153740
+  format = 1 (4-byte IBM floating point)
+  units for spatial coordinates: ft (will be converted to km)
+  n1 =  1500 (number of samples per trace)
+  n2 =   448 (number of traces in inline direction)
+  n3 =   422 (number of traces in crossline direction)
+  d1 = 0.002000 (time sampling interval, in s)
+  d2 = 0.016764 (inline sampling interval, in km)
+  d3 = 0.016764 (crossline sampling interval, in km)
+  i2min =   601, i2max =  1048 (inline index bounds)
+  i3min =  1001, i3max =  1422 (crossline index bounds)
+  xmin = 823.725048, xmax = 831.574867 (x coordinate bounds, in km)
+  ymin = 245.803217, ymax = 255.588516 (y coordinate bounds, in km)
+  grid azimuth =  31.88 degrees
+  grid reference point:
+    i2ref =   601, i3ref =  1090, x = 825.398400, y = 247.069966
+  grid corner points:
+    i2min =   601, i3min =  1001, x = 826.186374, y = 245.803039
+    i2max =  1048, i3min =  1001, x = 832.549633, y = 249.760712
+    i2min =   601, i3max =  1422, x = 822.458993, y = 251.796028
+    i2max =  1048, i3max =  1422, x = 828.822252, y = 255.753701
+  ***************************************************************************
+  PstmLarge (pstm_raw_cut.sgy):
+  number of bytes = 4647376320
+  number of traces = 795783
+  data format code = 1 (4-byte IBM floating point)
+  units for spatial coordinates: ft (will be converted to km)
+  n1 = 1400 (number of samples per trace)
+  n2 = 1119 (number of traces in inline direction)
+  n3 = 1189 (number of traces in crossline direction)
+  d1 = 0.0020 (time sampling interval)
+  d2 = 0.016764 (inline sampling interval)
+  d3 = 0.016764 (crossline sampling interval)
+  i2min = 350, i2max = 1468 (inline index bounds)
+  i3min = 234, i3max = 1422 (crossline index bounds)
+  xmin = 822.376308, xmax = 842.769561 (x coordinate bounds)
+  ymin = 235.175145, ymax = 255.588516 (y coordinate bounds)
+  grid azimuth = 31.88 degrees
+  grid reference point:
+    i2ref =  395, i3ref =  612, x = 826.698372, y = 238.441687
+  grid corner points:
+    i2min =  350, i3min =  234, x = 829.404562, y = 232.662365
+    i2max = 1468, i3min =  234, x = 845.319592, y = 242.561104
+    i2min =  350, i3max = 1422, x = 818.886118, y = 249.573744
+    i2max = 1468, i3max = 1422, x = 834.801148, y = 259.472484
+  good subset:
+    i1min,i1max = 150, 650,  m1 = 501
+    i2min,i2max = 490,1258,  m2 = 763
+    i3min,i3max = 358, 917,  m3 = 560
   """
-  global n1,n2,n3
-  #n1,n2,n3 = 1500,422,448 # PstmSmall
-  n1,n2,n3 = 1400,422,448 # PstmLarge raw
-  #sgydir = "/data/seis/mbs/PstmSmall/Marathon20070228/"
-  #sgydir = "/data/seis/mbs/PstmSmall/Marathon20070228/"
-  sgydir = "/data/seis/mbs/PstmLarge/"
-  datdir = "/data/seis/mbs/dat/"
-  #sgyfile = sgydir+"pstm_fraw.sgy"
-  #sgyfile = sgydir+"pstm_raw_cut.sgy"
-  sgyfile = sgydir+"pstm_fxy_cut.sgy"
-  #datfile = datdir+"pstm_raw_cut.dat"
-  #datfile = datdir+"pstm_raw_s1.dat"
-  datfile = datdir+"pstm_fxy_s1.dat"
-  printBinaryHeaderInfo(sgyfile)
-  #readFormat(sgyfile) # format is 1, IBM floats
-  #dumpTraceHeaders(sgyfile,fmt,n1,1000)
-  #makeMap(sgyfile,None,fmt,n1)
-  #testFormat(n1,100,100,sgyfile) # yes, looks like IBM format
-  #convertMbs(n1,ntrace,sgyfile,datfile)
-  #n1,n2,n3 = 501,422,448 # PstmSmall
-  #n1,n2,n3 = 501,1189,1116 # PstmLarge raw all
-  #n1,n2,n3 = 501,560,763 # PstmLarge raw sub 1
-  #displayMbs(datfile,clip=5000.0)
-
-def getBinaryHeaderInfo(sgyfile,bo=ByteOrder.BIG_ENDIAN):
-  """
-  Returns essential information from the binary file header.
-  Returned information is a 5-tuple containing the
-    data sample format code (integer)
-    number of bytes per sample (integer)
-    number of traces (integer)
-    number of samples per trace (integer)
-    sampling interval in seconds (float)
-  """
-  h = zeroshort(200) # binary header contains 400 bytes = 200 shorts
-  ais = ArrayInputStream(sgyfile,bo)
-  ais.skipBytes(3200) # skip text header (3200 bytes)
-  ais.readShorts(h) # read binary header (400 bytes)
-  ais.close()
-  dt = h[8]*1e-6 # sampling interval, converted to seconds
-  nt = h[10] # number of samples per data trace
-  fmt = h[12] # data sample format code
-  if fmt==8:
-    bps = 1 # 1-byte, two's complement integer
-  elif fmt==3:
-    bps = 2 # 2-byte, two's complement integer
-  else:
-    bps = 4 # typically either IBM or IEEE floating point
-  nbytes = File(sgyfile).length() # number of bytes in file
-  ntrace = (nbytes-3200-400)/(240+bps*n1) # number of traces
-  return fmt,bps,ntrace,nt,dt
-
-def printBinaryHeaderInfo(sgyfile,bo=ByteOrder.BIG_ENDIAN):
-  """
-  Prints essential information found in the binary file header.
-  """
-  fmt,bps,ntrace,nt,dt = getBinaryHeaderInfo(sgyfile,bo)
-  if fmt==1:
-    print "data format code = 1 (IBM floating point)"
-  elif fmt==2:
-    print "data format code = 2 (4-byte two's complement integer)"
-  elif fmt==3:
-    print "data format code = 3 (2-byte two's complement integer)"
-  elif fmt==4:
-    print "data format code = 4 (4-byte fixed-point with gain)"
-  elif fmt==5:
-    print "data format code = 5 (IEEE floating point)"
-  elif fmt==8:
-    print "data format code = 8 (1-byte two's complement integer)"
-  else:
-    print "data format code =",fmt,"is unknown!"
-  print "number of bytes per sample =",bps
-  print "number of traces =",ntrace
-  print "number of samples per trace =",nt
-  print "time sampling interval (in seconds) =",dt
+  mbsdir = "/data/seis/mbs/"
+  sgyfile = mbsdir+"PstmSmall/Marathon20070228/pstm_fraw.sgy"
+  datfile = mbsdir+"dat/pstm_fraw_s1.dat"
+  i1min,i1max,i2min,i2max,i3min,i3max = 150,650,601,1048,1001,1422
+  #sgyfile = mbsdir+"PstmLarge/pstm_raw_cut.sgy"
+  #datfile = mbsdir+"dat/pstm_raw_s1.dat"
+  #i1min,i1max,i2min,i2max,i3min,i3max = 150,650,490,1258,358,917
+  n1,n2,n3 = 1+i1max-i1min,1+i2max-i2min,1+i3max-i3min
+  si = SegyImage(sgyfile)
+  si.printInfo()
+  compareIbmIeeeFloats(si)
+  plotI2I3(si.getI2sAsFloats(),si.getI3sAsFloats())
+  plotXY(si.getXs(),si.getYs())
+  #si.writeFloats(datfile,i1min,i1max,i2min,i2max,i3min,i3max)
+  si.close()
+  x = readImage(datfile,n1,n2,n3)
+  show3d(x,clip=10000.0)
   
-def displayMbs(datfile,clip=0.0):
+def show3d(x,clip=0.0):
+  print "x min =",min(x)," max =",max(x)
+  frame = SimpleFrame()
+  ipg = frame.addImagePanels(x)
+  if clip>0.0:
+    ipg.setClips(-clip,clip)
+  frame.orbitView.setScale(2.0)
+  frame.setSize(1000,1000)
+
+def plotI2I3(i2,i3):
+  sp = SimplePlot()
+  sp.setHLabel("inline sample index i2")
+  sp.setVLabel("crossline sample index i3")
+  pv = sp.addPoints(i2,i3)
+  pv.setMarkStyle(PointsView.Mark.POINT);
+  pv.setLineStyle(PointsView.Line.NONE);
+  w,h = goodWidthHeight(i2,i3)
+  sp.setSize(w,h)
+
+def plotXY(x,y):
+  sp = SimplePlot()
+  sp.setHLabel("x coordinate (km)")
+  sp.setVLabel("y coordinate (km)")
+  pv = sp.addPoints(x,y)
+  pv.setMarkStyle(PointsView.Mark.POINT);
+  pv.setLineStyle(PointsView.Line.NONE);
+  w,h = goodWidthHeight(x,y)
+  sp.setSize(w,h)
+
+def goodWidthHeight(x,y):
+  xmin,xmax = min(x),max(x)
+  ymin,ymax = min(y),max(y)
+  w,h = 1000,1000
+  if (xmax-xmin)>(ymax-ymin):
+    h = int(h*(ymax-ymin)/(xmax-xmin))
+  else:
+    w = int(w*(xmax-xmin)/(ymax-ymin))
+  return w,h
+
+def compareIbmIeeeFloats(si):
+  ntrace = si.countTraces()
+  fmt = si.getFormat()
+  si.setFormat(1) # IBM floats
+  fibm = si.getTrace(ntrace/2)
+  si.setFormat(5) # IEEE floats
+  fieee = si.getTrace(ntrace/2)
+  si.setFormat(fmt)
+  pp = PlotPanel(2,1)
+  pp.setTitle("IBM (top) versus IEEE (bottom)")
+  pp.addPoints(0,0,fibm)
+  pp.addPoints(1,0,fieee)
+  pf = PlotFrame(pp)
+  pf.setSize(1000,800)
+  pf.setVisible(True)
+  
+def display(datfile,clip=0.0):
   x = readImage(datfile,n1,n2,n3)
   print "x min =",min(x)," max =",max(x)
   frame = SimpleFrame(AxesOrientation.XRIGHT_YIN_ZDOWN)
@@ -117,54 +153,6 @@ def displayMbs(datfile,clip=0.0):
   ipg = frame.addImagePanels(s1,s2,s3,x)
   if clip>0.0:
     ipg.setClips(-clip,clip)
-
-def convertMbs(n1,ntrace,sgyfile,datfile):
-  #i1min,i1max =    0,1499 # PstmSmall
-  #i2min,i2max = 1001,1422
-  #i3min,i3max =  601,1048
-  #i1min,i1max =  150, 650 # PstmSmall
-  #i2min,i2max = 1001,1422
-  #i3min,i3max =  601,1048
-  #i1min,i1max = 150, 650 # PstmLarge raw
-  #i2min,i2max = 234,1422
-  #i3min,i3max = 353,1468
-  i1min,i1max = 150, 650 # PstmLarge raw subset
-  i2min,i2max = 358, 917 # m2 = 560 (124:683 = 358: 917)
-  i3min,i3max = 490,1258 # m3 = 763 (137:905 = 490:1258)
-  m1 = 1+i1max-i1min
-  m2 = 1+i2max-i2min
-  m3 = 1+i3max-i3min
-  ais = ArrayInputStream(sgyfile,bo)
-  ais.skipBytes(nhead)
-  ais.skipBytes(nbhed)
-  h = zeroint(nthed/4)
-  x = zeroint(n1)
-  y = zeroint(m1)
-  z = zerofloat(m1,m2,m3)
-  nread = 0
-  nprev = 0
-  for itrace in range(ntrace):
-    nread += 1
-    nperc = int(100.0*nread/ntrace)
-    if nperc!=nprev and nperc%10==0:
-      print "percent:",nperc
-      nprev = nperc
-    ais.readInts(h)
-    i2,i3 = h[47],h[48]
-    #print "nread =",nread," i2 =",i2," i3 =",i3
-    #print "nread =",nread," i3min =",i3min," i3 =",i3," i3max =",i3max
-    if i2min<=i2 and i2<=i2max and i3min<=i3 and i3<=i3max:
-      #if i2==i2min:
-      #  print "nread =",nread," i3min =",i3min," i3 =",i3," i3max =",i3max
-      ais.readInts(x) # read trace samples
-      copy(m1,i1min,x,0,y) # keep only m1 samples
-      IbmIeee.ibmToFloat(y,z[i3-i3min][i2-i2min]) # ibm to ieee
-    else:
-      ais.skipBytes(4*n1)
-  aos = ArrayOutputStream(datfile)
-  aos.writeFloats(z) # write 3D image
-  ais.close()
-  aos.close()
 
 """ 
 Full Norne corner coordinates
@@ -448,25 +436,6 @@ def bigSubsetParihaka(n1,sgyfile,datfile):
       ais.skipBytes(4*n1)
   ais.close()
   aos.close()
-
-def getLineSampling(sgyfile,bo=ByteOrder.BIG_ENDIAN):
-  """
-  Returns samplings (s3,s2) for the (inline,crossline) grid.
-  Note that the inline sampling corresponds to the 3rd (slowest)
-  dimension, and that the crossline sampling corresponds to the
-  2nd dimension of the 3D dataset.
-  """
-  fmt,bps,ntrace,nt,dt = getBinaryHeaderInfo(sgyfile,bo)
-  hi = zeroint(240/4) # 240-byte trace header as 4-byte ints
-  ais = ArrayInputStream(sgyfile)
-  ais.skipBytes(3200) # skip text file header
-  ais.skipBytes(400) # skip binary file header
-  x2min =  Integer.MAX_VALUE
-  x2max = -Integer.MAX_VALUE
-  x3min =  Integer.MAX_VALUE
-  x3max = -Integer.MAX_VALUE
-  for itrace in range(ntrace)
-    ais.readInts(hi)
 
 def getTraceHeaderInfo(sgyfile,bo=ByteOrder.BIG_ENDIAN):
   fmt,bps,ntrace,nt,dt = getBinaryHeaderInfo(sgyfile,bo)
