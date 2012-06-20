@@ -61,8 +61,6 @@ public class SegyImage {
     _fileName = fileName;
     _byteOrder = byteOrder;
     openArrayFile();
-    loadBinaryHeaderInfo();
-    loadTraceHeaderInfo();
   }
 
   /**
@@ -73,13 +71,15 @@ public class SegyImage {
   }
 
   /**
-   * Prints information derived from binary file and trace headers.
+   * Prints summary information derived from only the binary file header.
    * To ensure that this information makes sense, this method is often 
    * the first one called after constructing an SEG-Y image. Nonsensical 
    * information may be caused by non-standard byte order or non-standard 
    * SEG-Y headers.
    */
-  public void printInfo() {
+  public void printSummaryInfo() {
+    loadBinaryHeaderInfo();
+    System.out.println("****** beginning of SEG-Y file summary info ******");
     System.out.println("file name = "+_fileName);
     System.out.println("byte order = "+_byteOrder);
     System.out.println("number of bytes = "+_nbyte);
@@ -103,35 +103,152 @@ public class SegyImage {
       "units for spatial coordinates: "+(_feet?"ft":"m")+
       " (will be converted to km)");
     System.out.printf("n1 = %5d (number of samples per trace)%n",_n1);
-    System.out.printf("n2 = %5d (number of traces in inline direction)%n",_n2);
-    System.out.printf("n3 = %5d (number of traces in crossline direction)%n",
-      _n3);
     System.out.printf("d1 = %8.6f (time sampling interval, in s)%n",_d1);
-    System.out.printf("d2 = %8.6f (inline sampling interval, in km)%n",_d2);
-    System.out.printf("d3 = %8.6f (crossline sampling interval, in km)%n",_d3);
-    System.out.printf("i2min = %5d, i2max = %5d (inline index bounds)%n",
+    System.out.println("****** end of SEG-Y file summary info ******");
+  }
+
+  /**
+   * Prints all information derived from binary file and trace headers.
+   * This method reads the entire SEG-Y file, which may take a long time.
+   */
+  public void printAllInfo() {
+    loadTraceHeaderInfo();
+    System.out.println("****** beginning of SEG-Y file info ******");
+    System.out.println("file name = "+_fileName);
+    System.out.println("byte order = "+_byteOrder);
+    System.out.println("number of bytes = "+_nbyte);
+    System.out.println("number of traces = "+_ntrace);
+    if (_format==1) {
+      System.out.println("format = 1 (4-byte IBM floating point)");
+    } else if (_format==2) {
+      System.out.println("format = 2 (4-byte two's complement integer)");
+    } else if (_format==3) {
+      System.out.println("format = 3 (2-byte two's complement integer)");
+    } else if (_format==4) {
+      System.out.println("format = 4 (4-byte fixed-point with gain)");
+    } else if (_format==5) {
+      System.out.println("format = 5 (4-byte IEEE floating point)");
+    } else if (_format==8) {
+      System.out.println("format = 8 (1-byte two's complement integer)");
+    } else {
+      System.out.println("format is unknown!");
+    }
+    System.out.println(
+      "units for spatial coordinates: "+(_feet?"ft":"m")+
+      " (will be converted to km)");
+    System.out.println("indices and coordinates from trace headers:");
+    System.out.printf(
+      "  i2min = %5d, i2max = %5d (inline indices)%n",
       _i2min,_i2max);
-    System.out.printf("i3min = %5d, i3max = %5d (crossline index bounds)%n",
+    System.out.printf(
+      "  i3min = %5d, i3max = %5d (crossline indices)%n",
       _i3min,_i3max);
     System.out.printf(
-      "xmin = %11.6f, xmax = %11.6f (x coordinate bounds, in km)%n",
+      "  xmin = %11.6f, xmax = %11.6f (x coordinates, in km)%n",
       _xmin,_xmax);
     System.out.printf(
-      "ymin = %11.6f, ymax = %11.6f (y coordinate bounds, in km)%n",
+      "  ymin = %11.6f, ymax = %11.6f (y coordinates, in km)%n",
       _ymin,_ymax);
-    System.out.printf("grid azimuth = %5.2f degrees%n",toDegrees(_azim));
-    System.out.println("grid reference point:");
-    System.out.printf("  i2ref = %5d, i3ref = %5d, x = %11.6f, y = %11.6f%n",
-      _i2ref,_i3ref,_xref,_yref);
+    System.out.println("grid sampling:");
+    System.out.printf(
+      "  n1 = %5d (number of samples per trace)%n",_n1);
+    System.out.printf(
+      "  n2 = %5d (number of traces in inline direction)%n",_n2);
+    System.out.printf(
+      "  n3 = %5d (number of traces in crossline direction)%n",
+      _n3);
+    System.out.printf(
+      "  d1 = %8.6f (time sampling interval, in s)%n",_d1);
+    System.out.printf(
+      "  d2 = %8.6f (inline sampling interval, in km)%n",_d2);
+    System.out.printf(
+      "  d3 = %8.6f (crossline sampling interval, in km)%n",_d3);
+    //System.out.println("grid reference point:");
+    //System.out.printf(
+    //  "  i2ref = %5d, i3ref = %5d, x = %11.6f, y = %11.6f%n",
+    //  _i2ref,_i3ref,_xref,_yref);
     System.out.println("grid corner points:");
-    System.out.printf("  i2min = %5d, i3min = %5d, x = %11.6f, y = %11.6f%n",
+    System.out.printf(
+      "  i2min = %5d, i3min = %5d, x = %11.6f, y = %11.6f%n",
       _i2min,_i3min,getX(_i2min,_i3min),getY(_i2min,_i3min));
-    System.out.printf("  i2max = %5d, i3min = %5d, x = %11.6f, y = %11.6f%n",
+    System.out.printf(
+      "  i2max = %5d, i3min = %5d, x = %11.6f, y = %11.6f%n",
       _i2max,_i3min,getX(_i2max,_i3min),getY(_i2max,_i3min));
-    System.out.printf("  i2min = %5d, i3max = %5d, x = %11.6f, y = %11.6f%n",
+    System.out.printf(
+      "  i2min = %5d, i3max = %5d, x = %11.6f, y = %11.6f%n",
       _i2min,_i3max,getX(_i2min,_i3max),getY(_i2min,_i3max));
-    System.out.printf("  i2max = %5d, i3max = %5d, x = %11.6f, y = %11.6f%n",
+    System.out.printf(
+      "  i2max = %5d, i3max = %5d, x = %11.6f, y = %11.6f%n",
       _i2max,_i3max,getX(_i2max,_i3max),getY(_i2max,_i3max));
+    System.out.printf("grid azimuth: %5.2f degrees%n",_azim);
+    System.out.println("****** end of SEG-Y file info ******");
+  }
+
+  /**
+   * Prints the binary file header. Useful for diagnosing problems.
+   * See the SEG-Y standard for complete explanations of all fields.
+   */
+  public void printBinaryHeader() {
+    loadBinaryHeaderInfo();
+    int[] h = new int[400/4];
+    try {
+      _af.seek(3200);
+      _af.readInts(h);
+    } catch (IOException e) {
+      throw new RuntimeException("cannot read binary header");
+    }
+    System.out.println("****** beginning of binary file header ******");
+    for (String field:_binaryHeaderFields) {
+      int ibyte = Integer.parseInt(field.substring(0,4));
+      int nbyte = Integer.parseInt(field.substring(5,9))-ibyte+1;
+      int index = (ibyte-1-3200)/4;
+      int ihalf = (ibyte-1-3200)%4;
+      int value = h[index]; 
+      if (nbyte==2)
+        value = (ihalf==0)?h2(value):l2(value);
+      String bytes = field.substring(0,11);
+      String descr = field.substring(11);
+      if (descr.equals("unassigned")) {
+        System.out.printf(bytes+"           (unassigned)%n");
+      } else {
+        System.out.printf(bytes+"%10d ("+descr+")%n",value);
+      }
+    }
+    System.out.println("****** end of binary file header ******");
+  }
+  
+  /**
+   * Prints a specified trace header. Useful for diagnosing problems.
+   * See the SEG-Y standard for complete explanations of all fields.
+   * @param i the (zero-based) trace index.
+   */
+  public void printTraceHeader(int i) {
+    loadBinaryHeaderInfo();
+    int[] h = new int[240/4];
+    try {
+      _af.seek(headerOffset(i));
+      _af.readInts(h);
+    } catch (IOException e) {
+      throw new RuntimeException("cannot read header at index "+i+" ("+e+")");
+    }
+    System.out.println("****** beginning of header for trace "+i+" ******");
+    for (String field:_traceHeaderFields) {
+      int ibyte = Integer.parseInt(field.substring(0,4).trim());
+      int nbyte = Integer.parseInt(field.substring(5,9).trim())-ibyte+1;
+      int index = (ibyte-1)/4;
+      int ihalf = (ibyte-1)%4;
+      int value = h[index]; 
+      if (nbyte==2)
+        value = (ihalf==0)?h2(value):l2(value);
+      String bytes = field.substring(0,11);
+      String descr = field.substring(11);
+      if (descr.equals("skipping")) {
+        System.out.printf(bytes+"           (skipping)%n");
+      } else {
+        System.out.printf(bytes+"%10d ("+descr+")%n",value);
+      }
+    }
+    System.out.println("****** end of header for trace "+i+" ******");
   }
 
   /**
@@ -139,6 +256,7 @@ public class SegyImage {
    * @return the number of bytes.
    */
   public long countBytes() {
+    loadBinaryHeaderInfo();
     return _nbyte;
   }
 
@@ -147,6 +265,7 @@ public class SegyImage {
    * @return the number of traces.
    */
   public int countTraces() {
+    loadBinaryHeaderInfo();
     return _ntrace;
   }
 
@@ -156,6 +275,7 @@ public class SegyImage {
    * @return the format code.
    */
   public int getFormat() {
+    loadBinaryHeaderInfo();
     return _format;
   }
 
@@ -166,30 +286,7 @@ public class SegyImage {
    */
   public void setFormat(int format) {
     _format = format;
-  }
-
-  /**
-   * Gets the sampling of the 1st (time) dimension, in seconds.
-   * @return the sampling.
-   */
-  public Sampling getSampling1() {
-    return new Sampling(_n1,_d1,_f1);
-  }
-
-  /**
-   * Gets the sampling of the 2nd (inline) dimension, in kilometers.
-   * @return the sampling.
-   */
-  public Sampling getSampling2() {
-    return new Sampling(_n2,_d2,_f2);
-  }
-
-  /**
-   * Gets the sampling of the 3rd (crossline) dimension, in kilometers.
-   * @return the sampling.
-   */
-  public Sampling getSampling3() {
-    return new Sampling(_n3,_d3,_f3);
+    _formatSet = true;
   }
 
   /**
@@ -197,6 +294,7 @@ public class SegyImage {
    * @return the number of samples.
    */
   public int getN1() {
+    loadBinaryHeaderInfo();
     return _n1;
   }
 
@@ -205,6 +303,7 @@ public class SegyImage {
    * @return the number of samples.
    */
   public int getN2() {
+    loadTraceHeaderInfo();
     return _n2;
   }
 
@@ -213,6 +312,7 @@ public class SegyImage {
    * @return the number of samples.
    */
   public int getN3() {
+    loadTraceHeaderInfo();
     return _n3;
   }
 
@@ -221,6 +321,7 @@ public class SegyImage {
    * @return the sampling interval.
    */
   public double getD1() {
+    loadBinaryHeaderInfo();
     return _d1;
   }
 
@@ -229,6 +330,7 @@ public class SegyImage {
    * @return the sampling interval.
    */
   public double getD2() {
+    loadTraceHeaderInfo();
     return _d2;
   }
 
@@ -237,6 +339,7 @@ public class SegyImage {
    * @return the sampling interval.
    */
   public double getD3() {
+    loadTraceHeaderInfo();
     return _d3;
   }
 
@@ -247,6 +350,7 @@ public class SegyImage {
    */
   public void setD1(double d1) {
     _d1 = d1;
+    _d1Set = true;
   }
 
   /**
@@ -256,6 +360,7 @@ public class SegyImage {
    */
   public void setD2(double d2) {
     _d2 = d2;
+    _d2Set = true;
   }
 
   /**
@@ -265,6 +370,7 @@ public class SegyImage {
    */
   public void setD3(double d3) {
     _d3 = d3;
+    _d3Set = true;
   }
 
   /**
@@ -297,9 +403,10 @@ public class SegyImage {
    * @param f output array to fill with trace samples.
    */
   public void getTrace(int i, float[] f) {
+    loadBinaryHeaderInfo();
     checkTraceIndex(i);
     try {
-      _af.seek(offset(i));
+      _af.seek(traceOffset(i));
       if (_format==1) { // 4-byte IBM floats
         _af.readInts(_ibuf);
         ibmToFloat(_ibuf,f);
@@ -330,6 +437,7 @@ public class SegyImage {
    * @param f output array to fill with trace samples.
    */
   public void getTrace(int i2, int i3, float[] f) {
+    loadTraceHeaderInfo();
     int i = index(i2,i3);
     if (i>=0) {
       getTrace(i,f);
@@ -346,6 +454,7 @@ public class SegyImage {
    * @return true, if the trace exists; false, otherwise.
    */
   public boolean hasTraceAt(int i2, int i3) {
+    loadTraceHeaderInfo();
     return e(i2,i3);
   }
 
@@ -356,6 +465,7 @@ public class SegyImage {
    * @return the x coordinate.
    */
   public double getX(int i2, int i3) {
+    loadTraceHeaderInfo();
     return _xref+(i2-_i2ref)*_d2*_sin2+(i3-_i3ref)*_d3*_sin3;
   }
 
@@ -366,7 +476,8 @@ public class SegyImage {
    * @return the y coordinate.
    */
   public double getY(int i2, int i3) {
-    return _yref+(i2-_i2ref)*_d2*_sin2-(i3-_i3ref)*_d3*_sin3;
+    loadTraceHeaderInfo();
+    return _yref+(i2-_i2ref)*_d2*_cos2+(i3-_i3ref)*_d3*_cos3;
   }
 
   /**
@@ -374,6 +485,7 @@ public class SegyImage {
    * @return array of i2 coordinates.
    */
   public int[] getI2s() {
+    loadTraceHeaderInfo();
     return copy(_i2s);
   }
 
@@ -382,6 +494,7 @@ public class SegyImage {
    * @return array of i3 coordinates.
    */
   public int[] getI3s() {
+    loadTraceHeaderInfo();
     return copy(_i3s);
   }
 
@@ -390,6 +503,7 @@ public class SegyImage {
    * @return array of i2 indices, as floats.
    */
   public float[] getI2sAsFloats() {
+    loadTraceHeaderInfo();
     return asFloats(_i2s);
   }
 
@@ -398,6 +512,7 @@ public class SegyImage {
    * @return array of i3 indices, as floats.
    */
   public float[] getI3sAsFloats() {
+    loadTraceHeaderInfo();
     return asFloats(_i3s);
   }
 
@@ -406,6 +521,7 @@ public class SegyImage {
    * @return array of x coordinates.
    */
   public double[] getXs() {
+    loadTraceHeaderInfo();
     return copy(_xs);
   }
 
@@ -414,6 +530,7 @@ public class SegyImage {
    * @return array of y coordinates.
    */
   public double[] getYs() {
+    loadTraceHeaderInfo();
     return copy(_ys);
   }
 
@@ -422,6 +539,7 @@ public class SegyImage {
    * @return the minimum grid index.
    */
   public int getI2Min() {
+    loadTraceHeaderInfo();
     return _i2min;
   }
 
@@ -430,6 +548,7 @@ public class SegyImage {
    * @return the maximum grid index.
    */
   public int getI2Max() {
+    loadTraceHeaderInfo();
     return _i2max;
   }
 
@@ -438,6 +557,7 @@ public class SegyImage {
    * @return the minimum grid index.
    */
   public int getI3Min() {
+    loadTraceHeaderInfo();
     return _i3min;
   }
 
@@ -446,7 +566,44 @@ public class SegyImage {
    * @return the maximum grid index.
    */
   public int getI3Max() {
+    loadTraceHeaderInfo();
     return _i3max;
+  }
+
+  /**
+   * Gets the minimum x coordinate.
+   * @return the minimum x coordinate.
+   */
+  public double getXMin() {
+    loadTraceHeaderInfo();
+    return _xmin;
+  }
+
+  /**
+   * Gets the maximum x coordinate.
+   * @return the maximum x coordinate.
+   */
+  public double getXMax() {
+    loadTraceHeaderInfo();
+    return _xmax;
+  }
+
+  /**
+   * Gets the minimum y coordinate.
+   * @return the minimum y coordinate.
+   */
+  public double getYMin() {
+    loadTraceHeaderInfo();
+    return _ymin;
+  }
+
+  /**
+   * Gets the maximum y coordinate.
+   * @return the maximum y coordinate.
+   */
+  public double getYMax() {
+    loadTraceHeaderInfo();
+    return _ymax;
   }
 
   /**
@@ -475,6 +632,7 @@ public class SegyImage {
     int i2min, int i2max,
     int i3min, int i3max)
   {
+    loadTraceHeaderInfo();
     checkSampleIndex(i1min);
     checkSampleIndex(i1max);
     checkGridIndices(i2min,i3min);
@@ -485,12 +643,15 @@ public class SegyImage {
     try {
       ArrayOutputStream aos = new ArrayOutputStream(fileName);
       int m1 = 1+i1max-i1min;
+      int m2 = 1+i2max-i2min;
+      int m3 = 1+i3max-i3min;
+      int mb = (int)(0.5+4.0*m1*m2*m3/1.0e6);
+      System.out.print(
+        "writing "+m1+"*"+m2+"*"+m3+" floats ("+mb+" MB) ");
       float[] f = new float[_n1];
       float[] g = new float[m1];
-      int mb = (int)(0.5+4.0*m1*(1+i2max-i2min)*(1+i3max-i3min)/1.0e6);
-      System.out.print("writing floats ("+mb+" MB) ");
       for (int i3=i3min; i3<=i3max; ++i3) {
-        if ((i3-i3min)%((i3max-i3min)/10)==0) {
+        if (i3min<i3max && (i3-i3min)%((i3max-i3min)/10)==0) {
           double perc = (int)((i3-i3min)*100.0/(i3max-i3min));
           System.out.print(".");
         }
@@ -514,6 +675,7 @@ public class SegyImage {
   private String _fileName; // SEG-Y file name
   private ByteOrder _byteOrder; // BIG_ENDIAN or LITTLE_ENDIAN
   private int _format; // sample format code
+  private boolean _formatSet; // true, if format set explicitly
   private boolean _feet; // true, if feet; false if meters.
   private int _bytesPerSample; // number of bytes per sample
   private int _ntrace; // number of traces in file
@@ -521,7 +683,7 @@ public class SegyImage {
   private Sampling _s1,_s2,_s3; // samplings
   private int _n1,_n2,_n3; // numbers of samples
   private double _d1,_d2,_d3; // sampling intervals
-  private double _f1,_f2,_f3; // first sample values
+  private boolean _d1Set,_d2Set,_d3Set; // true, if set explicitly
   private int[] _i2s; // array[ntrace] of indices i2
   private int[] _i3s; // array[ntrace] of indices i3
   private double[] _xs; // array[ntrace] of x coordinates
@@ -533,36 +695,155 @@ public class SegyImage {
   private double _ymin,_ymax; // bounds on coordinate y
   private int _i2ref,_i3ref; // grid indices for reference trace
   private double _xref,_yref; // coordinates for reference trace
-  private double _azim = 0.0; // azimuth of sampling grid
-  private double _sin2 = 0.0; // sine of grid azimuth for 2nd dimension
-  private double _sin3 = 1.0; // sine of grid azimuth for 3rd dimension
+  private double _azim = 90.0; // azimuth of sampling grid, in degrees
+  private double _sin2 = 1.0; // sin(azimuth) for 2nd dimension
+  private double _sin3 = 1.0; // sin(azimuth) for 3rd dimension
+  private double _cos2 = 0.0; // cos(azimuth) for 2nd dimension
+  private double _cos3 = 0.0; // cos(azimuth) for 3rd dimension
   private int[] _ibuf; // buffer for trace samples as ints
   private short[] _sbuf; // buffer for trace samples as shorts
   private byte[] _bbuf; // buffer for trace samples as bytes
+  private boolean _infoBH; // true, if binary header info has been loaded
+  private boolean _infoTH; // true, if trace header info has been loaded
 
-  private void println(String s) {
-    System.out.println(s);
+  private static String[] _binaryHeaderFields = {
+    "3201-3204: job identification number",
+    "3205-3208: line number",
+    "3209-3212: reel number",
+    "3213-3214: number of data traces per ensemble",
+    "3215-3216: number of auxiliary traces per ensemble",
+    "3217-3218: sample interval in microseconds",
+    "3219-3220: original sample interval in microseconds",
+    "3221-3222: number of samples per data trace",
+    "3223-3224: original number of samples per data trace",
+    "3225-3226: data sample format code",
+    "3227-3228: ensemble fold",
+    "3229-3230: trace sorting code, 2=CDP, ...",
+    "3231-3232: vertical sum code",
+    "3233-3234: sweep frequency at start, in Hz",
+    "3235-3236: sweep frequency at end, in Hz",
+    "3237-3238: sweep length, in ms",
+    "3239-3240: sweep type code",
+    "3241-3242: trace number of sweep channel",
+    "3243-3244: sweep taper at start, in ms",
+    "3245-3246: sweep taper at end, in ms",
+    "3247-3248: taper type",
+    "3249-3250: correlated data traces",
+    "3251-3252: binary gain recovered",
+    "3253-3254: amplitude recovery method",
+    "3255-3256: measurement system, 1=m, 2=ft",
+    "3257-3258: impulse signal polarity, 1=neg, 2=pos",
+    "3259-3260: vibratory polarity code",
+    "3261-3500: unassigned",
+    "3501-3502: SEG-Y format revision number",
+    "3503-3504: fixed length trace flag",
+    "3505-3506: number of 3200-byte header extensions",
+    "3507-3600: unassigned",
+  };
+
+  private static String[] _traceHeaderFields = {
+    "  1 -   4: trace sequence number within line",
+    "  5 -   8: trace sequence number within file",
+    "  9 -  12: original field record number",
+    " 13 -  16: trace number in original field record",
+    " 17 -  20: energy source point number",
+    " 21 -  24: ensemble number",
+    " 25 -  28: trace number within ensemble",
+    " 29 -  30: trace identification code",
+    " 31 -  32: number of vertically summed traces",
+    " 33 -  34: number of horizontally stacked traces",
+    " 35 -  36: data use: 1 = production, 2 = test",
+    " 37 -  40: distance from source to receiver",
+    " 41 -  44: receiver group elevation",
+    " 45 -  48: surface elevation at source",
+    " 49 -  52: source depth below surface",
+    " 53 -  56: datum elevation at receiver group",
+    " 57 -  60: datum elevation at source",
+    " 61 -  64: water depth at source",
+    " 65 -  68: water depth at group",
+    " 69 -  70: scalar applied to elevations and depths",
+    " 71 -  72: scalar applied to other coordinates",
+    " 73 -  76: source coordinate x",
+    " 77 -  80: source coordinate y",
+    " 81 -  84: group coordinate x",
+    " 85 -  88: group coordinate y",
+    " 89 -  90: coordinate units, 1=length, ...",
+    " 91 -  92: weathering velocity, in ft/s or m/s",
+    " 93 -  94: subweathering velocity, in ft/s or m/s",
+    " 95 -  96: uphole time at source, in ms",
+    " 97 -  98: uphole time at group, in ms",
+    " 99 - 100: source static correction, in ms",
+    "101 - 102: group static correction, in ms",
+    "103 - 104: total static applied, in ms",
+    "105 - 106: lag time A, in ms",
+    "107 - 108: lag time B, in ms",
+    "109 - 110: delay recording time, in ms",
+    "111 - 112: mute time start, in ms",
+    "113 - 114: mute time end, in ms",
+    "115 - 116: number of samples in this trace",
+    "117 - 118: sample interval, in microseconds",
+    "119 - 120: gain type of field instruments",
+    "121 - 122: instrument gain constant, in dB",
+    "123 - 124: instrument early or initial gain, in dB",
+    "125 - 126: correlated, 1=no, 2=yes",
+    "127 - 128: sweep frequency at start, in Hz",
+    "129 - 130: sweep frequency at end, in Hz",
+    "131 - 132: sweep length, in ms",
+    "133 - 134: sweep type, 1=linear, ...",
+    "135 - 136: sweep trace taper at start, in ms",
+    "137 - 138: sweep trace taper at end, in ms",
+    "139 - 140: taper type, 1=linear, ...",
+    "141 - 142: alias filter frequency, in Hz",
+    "143 - 144: alias filter slope, in dB/octave",
+    "145 - 146: notch filter frequency, in Hz",
+    "147 - 148: notch filter slope, in dB/octave",
+    "149 - 150: low-cut frequency, in Hz",
+    "151 - 152: high-cut frequency, in Hz",
+    "153 - 154: low-cut slope, in dB/octave",
+    "155 - 156: high-cut slope, in dB/octave",
+    "157 - 158: year data recorded",
+    "159 - 160: day of year",
+    "161 - 162: hour of day",
+    "163 - 164: minute of hour",
+    "165 - 166: second of minute",
+    "167 - 168: time basis code",
+    "169 - 170: trace weighting factor",
+    "171 - 172: geophone group number, roll position one",
+    "173 - 174: geophone group number, first trace",
+    "175 - 176: geophone group number, last trace",
+    "177 - 178: gap size = total groups dropped",
+    "179 - 180: over travel, 1=down/behind, 2=up/ahead",
+    "181 - 184: x coordinate of ensemble position",
+    "185 - 188: y coordinate of ensemble position",
+    "189 - 192: 3D inline number, the line number",
+    "193 - 196: 3D crossline number, the trace within line",
+    "197 - 200: shotpoint location nearest to ensemble",
+    "201 - 202: scalar for shotpoint location",
+    "203 - 204: trace value measurement unit",
+    "205 - 240: skipping",
+  };
+
+  private short l2(int i) {
+    if (_byteOrder==ByteOrder.BIG_ENDIAN) {
+      return (short)(i&0xffff);
+    } else {
+      return (short)((i>>16)&0xffff);
+    }
+  }
+  private short h2(int i) {
+    if (_byteOrder==ByteOrder.BIG_ENDIAN) {
+      return (short)((i>>16)&0xffff);
+    } else {
+      return (short)(i&0xffff);
+    }
   }
 
-  private float[] asFloats(int[] i) {
+  private static float[] asFloats(int[] i) {
     int n = i.length;
     float[] f = new float[n];
     for (int j=0; j<n; ++j)
       f[j] = i[j];
     return f;
-  }
-
-  private boolean formatInt1() {
-    return _format==8;
-  }
-  private boolean formatInt2() {
-    return _format==3;
-  }
-  private boolean formatIbmFloat4() {
-    return _format==1;
-  }
-  private boolean formatIeeeFloat4() {
-    return _format==5;
   }
 
   private void openArrayFile() {
@@ -584,14 +865,18 @@ public class SegyImage {
   }
 
   private void loadBinaryHeaderInfo() {
+    if (_infoBH) 
+      return;
+    _infoBH = true;
     short[] hs = new short[400/2]; // 400 bytes as 2-byte shorts
     try {
-      _af.seek(3200L); // skip text header (3200 bytes)
+      _af.seek(3200); // skip text header (3200 bytes)
       _af.readShorts(hs); // read binary header (400 bytes)
     } catch (IOException e) {
       throw new RuntimeException("cannot read binary header");
     }
-    _format = hs[12]; // data sample format code
+    if (!_formatSet)
+      _format = hs[12]; // data sample format code
     if (_format==8) {
       _bytesPerSample = 1;
     } else if (_format==3) {
@@ -609,7 +894,8 @@ public class SegyImage {
       throw new RuntimeException("invalid number of samples: "+n1);
     _feet = hs[27]==2; // feet or meters
     _n1 = n1;
-    _d1 = d1;
+    if (!_d1Set) 
+      _d1 = d1;
     _nbyte = new File(_fileName).length();
     _ntrace = (int)((_nbyte-3200-400)/(240+_bytesPerSample*n1));
     _ibuf = new int[_n1];
@@ -652,14 +938,21 @@ public class SegyImage {
   private double y(int i2, int i3) {
     return _ys[indexForTrace(i2,i3)];
   }
-  private long offset(int i) {
-    return 3600L+i*(240L+_bytesPerSample*_n1)+240L;
-  }
-  private long offset(int i2, int i3) {
+  private long traceOffset(int i2, int i3) {
     int i = index(i2,i3);
-    return (i>=0)?offset(i):-1;
+    return (i>=0)?traceOffset(i):-1;
+  }
+  private long traceOffset(int i) {
+    return headerOffset(i)+240L;
+  }
+  private long headerOffset(int i) {
+    return 3600L+i*(240L+_bytesPerSample*_n1);
   }
   private void loadTraceHeaderInfo() {
+    if (_infoTH) 
+      return;
+    _infoTH = true;
+    loadBinaryHeaderInfo();
     _i2min =  Integer.MAX_VALUE;
     _i2max = -Integer.MAX_VALUE;
     _i3min =  Integer.MAX_VALUE;
@@ -676,9 +969,9 @@ public class SegyImage {
     _xs = new double[_ntrace];
     _ys = new double[_ntrace];
     try {
-      _af.seek(3600L); // skip text and binary file headers
+      _af.seek(3600); // skip text and binary file headers
       int[] hi = new int[240/4]; // 240-byte trace header as 4-byte ints
-      System.out.print("reading "+_ntrace+" headers ");
+      System.out.print("reading "+_ntrace+" trace headers ");
       for (int itrace=0; itrace<_ntrace; ++itrace) {
         if ((itrace%(_ntrace/10))==0) {
           int perc = (int)(itrace*100.0/_ntrace);
@@ -687,7 +980,7 @@ public class SegyImage {
         _af.readInts(hi); // read the trace header
         _af.skipBytes(_n1*_bytesPerSample); // skip the trace samples
         double sxy = uxy; // scale factor for x and y
-        int pxy = (short)((hi[17])&0xffff); // scale factor is a short
+        int pxy = l2(hi[17]); // scale factor is a short
         if (pxy>0) // if positive, multiply
           sxy *= pxy;
         else if (pxy<0) // if negative, divide
@@ -695,6 +988,8 @@ public class SegyImage {
         double x = hi[45]*sxy; // x coordinate
         double y = hi[46]*sxy; // y coordinate
         int i2 = hi[48]; // xline number
+        if (i2==0) // if no xline number, ... 
+          i2 = hi[5]; // try the CDP number
         int i3 = hi[47]; // iline number
         if (x<_xmin) _xmin = x;
         if (x>_xmax) _xmax = x;
@@ -738,7 +1033,6 @@ public class SegyImage {
     // x and y coordinates. Compute also the grid azimuth and
     // grid reference points that enable computation of (x,y)
     // coordinates for any pair of grid indices (i2,i3).
-    _d2 = 1.0;
     int k2 = 0;
     for (int j3=_i3min; j3<=_i3max; ++j3) {
       int j2lo = _i2min;
@@ -749,18 +1043,23 @@ public class SegyImage {
         --j2hi;
       if (j2hi-j2lo>k2) {
         k2 = j2hi-j2lo;
-        double dx = x(j2hi,j3)-x(j2lo,j3);
-        double dy = y(j2hi,j3)-y(j2lo,j3);
-        _d2 = sqrt(dx*dx+dy*dy)/k2;
         _i2ref = j2lo;
         _i3ref = j3;
         _xref = x(_i2ref,_i3ref);
         _yref = y(_i2ref,_i3ref);
-        _azim = atan2(dx,dy);
-        _sin2 = sin(_azim);
+        double dx = x(j2hi,j3)-x(j2lo,j3);
+        double dy = y(j2hi,j3)-y(j2lo,j3);
+        double dd = dx*dx+dy*dy;
+        if (dd>0.0) {
+          if (!_d2Set)
+            _d2 = sqrt(dx*dx+dy*dy)/k2;
+          double az = atan2(dx,dy);
+          _sin2 = sin(az);
+          _cos2 = cos(az);
+          _azim = toDegrees(az);
+        }
       }
     }
-    _d3 = 1.0;
     int k3 = 0;
     for (int j2=_i2min; j2<=_i2max; ++j2) {
       int j3lo = _i3min;
@@ -773,8 +1072,14 @@ public class SegyImage {
         k3 = j3hi-j3lo;
         double dx = x(j2,j3hi)-x(j2,j3lo);
         double dy = y(j2,j3hi)-y(j2,j3lo);
-        _d3 = sqrt(dx*dx+dy*dy)/k3;
-        _sin3 = sin(atan2(dx,dy));
+        double dd = dx*dx+dy*dy;
+        if (dd>0.0) {
+          if (!_d3Set)
+            _d3 = sqrt(dx*dx+dy*dy)/k3;
+          double az = atan2(dx,dy);
+          _sin3 = sin(az);
+          _cos3 = cos(az);
+        }
       }
     }
   }

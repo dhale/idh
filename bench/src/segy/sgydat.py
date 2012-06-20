@@ -14,8 +14,8 @@ def main(args):
   #goMbs()
   goNorne()
   #goSino()
-  #goParihaka()
   #goF3d()
+  #goParihaka()
 
 def goMbs():
   """
@@ -35,14 +35,7 @@ def goMbs():
   i3min =  1001, i3max =  1422 (crossline index bounds)
   xmin = 823.725048, xmax = 831.574867 (x coordinate bounds, in km)
   ymin = 245.803217, ymax = 255.588516 (y coordinate bounds, in km)
-  grid azimuth =  31.88 degrees
-  grid reference point:
-    i2ref =   601, i3ref =  1090, x = 825.398400, y = 247.069966
-  grid corner points:
-    i2min =   601, i3min =  1001, x = 826.186374, y = 245.803039
-    i2max =  1048, i3min =  1001, x = 832.549633, y = 249.760712
-    i2min =   601, i3max =  1422, x = 822.458993, y = 251.796028
-    i2max =  1048, i3max =  1422, x = 828.822252, y = 255.753701
+  grid azimuth =  58.12 degrees
   ***************************************************************************
   PstmLarge (pstm_raw_cut.sgy):
   number of bytes = 4647376320
@@ -59,36 +52,44 @@ def goMbs():
   i3min =   234, i3max =  1422 (crossline index bounds)
   xmin = 822.376308, xmax = 842.769562 (x coordinate bounds, in km)
   ymin = 235.175146, ymax = 255.588516 (y coordinate bounds, in km)
-  grid azimuth =  31.88 degrees
-  grid reference point:
-    i2ref =   395, i3ref =   612, x = 826.698372, y = 238.441687
-  grid corner points:
-    i2min =   350, i3min =   234, x = 829.404563, y = 232.662365
-    i2max =  1468, i3min =   234, x = 845.319592, y = 242.561105
-    i2min =   350, i3max =  1422, x = 818.886119, y = 249.573744
-    i2max =  1468, i3max =  1422, x = 834.801148, y = 259.472484
+  grid azimuth =  58.12 degrees
   good subset:
     i1min,i1max = 150, 650,  m1 = 501
     i2min,i2max = 490,1258,  m2 = 763
     i3min,i3max = 358, 917,  m3 = 560
   """
-  mbsdir = "/data/seis/mbs/"
-  #sgyfile = mbsdir+"PstmSmall/Marathon20070228/pstm_fraw.sgy"
-  #datfile = mbsdir+"dat/pstm_fraw_s1.dat"
-  #i1min,i1max,i2min,i2max,i3min,i3max = 150,650,601,1048,1001,1422
-  sgyfile = mbsdir+"PstmLarge/pstm_raw_cut.sgy"
-  datfile = mbsdir+"dat/pstm_raw_s1.dat"
-  i1min,i1max,i2min,i2max,i3min,i3max = 150,650,490,1258,358,917
+  imageType = "PstmSmall" # which image to process
+  firstLook = True # fast, does not read all trace headers
+  secondLook = False # slow, must read all trace headers
+  writeImage = False # reads all traces, writes an image
+  showImage = True # plots the image
+  basedir = "/data/seis/mbs/"
+  if imageType=="PstmSmall":
+    sgyfile = basedir+"PstmSmall/Marathon20070228/pstm_fraw.sgy"
+    datfile = basedir+"dat/pstm_fraw_s1.dat"
+    i1min,i1max,i2min,i2max,i3min,i3max = 150,650,601,1048,1001,1422
+  elif imageType=="PstmLarge":
+    sgyfile = basedir+"PstmLarge/pstm_raw_cut.sgy"
+    datfile = basedir+"dat/pstm_raw_s1.dat"
+    i1min,i1max,i2min,i2max,i3min,i3max = 150,650,490,1258,358,917
   n1,n2,n3 = 1+i1max-i1min,1+i2max-i2min,1+i3max-i3min
-  #si = SegyImage(sgyfile)
-  #si.printInfo()
-  #plotIbmIeeeFloats(si)
-  #plotI2I3(si.getI2sAsFloats(),si.getI3sAsFloats())
-  #plotXY(si.getXs(),si.getYs())
-  #si.writeFloats(datfile,i1min,i1max,i2min,i2max,i3min,i3max)
-  #si.close()
-  x = readImage(datfile,n1,n2,n3)
-  show3d(x,clip=10000.0)
+  si = SegyImage(sgyfile)
+  if firstLook:
+    si.printSummaryInfo();
+    si.printBinaryHeader()
+    si.printTraceHeader(0)
+    si.printTraceHeader(1)
+    plotIbmIeeeFloats(si)
+  if secondLook:
+    si.printAllInfo()
+    plot23(si)
+    plotXY(si)
+  if writeImage:
+    si.writeFloats(datfile,i1min,i1max,i2min,i2max,i3min,i3max)
+  si.close()
+  if showImage:
+    x = readImage(datfile,n1,n2,n3)
+    show3d(x,clip=10000.0)
 
 def goNorne():
   """
@@ -113,9 +114,9 @@ def goNorne():
     i2ref =  1300, i3ref =   970, x =  453.320000, y = 7320.021120
   grid corner points:
     i2min =  1300, i3min =   970, x =  453.320000, y = 7320.021120
-    i2max =  2300, i3min =   970, x =  461.652000, y = 7328.353120
-    i2min =  1300, i3max =  1290, x =  456.302000, y = 7317.039120
-    i2max =  2300, i3max =  1290, x =  464.634000, y = 7325.371120
+    i2max =  2300, i3min =   970, x =  461.652000, y = 7329.340160
+    i2min =  1300, i3max =  1290, x =  456.302000, y = 7317.354880
+    i2max =  2300, i3max =  1290, x =  464.634000, y = 7326.673920
   ***************************************************************************
   Full Norne corner coordinates (Knut, 16/7-09)
   line	trace	X	Y
@@ -123,7 +124,6 @@ def goNorne():
   970	1300	453320	7320021.12
   1290	1300	456302	7317355
   1290	2300	464634	7326674
-  Knut 16/7-09
   ***************************************************************************
   E-Segment
   n1,nt = 1001, dt = 0.0040, ft = 0.0 (s)
@@ -135,56 +135,88 @@ def goNorne():
   n2,ny = 1001, dy = 0.0125, fy = 0.0 (km)
   n3,nx =  321, dx = 0.0125, fx = 0.0 (km)
   """
+  firstLook = True # fast, does not read all trace headers
+  secondLook = False # slow, must read all trace headers
+  writeImage = False # reads all traces, writes an image
+  showImage = True # plots the image
   basedir = "/data/seis/norne/"
   sgyfile = basedir+"sgy/norne4d_2006-full.sgy"
   datfile = basedir+"dat/full2006.dat"
   i1min,i1max,i2min,i2max,i3min,i3max = 0,1000,1300,2300,970,1290
   n1,n2,n3 = 1+i1max-i1min,1+i2max-i2min,1+i3max-i3min
   si = SegyImage(sgyfile)
-  si.printInfo()
-  #plotIbmIeeeFloats(si)
-  plotI2I3(si.getI2sAsFloats(),si.getI3sAsFloats())
-  plotXY(si.getXs(),si.getYs())
-  #si.writeFloats(datfile,i1min,i1max,i2min,i2max,i3min,i3max)
+  if firstLook:
+    si.printSummaryInfo();
+    si.printBinaryHeader()
+    si.printTraceHeader(0)
+    si.printTraceHeader(1)
+    plotIbmIeeeFloats(si)
+  if secondLook:
+    si.printAllInfo()
+    plot23(si)
+    plotXY(si)
+  if writeImage:
+    si.writeFloats(datfile,i1min,i1max,i2min,i2max,i3min,i3max)
   si.close()
-  #x = readImage(datfile,n1,n2,n3)
-  #show3d(x,clip=1000.0)
+  if showImage:
+    x = readImage(datfile,n1,n2,n3)
+    show3d(x,clip=1000.0)
 
 def goSino():
-  global bo
-  bo = ByteOrder.LITTLE_ENDIAN # non-standard byte-order
   """
-  nt = 2001, dt = 0.004 s, (ft = 0.000 s?)
+  Two 2D (x- and z-component) images
+  nt = 2001, dt = 0.004 s
+  nx =  721, dx = 0.030 km?
+  samples [0:1250] in z component ~ samples [0:2000] in x component
   """
-  n1,n2,n3 = 2001,721,1
-  datdir = "/data/seis/sinopec/"
+  basedir = "/data/seis/sino/"
   for component in ["x","z"]:
-    sgyfile = datdir+"260_"+component+"_201-921_stack.segy"
-    datfile = datdir+component+"260.dat"
-    #readFormat(sgyfile)
-    #testFormat(n1,n2,n3,sgyfile)
-    #convert(n1,n2,n3,sgyfile,datfile)
+    sgyfile = basedir+"260_"+component+"_201-921_stack.segy"
+    datfile = basedir+component+"260.dat"
+    i1min,i1max,i2min,i2max = 0,2000,201,921
+    n1,n2 = 1+i1max-i1min,1+i2max-i2min
+    si = SegyImage(sgyfile,ByteOrder.LITTLE_ENDIAN) # non-standard byte order!
+    #si.printSummaryInfo()
+    #si.printBinaryHeader()
+    #si.printTraceHeader(0)
+    #si.printTraceHeader(1)
+    #plotIbmIeeeFloats(si)
+    si.setD2(0.015) # a guess, from looking at group coordinates in headers
+    if component=="x":
+      si.setFormat(5) # formats appear to be IEEE for x and IBM for z!???
+    si.printAllInfo()
+    si.writeFloats(datfile,i1min,i1max,i2min,i2max,0,0)
+    si.close()
     f = readImage(datfile,n1,n2)
+    gain(500,f)
     if component=="z":
       stretch(1.6,f)
-      #mul(pow(rampfloat(0.0,1.0,0.0,n1,n2),2.0),f,f)
-    else:
-      #mul(pow(rampfloat(0.0,1.0,0.0,n1,n2),0.0),f,f)
-      pass
-    lowpass(0.10,f)
-    gain(50,f)
-    plot2(f,title=component+" component")
+    show2d(f,title=component+" component")
+
+def show2d(f,clip=None,title=None):
+  print "show2d: f min =",min(f)," max =",max(f)
+  sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
+  pv = sp.addPixels(f)
+  if clip:
+    pv.setClips(-clip,clip)
+  else:
+    pv.setPercentiles(2,98)
+  if title:
+    sp.setTitle(title)
+  sp.setSize(600,1100)
   
-def show3d(x,clip=0.0):
-  print "x min =",min(x)," max =",max(x)
+def show3d(f,clip=None):
+  print "show3d: f min =",min(f)," max =",max(f)
   frame = SimpleFrame()
-  ipg = frame.addImagePanels(x)
-  if clip>0.0:
+  ipg = frame.addImagePanels(f)
+  if clip:
     ipg.setClips(-clip,clip)
   frame.orbitView.setScale(2.0)
   frame.setSize(1000,1000)
 
-def plotI2I3(i2,i3):
+def plot23(si):
+  i2 = si.getI2sAsFloats()
+  i3 = si.getI3sAsFloats()
   sp = SimplePlot()
   sp.setHLabel("inline sample index i2")
   sp.setVLabel("crossline sample index i3")
@@ -194,7 +226,9 @@ def plotI2I3(i2,i3):
   w,h = goodWidthHeight(i2,i3)
   sp.setSize(w,h)
 
-def plotXY(x,y):
+def plotXY(si):
+  x = si.getXs()
+  y = si.getYs()
   sp = SimplePlot()
   sp.setHLabel("x coordinate (km)")
   sp.setVLabel("y coordinate (km)")
