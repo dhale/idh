@@ -287,6 +287,15 @@ public class SegyImage {
   public void setFormat(int format) {
     _format = format;
     _formatSet = true;
+    if (_format==8) {
+      _bytesPerSample = 1;
+    } else if (_format==3) {
+      _bytesPerSample = 2;
+    } else if (_format==1 || _format==2 || _format==4 || _format==5) {
+      _bytesPerSample = 4;
+    } else {
+      throw new RuntimeException("unknown data format: "+_format);
+    }
   }
 
   /**

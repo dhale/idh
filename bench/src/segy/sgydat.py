@@ -12,10 +12,9 @@ global n1,n2,n3
 #############################################################################
 def main(args):
   #goMbs()
-  goNorne()
+  #goNorne()
   #goSino()
-  #goF3d()
-  #goParihaka()
+  goF3d()
 
 def goMbs():
   """
@@ -193,6 +192,64 @@ def goSino():
       stretch(1.6,f)
     show2d(f,title=component+" component")
 
+def goF3d():
+  """
+  ****** beginning of SEG-Y file info ******
+  file name = /data/seis/f3d/f3draw.sgy
+  byte order = BIG_ENDIAN
+  number of bytes = 699003060
+  number of traces = 600515
+  format = 3 (2-byte two's complement integer)
+  units for spatial coordinates: m (will be converted to km)
+  indices and coordinates from trace headers:
+    i2min =   300, i2max =  1250 (inline indices)
+    i3min =   100, i3max =   750 (crossline indices)
+    xmin =  605.416700, xmax =  629.576300 (x coordinates, in km)
+    ymin = 6073.556400, ymax = 6090.463200 (y coordinates, in km)
+  grid sampling:
+    n1 =   462 (number of samples per trace)
+    n2 =   951 (number of traces in inline direction)
+    n3 =   651 (number of traces in crossline direction)
+    d1 = 0.004000 (time sampling interval, in s)
+    d2 = 0.025000 (inline sampling interval, in km)
+    d3 = 0.024999 (crossline sampling interval, in km)
+  grid corner points:
+    i2min =   300, i3min =   100, x =  605.835500, y = 6073.556400
+    i2max =  1250, i3min =   100, x =  629.576300, y = 6074.219900
+    i2min =   300, i3max =   750, x =  605.381800, y = 6089.799700
+    i2max =  1250, i3max =   750, x =  629.122600, y = 6090.463200
+  grid azimuth: 88.40 degrees
+  ****** end of SEG-Y file info ******
+  good subset
+  i1min,i1max,i2min,i2max,i3min,i3max = 0,461,300,1250,100,690
+  n1,n2,n3 = 462,951,591
+  """
+  firstLook = False # fast, does not read all trace headers
+  secondLook = False # slow, must read all trace headers
+  writeImage = True # reads all traces, writes an image
+  showImage = True # plots the image
+  basedir = "/data/seis/f3d/"
+  sgyfile = basedir+"f3draw.sgy"
+  datfile = basedir+"f3draw.dat"
+  i1min,i1max,i2min,i2max,i3min,i3max = 0,461,300,1250,100,690
+  n1,n2,n3 = 1+i1max-i1min,1+i2max-i2min,1+i3max-i3min
+  si = SegyImage(sgyfile)
+  if firstLook:
+    si.printSummaryInfo();
+    si.printBinaryHeader()
+    si.printTraceHeader(0)
+    si.printTraceHeader(1)
+  if secondLook:
+    si.printAllInfo()
+    plot23(si)
+    plotXY(si)
+  if writeImage:
+    si.writeFloats(datfile,i1min,i1max,i2min,i2max,i3min,i3max)
+  si.close()
+  if showImage:
+    x = readImage(datfile,n1,n2,n3)
+    show3d(x,clip=10000.0)
+
 def show2d(f,clip=None,title=None):
   print "show2d: f min =",min(f)," max =",max(f)
   sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
@@ -248,13 +305,29 @@ def goodWidthHeight(x,y):
     w = int(w*(xmax-xmin)/(ymax-ymin))
   return w,h
 
+def readImage(datfile,n1,n2,n3=1):
+  if n3==1:
+    x = zerofloat(n1,n2)
+  else:
+    x = zerofloat(n1,n2,n3)
+  ais = ArrayInputStream(datfile)
+  ais.readFloats(x)
+  ais.close()
+  return x
+
+def writeImage(datfile,x):
+  aos = ArrayOutputStream(datfile)
+  aos.writeFloats(x)
+  aos.close()
+
 def plotIbmIeeeFloats(si):
   ntrace = si.countTraces()
+  itrace = ntrace/2
   fmt = si.getFormat()
   si.setFormat(1) # IBM floats
-  fibm = si.getTrace(ntrace/2)
+  fibm = si.getTrace(itrace)
   si.setFormat(5) # IEEE floats
-  fieee = si.getTrace(ntrace/2)
+  fieee = si.getTrace(itrace)
   si.setFormat(fmt)
   pp = PlotPanel(2,1)
   pp.setTitle("IBM (top) versus IEEE (bottom)")
@@ -287,63 +360,6 @@ def stretch(c,f):
     si.interpolate(n1,1.0/c,0.0,g)
     copy(g,f[i2])
 
-def plot2(x,title=None):
-  sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
-  sp.setSize(350,1100)
-  if title:
-    sp.setTitle(title)
-  pv = sp.addPixels(x)
-  pv.setPercentiles(2,98)
-  
-def display(datfile,clip=0.0):
-  x = readImage(datfile,n1,n2,n3)
-  print "x min =",min(x)," max =",max(x)
-  frame = SimpleFrame(AxesOrientation.XRIGHT_YIN_ZDOWN)
-  s1,s2,s3 = Sampling(n1),Sampling(n2),Sampling(n3)
-  ipg = frame.addImagePanels(s1,s2,s3,x)
-  if clip>0.0:
-    ipg.setClips(-clip,clip)
-  
-def goF3d():
-  """
-  TIME: 462 samples (1.848 sec, interval 4 ms)
-  nbytes = 699,003,060
-  ntrace = (nbytes-nhead-nbhed)/(240+2*n1)
-  """
-  fmt = 3 # 2-byte shorts in [-32767,32767]
-  global n1,n2,n3
-  n1,n2,n3 = 462,951,591
-  datdir = "/data/seis/f3d/"
-  sgyfile = datdir+"f3draw.sgy"
-  mapfile = datdir+"f3dmap.dat"
-  datfile = datdir+"f3draw.dat"
-  displayF3d(datfile)
-  #displayF3dTrace(datfile)
-  #makeSubsetsF3d(datdir)
-  #displaySubsetF3d(datfile,0,500,500,751,501,501)
-  #bigSubsetF3d(n1,sgyfile,datfile)
-  #readFormat(sgyfile)
-  #makeMap(sgyfile,mapfile,fmt,n1)
-  #dumpTraceHeaders(sgyfile,fmt,n1)
-  #convert3(n1,n2,n3,sgyfile,datfile)
-
-def displayF3d(datfile):
-  x = readImage(datfile,n1,n2,n3)
-  xmax = 30767.0
-  display3d(sub(x,clip(-xmax,xmax,x)),1.0)
-  #mul(0.001,x,x)
-  #display3d(x,10.0)
-  #display3d(slog(x),3.0)
-
-
-def displayF3dTrace(datfile):
-  x = readImage(datfile,n1,n2,n3)
-  mul(0.001,x,x)
-  x = x[170][252]
-  SimplePlot.asPoints(x)
-  SimplePlot.asPoints(spow(0.5,x))
-  SimplePlot.asPoints(slog(x))
-
 def spow(p,f):
   return mul(sgn(f),pow(abs(f),p))
 
@@ -352,6 +368,9 @@ def slog(f):
 
 def sexp(f):
   return mul(sgn(f),sub(exp(abs(f)),1.0))
+
+#############################################################################
+# Parihaka functions below are outdated; kept here for updating later
 
 def goParihaka():
   """
@@ -364,16 +383,11 @@ def goParihaka():
   n1 = 1501
   datdir = "/data/seis/nz/par/"
   sgyfile = datdir+"Parihaka3d_raw.sgy"
-  mapfile = datdir+"map.dat"
   datfile = datdir+"par11.dat"
   #displayParihaka(datfile)
   #makeSubsetsParihaka(datdir)
   #displaySubsetParihaka(datfile,0,500,500,751,501,501)
   #bigSubsetParihaka(n1,sgyfile,datfile)
-  readFormat(sgyfile)
-  #makeMap(sgyfile,mapfile,n1)
-  #dumpTraceHeaders(sgyfile,fmt,n1)
-  #testFormat(n1,n2,n3,sgyfile)
   #convert(n1,n2,n3,sgyfile,datfile)
 
 def displayParihaka(datfile):
@@ -399,21 +413,6 @@ def makeSubsetsParihaka(datdir):
 def displaySubsetParihaka(datfile,j1,j2,j3,m1,m2,m3):
   x = readSubsetParihaka(datfile,j1,j2,j3,m1,m2,m3)
   display3d(x,1.0e5)
-
-def readImage(datfile,n1,n2,n3=1):
-  if n3==1:
-    x = zerofloat(n1,n2)
-  else:
-    x = zerofloat(n1,n2,n3)
-  ais = ArrayInputStream(datfile)
-  ais.readFloats(x)
-  ais.close()
-  return x
-
-def writeImage(datfile,x):
-  aos = ArrayOutputStream(datfile)
-  aos.writeFloats(x)
-  aos.close()
 
 def readParihaka(datfile,j1,j2,j3,m1,m2,m3):
   n1,n2,n3 = 1501,2001,2001
@@ -486,243 +485,6 @@ def bigSubsetParihaka(n1,sgyfile,datfile):
       ais.skipBytes(4*n1)
   ais.close()
   aos.close()
-
-def getTraceHeaderInfo(sgyfile,bo=ByteOrder.BIG_ENDIAN):
-  fmt,bps,ntrace,nt,dt = getBinaryHeaderInfo(sgyfile,bo)
-  hi = zeroint(240/4) # 240-byte trace header as 4-byte ints
-  hs = zeroshort(240/2) # 240-byte trace header as 2-byte ints
-  af = ArrayFile(sgyfile,"r")
-  af.skipBytes(3200) # skip text file header
-  af.skipBytes(400) # skip binary file header
-
-  i2min =  Integer.MAX_VALUE
-  i2max = -Integer.MAX_VALUE
-  i3min =  Integer.MAX_VALUE
-  i3max = -Integer.MAX_VALUE
-  xmin =  Float.MAX_VALUE
-  xmax = -Float.MAX_VALUE
-  ymin =  Float.MAX_VALUE
-  ymax = -Float.MAX_VALUE
-  for itrace in range(ntrace):
-    fp = af.getFilePointer()
-    af.readInts(hi)
-    af.seek(fp)
-    af.readShorts(hs)
-
-    print "ensemble number =",hi[5]
-    print "trace in ensemble =",hi[6]
-    print "coord scale factor =",hs[35]
-    print "x,y coord =",hi[45],hi[46]
-    print "iline,xline =",hi[47],hi[48]
-    #print "iline,xline =",hi[49],hi[50]
-    #dump(hi)
-    #dump(hs)
-    if fmt==3:
-      af.skipBytes(2*n1)
-    else:
-      af.skipBytes(4*n1)
-  af.close()
-
-  
-
-
-def makeMap(sgyfile,mapfile,fmt,n1):
-  if fmt==3:
-    bps = 2
-  else:
-    bps = 4
-  nbytes = File(sgyfile).length
-  ntrace = (nbytes-nhead-nbhed)/(240+bps*n1)
-  af = ArrayFile(sgyfile,"r")
-  af.skipBytes(nhead)
-  af.skipBytes(nbhed)
-  h = zeroint(nthed/4)
-  #m2,m3 = 8000,16000 # Parihaka
-  #m2,m3 = 800,1300 # F3D
-  #m2,m3 = 800,1300 # Norne
-  m2,m3 = 1422,1043 # Mbs
-  m = zerofloat(m2,m3)
-  i2min =  Integer.MAX_VALUE
-  i2max = -Integer.MAX_VALUE
-  i3min =  Integer.MAX_VALUE
-  i3max = -Integer.MAX_VALUE
-  for i in range(ntrace):
-    #if i%100==0:
-    #  print "i =",i
-    #  print "i2:  min =",i2min," max =",i2max
-    #  print "i3:  min =",i3min," max =",i3max
-    af.readInts(h)
-    #i2,i3 = h[49],h[50] # Parihaka
-    i2,i3 = h[47],h[48] # F3D, Norne, Mbs
-    if 0<=i2 and i2<m2 and 0<=i3 and i3<m3:
-      m[i3][i2] = 1.0
-    #print "i =",i," i2 =",i2," i3 =",i3
-    if i2<i2min: i2min = i2
-    if i2>i2max: i2max = i2
-    if i3<i3min: i3min = i3
-    if i3>i3max: i3max = i3
-    af.skipBytes(bps*n1)
-    af.seek(af.filePointer+100*(nthed+bps*n1))
-  af.close()
-  print "i2:  min =",i2min," max =",i2max
-  print "i3:  min =",i3min," max =",i3max
-  sp = SimplePlot()
-  pv = sp.addPixels(m)
-  pv.setInterpolation(PixelsView.Interpolation.NEAREST)
-  if mapfile:
-    aos = ArrayOutputStream(mapfile)
-    aos.writeFloats(m)
-    aos.close()
-
-
-def dumpTraceHeaders(sgyfile,fmt,n1,ndump=5):
-  af = ArrayFile(sgyfile,"r")
-  af.skipBytes(nhead)
-  af.skipBytes(nbhed)
-  hi = zeroint(nthed/4)
-  hs = zeroshort(nthed/2)
-  for i in range(ndump):
-    fp = af.getFilePointer()
-    af.readInts(hi)
-    af.seek(fp)
-    af.readShorts(hs)
-    print "ensemble number =",hi[5]
-    print "trace in ensemble =",hi[6]
-    print "coord scale factor =",hs[35]
-    print "x,y coord =",hi[45],hi[46]
-    print "iline,xline =",hi[47],hi[48]
-    #print "iline,xline =",hi[49],hi[50]
-    #dump(hi)
-    #dump(hs)
-    if fmt==3:
-      af.skipBytes(2*n1)
-    else:
-      af.skipBytes(4*n1)
-  af.close()
-
-def goParihakaSubsets():
-  #n1,n2,n3 = 751,1501,701
-  n1,n2,n3 = 751,1501,601
-  datdir = "/data/seis/nz/par/"
-  sgyfile = datdir+"parihaka_subset3.sgy"
-  datfile = datdir+"par3.dat"
-  check(n1,n2,n3,sgyfile)
-  #readFormat(sgyfile)
-  #testFormat(n1,n2,n3,sgyfile)
-  #convert(n1,n2,n3,sgyfile,datfile)
-  #display3d(n1,n2,n3,datfile,2.0e4)
-
-def checkSubset(n1,n2,n3,sgyfile):
-  print "checking",(n2*n3),"traces"
-  nh = nthed/2
-  nx = n1
-  h = zeroshort(nh)
-  x = zeroint(nx)
-  ais = ArrayInputStream(sgyfile,bo)
-  ais.skipBytes(nhead+nbhed)
-  for i3 in range(n3):
-    for i2 in range(n2):
-      ais.readShorts(h) # read trace header
-      ais.readInts(x) # read trace samples
-      ns = h[57] # number of samples in this trace
-      if ns!=n1:
-        print "*** i2 =",i2,"i3 =",i3,"ns =",ns
-        print "*** trace header as shorts:"
-        dump(h)
-        return
-    print "checked: i3 =",i3
-  ais.close()
-
-def convert(n1,n2,n3,sgyfile,datfile):
-  print "converting",(n2*n3),"traces"
-  ais = ArrayInputStream(sgyfile,bo)
-  aos = ArrayOutputStream(datfile)
-  ais.skipBytes(nhead+nbhed)
-  x = zeroint(n1)
-  y = zerofloat(n1)
-  for i3 in range(n3):
-    for i2 in range(n2):
-      ais.skipBytes(nthed) # skip trace header
-      ais.readInts(x) # read trace samples
-      IbmIeee.ibmToFloat(x,y) # convert
-      aos.writeFloats(y) # write trace samples
-    print "converted: i3 =",i3," n2 =",n2
-  ais.close()
-  aos.close()
-
-def convert3(n1,n2,n3,sgyfile,datfile):
-  print "converting",(n2*n3),"traces"
-  ais = ArrayInputStream(sgyfile,bo)
-  aos = ArrayOutputStream(datfile)
-  ais.skipBytes(nhead+nbhed)
-  x = zeroshort(n1)
-  y = zerofloat(n1)
-  for i3 in range(n3):
-    for i2 in range(n2):
-      ais.skipBytes(nthed) # skip trace header
-      ais.readShorts(x) # read trace samples
-      IbmIeee.shortToFloat(x,y) # convert
-      aos.writeFloats(y) # write trace samples
-    print "converted: i3 =",i3
-  ais.close()
-  aos.close()
-
-def display3d(x,clip=0):
-  n1,n2,n3 = len(x[0][0]),len(x[0]),len(x)
-  print "x min =",min(x)," max =",max(x)
-  s1,s2,s3 = Sampling(n1),Sampling(n2),Sampling(n3)
-  frame = SimpleFrame()
-  ipg = frame.addImagePanels(s1,s2,s3,x)
-  if clip>0.0:
-    ipg.setClips(-clip,clip)
-  frame.setVisible(True)
-
-def displayFile3d(datfile,n1,n2,n3,clip=0):
-  x = zerofloat(n1,n2,n3)
-  ais = ArrayInputStream(datfile)
-  ais.readFloats(x)
-  ais.close()
-  display3d(x,clip)
-
-def readFormat(sgyfile):
-  ais = ArrayInputStream(sgyfile,bo)
-  ais.skipBytes(nhead)
-# floating point format code should be in bytes 3225-6
-# 1 for IBM floating point, 5 for IEEE floating point
-  h = zeroshort(nbhed/2)
-  ais.readShorts(h)
-  ais.close()
-  print "dump of binary header as shorts"
-  dump(h)
-  print "current sampling interval in usec =",h[8]
-  print "original sampling interval in usec =",h[9]
-  print "number of samples per trace =",h[10]
-  print "original number of samples per trace =",h[11]
-  format = h[12]
-  if format==1:
-    print "format = 1 = IBM floating point"
-  elif format==3:
-    print "format = 3 = 2-byte two's complement integer"
-  elif format==5:
-    print "format = 5 = IEEE floating point"
-  else:
-    print "format =",format,"is unknown!"
-
-def testFormat(n1,n2,n3,sgyfile):
-  xi = zeroint(n1)
-  x1 = zerofloat(n1)
-  x2 = zerofloat(n1)
-  ais = ArrayInputStream(sgyfile,bo)
-  ais.skipBytes(nhead+nbhed)
-  ais.skipBytes(n3/2*n2*(nthed+4*n1))
-  ais.skipBytes(n2/2*(nthed+4*n1))
-  ais.skipBytes(nthed)
-  ais.readInts(xi)
-  ais.close()
-  IbmIeee.ibmToFloat(xi,x1)
-  IbmIeee.ieeeToFloat(xi,x2)
-  sp = SimplePlot.asPoints(x1); sp.setTitle("Assuming IBM format")
-  sp = SimplePlot.asPoints(x2); sp.setTitle("Assuming IEEE format")
 
 #############################################################################
 class RunMain(Runnable):
