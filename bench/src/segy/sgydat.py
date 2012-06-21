@@ -11,10 +11,10 @@ global n1,n2,n3
 
 #############################################################################
 def main(args):
-  #goMbs()
+  goMbs()
   #goNorne()
   #goSino()
-  goF3d()
+  #goF3d()
 
 def goMbs():
   """
@@ -54,14 +54,14 @@ def goMbs():
   grid azimuth =  58.12 degrees
   good subset:
     i1min,i1max = 150, 650,  m1 = 501
-    i2min,i2max = 490,1258,  m2 = 763
+    i2min,i2max = 490,1258,  m2 = 769
     i3min,i3max = 358, 917,  m3 = 560
   """
-  imageType = "PstmSmall" # which image to process
-  firstLook = True # fast, does not read all trace headers
+  imageType = "PstmLarge" # which image to process
+  firstLook = False # fast, does not read all trace headers
   secondLook = False # slow, must read all trace headers
-  writeImage = False # reads all traces, writes an image
-  showImage = True # plots the image
+  writeImage = True # reads all traces, writes an image
+  showImage = True # displays the image
   basedir = "/data/seis/mbs/"
   if imageType=="PstmSmall":
     sgyfile = basedir+"PstmSmall/Marathon20070228/pstm_fraw.sgy"
@@ -87,8 +87,8 @@ def goMbs():
     si.writeFloats(datfile,i1min,i1max,i2min,i2max,i3min,i3max)
   si.close()
   if showImage:
-    x = readImage(datfile,n1,n2,n3)
-    show3d(x,clip=10000.0)
+    f = readImage(datfile,n1,n2,n3)
+    show3d(f,clip=10000.0)
 
 def goNorne():
   """
@@ -108,14 +108,12 @@ def goNorne():
   i3min =   970, i3max =  1290 (crossline index bounds)
   xmin =  453.320000, xmax =  464.634000 (x coordinate bounds, in km)
   ymin = 7317.354880, ymax = 7329.340160 (y coordinate bounds, in km)
-  grid azimuth =  41.80 degrees
-  grid reference point:
-    i2ref =  1300, i3ref =   970, x =  453.320000, y = 7320.021120
   grid corner points:
     i2min =  1300, i3min =   970, x =  453.320000, y = 7320.021120
     i2max =  2300, i3min =   970, x =  461.652000, y = 7329.340160
     i2min =  1300, i3max =  1290, x =  456.302000, y = 7317.354880
     i2max =  2300, i3max =  1290, x =  464.634000, y = 7326.673920
+  grid azimuth: 41.80 degrees
   ***************************************************************************
   Full Norne corner coordinates (Knut, 16/7-09)
   line	trace	X	Y
@@ -123,21 +121,11 @@ def goNorne():
   970	1300	453320	7320021.12
   1290	1300	456302	7317355
   1290	2300	464634	7326674
-  ***************************************************************************
-  E-Segment
-  n1,nt = 1001, dt = 0.0040, ft = 0.0 (s)
-  n2,ny =  401, dy = 0.0125, fy = 0.0 (km)
-  n3,nx =  101, dx = 0.0125, fx = 0.0 (km)
-  ***************************************************************************
-  Full
-  n1,nt = 1001, dt = 0.0040, ft = 0.0 (s)
-  n2,ny = 1001, dy = 0.0125, fy = 0.0 (km)
-  n3,nx =  321, dx = 0.0125, fx = 0.0 (km)
   """
   firstLook = True # fast, does not read all trace headers
   secondLook = False # slow, must read all trace headers
   writeImage = False # reads all traces, writes an image
-  showImage = True # plots the image
+  showImage = True # displays the image
   basedir = "/data/seis/norne/"
   sgyfile = basedir+"sgy/norne4d_2006-full.sgy"
   datfile = basedir+"dat/full2006.dat"
@@ -227,7 +215,7 @@ def goF3d():
   firstLook = False # fast, does not read all trace headers
   secondLook = False # slow, must read all trace headers
   writeImage = True # reads all traces, writes an image
-  showImage = True # plots the image
+  showImage = True # displays the image
   basedir = "/data/seis/f3d/"
   sgyfile = basedir+"f3draw.sgy"
   datfile = basedir+"f3draw.dat"
