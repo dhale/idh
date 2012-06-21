@@ -559,6 +559,7 @@ public class BilateralFilter {
     float dx = (float)sx.getDelta();
     int nx = sx.getCount();
     for (int kx=0; kx<nx; ++kx) {
+      System.out.println("apply: kx/nx="+kx+"/"+nx);
       float xk = (float)sx.getValue(kx);
       scale(fx,xk,x,tn,td);
       copy(tn,tt); f3.apply(tt,tn);

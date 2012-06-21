@@ -11,8 +11,8 @@ global n1,n2,n3
 
 #############################################################################
 def main(args):
-  goMbs()
-  #goNorne()
+  #goMbs()
+  goNorne()
   #goSino()
   #goF3d()
 
@@ -20,47 +20,69 @@ def goMbs():
   """
   ***************************************************************************
   PstmSmall (pstm_fraw.sgy):
+  ****** beginning of SEG-Y file info ******
+  file name = /data/seis/mbs/PstmSmall/Marathon20070228/pstm_fraw.sgy
+  byte order = BIG_ENDIAN
   number of bytes = 959341200
   number of traces = 153740
   format = 1 (4-byte IBM floating point)
   units for spatial coordinates: ft (will be converted to km)
-  n1 =  1500 (number of samples per trace)
-  n2 =   448 (number of traces in inline direction)
-  n3 =   422 (number of traces in crossline direction)
-  d1 = 0.002000 (time sampling interval, in s)
-  d2 = 0.016764 (inline sampling interval, in km)
-  d3 = 0.016764 (crossline sampling interval, in km)
-  i2min =   601, i2max =  1048 (inline index bounds)
-  i3min =  1001, i3max =  1422 (crossline index bounds)
-  xmin = 823.725048, xmax = 831.574867 (x coordinate bounds, in km)
-  ymin = 245.803217, ymax = 255.588516 (y coordinate bounds, in km)
-  grid azimuth =  58.12 degrees
+  indices and coordinates from trace headers:
+    i2min =   601, i2max =  1048 (inline indices)
+    i3min =  1001, i3max =  1422 (crossline indices)
+    xmin =  823.725048, xmax =  831.574867 (x coordinates, in km)
+    ymin =  245.803217, ymax =  255.588516 (y coordinates, in km)
+  grid sampling:
+    n1 =  1500 (number of samples per trace)
+    n2 =   448 (number of traces in inline direction)
+    n3 =   422 (number of traces in crossline direction)
+    d1 = 0.002000 (time sampling interval, in s)
+    d2 = 0.016764 (inline sampling interval, in km)
+    d3 = 0.016764 (crossline sampling interval, in km)
+  grid corner points:
+    i2min =   601, i3min =  1001, x =  826.186378, y =  245.803042
+    i2max =  1048, i3min =  1001, x =  832.549637, y =  249.760714
+    i2min =   601, i3max =  1422, x =  822.458978, y =  251.796019
+    i2max =  1048, i3max =  1422, x =  828.822237, y =  255.753692
+  grid azimuth: 58.12 degrees
+  ****** end of SEG-Y file info ******
   ***************************************************************************
-  PstmLarge (pstm_raw_cut.sgy):
+  PstmLarge
+  ****** beginning of SEG-Y file info ******
+  file name = /data/seis/mbs/PstmLarge/pstm_raw_cut.sgy
+  byte order = BIG_ENDIAN
   number of bytes = 4647376320
   number of traces = 795783
   format = 1 (4-byte IBM floating point)
   units for spatial coordinates: ft (will be converted to km)
-  n1 =  1400 (number of samples per trace)
-  n2 =  1119 (number of traces in inline direction)
-  n3 =  1189 (number of traces in crossline direction)
-  d1 = 0.002000 (time sampling interval, in s)
-  d2 = 0.016764 (inline sampling interval, in km)
-  d3 = 0.016764 (crossline sampling interval, in km)
-  i2min =   350, i2max =  1468 (inline index bounds)
-  i3min =   234, i3max =  1422 (crossline index bounds)
-  xmin = 822.376308, xmax = 842.769562 (x coordinate bounds, in km)
-  ymin = 235.175146, ymax = 255.588516 (y coordinate bounds, in km)
-  grid azimuth =  58.12 degrees
+  indices and coordinates from trace headers:
+    i2min =   350, i2max =  1468 (inline indices)
+    i3min =   234, i3max =  1422 (crossline indices)
+    xmin =  822.376308, xmax =  842.769562 (x coordinates, in km)
+    ymin =  235.175146, ymax =  255.588516 (y coordinates, in km)
+  grid sampling:
+    n1 =  1400 (number of samples per trace)
+    n2 =  1119 (number of traces in inline direction)
+    n3 =  1189 (number of traces in crossline direction)
+    d1 = 0.002000 (time sampling interval, in s)
+    d2 = 0.016764 (inline sampling interval, in km)
+    d3 = 0.016764 (crossline sampling interval, in km)
+  grid corner points:
+    i2min =   350, i3min =   234, x =  829.404535, y =  232.662348
+    i2max =  1468, i3min =   234, x =  845.319565, y =  242.561088
+    i2min =   350, i3max =  1422, x =  818.886177, y =  249.573781
+    i2max =  1468, i3max =  1422, x =  834.801207, y =  259.472521
+  grid azimuth: 58.12 degrees
+  ****** end of SEG-Y file info ******
   good subset:
     i1min,i1max = 150, 650,  m1 = 501
     i2min,i2max = 490,1258,  m2 = 769
     i3min,i3max = 358, 917,  m3 = 560
   """
-  imageType = "PstmLarge" # which image to process
+  imageType = "PstmSmall" # which image to process
   firstLook = False # fast, does not read all trace headers
   secondLook = False # slow, must read all trace headers
-  writeImage = True # reads all traces, writes an image
+  writeImage = False # reads all traces, writes an image
   showImage = True # displays the image
   basedir = "/data/seis/mbs/"
   if imageType=="PstmSmall":
@@ -81,73 +103,98 @@ def goMbs():
     plotIbmIeeeFloats(si)
   if secondLook:
     si.printAllInfo()
-    plot23(si)
-    plotXY(si)
+    #plot23(si)
+    #plotXY(si)
   if writeImage:
-    si.writeFloats(datfile,i1min,i1max,i2min,i2max,i3min,i3max)
+    scale = 0.0001
+    si.writeFloats(datfile,scale,i1min,i1max,i2min,i2max,i3min,i3max)
   si.close()
   if showImage:
     f = readImage(datfile,n1,n2,n3)
-    show3d(f,clip=10000.0)
+    show3d(f,clip=1.0)
 
 def goNorne():
   """
   ***************************************************************************
-  norne4d_2006-full.sgy:
+  ****** beginning of SEG-Y file info ******
+  file name = /data/seis/norne/sgy/norne4d_2006-full.sgy
+  byte order = BIG_ENDIAN
   number of bytes = 1363689924
   number of traces = 321321
   format = 1 (4-byte IBM floating point)
   units for spatial coordinates: m (will be converted to km)
-  n1 =  1001 (number of samples per trace)
-  n2 =  1001 (number of traces in inline direction)
-  n3 =   321 (number of traces in crossline direction)
-  d1 = 0.004000 (time sampling interval, in s)
-  d2 = 0.012501 (inline sampling interval, in km)
-  d3 = 0.012500 (crossline sampling interval, in km)
-  i2min =  1300, i2max =  2300 (inline index bounds)
-  i3min =   970, i3max =  1290 (crossline index bounds)
-  xmin =  453.320000, xmax =  464.634000 (x coordinate bounds, in km)
-  ymin = 7317.354880, ymax = 7329.340160 (y coordinate bounds, in km)
+  indices and coordinates from trace headers:
+    i2min =  1300, i2max =  2300 (inline indices)
+    i3min =   970, i3max =  1290 (crossline indices)
+    xmin =  453.320000, xmax =  464.634000 (x coordinates, in km)
+    ymin = 7317.354880, ymax = 7329.340160 (y coordinates, in km)
+  grid sampling:
+    n1 =  1001 (number of samples per trace)
+    n2 =  1001 (number of traces in inline direction)
+    n3 =   321 (number of traces in crossline direction)
+    d1 = 0.004000 (time sampling interval, in s)
+    d2 = 0.012501 (inline sampling interval, in km)
+    d3 = 0.012500 (crossline sampling interval, in km)
   grid corner points:
     i2min =  1300, i3min =   970, x =  453.320000, y = 7320.021120
     i2max =  2300, i3min =   970, x =  461.652000, y = 7329.340160
     i2min =  1300, i3max =  1290, x =  456.302000, y = 7317.354880
     i2max =  2300, i3max =  1290, x =  464.634000, y = 7326.673920
   grid azimuth: 41.80 degrees
-  ***************************************************************************
+  ****** end of SEG-Y file info ******
   Full Norne corner coordinates (Knut, 16/7-09)
   line	trace	X	Y
   970	2300	461652	7329340.16
   970	1300	453320	7320021.12
   1290	1300	456302	7317355
   1290	2300	464634	7326674
+  ***************************************************************************
   """
-  firstLook = True # fast, does not read all trace headers
+  firstLook = False # fast, does not read all trace headers
   secondLook = False # slow, must read all trace headers
   writeImage = False # reads all traces, writes an image
   showImage = True # displays the image
-  basedir = "/data/seis/norne/"
-  sgyfile = basedir+"sgy/norne4d_2006-full.sgy"
-  datfile = basedir+"dat/full2006.dat"
   i1min,i1max,i2min,i2max,i3min,i3max = 0,1000,1300,2300,970,1290
   n1,n2,n3 = 1+i1max-i1min,1+i2max-i2min,1+i3max-i3min
-  si = SegyImage(sgyfile)
-  if firstLook:
-    si.printSummaryInfo();
-    si.printBinaryHeader()
-    si.printTraceHeader(0)
-    si.printTraceHeader(1)
-    plotIbmIeeeFloats(si)
-  if secondLook:
-    si.printAllInfo()
-    plot23(si)
-    plotXY(si)
-  if writeImage:
-    si.writeFloats(datfile,i1min,i1max,i2min,i2max,i3min,i3max)
-  si.close()
-  if showImage:
-    x = readImage(datfile,n1,n2,n3)
-    show3d(x,clip=1000.0)
+  basedir = "/data/seis/norne/"
+  sgyfiles = [
+    "norne4d_2001-full.sgy",
+    "norne4d_2003-full.sgy",
+    "norne4d_2004-full.sgy",
+    "norne4d_2006-full.sgy",
+    "norne4d_2006-near.sgy",
+    "norne4d_2006-mid.sgy",
+    "norne4d_2006-far.sgy"]
+  datfiles = [
+    "norne2001full.dat",
+    "norne2003full.dat",
+    "norne2004full.dat",
+    "norne2006full.dat",
+    "norne2006near.dat",
+    "norne2006mid.dat",
+    "norne2006far.dat"]
+  nfile = len(sgyfiles)
+  for ifile in range(nfile):
+    sgyfile = basedir+"sgy/"+sgyfiles[ifile]
+    datfile = basedir+"dat/"+datfiles[ifile]
+    si = SegyImage(sgyfile)
+    if firstLook:
+      si.printSummaryInfo();
+      #si.printBinaryHeader()
+      #si.printTraceHeader(0)
+      #si.printTraceHeader(1)
+      #plotIbmIeeeFloats(si)
+    if secondLook:
+      si.printAllInfo()
+      #plot23(si)
+      #plotXY(si)
+    if writeImage:
+      scale = 0.001
+      si.writeFloats(datfile,scale,i1min,i1max,i2min,i2max,i3min,i3max)
+    si.close()
+    if showImage:
+      x = readImage(datfile,n1,n2,n3)
+      show3d(x,clip=1.0)
 
 def goSino():
   """
@@ -172,7 +219,7 @@ def goSino():
     if component=="x":
       si.setFormat(5) # formats appear to be IEEE for x and IBM for z!???
     si.printAllInfo()
-    si.writeFloats(datfile,i1min,i1max,i2min,i2max,0,0)
+    si.writeFloats(datfile)
     si.close()
     f = readImage(datfile,n1,n2)
     gain(500,f)
@@ -182,6 +229,7 @@ def goSino():
 
 def goF3d():
   """
+  ***************************************************************************
   ****** beginning of SEG-Y file info ******
   file name = /data/seis/f3d/f3draw.sgy
   byte order = BIG_ENDIAN
@@ -211,10 +259,11 @@ def goF3d():
   good subset
   i1min,i1max,i2min,i2max,i3min,i3max = 0,461,300,1250,100,690
   n1,n2,n3 = 462,951,591
+  ***************************************************************************
   """
   firstLook = False # fast, does not read all trace headers
   secondLook = False # slow, must read all trace headers
-  writeImage = True # reads all traces, writes an image
+  writeImage = False # reads all traces, writes an image
   showImage = True # displays the image
   basedir = "/data/seis/f3d/"
   sgyfile = basedir+"f3draw.sgy"
@@ -232,11 +281,12 @@ def goF3d():
     plot23(si)
     plotXY(si)
   if writeImage:
-    si.writeFloats(datfile,i1min,i1max,i2min,i2max,i3min,i3max)
+    scale = 0.0001
+    si.writeFloats(datfile,scale,i1min,i1max,i2min,i2max,i3min,i3max)
   si.close()
   if showImage:
     x = readImage(datfile,n1,n2,n3)
-    show3d(x,clip=10000.0)
+    show3d(x,clip=1.0)
 
 def show2d(f,clip=None,title=None):
   print "show2d: f min =",min(f)," max =",max(f)

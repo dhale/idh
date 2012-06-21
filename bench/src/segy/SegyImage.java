@@ -620,7 +620,7 @@ public class SegyImage {
    * Writes zeros for any missing traces.
    */
   public void writeFloats(String fileName) {
-    writeFloats(fileName,0,_n1-1,_i2min,_i2max,_i3min,_i3max);
+    writeFloats(fileName,1.0,0,_n1-1,_i2min,_i2max,_i3min,_i3max);
   }
 
   /**
@@ -628,6 +628,7 @@ public class SegyImage {
    * Writes zeros for any missing traces; however, all minimum and 
    * maximum sample indices must be in the bounds for the grid.
    * @param fileName the file name.
+   * @param scaleFactor scaling applied to each sample.
    * @param i1min minimum sample index in 1st dimension.
    * @param i1max maximum sample index in 1st dimension.
    * @param i2min minimum sample index in 2nd dimension.
@@ -637,6 +638,7 @@ public class SegyImage {
    */
   public void writeFloats(
     String fileName,
+    double scaleFactor,
     int i1min, int i1max,
     int i2min, int i2max,
     int i3min, int i3max)
@@ -659,6 +661,7 @@ public class SegyImage {
         "writing "+m1+"*"+m2+"*"+m3+" floats ("+mb+" MB) ");
       float[] f = new float[_n1];
       float[] g = new float[m1];
+      float s = (float)scaleFactor;
       for (int i3=i3min; i3<=i3max; ++i3) {
         if (i3min<i3max && (i3-i3min)%((i3max-i3min)/10)==0) {
           double perc = (int)((i3-i3min)*100.0/(i3max-i3min));
@@ -667,6 +670,10 @@ public class SegyImage {
         for (int i2=i2min; i2<=i2max; ++i2) {
           getTrace(i2,i3,f);
           copy(m1,i1min,f,0,g);
+          if (s!=1.0f) {
+            for (int i1=0; i1<m1; ++i1)
+              g[i1] *= s;
+          }
           aos.writeFloats(g);
         }
       }

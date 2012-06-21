@@ -22,4 +22,3 @@ from edu.mines.jtk.util.ArrayMath import *
 
 from fault import *
 from ldf import *
-from segy import *

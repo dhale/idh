@@ -1,76 +1,58 @@
 """
-Applies bilateral filter to mbs data.
+Structure-oriented bilateral smoothing filter
+"""
 
-Author: Dave Hale, Colorado School of Mines
-Version: 2012.06.18
-"""
-from imports import *
+from mbsutils import *
+setupForSubset("s1")
+s1,s2,s3 = getSamplings()
+n1,n2,n3 = s1.count,s2.count,s3.count
 
-"""
-Subset of PstmLarge image:
-i1min,i1max = 150, 650,  n1 = 501
-i2min,i2max = 490,1258,  n2 = 769
-i3min,i3max = 358, 917,  n3 = 560
-"""
-global n1,n2,n3
-n1,n2,n3 = 501,769,560
-d1,d2,d3 = 0.002,0.016764,0.016764 # 2 ms, 55 ft, 55 ft
-f1,f2,f3 = 0.300,0.000000,0.000000
-s1,s2,s3 = Sampling(n1,d1,f1),Sampling(n2,d2,f2),Sampling(n3,d3,f3)
-datdir = "/data/seis/mbs/dat/"
+gfile = "g" # input seismic image
+gsfile = "gs" # output smoothed image
+dfile = "d" # smoothing tensors
 
 def main(args):
-  goScale()
-  
-def goScale():
-  datfile = datdir+"pstm_raw_s1.dat"
-  f = readImage(datfile)
-  mul(0.0001,f,f)
-  show3d(f,clip=1.0)
-  
-def show3d(f,clip=None):
-  print "show3d: f min =",min(f)," max =",max(f)
-  frame = SimpleFrame()
-  ipg = frame.addImagePanels(f)
-  if clip:
-    ipg.setClips(-clip,clip)
-  frame.orbitView.setScale(2.0)
-  frame.setSize(1000,1000)
+  #goSmoothingFilter()
+  #goBilateralFilter()
+  display()
+ 
+def goSmoothingFilter():
+  d = readTensors(dfile)
+  g = readImage(gfile)
+  sigmaS = 4.0
+  c = 0.5*sigmaS*sigmaS
+  lsf = LocalSmoothingFilter()
+  gs = zerofloat(n1,n2,n3)
+  lsf.apply(d,c,g,gs)
+  writeImage(gsfile,gs)
+ 
+def goBilateralFilter():
+  d = readTensors(dfile)
+  g = readImage(gfile)
+  sigmaS = 4.0 # sufficient to attenuate noise
+  sigmaR = 1.0 # smooths perhaps a bit too much
+  #sigmaR = 0.3 # leaves too much noise speckle
+  #sigmaR = computeSigmaR(g) # ~ 0.165
+  print "sigmaS =",sigmaS," sigmaR =",sigmaR
+  bf = BilateralFilter(sigmaS,sigmaR)
+  gs = zerofloat(n1,n2,n3)
+  bf.apply(d,g,gs)
+  writeImage(gsfile,gs)
 
-def spow(p,f):
-  return mul(sgn(f),pow(abs(f),p))
+def computeSigmaR(g):
+  return 0.5*(Quantiler.estimate(0.75,g)-Quantiler.estimate(0.25,g))
 
-def slog(f):
-  return mul(sgn(f),log(add(1.0,abs(f))))
-
-def sexp(f):
-  return mul(sgn(f),sub(exp(abs(f)),1.0))
-
-def readImage(datfile):
-  x = zerofloat(n1,n2,n3)
-  ais = ArrayInputStream(datfile)
-  ais.readFloats(x)
-  ais.close()
-  return x
-
-def writeImage(datfile,x):
-  aos = ArrayOutputStream(datfile)
-  aos.writeFloats(x)
-  aos.close()
-
-def structureTensors(sigma1,sigma23,f):
-  lof = LocalOrientFilter(sigma1,sigma23)
-  #lof.setGradientSmoothing(sigma)
-  t = lof.applyForTensors(f)
-  return t
-
-def diffusionTensors(sigma,x):
-  t = structureTensors(sigma,x) # structure tensors
-  t.invertStructure(0.0,2.0,4.0) # invert with ew = 1, ev small, eu smaller
-  return t
+def display():
+  g = readImage(gfile)
+  gs = readImage(gsfile)
+  world = World()
+  ipg = addImageToWorld(world,g)
+  ipg.setClips(-1.0,1.0)
+  ipg = addImageToWorld(world,gs)
+  ipg.setClips(-1.0,1.0)
+  frame = makeFrame(world)
+  #frame.orbitView.setAzimuth(-65.0)
+  frame.setSize(1460,980)
 
 #############################################################################
-class RunMain(Runnable):
-  def run(self):
-    main(sys.argv)
-SwingUtilities.invokeLater(RunMain()) 
+run(main)

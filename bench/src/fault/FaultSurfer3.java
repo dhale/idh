@@ -308,7 +308,7 @@ public class FaultSurfer3 {
     }
     private boolean goodNormal(Node n) {
       float uu = u1*n.u1+u2*n.u2+u3*n.u3;
-      return uu*uu>0.75f; // angle less than 30 degrees
+      return uu*uu>0.75f; // angle less than 30 degrees // OK for F3D
       //return uu*uu>0.50f; // angle less than 45 degrees
       //return uu*uu>0.25f; // angle less than 60 degrees
       //return uu*uu>0.0f; // angle less than 90 degrees
@@ -1585,7 +1585,7 @@ public class FaultSurfer3 {
     double[] e = new double[3]; // eigenvalues
 
     // Schultz's threshold theta for small differences ev-ew.
-    float theta = 0.01f;
+    float theta = 0.01f; // OK for F3D
 
     // For all samples in this constant-i3 slice, ...
     for (int i2=1; i2<n2-1; ++i2) {
@@ -1641,7 +1641,7 @@ public class FaultSurfer3 {
           float uw = u1*w1+u2*w2+u3*w3;
           //if (uw*uw>0.75f) { // if u-w angle < 30 degrees
           //if (uw*uw>0.50f) { // if u-w angle < 45 degrees
-          if (uw*uw>0.25f) { // if u-w angle < 60 degrees
+          if (uw*uw>0.25f) { // if u-w angle < 60 degrees // OK for F3D
           //if (uw*uw>0.0f) { // if u-w angle < 90 degrees
 
             // The non-unit eigenvalue eu of T.

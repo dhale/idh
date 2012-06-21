@@ -242,7 +242,7 @@ public class FaultScanner3 {
     int np = sp.getCount();
     int nt = st.getCount();
     for (int ip=0; ip<np; ++ip) {
-      trace("FaultScanner3.scanF: ip="+ip);
+      trace("FaultScanner3.scanF: ip/np="+ip+"/"+np);
       final float phi = (float)sp.getValue(ip);
       for (int it=0; it<nt; ++it) {
         final float theta = (float)st.getValue(it);
@@ -294,7 +294,7 @@ public class FaultScanner3 {
     final float[][][] t = new float[n3][n2][n1];
     int np = sp.getCount();
     for (int ip=0; ip<np; ++ip) {
-      trace("FaultScanner3.scanS: ip="+ip);
+      trace("FaultScanner3.scanS: ip/np="+ip+"/"+np);
       final float phi = (float)sp.getValue(ip);
       Rotator r = new Rotator(phi,n1,n2,n3);
       float[][][][] rsnd = r.rotate(_snd);
