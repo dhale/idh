@@ -68,6 +68,14 @@ public class LocalSlopeFinder {
   }
 
   /**
+   * Sets the half-width of smoothers in 2nd and higher dimensions.
+   * @param sigma2 the half-width.
+   */
+  public void setSigma2(double sigma2) {
+    _sigma2 = _sigma3 = (float)sigma2;
+  }
+
+  /**
    * Sets bounds on slopes returned by this slope finder.
    * @param pmax maximum slope returned by this slope finder.
    *  The minimum slope will be the negative of this maximum.
@@ -116,7 +124,7 @@ public class LocalSlopeFinder {
     // Normal vectors and linearities.
     float[][] u1 = new float[n2][n1];
     float[][] u2 = p2;
-    LocalOrientFilter lof = new LocalOrientFilter(_sigma1,1.0);
+    LocalOrientFilter lof = new LocalOrientFilter(_sigma1,_sigma2);
     lof.applyForNormalLinear(f,u1,u2,el);
 
     // Compute slopes from normal vectors.
@@ -153,7 +161,7 @@ public class LocalSlopeFinder {
     float[][][] u1 = new float[n3][n2][n1];
     float[][][] u2 = p2;
     float[][][] u3 = p3;
-    LocalOrientFilter lof = new LocalOrientFilter(_sigma1,1.0,1.0);
+    LocalOrientFilter lof = new LocalOrientFilter(_sigma1,_sigma2,_sigma3);
     lof.applyForNormalPlanar(f,u1,u2,u3,ep);
 
     // Compute slopes from normal vectors.
@@ -183,6 +191,8 @@ public class LocalSlopeFinder {
   // private
 
   private float _sigma1; // half-width of smoother in 1st dimension
+  private float _sigma2 = 1.0f; // smoothing half-width in 2nd dimension
+  private float _sigma3 = 1.0f; // smoothing half-width in 3rd dimension
   private float _p2min,_p2max; // min and max slopes in 2nd dimension
   private float _p3min,_p3max; // min and max slopes in 3rd dimension
 }

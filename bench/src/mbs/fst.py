@@ -21,12 +21,12 @@ fptfile = "fpt" # thinned fault strikes (phi)
 fttfile = "ftt" # thinned fault dips (theta)
 
 def main(args):
-  #goSlopes()
+  goSlopes()
   #goSemblance()
   #goScan()
   #goThin()
   #goSmooth()
-  goSurfing()
+  #goSurfing()
 
 def goSurfing():
   g = readImage(gfile)
@@ -132,16 +132,22 @@ def goSemblance():
 
 def goSlopes():
   g = readImage(gfile)
-  g = slog(g)
-  plot3(g)
-  fse = FaultSemblance()
-  p2,p3 = fse.slopes(g)
+  #g = slog(g)
+  #plot3(g)
+  sigma1,sigma2,pmax = 16.0,4.0,5.0
+  lsf = LocalSlopeFinder(sigma1,pmax)
+  lsf.setSigma2(sigma2)
+  p2 = zerofloat(n1,n2,n3)
+  p3 = zerofloat(n1,n2,n3)
+  lsf.findSlopes(g,p2,p3,None)
   p2 = clip(-1,1,p2)
   p3 = clip(-1,1,p3)
-  plot3(g,p2)
-  plot3(g,p3)
-  writeImage(p2file,p2)
-  writeImage(p3file,p3)
+  print "p2: min =",min(p2)," max =",max(p2)
+  print "p3: min =",min(p3)," max =",max(p3)
+  plot3(g,p2,gmap=bwrNotch(1.0))
+  plot3(g,p3,gmap=bwrNotch(1.0))
+  #writeImage(p2file,p2)
+  #writeImage(p3file,p3)
 
 def spow(p,f):
   return mul(sgn(f),pow(abs(f),p))

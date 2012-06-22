@@ -61,8 +61,6 @@ public class FaultSemblance {
     int n3 = f.length;
     float[][][] p2 = new float[n3][n2][n1];
     float[][][] p3 = new float[n3][n2][n1];
-    float sigma1 = 8.0f;
-    float slopeMax = 5.0f;
     LocalSlopeFinder lsf = new LocalSlopeFinder(SIGMA1,SLOPE_MAX);
     lsf.findSlopes(f,p2,p3,null);
     return new float[][][][]{p2,p3};
