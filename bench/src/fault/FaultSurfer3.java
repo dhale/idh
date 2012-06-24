@@ -30,14 +30,17 @@ public class FaultSurfer3 {
     return fs;
   }
 
-  public float[][][] findShifts(double smax, Surf[] surfs, float[][][] f) {
+  public float[][][] findShifts(
+    double smax, Surf[] surfs, 
+    float[][][] f, float[][][] p2, float[][][] p3) 
+  {
     int n1 = f[0][0].length;
     int n2 = f[0].length;
     int n3 = f.length;
     float[][][] s = new float[n3][n2][n1];
     float[][][] c = new float[n3][n2][n1];
     for (Surf surf:surfs) {
-      surf.computeShifts(smax,f);
+      surf.computeShifts(smax,f,p2,p3);
       for (Quad quad:surf) {
         if (quad.isVertical()) {
           Vert v = quad.getVert();
@@ -618,76 +621,18 @@ public class FaultSurfer3 {
       return xyz.trim();
     }
 
-    void xcomputeErrors(int lmax, float d, float[][][] f) {
-      int n1 = f[0][0].length;
-      int i1 = q.i1;
-      Quad qi;
-      int nlag;
-      float y1,y2,y3,gm,gp;
-
-      // Errors for lag zero.
-      emp = new float[lmax+1+lmax];
-      epm = new float[lmax+1+lmax];
-      float us = q.us23, u1 = us*q.u1, u2 = us*q.u2, u3 = us*q.u3;
-      float ut = (i1-q.c1)*u1;
-      float x1 = i1, x2 = q.c2-ut*u2, x3 = q.c3-ut*u3;
-      float fm = valueAt(x1,x2-d*u2,x3-d*u3,f);
-      float fp = valueAt(x1,x2+d*u2,x3+d*u3,f);
-      float empl = emp[lmax] = error(fm,fp);
-      float epml = epm[lmax] = error(fp,fm);
-
-      // Errors for samples south.
-      us = q.us23; u1 = us*q.u1; u2 = us*q.u2; u3 = us*q.u3;
-      y1 = x1+1.0f; y2 = x2-u1*u2; y3 = x3-u1*u3;
-      qi = quadSouth(q,y1,y2,y3);
-      nlag = min(lmax,n1-1-i1);
-      for (int ilag=1; ilag<=nlag; ++ilag) {
-        if (qi!=null) {
-          us = qi.us23; u1 = us*qi.u1; u2 = us*qi.u2; u3 = us*qi.u3;
-          ut = (y1-qi.c1)*u1+(y2-qi.c2)*u2+(y3-qi.c3)*u3;
-          y2 -= ut*u2; y3 -= ut*u3;
-          gm = valueAt(y1,y2-d*u2,y3-d*u3,f);
-          gp = valueAt(y1,y2+d*u2,y3+d*u3,f);
-          empl = emp[lmax+ilag] = error(fm,gp);
-          epml = epm[lmax+ilag] = error(fp,gm);
-          y1 += 1.0f; y2 -= u1*u2; y3 -= u1*u3;
-          qi = quadSouth(qi,y1,y2,y3);
-        } else {
-          emp[lmax+ilag] = empl;
-          epm[lmax+ilag] = epml;
-        }
-      }
-
-      // Errors for samples north.
-      us = q.us23; u1 = us*q.u1; u2 = us*q.u2; u3 = us*q.u3;
-      y1 = x1-1.0f; y2 = x2+u1*u2; y3 = x3+u1*u3;
-      qi = quadNorth(q,y1,y2,y3);
-      nlag = min(lmax,i1);
-      for (int ilag=1; ilag<=nlag; ++ilag) {
-        if (qi!=null) {
-          us = qi.us23; u1 = us*qi.u1; u2 = us*qi.u2; u3 = us*qi.u3;
-          ut = (y1-qi.c1)*u1+(y2-qi.c2)*u2+(y3-qi.c3)*u3;
-          y2 -= ut*u2; y3 -= ut*u3;
-          gm = valueAt(y1,y2-d*u2,y3-d*u3,f);
-          gp = valueAt(y1,y2+d*u2,y3+d*u3,f);
-          empl = emp[lmax-ilag] = error(fm,gp);
-          epml = epm[lmax-ilag] = error(fp,gm);
-          y1 -= 1.0f; y2 += u1*u2; y3 += u1*u3;
-          qi = quadNorth(qi,y1,y2,y3);
-        } else {
-          emp[lmax-ilag] = empl;
-          epm[lmax-ilag] = epml;
-        }
-      }
-    }
-
     /**
-     * Computes alignment errors for the specified image.
+     * Computes alignment errors and initializes shifts.
      * Computes both minus-plus (emp) and plus-minus (epm) errors.
      * The minus-plus errors correspond to differences between
      * the sample value on the minus side of this quad and those 
      * for the plus sides of quads up and down dip from this quad.
      * The plus-minus errors are defined similarly. 
+     * <p>
+     * Uses the specified slopes to initialize both minus-plus and 
+     * plus-minus shifts to compensate for the fact that shifts are 
+     * estimated using image samples located a horizontal distance 
+     * d away from this quad.
      * <p>
      * For lags where image sample values are unavailable, say, 
      * near surface boundaries, errors are extrapolated from other
@@ -695,7 +640,9 @@ public class FaultSurfer3 {
      * detected and modified later after errors for all quads in
      * the surface have been computed.
      */
-    void computeErrors(int lmax, float d, float[][][] f) {
+    void computeErrorsAndInitShifts(
+      int lmax, float d, float[][][] f, float[][][] p2, float[][][] p3) 
+    {
       int n1 = f[0][0].length;
       int i1 = q.i1;
       Quad qi;
@@ -708,10 +655,21 @@ public class FaultSurfer3 {
       float us = q.us23, u1 = us*q.u1, u2 = us*q.u2, u3 = us*q.u3;
       float ut = (i1-q.c1)*u1;
       float x1 = i1, x2 = q.c2-ut*u2, x3 = q.c3-ut*u3;
-      float fm = valueAt(x1,x2-d*u2,x3-d*u3,f);
-      float fp = valueAt(x1,x2+d*u2,x3+d*u3,f);
+      float x2m = x2-d*u2, x3m = x3-d*u3;
+      float x2p = x2+d*u2, x3p = x3+d*u3;
+      float fm = valueAt(x1,x2m,x3m,f);
+      float fp = valueAt(x1,x2p,x3p,f);
+      float p2m = valueAt(x1,x2m,x3m,p2);
+      float p2p = valueAt(x1,x2p,x3p,p2);
+      float p3m = valueAt(x1,x2m,x3m,p3);
+      float p3p = valueAt(x1,x2p,x3p,p3);
       float empl = emp[lmax] = error(fm,fp);
       float epml = epm[lmax] = error(fp,fm);
+
+      // Initial shifts compensate for horizontal distance d.
+      float s23 = d*((p2m+p2p)*u2+(p3m+p3p)*u3);
+      smp = -s23;
+      spm =  s23;
 
       // Errors for samples south; any extrapolated errors are negative.
       us = q.us23; u1 = us*q.u1; u2 = us*q.u2; u3 = us*q.u3;
@@ -955,10 +913,12 @@ public class FaultSurfer3 {
     /**
      * Computes fault shifts for all vertical quads in this surface.
      */
-    public void computeShifts(double smax, float[][][] f) {
+    public void computeShifts(
+      double smax, float[][][] f, float[][][] p2, float[][][] p3) 
+    {
       int lmax = (int)smax;
       final float d = 2.0f;
-      computeErrors(lmax,d,f);
+      computeErrorsAndInitShifts(lmax,d,f,p2,p3);
       Quad[][][] qewns = getQuadsEwNs();
       Quad[][] qew = qewns[0];
       Quad[][] qns = qewns[1];
@@ -971,11 +931,13 @@ public class FaultSurfer3 {
       smoothShifts();
       smoothShifts();
     }
-    private void computeErrors(int lmax, float d, float[][][] f) {
+    private void computeErrorsAndInitShifts(
+      int lmax, float d, float[][][] f, float[][][] p2, float[][][] p3) 
+    {
       for (Quad quad:_quads) {
         if (quad.isVertical()) {
           Vert vert = quad.getVert();
-          vert.computeErrors(lmax,d,f);
+          vert.computeErrorsAndInitShifts(lmax,d,f,p2,p3);
         }
       }
     }
@@ -2048,9 +2010,9 @@ public class FaultSurfer3 {
       for (int jns=0; jns<lns; ++jns) {
         Vert v = qns[ins][jns].getVert();
         if (mp) {
-          v.smp = s[jns];
+          v.smp += s[jns];
         } else {
-          v.spm = s[jns];
+          v.spm += s[jns];
         }
       }
     }

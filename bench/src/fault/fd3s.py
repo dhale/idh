@@ -82,7 +82,10 @@ def goSurfing():
   quads = fs.linkQuads(quads)
   surfs = fs.findSurfs(quads)
   surfs = fs.getSurfsWithSize(surfs,2000)
-  s = fs.findShifts(20.0,surfs,gs)
+  fl = fp = ft = None
+  p2 = readImage(n1,n2,n3,"p2")
+  p3 = readImage(n1,n2,n3,"p3")
+  s = fs.findShifts(20.0,surfs,gs,p2,p3)
   print "s: min =",min(s)," max =",max(s)
   #t1,t2,t3 = fs.findThrows(-0.12345,surfs)
   #plot3(g,surfs=surfs)

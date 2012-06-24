@@ -37,7 +37,7 @@ public class LocalSlopeFinder {
    * @param sigma1 half-width of smoother in 1st dimension.
    */
   public LocalSlopeFinder(double sigma1) {
-    this(sigma1,100.0);
+    this(sigma1,1.0,1.0,100.0);
   }
 
   /**
@@ -47,7 +47,34 @@ public class LocalSlopeFinder {
    *  The minimum slope will be the negative of this maximum.
    */
   public LocalSlopeFinder(double sigma1, double pmax) {
+    this(sigma1,1.0,1.0,pmax);
+  }
+
+  /**
+   * Constructs a local slope finder with specified smoothing and bounds.
+   * @param sigma1 half-width of smoother in 1st dimension.
+   * @param sigma2 half-width of smoother in 2nd and higher dimensions.
+   * @param pmax maximum slope returned by this slope finder.
+   *  The minimum slope will be the negative of this maximum.
+   */
+  public LocalSlopeFinder(double sigma1, double sigma2, double pmax) {
+    this(sigma1,sigma2,sigma2,pmax);
+  }
+
+  /**
+   * Constructs a local slope finder with specified smoothing and bounds.
+   * @param sigma1 half-width of smoother in 1st dimension.
+   * @param sigma2 half-width of smoother in 2nd dimension.
+   * @param sigma3 half-width of smoother in 3rd dimension.
+   * @param pmax maximum slope returned by this slope finder.
+   *  The minimum slope will be the negative of this maximum.
+   */
+  public LocalSlopeFinder(
+    double sigma1, double sigma2, double sigma3, double pmax) 
+  {
     _sigma1 = (float)sigma1;
+    _sigma2 = (float)sigma2;
+    _sigma3 = (float)sigma3;
     setBounds(pmax);
   }
 
@@ -65,14 +92,6 @@ public class LocalSlopeFinder {
   {
     _sigma1 = (float)sigma1;
     setBounds(p2min,p2max,p3min,p3max);
-  }
-
-  /**
-   * Sets the half-width of smoothers in 2nd and higher dimensions.
-   * @param sigma2 the half-width.
-   */
-  public void setSigma2(double sigma2) {
-    _sigma2 = _sigma3 = (float)sigma2;
   }
 
   /**

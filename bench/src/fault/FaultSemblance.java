@@ -376,7 +376,7 @@ public class FaultSemblance {
         g[i2][j1] *= ti;
       }
     }
-    /* disable horizontal smoothing
+    /* disable horizontal taper
     for (int i2=0,j2=n2-1; i2<m; ++i2,--j2) {
       float ti = t[i2];
       for (int i1=0; i1<n1; ++i1) {

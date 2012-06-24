@@ -72,7 +72,7 @@ public class FaultScanner2 {
     if (s==Smoother.SHEAR) {
       _snd = snd;
     } else {
-      _fls = new FaultLineSmoother(_sigmaTheta,0.0,snd);
+      _fls = new FaultLineSmoother(_sigmaTheta,1.0,snd);
     }
     _n1 = snd[0][0].length;
     _n2 = snd[0].length;
@@ -607,7 +607,7 @@ public class FaultScanner2 {
     int ssmin = (nn+smin>10)?smin:10-nn;
     int ssmax = (nn-smax>10)?smax:nn-10;
     DynamicWarping dw = new DynamicWarping(ssmin,ssmax);
-    dw.setStretchMax(0.2);
+    dw.setStretchMax(0.5);
     float[][] gmp = getImageSamples(fl,2,g);
     float[][] pmp = getImageSamples(fl,2,p);
     float[] g1,g2,p1,p2;

@@ -1,5 +1,5 @@
 """
-Make amplitude spectra for all traces in images.
+Make small subsets for research.
 """
 
 from mbsutils import *
@@ -11,31 +11,32 @@ gfile = "g" # raw image obtained from SEG-Y file
 gsfile = "gs" # image after smoothing with soblf
 
 def main(args):
-  goAmplitude()
+  goSmall3dWithFault()
+  #goSliceAcrossFault()
 
-def goAmplitude():
+def goSmall3dWithFault():
+  """
+  i1=[0:279],i2=[407:768],i3=[162:495] copied from subset 1
+  in this subset i2=260 corresponds to xline=1157
+  """
   g = readImage(gfile)
-  gs = readImage(gsfile)
-  ga = amplitudeSpectra(g)
-  gsa = amplitudeSpectra(gs)
+  m1,m2,m3 = 280,362,334
+  j1,j2,j3 =   0,407,162
+  h = copy(m1,m2,m3,j1,j2,j3,g)
+  writeImage("sb/g",h)
   sf = SimpleFrame()
-  ipg = sf.addImagePanels(ga)
-  ipg.setColorModel(ColorMap.JET)
-  ipg = sf.addImagePanels(gsa)
-  ipg.setColorModel(ColorMap.JET)
-  sf.orbitView.scale = 2.0
-  sf.orbitView.setAxesScales(1.0,1.0,2.0)
-  sf.setSize(1500,1000)
+  sf.addImagePanels(h).setClips(-1,1)
 
-def amplitudeSpectra(f):
-  fft = Fft(n1)
-  a = zerofloat(0,n2,n3)
-  for i3 in range(n3):
-    for i2 in range(n2):
-      a[i3][i2] = cabs(fft.applyForward(f[i3][i2]))
-  return a
+def goSliceAcrossFault():
+  """i3=667 copied from subset 1"""
+  g = readImage(gfile)
+  h = zerofloat(n1,n3)
+  for i3 in range(0,n3):
+    copy(g[i3][667],h[i3])
+  aos = ArrayOutputStream("sa/g667.dat")
+  aos.writeFloats(h)
+  aos.close()
+  SimplePlot.asPixels(h)
 
 #############################################################################
 run(main)
-
-

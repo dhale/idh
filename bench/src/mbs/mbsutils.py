@@ -22,10 +22,17 @@ def setupForSubset(name):
   """
   global seismicDir
   global s1,s2,s3
-  seismicDir = _datdir+name+"/"
-  if (name=="s1"):
+  if name=="s1":
+    seismicDir = _datdir+"s1/"
     n1,n2,n3 = 501,769,560
     d1,d2,d3 = 0.002,0.016764,0.016764 # 2 ms, 55 ft, 55 ft
+    f1,f2,f3 = 0.300,0.000000,0.000000
+    s1,s2,s3 = Sampling(n1,d1,f1),Sampling(n2,d2,f2),Sampling(n3,d3,f3)
+  elif name=="s1b":
+    seismicDir = _datdir+"s1/sb/"
+    n1,n2,n3 = 280,362,334
+    #d1,d2,d3 = 0.002,0.016764,0.016764 # 2 ms, 55 ft, 55 ft
+    d1,d2,d3 = 1.000,1.000000,1.000000
     f1,f2,f3 = 0.300,0.000000,0.000000
     s1,s2,s3 = Sampling(n1,d1,f1),Sampling(n2,d2,f2),Sampling(n3,d3,f3)
 
