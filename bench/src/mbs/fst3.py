@@ -3,7 +3,7 @@ Fault processing
 """
 
 from mbsutils import *
-setupForSubset("s1b")
+setupForSubset("s1")
 s1,s2,s3 = getSamplings()
 n1,n2,n3 = s1.count,s2.count,s3.count
 
@@ -20,6 +20,10 @@ ftfile = "ft" # fault dips (theta)
 fltfile = "flt" # thinned fault likelihoods
 fptfile = "fpt" # thinned fault strikes (phi)
 fttfile = "ftt" # thinned fault dips (theta)
+frsfile = "frs" # fault relative shifts
+ft1file = "ft1" # 1st component of fault throws
+ft2file = "ft2" # 2nd component of fault throws
+ft3file = "ft3" # 3rd component of fault throws
 
 def main(args):
   #goSlopes()
@@ -27,7 +31,41 @@ def main(args):
   #goScan()
   #goThin()
   #goSmooth()
-  goSurfing()
+  #goSurfing()
+  #goDisplay("gs")
+  #goDisplay("gsf")
+  #goDisplay("gflt")
+  goDisplay("gfrs")
+  #goDisplay("gft1")
+
+def goDisplay(what):
+  def show2(g1,g2):
+    world = World()
+    addImageToWorld(world,g1).setClips(-1,1)
+    addImageToWorld(world,g2).setClips(-1,1)
+    makeFrame(world).setSize(1200,900)
+  if what=="gs":
+    g = readImage("g")
+    gs = readImage("gs")
+    show2(g,gs)
+  if what=="gsf":
+    gs = readImage("gs")
+    gsf = readImage("gsf")
+    show2(gs,gsf)
+  elif what=="gfrs":
+    g = readImage("gs")
+    s = readImage("frs")
+    plot3(g,s,cmin=-2.0,cmax=2.0,cmap=bwrNotch(1.0))
+  elif what=="gflt":
+    g = readImage("gs")
+    fl = readImage("flt")
+    plot3(g,fl,cmin=0.0,cmax=1.0,cmap=jetRamp(1.0))
+  elif what=="gft1":
+    g = readImage("gs")
+    ft1 = readImage("ft1")
+    plot3(g,ft1,cmin=0.0,cmax=1.0,cmap=jetRamp(1.0))
+  else:
+    print "do not know how to display ",what
 
 def goSurfing():
   g = readImage(gfile)
@@ -43,12 +81,16 @@ def goSurfing():
   quads = fs.linkQuads(quads)
   surfs = fs.findSurfs(quads)
   surfs = fs.getSurfsWithSize(surfs,4000)
-  plot3(g,surfs=surfs)
+  #plot3(g,surfs=surfs)
   s = fs.findShifts(20.0,surfs,gs,p2,p3)
   print "s: min =",min(s)," max =",max(s)
-  plot3(g,surfs=surfs,smax=5.0)
-  plot3(g,s,-5.0,5.0,cmap=bwrNotch(1.0))
-  #t1,t2,t3 = fs.findThrows(-0.12345,surfs)
+  writeImage(frsfile,s)
+  t1,t2,t3 = fs.findThrows(-0.012345,surfs)
+  writeImage(ft1file,t1)
+  writeImage(ft2file,t2)
+  writeImage(ft3file,t3)
+  #plot3(g,surfs=surfs,smax=5.0)
+  plot3(g,s,-2.0,2.0,cmap=bwrNotch(1.0))
   #plot3(g,surfs=surfs)
   #plot3(g,surfs=surfs,smax=-3.75)
   #plot3(g,surfs=surfs,smax= 3.75)
@@ -114,7 +156,6 @@ def goScan():
   print "scanning ..."
   sw = Stopwatch()
   sw.restart()
-  #fl,fp,ft = fsc.scan(minPhi,maxPhi,minTheta,maxTheta)
   fl,fp,ft = fsc.scan(minPhi,maxPhi,minTheta,maxTheta)
   sw.stop()
   print "time =",sw.time(),", fl min =",min(fl)," max =",max(fl)
@@ -131,6 +172,7 @@ def goScan():
 
 def goSemblance():
   g = readImage(gfile)
+  print "applying log gain ..."
   g = slog(g)
   print "reading slopes ..."
   p2 = readImage(p2file)
