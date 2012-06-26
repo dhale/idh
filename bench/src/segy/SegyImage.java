@@ -297,6 +297,59 @@ public class SegyImage {
       throw new RuntimeException("unknown data format: "+_format);
     }
   }
+  
+  /**
+   * Get the format of the trace data by comparing IBM
+   * and IEEE formats for a given number of randomly selected
+   * traces. This method ignores the format listed in the
+   * binary header and determines the correct format by
+   * analyzing trace data in the frequency domain. The incorrect
+   * format yields a larger ratio of high to low frequencies.
+   * @param ntraces the number of traces to test
+   * @return the format code for IBM or IEEE depending on
+   *   	     the results of the test.
+   */
+  public int getIbmIeee(int ntraces) {
+	if (_ntrace == 0)
+	  countTraces();
+	int format = getFormat();
+	
+	float ribm  = 0;
+    float rieee = 0;
+	for (int i = 0; i < ntraces; i++) {
+	  int itrace = (int)Math.random()*_ntrace;
+	  setFormat(1);
+	  float[] fibm = getTrace(itrace);
+	  setFormat(5);
+	  float[] fieee = getTrace(itrace);
+	  
+	  Fft fft = new Fft(fibm);
+	  Sampling sk1 = fft.getFrequencySampling1();
+	  int nk1 = sk1.getCount();
+  	  float[] gibm  = fft.applyForward(fibm);
+  	  float[] gieee = fft.applyForward(fieee);
+  	  float[] aibm  = new float[nk1];
+  	  float[] aieee = new float[nk1];
+  	  for (int kk=0,kr=0,ki=kr+1; kk<nk1; kk++,kr+=2,ki+=2) {
+  	    Cdouble cibm = new Cdouble(gibm[kr], gibm[ki]);
+  	    aibm[kk] = (float)cibm.abs();
+				
+  	    Cdouble cieee = new Cdouble(gieee[kr], gieee[ki]);
+  	    aieee[kk] = (float)cieee.abs();
+  	  }
+  	  
+  	  ribm  += computeRatio(aibm);
+	  rieee += computeRatio(aieee);
+	}
+
+	setFormat(format);
+	ribm = ribm/ntraces;
+	rieee = rieee/ntraces;
+	float percentDiff = Math.abs((ribm - rieee) / ((ribm + rieee) / 2f)) * 100f;
+	System.out.println("high/low frequency ratios: ribm="+ribm+
+			", rieee="+rieee+", % diff="+percentDiff);
+	return ribm < rieee ? 1 : 5; 
+  }
 
   /**
    * Gets the number of samples in 1st dimension of image sampling grid.
@@ -1098,6 +1151,28 @@ public class SegyImage {
         }
       }
     }
+  }
+  
+  private static float computeRatio(float[] a) {
+    int len = a.length;
+    float hSum  = 0;
+    float lSum  = 0;
+    float hwSum = 0;
+    float lwSum = 0;
+    for (int i = 0; i < len; i++) {
+      float radians = (float)Math.toRadians((float)i / (float)(len-1) * 90f);
+      float hw = (float)Math.pow(Math.sin(radians), 2);
+      hwSum += hw;
+      hSum  += hw*a[i];
+			
+      float lw = (float)Math.pow(Math.cos(radians), 2);
+      lwSum += lw;
+      lSum  += lw*a[i];
+    }
+    
+    float h = hSum/hwSum;
+    float l = lSum/lwSum;
+    return h/l;
   }
 
   private static void byteToFloat(byte[] b, float[] f) {
