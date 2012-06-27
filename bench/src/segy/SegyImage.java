@@ -9,6 +9,7 @@ package segy;
 
 import java.io.*;
 import java.nio.*;
+import java.util.Random;
 
 import edu.mines.jtk.dsp.*;
 import edu.mines.jtk.io.*;
@@ -71,15 +72,26 @@ public class SegyImage {
   }
 
   /**
-   * Prints summary information derived from only the binary file header.
+   * Prints summary information derived from the binary file header.
    * To ensure that this information makes sense, this method is often 
    * the first one called after constructing an SEG-Y image. Nonsensical 
    * information may be caused by non-standard byte order or non-standard 
    * SEG-Y headers.
+   * <p>
+   * For SEG-Y files with either IBM or IEEE floats, this method reads a 
+   * small number of traces to guess the format code (because this code 
+   * is often set incorrectly in the binary file header), and prints a 
+   * warning if the guess does not match the format in the header.
    */
   public void printSummaryInfo() {
     loadBinaryHeaderInfo();
     System.out.println("****** beginning of SEG-Y file summary info ******");
+    printBasicInfo();
+    System.out.printf("n1 = %5d (number of samples per trace)%n",_n1);
+    System.out.printf("d1 = %8.6f (time sampling interval, in s)%n",_d1);
+    System.out.println("****** end of SEG-Y file summary info ******");
+  }
+  private void printBasicInfo() {
     System.out.println("file name = "+_fileName);
     System.out.println("byte order = "+_byteOrder);
     System.out.println("number of bytes = "+_nbyte);
@@ -99,12 +111,18 @@ public class SegyImage {
     } else {
       System.out.println("format is unknown!");
     }
+    if (_formatGuess==1 && _format==5) {
+      System.out.println("WARNING  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+      System.out.println("WARNING: format may actually be 1 (IBM float)");
+      System.out.println("WARNING  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+    } else if (_formatGuess==5 && _format==1) {
+      System.out.println("WARNING  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+      System.out.println("WARNING: format may actually be 5 (IEEE float)");
+      System.out.println("WARNING  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+    }
     System.out.println(
       "units for spatial coordinates: "+(_feet?"ft":"m")+
       " (will be converted to km)");
-    System.out.printf("n1 = %5d (number of samples per trace)%n",_n1);
-    System.out.printf("d1 = %8.6f (time sampling interval, in s)%n",_d1);
-    System.out.println("****** end of SEG-Y file summary info ******");
   }
 
   /**
@@ -114,28 +132,7 @@ public class SegyImage {
   public void printAllInfo() {
     loadTraceHeaderInfo();
     System.out.println("****** beginning of SEG-Y file info ******");
-    System.out.println("file name = "+_fileName);
-    System.out.println("byte order = "+_byteOrder);
-    System.out.println("number of bytes = "+_nbyte);
-    System.out.println("number of traces = "+_ntrace);
-    if (_format==1) {
-      System.out.println("format = 1 (4-byte IBM floating point)");
-    } else if (_format==2) {
-      System.out.println("format = 2 (4-byte two's complement integer)");
-    } else if (_format==3) {
-      System.out.println("format = 3 (2-byte two's complement integer)");
-    } else if (_format==4) {
-      System.out.println("format = 4 (4-byte fixed-point with gain)");
-    } else if (_format==5) {
-      System.out.println("format = 5 (4-byte IEEE floating point)");
-    } else if (_format==8) {
-      System.out.println("format = 8 (1-byte two's complement integer)");
-    } else {
-      System.out.println("format is unknown!");
-    }
-    System.out.println(
-      "units for spatial coordinates: "+(_feet?"ft":"m")+
-      " (will be converted to km)");
+    printBasicInfo();
     System.out.println("indices and coordinates from trace headers:");
     System.out.printf(
       "  i2min = %5d, i2max = %5d (inline indices)%n",
@@ -163,10 +160,6 @@ public class SegyImage {
       "  d2 = %8.6f (inline sampling interval, in km)%n",_d2);
     System.out.printf(
       "  d3 = %8.6f (crossline sampling interval, in km)%n",_d3);
-    //System.out.println("grid reference point:");
-    //System.out.printf(
-    //  "  i2ref = %5d, i3ref = %5d, x = %11.6f, y = %11.6f%n",
-    //  _i2ref,_i3ref,_xref,_yref);
     System.out.println("grid corner points:");
     System.out.printf(
       "  i2min = %5d, i3min = %5d, x = %11.6f, y = %11.6f%n",
@@ -297,58 +290,108 @@ public class SegyImage {
       throw new RuntimeException("unknown data format: "+_format);
     }
   }
-  
-  /**
-   * Get the format of the trace data by comparing IBM
-   * and IEEE formats for a given number of randomly selected
-   * traces. This method ignores the format listed in the
-   * binary header and determines the correct format by
-   * analyzing trace data in the frequency domain. The incorrect
-   * format yields a larger ratio of high to low frequencies.
-   * @param ntraces the number of traces to test
-   * @return the format code for IBM or IEEE depending on
-   *   	     the results of the test.
-   */
-  public int getIbmIeee(int ntraces) {
-	if (_ntrace == 0)
-	  countTraces();
-	int format = getFormat();
-	
-	float ribm  = 0;
-    float rieee = 0;
-	for (int i = 0; i < ntraces; i++) {
-	  int itrace = (int)Math.random()*_ntrace;
-	  setFormat(1);
-	  float[] fibm = getTrace(itrace);
-	  setFormat(5);
-	  float[] fieee = getTrace(itrace);
-	  
-	  Fft fft = new Fft(fibm);
-	  Sampling sk1 = fft.getFrequencySampling1();
-	  int nk1 = sk1.getCount();
-  	  float[] gibm  = fft.applyForward(fibm);
-  	  float[] gieee = fft.applyForward(fieee);
-  	  float[] aibm  = new float[nk1];
-  	  float[] aieee = new float[nk1];
-  	  for (int kk=0,kr=0,ki=kr+1; kk<nk1; kk++,kr+=2,ki+=2) {
-  	    Cdouble cibm = new Cdouble(gibm[kr], gibm[ki]);
-  	    aibm[kk] = (float)cibm.abs();
-				
-  	    Cdouble cieee = new Cdouble(gieee[kr], gieee[ki]);
-  	    aieee[kk] = (float)cieee.abs();
-  	  }
-  	  
-  	  ribm  += computeRatio(aibm);
-	  rieee += computeRatio(aieee);
-	}
 
-	setFormat(format);
-	ribm = ribm/ntraces;
-	rieee = rieee/ntraces;
-	float percentDiff = Math.abs((ribm - rieee) / ((ribm + rieee) / 2f)) * 100f;
-	System.out.println("high/low frequency ratios: ribm="+ribm+
-			", rieee="+rieee+", % diff="+percentDiff);
-	return ribm < rieee ? 1 : 5; 
+  /**
+   * Returns a guess for the format code, if a guess is possible.
+   * Currently attempts to guess only if either IBM or IEEE floats.
+   * <p>
+   * The guess is obtained by analyzing amplitude spectra of a 
+   * random sample of a specified number of traces, based on the
+   * observation that using the wrong format when reading traces 
+   * tends to introduce noise near the Nyquist frequency.
+   * <p>
+   * This method <emph>does not</emph> alter the format used to get
+   * traces, which is obtained from the binary file header, and may 
+   * be overridden only by explicitly setting it.
+   * @param na number of traces to analyze.
+   * @return the guess; 1 if IBM, 5 if IEEE, 0 if no guess.
+   */ 
+  public int guessFormat(int na) {
+    loadBinaryHeaderInfo();
+
+    // If neither IBM nor IEEE format, cannot guess.
+    if (_format!=1 && _format!=5)
+      return 0;
+
+    // Time (t) and frequency (w) sampling.
+    int nt = _n1;
+    Fft fft = new Fft(nt);
+    int nw = fft.getFrequencySampling1().getCount();
+
+    // Guess will be positive if IBM, negative if IEEE, zero if unknown.
+    int guess = 0;
+
+    // Randomly select traces to analyze.
+    Random r = new Random(3);
+
+    // Maximum number of traces to read, including any all-zero traces.
+    int nr = 10*na;
+
+    // While more traces to analyze, and not too many already read, ...
+    while (na>0 && nr>0) {
+
+      // Read traces in both IBM and IEEE formats.
+      int format = _format;
+      int itrace = r.nextInt(_ntrace);
+      _format = 1;
+      float[] f1 = getTrace(itrace);
+      _format = 5;
+      float[] f5 = getTrace(itrace);
+      _format = format;
+      --nr;
+
+      // Compute weighted sums of amplitude spectra of traces. 
+      // One sum emphasizes low frequencies, while the other sum
+      // emphasizes high frequencies. The correct format should 
+      // minimize the ratio of the high- and low-frequency sums.
+      // The weights for the high-frequency sum are nearly zero 
+      // except near the Nyquist frequency, where they increase
+      // rapidly.
+      float[] a1 = cabs(fft.applyForward(f1));
+      float[] a5 = cabs(fft.applyForward(f5));
+      float swl = 0.0f;
+      float swh = 0.0f;
+      float s1l = 0.0f;
+      float s5l = 0.0f;
+      float s1h = 0.0f;
+      float s5h = 0.0f;
+      for (int iw=0; iw<nw; ++iw) {
+        float ck = 1.0f-(float)iw/nw;
+        float wl = pow(1.0f-(float)iw/(nw-1),0.125f);
+        float wh = 1.0f-wl; // ~ 0 except near Nyquist
+        swl += wl;
+        swh += wh;
+        s1l += wl*a1[iw];
+        s1h += wh*a1[iw];
+        s5l += wl*a5[iw];
+        s5h += wh*a5[iw];
+      }
+      s1l /= swl;
+      s1h /= swh;
+      s5l /= swl;
+      s5h /= swh;
+
+      // If trace not all zeros, compute ratios and update the guess.
+      if (s1l>0.0f && s5l>0.0f) {
+        float r1 = s1h/s1l;
+        float r5 = s5h/s5l;
+        if (r1<r5) {
+          ++guess;
+        } else if (r1>r5) {
+          --guess;
+        }
+        --na;
+      }
+    }
+
+    // Guess the format.
+    if (guess>0) {
+      return 1;
+    } else if (guess<0) {
+      return 5;
+    } else {
+      return 0;
+    }
   }
 
   /**
@@ -673,6 +716,7 @@ public class SegyImage {
    * Writes zeros for any missing traces.
    */
   public void writeFloats(String fileName) {
+    loadTraceHeaderInfo();
     writeFloats(fileName,1.0,0,_n1-1,_i2min,_i2max,_i3min,_i3max);
   }
 
@@ -744,6 +788,7 @@ public class SegyImage {
   private String _fileName; // SEG-Y file name
   private ByteOrder _byteOrder; // BIG_ENDIAN or LITTLE_ENDIAN
   private int _format; // sample format code
+  private int _formatGuess; // guess for format; zero if none
   private boolean _formatSet; // true, if format set explicitly
   private boolean _feet; // true, if feet; false if meters.
   private int _bytesPerSample; // number of bytes per sample
@@ -966,10 +1011,13 @@ public class SegyImage {
     if (!_d1Set) 
       _d1 = d1;
     _nbyte = new File(_fileName).length();
-    _ntrace = (int)((_nbyte-3200-400)/(240+_bytesPerSample*n1));
+    _ntrace = (int)((_nbyte-3600)/(240+_bytesPerSample*n1));
+    if (_ntrace*(240+_bytesPerSample*n1)!=(_nbyte-3600))
+      throw new RuntimeException("invalid file length or binary header");
     _ibuf = new int[_n1];
     _sbuf = new short[_n1];
     _bbuf = new byte[_n1];
+    _formatGuess = guessFormat(10);
   }
 
   private void checkTraceIndex(int i) {

@@ -12,8 +12,8 @@ global n1,n2,n3
 #############################################################################
 def main(args):
   #goMbs()
-  goNorne()
-  #goSino()
+  #goNorne()
+  goSino()
   #goF3d()
 
 def goMbs():
@@ -210,7 +210,7 @@ def goSino():
     i1min,i1max,i2min,i2max = 0,2000,201,921
     n1,n2 = 1+i1max-i1min,1+i2max-i2min
     si = SegyImage(sgyfile,ByteOrder.LITTLE_ENDIAN) # non-standard byte order!
-    #si.printSummaryInfo()
+    si.printSummaryInfo()
     #si.printBinaryHeader()
     #si.printTraceHeader(0)
     #si.printTraceHeader(1)
@@ -218,13 +218,13 @@ def goSino():
     si.setD2(0.015) # a guess, from looking at group coordinates in headers
     if component=="x":
       si.setFormat(5) # formats appear to be IEEE for x and IBM for z!???
-    si.printAllInfo()
+    #si.printAllInfo()
     si.writeFloats(datfile)
     si.close()
     f = readImage(datfile,n1,n2)
-    gain(500,f)
     if component=="z":
       stretch(1.6,f)
+    gain(500,f)
     show2d(f,title=component+" component")
 
 def goF3d():
