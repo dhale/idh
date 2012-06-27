@@ -27,11 +27,7 @@ from fault import *
 
 def main(args):
   #goS1()
-<<<<<<< HEAD
   #goS1A()
-=======
-  goS1A()
->>>>>>> scripting
   goS1B()
 def goS1():
   samplingS1()
@@ -43,7 +39,8 @@ def goS1():
   #goScan()
   #goThin()
   #goSmooth()
-  #goPartsAB()
+  #goSurfing()
+  goPartsAB()
 def goS1A():
   samplingS1A()
   goSurfing()
@@ -57,6 +54,8 @@ def goSurfing():
   g = readImage("g"); g = slog(g)
   #h = readImage("h"); h = slog(h)
   gs = readImage("gs")
+  p2 = readImage("p2")
+  p3 = readImage("p3")
   fl = readImage("fl")
   fp = readImage("fp")
   ft = readImage("ft")
@@ -67,7 +66,7 @@ def goSurfing():
   surfs = fs.findSurfs(quads)
   #surfs = fs.getSurfsWithSize(surfs,2000)
   surfs = fs.getSurfsWithSize(surfs,2000)
-  s = fs.findShifts(20.0,surfs,gs)
+  s = fs.findShifts(20.0,surfs,gs,p2,p3)
   print "s: min =",min(s)," max =",max(s)
   #t1,t2,t3 = fs.findThrows(-0.12345,surfs)
   #plot3(g,surfs=surfs)
@@ -265,7 +264,8 @@ def goPartsAB():
   j1b,j2b,j3b = 15,0,0
   samplingS1()
   global dataSub
-  for fileName in ["fl","fp","ft","flt","g","gs"]:
+  #for fileName in ["fl","fp","ft","flt","g","gs","p2","p3"]:
+  for fileName in ["p2","p3"]:
     dataSub = "s1/"
     x = readImage(fileName)
     x = copy(n1a,n2a,n3a,j1a,j2a,j3a,x)

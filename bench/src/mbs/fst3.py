@@ -32,10 +32,10 @@ def main(args):
   #goThin()
   #goSmooth()
   #goSurfing()
-  #goDisplay("gs")
+  goDisplay("gs")
   #goDisplay("gsf")
   #goDisplay("gflt")
-  goDisplay("gfrs")
+  #goDisplay("gfrs")
   #goDisplay("gft1")
 
 def goDisplay(what):
@@ -48,18 +48,18 @@ def goDisplay(what):
     g = readImage("g")
     gs = readImage("gs")
     show2(g,gs)
-  if what=="gsf":
+  elif what=="gsf":
     gs = readImage("gs")
     gsf = readImage("gsf")
     show2(gs,gsf)
-  elif what=="gfrs":
-    g = readImage("gs")
-    s = readImage("frs")
-    plot3(g,s,cmin=-2.0,cmax=2.0,cmap=bwrNotch(1.0))
   elif what=="gflt":
     g = readImage("gs")
     fl = readImage("flt")
     plot3(g,fl,cmin=0.0,cmax=1.0,cmap=jetRamp(1.0))
+  elif what=="gfrs":
+    g = readImage("gs")
+    s = readImage("frs")
+    plot3(g,s,cmin=-5.0,cmax=5.0,cmap=bwrNotch(1.0))
   elif what=="gft1":
     g = readImage("gs")
     ft1 = readImage("ft1")
@@ -190,7 +190,7 @@ def goSlopes():
   #g = slog(g)
   #plot3(g)
   sigma1,sigma2,pmax = 16.0,4.0,5.0
-  lsf = LocalSlopeFinder(sigma1,pmax)
+  lsf = LocalSlopeFinder(sigma1,pmax) # should have included sigma2
   p2 = zerofloat(n1,n2,n3)
   p3 = zerofloat(n1,n2,n3)
   ep = zerofloat(n1,n2,n3)
