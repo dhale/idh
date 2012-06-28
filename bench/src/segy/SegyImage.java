@@ -356,7 +356,6 @@ public class SegyImage {
       float s1h = 0.0f;
       float s5h = 0.0f;
       for (int iw=0; iw<nw; ++iw) {
-        float ck = 1.0f-(float)iw/nw;
         float wl = pow(1.0f-(float)iw/(nw-1),0.125f);
         float wh = 1.0f-wl; // ~ 0 except near Nyquist
         swl += wl;
