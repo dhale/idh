@@ -11,10 +11,71 @@ global n1,n2,n3
 
 #############################################################################
 def main(args):
+  goGbc()
   #goMbs()
   #goNorne()
-  goSino()
+  #goSino()
   #goF3d()
+
+def goGbc():
+  """
+  ***************************************************************************
+  ****** beginning of SEG-Y file info ******
+  file name = /data/seis/gbc/sgy/pwave_fs_NOCUT_npa.sgy
+  byte order = BIG_ENDIAN
+  number of bytes = 176949360
+  number of traces = 21474
+  format = 1 (4-byte IBM floating point)
+  units for spatial coordinates: ft (will be converted to km)
+  indices from trace headers:
+    i2min =  5669, i2max =  5818 (inline indices)
+    i3min =  5947, i3max =  6091 (crossline indices)
+  grid sampling:
+    n1 =  2000 (number of samples per trace)
+    n2 =   150 (number of traces in inline direction)
+    n3 =   145 (number of traces in crossline direction)
+    d1 = 0.002000 (time sampling interval, in s)
+    d2 = 0.033531 (inline sampling interval, in km)
+    d3 = 0.033529 (crossline sampling interval, in km)
+  ****** end of SEG-Y file info ******
+  """
+  imageType = "p" # which image to process
+  firstLook = False # fast, does not read all trace headers
+  secondLook = False # slow, must read all trace headers
+  writeImage = True # reads all traces, writes an image
+  showImage = True # displays the image
+  basedir = "/data/seis/gbc/"
+  if imageType=="p":
+    sgyfile = basedir+"sgy/pwave_fs_NOCUT_npa.sgy"
+    datfile = basedir+"dat/p.dat"
+  elif imageType=="s1":
+    sgyfile = basedir+"sgy/s1_nmut_fs_ps_NOCUT_npa.sgy"
+    datfile = basedir+"dat/s1.dat"
+  elif imageType=="s2":
+    sgyfile = basedir+"sgy/s2_nmut_fs_ps_NOCUT_npa.sgy"
+    datfile = basedir+"dat/s2.dat"
+  i1min,i1max = 0,1999
+  i2min,i2max = 5669,5818
+  i3min,i3max = 5947,6091
+  n1,n2,n3 = 1+i1max-i1min,1+i2max-i2min,1+i3max-i3min
+  si = SegyImage(sgyfile)
+  if firstLook:
+    si.printSummaryInfo();
+    si.printBinaryHeader()
+    si.printTraceHeader(0)
+    si.printTraceHeader(1)
+    plotIbmIeeeFloats(si)
+  if secondLook:
+    si.printAllInfo()
+    plot23(si)
+    plotXY(si)
+  if writeImage:
+    scale = 0.0001
+    si.writeFloats(datfile,scale,i1min,i1max,i2min,i2max,i3min,i3max)
+  si.close()
+  if showImage:
+    f = readImage(datfile,n1,n2,n3)
+    show3d(f,clip=1.0)
 
 def goMbs():
   """
@@ -27,11 +88,9 @@ def goMbs():
   number of traces = 153740
   format = 1 (4-byte IBM floating point)
   units for spatial coordinates: ft (will be converted to km)
-  indices and coordinates from trace headers:
+  indices from trace headers:
     i2min =   601, i2max =  1048 (inline indices)
     i3min =  1001, i3max =  1422 (crossline indices)
-    xmin =  823.725048, xmax =  831.574867 (x coordinates, in km)
-    ymin =  245.803217, ymax =  255.588516 (y coordinates, in km)
   grid sampling:
     n1 =  1500 (number of samples per trace)
     n2 =   448 (number of traces in inline direction)
@@ -39,12 +98,6 @@ def goMbs():
     d1 = 0.002000 (time sampling interval, in s)
     d2 = 0.016764 (inline sampling interval, in km)
     d3 = 0.016764 (crossline sampling interval, in km)
-  grid corner points:
-    i2min =   601, i3min =  1001, x =  826.186378, y =  245.803042
-    i2max =  1048, i3min =  1001, x =  832.549637, y =  249.760714
-    i2min =   601, i3max =  1422, x =  822.458978, y =  251.796019
-    i2max =  1048, i3max =  1422, x =  828.822237, y =  255.753692
-  grid azimuth: 58.12 degrees
   ****** end of SEG-Y file info ******
   ***************************************************************************
   PstmLarge
@@ -55,11 +108,9 @@ def goMbs():
   number of traces = 795783
   format = 1 (4-byte IBM floating point)
   units for spatial coordinates: ft (will be converted to km)
-  indices and coordinates from trace headers:
+  indices from trace headers:
     i2min =   350, i2max =  1468 (inline indices)
     i3min =   234, i3max =  1422 (crossline indices)
-    xmin =  822.376308, xmax =  842.769562 (x coordinates, in km)
-    ymin =  235.175146, ymax =  255.588516 (y coordinates, in km)
   grid sampling:
     n1 =  1400 (number of samples per trace)
     n2 =  1119 (number of traces in inline direction)
@@ -67,12 +118,6 @@ def goMbs():
     d1 = 0.002000 (time sampling interval, in s)
     d2 = 0.016764 (inline sampling interval, in km)
     d3 = 0.016764 (crossline sampling interval, in km)
-  grid corner points:
-    i2min =   350, i3min =   234, x =  829.404535, y =  232.662348
-    i2max =  1468, i3min =   234, x =  845.319565, y =  242.561088
-    i2min =   350, i3max =  1422, x =  818.886177, y =  249.573781
-    i2max =  1468, i3max =  1422, x =  834.801207, y =  259.472521
-  grid azimuth: 58.12 degrees
   ****** end of SEG-Y file info ******
   good subset:
     i1min,i1max = 150, 650,  m1 = 501

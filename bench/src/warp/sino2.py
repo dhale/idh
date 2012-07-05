@@ -1,5 +1,5 @@
 #############################################################################
-# Dynamic time warping for 2D images
+# Dynamic warping for 2D images
 
 from imports import *
 
@@ -7,8 +7,8 @@ from warp import DynamicWarpingX
 
 #############################################################################
 
-pngDir = "./png"
-#pngDir = None
+#pngDir = "./png"
+pngDir = None
 
 s1f,s1g,s2 = None,None,None
 
@@ -18,7 +18,7 @@ flims = [(0.0,5.0),(1.0,3.0),(3.0,5.0)]
 glims = [(0.0,8.0),(1.6,4.8),(4.8,8.0)]
 
 def main(args):
-  goSinoImages()
+  #goSinoImages()
   goSinoWarp()
 
 def goSinoImages():
@@ -41,7 +41,7 @@ def goSinoWarp():
   u = mul(1000.0*s1f.getDelta(),u)
   u1 = mul(1000.0*s1f.getDelta(),u1)
   u2 = mul(1000.0*s1f.getDelta(),u2)
-  for i in range(len(ilims)):
+  for i in [0]: #range(len(ilims)):
     flim = flims[i]
     pre = "si"+ilims[i]
     fpng = pre+"f"
@@ -71,6 +71,7 @@ def warp2(f,g):
   shiftMax = 5
   shiftMin = -shiftMax
   dw = DynamicWarpingX(-shiftMax,shiftMax)
+  dw.setErrorExtrapolation(DynamicWarpingX.ErrorExtrapolation.AVERAGE)
   dw.setStrainMax(strainMax1,strainMax2)
   dw.setShiftSmoothing(usmooth)
   e = dw.computeErrors(f,g)
@@ -89,6 +90,7 @@ def warp1(f,g):
   shiftMax = 80
   shiftMin = -shiftMax
   dw = DynamicWarpingX(-shiftMax,shiftMax)
+  dw.setErrorExtrapolation(DynamicWarpingX.ErrorExtrapolation.AVERAGE)
   dw.setStrainMax(strainMax1)
   dw.setShiftSmoothing(usmooth)
   e = dw.computeErrors(f,g)
@@ -107,7 +109,8 @@ def warp1(f,g):
     s1 = Sampling(n1,1.0,0.0)
     pv = sp.addPixels(s1,sl,pow(transpose(e1),0.25))
     pv.setInterpolation(PixelsView.Interpolation.NEAREST)
-    pv.setColorModel(ColorMap.PRISM)
+    pv.setColorModel(ColorMap.JET)
+    pv.setPercentiles(2,98)
     pv = sp.addPoints(u1)
   h = zerofloat(n1,n2)
   u = zerofloat(n1,n2)
@@ -181,6 +184,7 @@ def plot(f,s1,clips=None,limits=None,title=None,
   sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
   sp.plotPanel.setColorBarWidthMinimum(cbwm)
   pv = sp.addPixels(s1,s2,f)
+  pv.setInterpolation(PixelsView.Interpolation.NEAREST)
   #sp.addGrid("H-").setColor(Color.YELLOW)
   if clips:
     pv.setClips(clips[0],clips[1])

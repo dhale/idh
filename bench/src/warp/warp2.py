@@ -1,8 +1,10 @@
 #############################################################################
-# Dynamic time warping for 2D images
+# Dynamic warping for 2D images
 
 from imports import *
 from util import FakeData
+
+from warp import DynamicWarpingX as DynamicWarping
 
 #############################################################################
 
@@ -96,7 +98,7 @@ def makeOzImages(shift):
   f = mul(1.0e-12,f)
   f = tpow(2,s1,f)
   f = slog(f)
-  w = Warp2.sinusoid(shift,0.0,shift,0.0,n1,n2)
+  w = WarpFunction2.constantPlusSinusoid(shift,0.0,shift,0.0,n1,n2)
   g = w.warp(f)
   s = w.u1x()
   f = addNoise(nrms,f,seed=10*seed+1)
