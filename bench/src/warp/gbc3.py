@@ -7,12 +7,12 @@ from warp import DynamicWarpingX as DynamicWarping
 
 #############################################################################
 
-#pngDir = "./png"
-pngDir = None
+pngDir = "./png"
+#pngDir = None
 
 datDir = "/data/seis/gbc/dat/"
 n1f,d1f,f1f = 2000,0.00150,0.00150 # p wave, 3 s
-n1g,d1g,f1g = 2000,0.00200,0.00200 # s1 (fast) shear wave, 4 s
+n1g,d1g,f1g = 2000,0.00200,0.00200 # s1/s2 (fast/slow) shear wave, 4 s
 n2,d2,f2 =  150,0.033531,0.0
 n3,d3,f3 =  145,0.033531,0.0
 global s1f,s1g,s2,s3
@@ -28,11 +28,11 @@ def main(args):
 def goGbcImages():
   f,g = getGbcImages()
   clips = (-1.0,1.0)
-  plot3(f,s1f,clips,title="P", cbar="Amplitude",png="p")
-  plot3(g,s1g,clips,title="S1",cbar="Amplitude",png="s1")
+  plot3(f,s1f,clips,title="PP", cbar="Amplitude",png="gbcpp")
+  plot3(g,s1g,clips,title="PS1",cbar="Amplitude",png="gbcps1")
 
 def goGbcWarp():
-  doWarp2 = False
+  doWarp2 = True
   fclips = (-1.0,1.0)
   fcbar = "Amplitude"
   ucbar = "Shift (ms)"
@@ -52,24 +52,24 @@ def goGbcWarp():
   u2png = pre+"u2"
   h1png = pre+"h1"
   h2png = pre+"h2"
-  plot3(g ,s1f,fclips,title="S1",cbar=fcbar,png=gpng)
-  plot3(h1,s1f,fclips,title="S1, 1st warp",cbar=fcbar,png=h1png)
+  plot3(g ,s1f,fclips,title="PS1",cbar=fcbar,png=gpng)
+  plot3(h1,s1f,fclips,title="PS1, 1st warp",cbar=fcbar,png=h1png)
   if doWarp2:
-    plot3(h2,s1f,fclips,title="S1, 2nd warp",cbar=fcbar,png=h2png)
-  plot3(f ,s1f,fclips,title="P",cbar=fcbar,png=fpng)
-  plot3(u1,s1f,None,title="1st shifts",cmap=jet,cbar=ucbar,png=u1png)
+    plot3(h2,s1f,fclips,title="PS1 warped",cbar=fcbar,png=h2png)
+  plot3(f ,s1f,fclips,title="PP",cbar=fcbar,png=fpng)
+  #plot3(u1,s1f,None,title="1st shifts",cmap=jet,cbar=ucbar,png=u1png)
   if doWarp2:
-    plot3(u2,s1f,None,title="2nd shifts",cmap=jet,cbar=ucbar,png=u1png)
-    plot3(u ,s1f,None,title="Total shifts",cmap=jet,cbar=ucbar,png=upng)
+    #plot3(u2,s1f,None,title="2nd shifts",cmap=jet,cbar=ucbar,png=u1png)
+    plot3(u ,s1f,None,title="Shifts",cmap=jet,cbar=ucbar,png=upng)
 
 def addShifts(u1,u2):
   dw = DynamicWarping(-1,1)
   return add(u2,dw.applyShifts(u2,u1))
 
 def warp1(f,g):
-  usmooth = 0.0
-  strainMax1 = 0.25 # Vp/Vs = 5/3 + 8/3*0.25 = 1.67 +- 0.67
-  #strainMax1 = 0.125 # Vp/Vs = 5/3 + 8/3*0.125 = 1.67 +- 0.33
+  usmooth = 1.0
+  #strainMax1 = 0.25 # Vp/Vs = 5/3 + 8/3*0.25 = 1.67 +- 0.67
+  strainMax1 = 0.125 # Vp/Vs = 5/3 + 8/3*0.125 = 1.67 +- 0.33
   shiftMax = 60
   shiftMin = -shiftMax
   dw = DynamicWarping(-shiftMax,shiftMax)
@@ -185,9 +185,9 @@ def plot3(f,s1,clips=None,limits=None,title=None,
     cbar = pp.addColorBar(cbar)
   #pp.setVInterval(1.0)
   if s1==s1f:
-    pp.setVLabel(1,"P time (s)")
+    pp.setVLabel(1,"PP time (s)")
   else:
-    pp.setVLabel(1,"S time (s)")
+    pp.setVLabel(1,"PS time (s)")
   pp.setVLabel(0,"Crossline (km)")
   pp.setHLabel(0,"Inline (km)")
   pp.setHLabel(1,"Crossline (km)")
@@ -227,9 +227,9 @@ def plot2(f,s1,clips=None,limits=None,title=None,
       cbar.setInterval(1)
   sp.setVInterval(1.0)
   if s1==s1f:
-    sp.setVLabel("P time (s)")
+    sp.setVLabel("PP time (s)")
   else:
-    sp.setVLabel("S time (s)")
+    sp.setVLabel("PS time (s)")
   sp.setHLabel("Distance (km)")
   sp.setFontSizeForPrint(8,150)
   sp.setSize(width,height)
