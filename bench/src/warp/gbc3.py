@@ -23,44 +23,48 @@ s3 = Sampling(n3,d3,f3)
 
 def main(args):
   #goGbcImages()
-  goGbcWarp()
+  goGbcWarp(True)
 
 def goGbcImages():
-  f,g = getGbcImages()
+  f,g1,g2 = getGbcImages()
   clips = (-1.0,1.0)
   plot3(f,s1f,clips,title="PP", cbar="Amplitude",png="gbcpp")
-  plot3(g,s1g,clips,title="PS1",cbar="Amplitude",png="gbcps1")
+  plot3(g1,s1g,clips,title="PS1",cbar="Amplitude",png="gbcps1")
+  plot3(g2,s1g,clips,title="PS2",cbar="Amplitude",png="gbcps2")
 
-def goGbcWarp():
-  doWarp2 = True
+def goGbcWarp(doWarp2):
   fclips = (-1.0,1.0)
   fcbar = "Amplitude"
   ucbar = "Shift (ms)"
-  f,g = getGbcImages()
-  u1,h1 = warp1(f,g)
-  if doWarp2:
-    u2,h2 = warp2(f,h1)
-    u = addShifts(u1,u2)
-    u = mul(1000.0*s1f.getDelta(),u)
-    u2 = mul(1000.0*s1f.getDelta(),u2)
-  u1 = mul(1000.0*s1f.getDelta(),u1)
-  pre = "gbc"
-  fpng = pre+"f"
-  gpng = pre+"g"
-  upng = pre+"u"
-  u1png = pre+"u1"
-  u2png = pre+"u2"
-  h1png = pre+"h1"
-  h2png = pre+"h2"
-  plot3(g ,s1f,fclips,title="PS1",cbar=fcbar,png=gpng)
-  plot3(h1,s1f,fclips,title="PS1, 1st warp",cbar=fcbar,png=h1png)
-  if doWarp2:
-    plot3(h2,s1f,fclips,title="PS1 warped",cbar=fcbar,png=h2png)
-  plot3(f ,s1f,fclips,title="PP",cbar=fcbar,png=fpng)
-  #plot3(u1,s1f,None,title="1st shifts",cmap=jet,cbar=ucbar,png=u1png)
-  if doWarp2:
-    #plot3(u2,s1f,None,title="2nd shifts",cmap=jet,cbar=ucbar,png=u1png)
-    plot3(u ,s1f,None,title="Shifts",cmap=jet,cbar=ucbar,png=upng)
+  f,g1,g2 = getGbcImages()
+  s12 = {g1:"ps1",g2:"ps2"}
+  for g in [g1,g2]:
+    ss = s12[g]
+    ts = ss.upper()
+    u1,h1 = warp1(f,g)
+    if doWarp2:
+      u2,h2 = warp2(f,h1)
+      u = addShifts(u1,u2)
+      u = mul(1000.0*s1f.getDelta(),u)
+      u2 = mul(1000.0*s1f.getDelta(),u2)
+    u1 = mul(1000.0*s1f.getDelta(),u1)
+    pre = "gbc"
+    fpng = pre+"pp"
+    gpng = pre+ss
+    upng = pre+ss+"u"
+    u1png = pre+ss+"u1"
+    u2png = pre+ss+"u2"
+    h1png = pre+ss+"w1"
+    h2png = pre+ss+"w"
+    plot3(g ,s1f,fclips,title=ts,cbar=fcbar,png=gpng)
+    plot3(h1,s1f,fclips,title=ts+": 1st warped",cbar=fcbar,png=h1png)
+    if doWarp2:
+      plot3(h2,s1f,fclips,title=ts+": warped",cbar=fcbar,png=h2png)
+    plot3(f ,s1f,fclips,title="PP",cbar=fcbar,png=fpng)
+    plot3(u1,s1f,None,title=ts+": 1st shifts",cmap=jet,cbar=ucbar,png=u1png)
+    if doWarp2:
+      #plot3(u2,s1f,None,title=ts+": 2nd shifts",cmap=jet,cbar=ucbar,png=u2png)
+      plot3(u ,s1f,None,title=ts+": shifts",cmap=jet,cbar=ucbar,png=upng)
 
 def addShifts(u1,u2):
   dw = DynamicWarping(-1,1)
@@ -106,14 +110,17 @@ def warp2(f,g):
   return u,h
 
 def getGbcImages():
-  f = readImage( "p",n1f,n2,n3)
-  g = readImage("s1",n1g,n2,n3)
+  f = readImage( "pp",n1f,n2,n3)
+  g1 = readImage("ps1",n1g,n2,n3)
+  g2 = readImage("ps2",n1g,n2,n3)
   #n1f = 1201; f = copy(n1f,n2,f)
-  #n1g = 1201; g = copy(n1g,n2,g)
+  #n1g = 1201; g1 = copy(n1g,n2,g1)
+  #n1g = 1201; g2 = copy(n1g,n2,g2)
   stretch(d1g/d1f,f)
   #gain(100,f)
-  #gain(100,g)
-  return f,g
+  #gain(100,g1)
+  #gain(100,g2)
+  return f,g1,g2
 
 #############################################################################
 # utilities
