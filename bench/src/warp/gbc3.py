@@ -34,6 +34,7 @@ def goGbcImages():
 
 def goGbcWarp(doWarp2):
   fclips = (-1.0,1.0)
+  uclips = (-40.0,90.0)
   fcbar = "Amplitude"
   ucbar = "Shift (ms)"
   f,g1,g2 = getGbcImages()
@@ -61,10 +62,9 @@ def goGbcWarp(doWarp2):
     if doWarp2:
       plot3(h2,s1f,fclips,title=ts+": warped",cbar=fcbar,png=h2png)
     plot3(f ,s1f,fclips,title="PP",cbar=fcbar,png=fpng)
-    plot3(u1,s1f,None,title=ts+": 1st shifts",cmap=jet,cbar=ucbar,png=u1png)
+    plot3(u1,s1f,uclips,title=ts+": 1st shifts",cmap=jet,cbar=ucbar,png=u1png)
     if doWarp2:
-      #plot3(u2,s1f,None,title=ts+": 2nd shifts",cmap=jet,cbar=ucbar,png=u2png)
-      plot3(u ,s1f,None,title=ts+": shifts",cmap=jet,cbar=ucbar,png=upng)
+      plot3(u ,s1f,uclips,title=ts+": shifts",cmap=jet,cbar=ucbar,png=upng)
 
 def addShifts(u1,u2):
   dw = DynamicWarping(-1,1)
