@@ -34,7 +34,7 @@ def goGbcImages():
 
 def goGbcWarp(doWarp2):
   fclips = (-1.0,1.0)
-  uclips = (-40.0,90.0)
+  uclips = (-40.0,50.0)
   fcbar = "Amplitude"
   ucbar = "Shift (ms)"
   f,g1,g2 = getGbcImages()
@@ -178,7 +178,7 @@ def plot3(f,s1,clips=None,limits=None,title=None,
     PlotPanelPixels3.AxesPlacement.LEFT_BOTTOM,
     s1,s2,s3,f)
   pp.setInterpolation(PixelsView.Interpolation.NEAREST)
-  pp.setSlices(1300,n2/2,n3/2)
+  pp.setSlices(633,n2/2,n3/2)
   pp.setColorBarWidthMinimum(cbwm)
   if clips:
     pp.setClips(clips[0],clips[1])
@@ -198,6 +198,7 @@ def plot3(f,s1,clips=None,limits=None,title=None,
   pp.setVLabel(0,"Crossline (km)")
   pp.setHLabel(0,"Inline (km)")
   pp.setHLabel(1,"Crossline (km)")
+  pp.setVLimits(1,0.0,2.0)
   mosaic = pp.getMosaic()
   mosaic.setWidthElastic(0,50)
   mosaic.setWidthElastic(1,50)
