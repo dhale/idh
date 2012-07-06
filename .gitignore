@@ -7,6 +7,7 @@ build/
 new/
 old/
 *.png
+*.zip
 *.swp
 *.class
 *.DS_Store
