@@ -7,7 +7,7 @@ from warp import DynamicWarpingX as DynamicWarping
 
 #############################################################################
 
-pngDir = "./png"
+pngDir = "./png/gbc/"
 #pngDir = None
 
 datDir = "/data/seis/gbc/dat/"
@@ -208,7 +208,7 @@ def plot3(f,s1,clips=None,limits=None,title=None,
   pf.setSize(width,height)
   pf.setVisible(True)
   if png and pngDir:
-    pf.paintToPng(720,2.0,pngDir+"/"+png+".png")
+    pf.paintToPng(720,2.0,pngDir+png+".png")
 
 def plot2(f,s1,clips=None,limits=None,title=None,
           cmap=None,cbar=None,png=None):
@@ -242,7 +242,7 @@ def plot2(f,s1,clips=None,limits=None,title=None,
   sp.setSize(width,height)
   sp.setVisible(True)
   if png and pngDir:
-    sp.paintToPng(720,2.0,pngDir+"/"+png+".png")
+    sp.paintToPng(720,2.0,pngDir+png+".png")
 
 #############################################################################
 # Do everything on Swing thread.

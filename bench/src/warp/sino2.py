@@ -7,7 +7,7 @@ from warp import DynamicWarpingX
 
 #############################################################################
 
-#pngDir = "./png"
+#pngDir = "./png/sino/"
 pngDir = None
 
 s1f,s1g,s2 = None,None,None
@@ -208,7 +208,7 @@ def plot(f,s1,clips=None,limits=None,title=None,
   sp.setSize(width,height)
   sp.setVisible(True)
   if png and pngDir:
-    sp.paintToPng(720,2.0,pngDir+"/"+png+".png")
+    sp.paintToPng(720,2.0,pngDir+png+".png")
 
 #############################################################################
 # Do everything on Swing thread.
