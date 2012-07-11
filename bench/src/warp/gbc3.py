@@ -3,8 +3,6 @@
 
 from imports import *
 
-from warp import DynamicWarpingX as DynamicWarping
-
 #############################################################################
 
 pngDir = "./png/gbc/"

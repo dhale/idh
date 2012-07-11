@@ -3,8 +3,6 @@
 
 from imports import *
 
-#from warp import DynamicWarpingX
-
 #############################################################################
 
 #pngDir = "./png/sino/"
