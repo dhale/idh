@@ -11,10 +11,10 @@ global n1,n2,n3
 
 #############################################################################
 def main(args):
-  goGbc()
+  #goGbc()
   #goMbs()
   #goNorne()
-  #goSino()
+  goSino()
   #goF3d()
 
 def goGbc():
