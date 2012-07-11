@@ -14,7 +14,9 @@ s1f,s1g,s2 = None,None,None
 
 # Different time windows for plotting
 ilims = ["0","1","2"]
-flims = [(0.0,5.0),(1.0,3.0),(3.0,5.0)]
+#flims = [(0.0,5.0),(1.0,3.0),(3.0,5.0)]
+#glims = [(0.0,8.0),(1.6,4.8),(4.8,8.0)]
+flims = [(0.0,5.0),(0.8,2.8),(2.8,4.8)]
 glims = [(0.0,8.0),(1.6,4.8),(4.8,8.0)]
 
 def main(args):
@@ -34,38 +36,59 @@ def goSinoWarp():
   fclips = (-2.0,2.0)
   fcbar = "Amplitude"
   ucbar = "Shift (ms)"
+  psbar = "Vp/Vs"
   f,g = getSinoImages()
   u1,h1 = warp1(f,g)
   u2,h2 = warp2(f,h1)
   u = addShifts(u1,u2)
-  u = mul(1000.0*s1f.getDelta(),u)
-  u1 = mul(1000.0*s1f.getDelta(),u1)
-  u2 = mul(1000.0*s1f.getDelta(),u2)
-  for i in [0]: #range(len(ilims)):
+  c = s1g.delta/s1f.delta
+  psa = vpvs(u,c,True)
+  psi = vpvs(u,c,False)
+  """
+  SimplePlot.asPoints(u1[350])
+  SimplePlot.asPoints(u2[350])
+  SimplePlot.asPoints(u[350])
+  SimplePlot.asPoints(clip(1.5,2.9,psi[350]))
+  """
+  u  = mul(1000.0*s1f.delta,u)
+  u1 = mul(1000.0*s1f.delta,u1)
+  u2 = mul(1000.0*s1f.delta,u2)
+  #for i in range(len(ilims)):
+  for i in [0]:
     flim = flims[i]
     pre = "si"+ilims[i]
-    fpng = pre+"f"
-    gpng = pre+"g"
-    upng = pre+"u"
-    u1png = pre+"u1"
-    u2png = pre+"u2"
-    h1png = pre+"h1"
-    h2png = pre+"h2"
-    plot(g ,s1f,fclips,flim,title="X component",cbar=fcbar,png=gpng)
-    plot(h1,s1f,fclips,flim,title="X, 1st warping",cbar=fcbar,png=h1png)
-    plot(h2,s1f,fclips,flim,title="X, 2nd warping",cbar=fcbar,png=h2png)
-    plot(f ,s1f,fclips,flim,title="Z component",cbar=fcbar,png=fpng)
-    plot(u1,s1f,None,flim,title="1st warping",cmap=jet,cbar=ucbar,png=u1png)
-    plot(u2,s1f,None,flim,title="2nd warping",cmap=jet,cbar=ucbar,png=u1png)
-    plot(u ,s1f,None,flim,title="Total warping",cmap=jet,cbar=ucbar,png=upng)
+    plot(g ,s1f,fclips,flim,title="X component",cbar=fcbar,png=pre+"g")
+    plot(h1,s1f,fclips,flim,title="X 1st warp",cbar=fcbar,png=pre+"h1")
+    plot(h2,s1f,fclips,flim,title="X 2nd warp",cbar=fcbar,png=pre+"h2")
+    plot(f ,s1f,fclips,flim,title="Z component",cbar=fcbar,png="f")
+    plot(u1,s1f,None,flim,title="1st shifts",cmap=jet,cbar=ucbar,png=pre+"u1")
+    plot(u2,s1f,None,flim,title="2nd shifts",cmap=jet,cbar=ucbar,png=pre+"u2")
+    plot(u ,s1f,None,flim,title="Shifts",cmap=jet,cbar=ucbar,png=pre+"u")
+    plot(psa,s1f,(2.0,3.5),flim,title="Vp/Vs (average)",
+         cmap=jet,cbar=psbar,png=pre+"psa")
+    plot(psi,s1f,(1.5,3.0),flim,title="Vp/Vs (interval)",
+         cmap=jet,cbar=psbar,png=pre+"psi")
 
 def addShifts(u1,u2):
   dw = DynamicWarpingX(-1,1)
   return add(u2,dw.applyShifts(u2,u1))
 
+def vpvs(u,c,avg=False):
+  n1,n2 = len(u[0]),len(u)
+  if avg:
+    ut = div(u,rampfloat(1.0,1.0,0.0,n1,n2))
+  else:
+    ut = zerofloat(n1,n2)
+    rgf = RecursiveGaussianFilter(1.0)
+    rgf.apply1X(u,ut)
+  ut = add(2.0*c-1.0,mul(2.0*c,ut))
+  RecursiveGaussianFilter(2.0).apply00(ut,ut)
+  return ut
+
 def warp2(f,g):
-  esmooth = 0
-  usmooth = 0.0
+  #esmooth,usmooth = 0,0.0
+  #esmooth,usmooth = 0,1.0
+  esmooth,usmooth = 2,1.0
   strainMax1 = 0.125
   strainMax2 = 0.125
   shiftMax = 5
@@ -85,7 +108,7 @@ def warp2(f,g):
   return u,h
 
 def warp1(f,g):
-  usmooth = 1.0
+  usmooth = 4.0
   strainMax1 = 0.125
   shiftMax = 80
   shiftMin = -shiftMax
@@ -195,8 +218,9 @@ def plot(f,s1,clips=None,limits=None,title=None,
   if cmap:
     pv.setColorModel(cmap)
   if cbar:
+    cone = cbar=="Amplitude"
     cbar = sp.addColorBar(cbar)
-    if clips and clips[1]<10:
+    if cone:
       cbar.setInterval(1)
   sp.setVInterval(1.0)
   if s1==s1f:
