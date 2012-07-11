@@ -35,6 +35,7 @@ def goGbcWarp(doWarp2):
   uclips = (-40.0,50.0)
   fcbar = "Amplitude"
   ucbar = "Shift (ms)"
+  gcbar = "Vp/Vs"
   f,g1,g2 = getGbcImages()
   s12 = {g1:"ps1",g2:"ps2"}
   for g in [g1,g2]:
@@ -44,6 +45,12 @@ def goGbcWarp(doWarp2):
     if doWarp2:
       u2,h2 = warp2(f,h1)
       u = addShifts(u1,u2)
+    else:
+     u = u1
+    c = s1g.delta/s1f.delta
+    ga = vpvs(u,c,True)
+    gi = vpvs(u,c,False)
+    if doWarp2:
       u = mul(1000.0*s1f.getDelta(),u)
       u2 = mul(1000.0*s1f.getDelta(),u2)
     u1 = mul(1000.0*s1f.getDelta(),u1)
@@ -55,27 +62,46 @@ def goGbcWarp(doWarp2):
     u2png = pre+ss+"u2"
     h1png = pre+ss+"w1"
     h2png = pre+ss+"w"
+    gapng = pre+ss+"ga"
+    gipng = pre+ss+"gi"
     plot3(g ,s1f,fclips,title=ts,cbar=fcbar,png=gpng)
     plot3(h1,s1f,fclips,title=ts+": 1st warped",cbar=fcbar,png=h1png)
     if doWarp2:
       plot3(h2,s1f,fclips,title=ts+": warped",cbar=fcbar,png=h2png)
-    plot3(f ,s1f,fclips,title="PP",cbar=fcbar,png=fpng)
+    plot3(f,s1f,fclips,title="PP",cbar=fcbar,png=fpng)
     plot3(u1,s1f,uclips,title=ts+": 1st shifts",cmap=jet,cbar=ucbar,png=u1png)
     if doWarp2:
-      plot3(u ,s1f,uclips,title=ts+": shifts",cmap=jet,cbar=ucbar,png=upng)
+      plot3(u,s1f,uclips,title=ts+": shifts",cmap=jet,cbar=ucbar,png=upng)
+    plot3(ga,s1f,(1.5,2.2),title=ts+": Vp/Vs (average)",
+          cmap=jet,cbar=gcbar,png=gapng)
+    plot3(gi,s1f,(1.5,2.2),title=ts+": Vp/Vs (interval)",
+          cmap=jet,cbar=gcbar,png=gipng)
 
 def addShifts(u1,u2):
-  dw = DynamicWarping(-1,1)
-  return add(u2,dw.applyShifts(u2,u1))
+  n1,n2,n3 = len(u1[0][0]),len(u1[0]),len(u1)
+  li = LinearInterpolator()
+  li.setExtrapolation(LinearInterpolator.Extrapolation.CONSTANT)
+  li.setUniformSampling(n1,1.0,0.0)
+  t1 = rampfloat(0.0,1.0,n1)
+  s1 = zerofloat(n1)
+  y1 = zerofloat(n1)
+  us = zerofloat(n1,n2,n3)
+  for i3 in range(n3):
+    for i2 in range(n2):
+      add(u2[i3][i2],t1,s1)
+      li.setUniformSamples(u1[i3][i2])
+      li.interpolate(n1,s1,y1)
+      add(y1,u2[i3][i2],us[i3][i2])
+  return us
 
 def warp1(f,g):
-  usmooth = 1.0
+  usmooth = 4.0
   #strainMax1 = 0.25 # Vp/Vs = 5/3 + 8/3*0.25 = 1.67 +- 0.67
   strainMax1 = 0.125 # Vp/Vs = 5/3 + 8/3*0.125 = 1.67 +- 0.33
+  shiftMin = -60
   shiftMax = 60
-  shiftMin = -shiftMax
-  dw = DynamicWarping(-shiftMax,shiftMax)
-  dw.setErrorExtrapolation(DynamicWarping.ErrorExtrapolation.NEAREST)
+  dw = DynamicWarping(shiftMin,shiftMax)
+  dw.setErrorExtrapolation(DynamicWarping.ErrorExtrapolation.REFLECT)
   dw.setStrainMax(strainMax1)
   dw.setShiftSmoothing(usmooth)
   u1 = dw.findShifts1(f,g)
@@ -97,8 +123,8 @@ def warp2(f,g):
   strainMax3 = 0.200
   shiftMax = 10
   shiftMin = -shiftMax
-  dw = DynamicWarping(-shiftMax,shiftMax)
-  dw.setErrorExtrapolation(DynamicWarping.ErrorExtrapolation.NEAREST)
+  dw = DynamicWarping(shiftMin,shiftMax)
+  dw.setErrorExtrapolation(DynamicWarping.ErrorExtrapolation.REFLECT)
   dw.setStrainMax(strainMax1,strainMax2,strainMax3)
   dw.setErrorSmoothing(esmooth)
   dw.setShiftSmoothing(usmooth)
@@ -106,6 +132,21 @@ def warp2(f,g):
   h = dw.applyShifts(u,g)
   print "warp2: u min =",min(u)," max =",max(u)
   return u,h
+
+def vpvs(u,c,avg=False):
+  n1,n2,n3 = len(u[0][0]),len(u[0]),len(u)
+  if avg:
+    ut = div(u,rampfloat(1.0,1.0,0.0,0.0,n1,n2,n3))
+  else:
+    ut = zerofloat(n1,n2,n3)
+    rgf = RecursiveGaussianFilter(1.0)
+    rgf.apply1XX(u,ut)
+  ut = add(2.0*c-1.0,mul(2.0*c,ut))
+  #RecursiveGaussianFilter(2.0).apply00(ut,ut)
+  ref = RecursiveExponentialFilter(1.0)
+  for i in range(8):
+    ref.apply(ut,ut)
+  return ut
 
 def getGbcImages():
   f = readImage( "pp",n1f,n2,n3)
