@@ -7,8 +7,8 @@ from imports import *
 
 #############################################################################
 
-pngDir = "./png/sino/"
-#pngDir = None
+#pngDir = "./png/sino/"
+pngDir = None
 
 s1f,s1g,s2 = None,None,None
 
@@ -69,8 +69,20 @@ def goSinoWarp():
          cmap=jet,cbar=psbar,png=pre+"psi")
 
 def addShifts(u1,u2):
-  dw = DynamicWarping(-1,1)
-  return add(u2,dw.applyShifts(u2,u1))
+  n1,n2 = len(u1[0]),len(u1)
+  li = LinearInterpolator()
+  li.setExtrapolation(LinearInterpolator.Extrapolation.CONSTANT)
+  li.setUniformSampling(n1,1.0,0.0)
+  t1 = rampfloat(0.0,1.0,n1)
+  s1 = zerofloat(n1)
+  y1 = zerofloat(n1)
+  us = zerofloat(n1,n2)
+  for i2 in range(n2):
+    add(u2[i2],t1,s1)
+    li.setUniformSamples(u1[i2])
+    li.interpolate(n1,s1,y1)
+    add(y1,u2[i2],us[i2])
+  return us
 
 def vpvs(u,c,avg=False):
   n1,n2 = len(u[0]),len(u)
@@ -95,7 +107,7 @@ def warp2(f,g):
   shiftMax = 10
   shiftMin = -shiftMax
   dw = DynamicWarping(-shiftMax,shiftMax)
-  dw.setErrorExtrapolation(DynamicWarping.ErrorExtrapolation.AVERAGE)
+  dw.setErrorExtrapolation(DynamicWarping.ErrorExtrapolation.REFLECT)
   dw.setStrainMax(strainMax1,strainMax2)
   dw.setShiftSmoothing(usmooth)
   e = dw.computeErrors(f,g)
@@ -114,7 +126,7 @@ def warp1(f,g):
   shiftMin = 0
   shiftMax = 160
   dw = DynamicWarping(shiftMin,shiftMax)
-  dw.setErrorExtrapolation(DynamicWarping.ErrorExtrapolation.AVERAGE)
+  dw.setErrorExtrapolation(DynamicWarping.ErrorExtrapolation.REFLECT)
   dw.setStrainMax(strainMax1)
   dw.setShiftSmoothing(usmooth)
   e1 = dw.computeErrors1(f,g)
@@ -123,7 +135,7 @@ def warp1(f,g):
   u1 = dw.smoothShifts(u1)
   #u1 = dw.findShifts1(f,g)
   n1,n2 = len(f[0]),len(f)
-  if False:
+  if True:
     nl = len(e1[0])
     sp = SimplePlot()
     sp.setSize(1800,500)
