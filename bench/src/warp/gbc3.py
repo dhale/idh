@@ -37,6 +37,8 @@ def goGbcWarp(doWarp2):
   ucbar = "Shift (ms)"
   gcbar = "Vp/Vs"
   f,g1,g2 = getGbcImages()
+  c = s1g.delta/s1f.delta
+  pre = "gbc"
   s12 = {g1:"ps1",g2:"ps2"}
   for g in [g1,g2]:
     ss = s12[g]
@@ -47,14 +49,13 @@ def goGbcWarp(doWarp2):
       u = addShifts(u1,u2)
     else:
      u = u1
-    c = s1g.delta/s1f.delta
+    writeImage(ss+"u",u)
     ga = vpvs(u,c,True)
     gi = vpvs(u,c,False)
     if doWarp2:
       u = mul(1000.0*s1f.getDelta(),u)
       u2 = mul(1000.0*s1f.getDelta(),u2)
     u1 = mul(1000.0*s1f.getDelta(),u1)
-    pre = "gbc"
     fpng = pre+"pp"
     gpng = pre+ss
     upng = pre+ss+"u"
@@ -64,6 +65,7 @@ def goGbcWarp(doWarp2):
     h2png = pre+ss+"w"
     gapng = pre+ss+"ga"
     gipng = pre+ss+"gi"
+    gspng = pre+ss+"gs"
     plot3(g ,s1f,fclips,title=ts,cbar=fcbar,png=gpng)
     plot3(h1,s1f,fclips,title=ts+": 1st warped",cbar=fcbar,png=h1png)
     if doWarp2:
@@ -72,10 +74,15 @@ def goGbcWarp(doWarp2):
     plot3(u1,s1f,uclips,title=ts+": 1st shifts",cmap=jet,cbar=ucbar,png=u1png)
     if doWarp2:
       plot3(u,s1f,uclips,title=ts+": shifts",cmap=jet,cbar=ucbar,png=upng)
-    plot3(ga,s1f,(1.5,2.2),title=ts+": Vp/Vs (average)",
+    plot3(ga,s1f,(1.5,2.0),title=ts+": Vp/Vs (average)",
           cmap=jet,cbar=gcbar,png=gapng)
     plot3(gi,s1f,(1.5,2.2),title=ts+": Vp/Vs (interval)",
           cmap=jet,cbar=gcbar,png=gipng)
+  u1 = readImage("ps1u",n1f,n2,n3)
+  u2 = readImage("ps2u",n1f,n2,n3)
+  gs = gammaS(u1,u2,c,False)
+  plot3(gs,s1f,(-0.2,0.4),title="gammaS (interval)",
+        cmap=jet,cbar="ratio",png=pre+"gs")
 
 def addShifts(u1,u2):
   n1,n2,n3 = len(u1[0][0]),len(u1[0]),len(u1)
@@ -145,7 +152,7 @@ def vpvs(u,c,avg=False):
   smoothX(2.0,ut)
   return ut
 
-def gammas(u1,u2,c,avg=False):
+def gammaS(u1,u2,c,avg=False):
   n1,n2,n3 = len(u1[0][0]),len(u1[0]),len(u1)
   if avg:
     ut = div(sub(u2,u1),rampfloat(1.0,1.0,0.0,0.0,n1,n2,n3))
@@ -160,6 +167,7 @@ def gammas(u1,u2,c,avg=False):
 def smoothX(sigma,x):
   n = 8.0
   sigma /= sqrt(n)
+  ref = RecursiveExponentialFilter(sigma)
   for i in range(n):
     ref.apply(x,x)
 
