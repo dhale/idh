@@ -42,12 +42,6 @@ def goSinoWarp():
   c = s1g.delta/s1f.delta
   psa = vpvs(u,c,True)
   psi = vpvs(u,c,False)
-  """
-  SimplePlot.asPoints(u1[350])
-  SimplePlot.asPoints(u2[350])
-  SimplePlot.asPoints(u[350])
-  SimplePlot.asPoints(clip(1.5,2.9,psi[350]))
-  """
   u  = mul(1000.0*s1f.delta,u)
   u1 = mul(1000.0*s1f.delta,u1)
   u2 = mul(1000.0*s1f.delta,u2)
@@ -91,20 +85,23 @@ def vpvs(u,c,avg=False):
     rgf = RecursiveGaussianFilter(1.0)
     rgf.apply1X(u,ut)
   ut = add(2.0*c-1.0,mul(2.0*c,ut))
-  #RecursiveGaussianFilter(2.0).apply00(ut,ut)
-  ref = RecursiveExponentialFilter(1.0)
-  for i in range(8):
-    ref.apply(ut,ut)
+  smoothX(3.0,ut)
   return ut
 
+def smoothX(sigma,x):
+  n = 8
+  ref = RecursiveExponentialFilter(float(sigma)/sqrt(n))
+  for i in range(n):
+    ref.apply(x,x)
+
 def warp2(f,g):
-  #esmooth,usmooth = 0,0.0
-  esmooth,usmooth = 2,1.0
+  esmooth,usmooth = 0,0.0
+  #esmooth,usmooth = 2,1.0
   strainMax1 = 0.125
   strainMax2 = 0.125
   shiftMax = 10
   shiftMin = -shiftMax
-  dw = DynamicWarping(-shiftMax,shiftMax)
+  dw = DynamicWarping(shiftMin,shiftMax)
   dw.setErrorExtrapolation(DynamicWarping.ErrorExtrapolation.REFLECT)
   dw.setStrainMax(strainMax1,strainMax2)
   dw.setShiftSmoothing(usmooth)
@@ -162,7 +159,8 @@ def getSinoImages():
   s1g = Sampling(n1g,d1g,f1g)
   s2 = Sampling(n2,d2,f2)
   f = readImage(dataDir+"z260.dat",n1f,n2)
-  g = readImage(dataDir+"x260.dat",n1g,n2)
+  #g = readImage(dataDir+"x260.dat",n1g,n2)
+  g = noiseImage(n1g,n2)
   #n1f = 1201; f = copy(n1f,n2,f)
   #n1g = 1201; g = copy(n1g,n2,g)
   stretch(d1g/d1f,f)
@@ -200,6 +198,14 @@ def readImage(fileName,n1,n2):
   ais = ArrayInputStream(fileName)
   ais.readFloats(x)
   ais.close()
+  return x
+
+def noiseImage(n1,n2):
+  r = Random(3)
+  x = sub(randfloat(r,n1,n2),0.5)
+  rgf = RecursiveGaussianFilter(2.0)
+  for x2 in x:
+    rgf.apply1(x2,x2)
   return x
  
 #############################################################################

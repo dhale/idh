@@ -142,11 +142,26 @@ def vpvs(u,c,avg=False):
     rgf = RecursiveGaussianFilter(1.0)
     rgf.apply1XX(u,ut)
   ut = add(2.0*c-1.0,mul(2.0*c,ut))
-  #RecursiveGaussianFilter(2.0).apply00(ut,ut)
-  ref = RecursiveExponentialFilter(1.0)
-  for i in range(8):
-    ref.apply(ut,ut)
+  smoothX(2.0,ut)
   return ut
+
+def gammas(u1,u2,c,avg=False):
+  n1,n2,n3 = len(u1[0][0]),len(u1[0]),len(u1)
+  if avg:
+    ut = div(sub(u2,u1),rampfloat(1.0,1.0,0.0,0.0,n1,n2,n3))
+  else:
+    ut = zerofloat(n1,n2,n3)
+    rgf = RecursiveGaussianFilter(1.0)
+    rgf.apply1XX(sub(u2,u1),ut)
+  ut = mul(div(2.0*c,vpvs(u1,c,avg)),ut)
+  smoothX(2.0,ut)
+  return ut
+
+def smoothX(sigma,x):
+  n = 8.0
+  sigma /= sqrt(n)
+  for i in range(n):
+    ref.apply(x,x)
 
 def getGbcImages():
   f = readImage( "pp",n1f,n2,n3)
