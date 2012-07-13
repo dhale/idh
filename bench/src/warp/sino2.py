@@ -5,8 +5,8 @@ from imports import *
 
 #############################################################################
 
-#pngDir = "./png/sino/"
-pngDir = None
+pngDir = "./png/sino/"
+#pngDir = None
 
 s1f,s1g,s2 = None,None,None
 
@@ -55,9 +55,9 @@ def goSinoWarp():
     plot(u1,s1f,None,flim,title="1st shifts",cmap=jet,cbar=ucbar,png=pre+"u1")
     plot(u2,s1f,None,flim,title="2nd shifts",cmap=jet,cbar=ucbar,png=pre+"u2")
     plot(u ,s1f,None,flim,title="Shifts",cmap=jet,cbar=ucbar,png=pre+"u")
-    plot(psa,s1f,(2.0,3.5),flim,title="Vp/Vs (average)",
+    plot(psa,s1f,(2.0,3.0),flim,title="Vp/Vs (average)",
          cmap=jet,cbar=psbar,png=pre+"psa")
-    plot(psi,s1f,(1.5,3.0),flim,title="Vp/Vs (interval)",
+    plot(psi,s1f,(1.5,2.5),flim,title="Vp/Vs (interval)",
          cmap=jet,cbar=psbar,png=pre+"psi")
 
 def addShifts(u1,u2):
@@ -95,8 +95,8 @@ def smoothX(sigma,x):
     ref.apply(x,x)
 
 def warp2(f,g):
-  esmooth,usmooth = 0,0.0
-  #esmooth,usmooth = 2,1.0
+  #esmooth,usmooth = 0,0.0
+  esmooth,usmooth = 2,1.0
   strainMax1 = 0.125
   strainMax2 = 0.125
   shiftMax = 10
@@ -159,8 +159,8 @@ def getSinoImages():
   s1g = Sampling(n1g,d1g,f1g)
   s2 = Sampling(n2,d2,f2)
   f = readImage(dataDir+"z260.dat",n1f,n2)
-  #g = readImage(dataDir+"x260.dat",n1g,n2)
-  g = noiseImage(n1g,n2)
+  g = readImage(dataDir+"x260.dat",n1g,n2)
+  #g = noiseImage(n1g,n2)
   #n1f = 1201; f = copy(n1f,n2,f)
   #n1g = 1201; g = copy(n1g,n2,g)
   stretch(d1g/d1f,f)
