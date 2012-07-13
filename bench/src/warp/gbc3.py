@@ -9,7 +9,7 @@ pngDir = "./png/gbc/"
 #pngDir = None
 
 datDir = "/data/seis/gbc/dat/"
-n1f,d1f,f1f = 2000,0.00150,0.00150 # p wave, 3 s
+n1f,d1f,f1f = 2000,0.00160,0.00160 # p wave, 3.2 s (= 4/1.25 s)
 n1g,d1g,f1g = 2000,0.00200,0.00200 # s1/s2 (fast/slow) shear wave, 4 s
 n2,d2,f2 =  150,0.033531,0.0
 n3,d3,f3 =  145,0.033531,0.0
@@ -32,7 +32,7 @@ def goGbcImages():
 
 def goGbcWarp(doWarp2):
   fclips = (-1.0,1.0)
-  uclips = (-40.0,50.0)
+  uclips = (0.0,240.0)
   fcbar = "Amplitude"
   ucbar = "Shift (ms)"
   gcbar = "Vp/Vs"
@@ -74,9 +74,9 @@ def goGbcWarp(doWarp2):
     plot3(u1,s1f,uclips,title=ts+": 1st shifts",cmap=jet,cbar=ucbar,png=u1png)
     if doWarp2:
       plot3(u,s1f,uclips,title=ts+": shifts",cmap=jet,cbar=ucbar,png=upng)
-    plot3(ga,s1f,(1.5,2.0),title=ts+": Vp/Vs (average)",
+    plot3(ga,s1f,(1.6,1.8),title=ts+": Vp/Vs (average)",
           cmap=jet,cbar=gcbar,png=gapng)
-    plot3(gi,s1f,(1.5,2.2),title=ts+": Vp/Vs (interval)",
+    plot3(gi,s1f,(1.4,2.2),title=ts+": Vp/Vs (interval)",
           cmap=jet,cbar=gcbar,png=gipng)
   u1 = readImage("ps1u",n1f,n2,n3)
   u2 = readImage("ps2u",n1f,n2,n3)
@@ -103,10 +103,10 @@ def addShifts(u1,u2):
 
 def warp1(f,g):
   usmooth = 4.0
-  #strainMax1 = 0.25 # Vp/Vs = 5/3 + 8/3*0.25 = 1.67 +- 0.67
-  strainMax1 = 0.125 # Vp/Vs = 5/3 + 8/3*0.125 = 1.67 +- 0.33
-  shiftMin = -60
-  shiftMax = 60
+  strainMax1 = 0.250 # Vp/Vs = 1.5 + 2.5*0.250 = 1.5 +- 0.625
+  #strainMax1 = 0.125 # Vp/Vs = 1.5 + 2.5*0.125 = 1.5 +- 0.3125
+  shiftMin = 0
+  shiftMax = 200
   dw = DynamicWarping(shiftMin,shiftMax)
   dw.setErrorExtrapolation(DynamicWarping.ErrorExtrapolation.REFLECT)
   dw.setStrainMax(strainMax1)
@@ -128,7 +128,7 @@ def warp2(f,g):
   strainMax1 = 0.200
   strainMax2 = 0.200
   strainMax3 = 0.200
-  shiftMax = 10
+  shiftMax = 15
   shiftMin = -shiftMax
   dw = DynamicWarping(shiftMin,shiftMax)
   dw.setErrorExtrapolation(DynamicWarping.ErrorExtrapolation.REFLECT)
@@ -153,16 +153,9 @@ def vpvs(u,c,avg=False):
   return ut
 
 def gammaS(u1,u2,c,avg=False):
-  n1,n2,n3 = len(u1[0][0]),len(u1[0]),len(u1)
-  if avg:
-    ut = div(sub(u2,u1),rampfloat(1.0,1.0,0.0,0.0,n1,n2,n3))
-  else:
-    ut = zerofloat(n1,n2,n3)
-    rgf = RecursiveGaussianFilter(1.0)
-    rgf.apply1XX(sub(u2,u1),ut)
-  ut = mul(div(2.0*c,vpvs(u1,c,avg)),ut)
-  smoothX(2.0,ut)
-  return ut
+  vpvs1 = vpvs(u1,c,avg)
+  vpvs2 = vpvs(u2,c,avg)
+  return sub(div(vpvs2,vpvs1),1.0)
 
 def smoothX(sigma,x):
   n = 8.0
@@ -240,12 +233,14 @@ def plot3(f,s1,clips=None,limits=None,title=None,
     PlotPanelPixels3.AxesPlacement.LEFT_BOTTOM,
     s1,s2,s3,f)
   pp.setInterpolation(PixelsView.Interpolation.NEAREST)
-  pp.setSlices(633,n2/2,n3/2)
+  pp.setSlices(int(0.95/s1f.delta+0.5),n2/2,n3/2)
   pp.setColorBarWidthMinimum(cbwm)
   if clips:
     pp.setClips(clips[0],clips[1])
-  #if limits:
-  #  pp.setVLimits(limits[0],limits[1])
+  if limits:
+    pp.setVLimits(1,limits[0],limits[1])
+  else:
+    pp.setVLimits(1,0.6,2.6)
   if title:
     pp.setTitle(title)
   if cmap:
@@ -260,7 +255,6 @@ def plot3(f,s1,clips=None,limits=None,title=None,
   pp.setVLabel(0,"Crossline (km)")
   pp.setHLabel(0,"Inline (km)")
   pp.setHLabel(1,"Crossline (km)")
-  pp.setVLimits(1,0.0,2.0)
   mosaic = pp.getMosaic()
   mosaic.setWidthElastic(0,50)
   mosaic.setWidthElastic(1,50)
