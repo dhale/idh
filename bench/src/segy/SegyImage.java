@@ -292,6 +292,23 @@ public class SegyImage {
   }
 
   /**
+   * Sets bytes used to find inline and xline numbers in trace headers.
+   * Both inline and xline numbers are represented by four-byte integers, 
+   * but these integers are not always placed in the standard bytes
+   * 189-192 (for inline) and 193-196 (for xline) of trace headers. 
+   * This method allows these standard byte locations to be overridden.
+   * <p>
+   * Note that the first byte is 1, not 0, as in the documentation 
+   * for SEG-Y format.
+   * @param inlineByte first byte of inline number.
+   * @param xlineByte first byte of xline number.
+   */
+  public void setInlineXlineBytes(int inlineByte, int xlineByte) {
+    _i2hi = (xlineByte-1)/4;
+    _i3hi = (inlineByte-1)/4;
+  }
+
+  /**
    * Returns a guess for the format code, if a guess is possible.
    * Currently attempts to guess only if either IBM or IEEE floats.
    * <p>
@@ -818,6 +835,8 @@ public class SegyImage {
   private byte[] _bbuf; // buffer for trace samples as bytes
   private boolean _infoBH; // true, if binary header info has been loaded
   private boolean _infoTH; // true, if trace header info has been loaded
+  private int _i2hi = 48; // index in trace header of integer xline number
+  private int _i3hi = 47; // index in trace header of integer iline number
 
   private static String[] _binaryHeaderFields = {
     "3201-3204: job identification number",
@@ -1011,7 +1030,7 @@ public class SegyImage {
       _d1 = d1;
     _nbyte = new File(_fileName).length();
     _ntrace = (int)((_nbyte-3600)/(240+_bytesPerSample*n1));
-    if (_ntrace*(240+_bytesPerSample*n1)!=(_nbyte-3600))
+    if (_ntrace*(240L+_bytesPerSample*n1)!=(_nbyte-3600L))
       throw new RuntimeException("invalid file length or binary header");
     _ibuf = new int[_n1];
     _sbuf = new short[_n1];
@@ -1103,10 +1122,10 @@ public class SegyImage {
           sxy /= -pxy;
         double x = hi[45]*sxy; // x coordinate
         double y = hi[46]*sxy; // y coordinate
-        int i2 = hi[48]; // xline number
+        int i2 = hi[_i2hi]; // xline number
         if (i2==0) // if no xline number, ... 
           i2 = hi[5]; // try the CDP number
-        int i3 = hi[47]; // iline number
+        int i3 = hi[_i3hi]; // iline number
         if (x<_xmin) _xmin = x;
         if (x>_xmax) _xmax = x;
         if (y<_ymin) _ymin = y;
