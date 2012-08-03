@@ -8,7 +8,8 @@ from imports import *
 #############################################################################
 # Internal constants
 
-_datdir = "/data/dhale/can/"
+#_datdir = "/data/dhale/can/"
+_datdir = "/data/seis/can/"
 
 #############################################################################
 # Setup

@@ -26,7 +26,8 @@ ft2file = "ft2" # 2nd component of fault throws
 ft3file = "ft3" # 3rd component of fault throws
 
 def main(args):
-  goSlopes()
+  goDisplay("g")
+  #goSlopes()
   #goSemblance()
   #goScan()
   #goThin()
@@ -44,10 +45,9 @@ def goDisplay(what):
     addImageToWorld(world,g1).setClips(-1,1)
     addImageToWorld(world,g2).setClips(-1,1)
     makeFrame(world).setSize(1200,900)
-  if what=="gs":
+  if what=="g":
     g = readImage("g")
-    gs = readImage("gs")
-    show2(g,gs)
+    plot3(g)
   elif what=="gsf":
     gs = readImage("gs")
     gsf = readImage("gsf")
