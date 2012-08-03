@@ -4,8 +4,6 @@
 from imports import *
 from util import FakeData
 
-from warp import DynamicWarpingX as DynamicWarping
-
 #############################################################################
 
 #pngDir = "./png"
@@ -27,8 +25,8 @@ s1,s2 = None,None
 label1,label2 = None,None
 
 def main(args):
-  #goOzImages()
-  goOzShifts()
+  goOzImages()
+  #goOzShifts()
 
 def goOzShifts():
   global nrms,esmooth,usmooth,shiftMax

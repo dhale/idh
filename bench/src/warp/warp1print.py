@@ -30,12 +30,10 @@ from edu.mines.jtk.mosaic import *
 from edu.mines.jtk.util import *
 from edu.mines.jtk.util.ArrayMath import *
 
-from warp import DynamicWarpingX as DynamicWarping
-
 #############################################################################
 
-#pngDir = "./png"
-pngDir = None
+pngDir = "./png/geop"
+#pngDir = None
 
 seed = 99 
 seed = 954 
@@ -69,7 +67,8 @@ def goFigures():
     if nrms>0:
       ef = dw.accumulateForward(e)
       er = dw.accumulateReverse(e)
-      es = dw.smoothErrors(e)
+      es = sub(add(ef,er),e) # avoid normalization after smoothing
+      #es = dw.smoothErrors(e) # this method normalizes after smoothing
       plotc(dtran(ef),None,None,perc=97,png="cef")
       plotc(dtran(er),None,None,perc=97,png="cer")
       plotc(dtran(es),None,None,perc=97,png="ces")
@@ -166,7 +165,7 @@ def addNoise(nrms,fpeak,f,seed=0):
 #############################################################################
 # plotting
 
-backgroundColor = Color(0xfd,0xfe,0xff) # easy to make transparent
+backgroundColor = Color.WHITE
 
 def plotfg(f,g,png=None):
   n = len(f)
@@ -191,7 +190,7 @@ def plotfg(f,g,png=None):
   frame.setVisible(True)
   if png and pngDir:
     png += "n"+str(int(10*nrms))
-    frame.paintToPng(720,3.3,pngDir+"/"+png+".png")
+    frame.paintToPng(720,3.33333,pngDir+"/"+png+".png")
 
 def plotc(c,s=None,u=None,cmin=0.0,cmax=0.0,perc=None,png=None):
   n,nlag = len(c[0]),len(c)
@@ -225,7 +224,7 @@ def plotc(c,s=None,u=None,cmin=0.0,cmax=0.0,perc=None,png=None):
   if png and pngDir:
     png += "n"+str(int(10*nrms))
     png += "s"+str(int(10*strainMax))
-    frame.paintToPng(720,3.3,pngDir+"/"+png+".png")
+    frame.paintToPng(720,3.33333,pngDir+"/"+png+".png")
 
 def plot2c(c,s,u,clip=None,perc=None,png=None):
   n,nlag = len(c[0]),len(c)
@@ -266,7 +265,7 @@ def plot2c(c,s,u,clip=None,perc=None,png=None):
   if png and pngDir:
     png += "n"+str(int(10*nrms))
     png += "s"+str(int(10*strainMax))
-    frame.paintToPng(720,3.3,pngDir+"/"+png+".png")
+    frame.paintToPng(720,3.33333,pngDir+"/"+png+".png")
 
 def plot3c(c,s,u,cmin=0.0,cmax=0.0,png=None):
   print "c0: min =",min(c[0])," max =",max(c[0])
@@ -323,7 +322,7 @@ def plot3c(c,s,u,cmin=0.0,cmax=0.0,png=None):
   if png and pngDir:
     png += "n"+str(int(10*nrms))
     #png += "s"+str(int(10*strainMax))
-    frame.paintToPng(720,3.3,pngDir+"/"+png+".png")
+    frame.paintToPng(720,3.33333,pngDir+"/"+png+".png")
 
 #############################################################################
 # Do everything on Swing thread.
