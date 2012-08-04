@@ -11,7 +11,7 @@ d1,d2,d3 = None,None,None
 f1,f2,f3 = None,None,None
 s1,s2,s3 = None,None,None
 clip = None
-dataDir = "../" # image data assumed to be in the parent directory
+dataDir = "/data/seis/" # base directory for all images
 def setupForImage(name):
   global n1,n2,n3,d1,d2,d3,f1,f2,f3,s1,s2,s3,clip,dataDir
   if name[0:3]=="atw":

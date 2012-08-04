@@ -1,4 +1,4 @@
-# Make a good subset for faults
+# Make good subsets for faults
 
 from common import *
 
@@ -12,14 +12,14 @@ clip = 1.0
 dataDir = "/data/dhale/can/"
 
 def main(args):
-  makeSubset()
-  showSubset()
+  makeSubset1()
+  showSubset1()
 
-def showSubset():
+def showSubset1():
   x = readImage("canf")
   showOne(x,clip=clip)
 
-def makeSubset():
+def makeSubset1():
   global n1,n2,n3,s1,s2,s3
   firstTime = False
   if firstTime:

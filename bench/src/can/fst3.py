@@ -7,8 +7,8 @@ setupForSubset("s1")
 s1,s2,s3 = getSamplings()
 n1,n2,n3 = s1.count,s2.count,s3.count
 
-gfile = "g" # input image (after smoothing with soblf)
-gsfile = "gsf" # image after lsf with fault likelihoods
+gfile = "g" # input image
+gsfile = "gs" # image after lsf with fault likelihoods
 p2file = "p2" # inline slopes
 p3file = "p3" # crossline slopes
 epfile = "ep" # eigenvalue-based planarity
@@ -26,15 +26,15 @@ ft2file = "ft2" # 2nd component of fault throws
 ft3file = "ft3" # 3rd component of fault throws
 
 def main(args):
-  goDisplay("g")
+  #goDisplay("g")
   #goSlopes()
   #goSemblance()
   #goScan()
   #goThin()
   #goSmooth()
-  #goSurfing()
+  goSurfing()
   #goDisplay("gs")
-  #goDisplay("gsf")
+  #goDisplay("gs")
   #goDisplay("gflt")
   #goDisplay("gfrs")
   #goDisplay("gft1")
@@ -48,20 +48,20 @@ def goDisplay(what):
   if what=="g":
     g = readImage("g")
     plot3(g)
-  elif what=="gsf":
+  elif what=="gs":
+    g = readImage("g")
     gs = readImage("gs")
-    gsf = readImage("gsf")
-    show2(gs,gsf)
+    show2(g,gs)
   elif what=="gflt":
-    g = readImage("gs")
+    g = readImage("g")
     fl = readImage("flt")
     plot3(g,fl,cmin=0.0,cmax=1.0,cmap=jetRamp(1.0))
   elif what=="gfrs":
-    g = readImage("gs")
+    g = readImage("g")
     s = readImage("frs")
     plot3(g,s,cmin=-5.0,cmax=5.0,cmap=bwrNotch(1.0))
   elif what=="gft1":
-    g = readImage("gs")
+    g = readImage("g")
     ft1 = readImage("ft1")
     plot3(g,ft1,cmin=0.0,cmax=1.0,cmap=jetRamp(1.0))
   else:
@@ -81,7 +81,7 @@ def goSurfing():
   quads = fs.linkQuads(quads)
   surfs = fs.findSurfs(quads)
   surfs = fs.getSurfsWithSize(surfs,4000)
-  #plot3(g,surfs=surfs)
+  plot3(g,surfs=surfs)
   s = fs.findShifts(20.0,surfs,gs,p2,p3)
   print "s: min =",min(s)," max =",max(s)
   writeImage(frsfile,s)
@@ -150,8 +150,9 @@ def goScan():
   sd = readImage(sdfile)
   sigmaPhi,sigmaTheta = 4,20
   minPhi,maxPhi = -90,90
-  #minPhi,maxPhi = 40,40
   minTheta,maxTheta = -20,20
+  #minPhi,maxPhi = 40,40
+  #minTheta,maxTheta = -10,-10
   fsc = FaultScanner3(sigmaPhi,sigmaTheta,[sn,sd])
   print "scanning ..."
   sw = Stopwatch()
