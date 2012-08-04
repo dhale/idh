@@ -1,31 +1,27 @@
-# Make good subsets for faults
+# Make good subsets for fault processing
 
 from common import *
 
 n1,n2,n3 = 1501,4001,3001 # numbers of samples
-d1,d2,d3 = 1.0,1.0,1.0 # sampling intervals
+d1,d2,d3 = 1.0,1.0,1.0 # sampling intervals (for now)
 f1,f2,f3 = 0.0,0.0,0.0 # values for first samples
-j1,j2,j3 = 450,1463,0 # first samples in subset
-m1,m2,m3 = 501,1601,1001 # numbers of samples in subset
 s1,s2,s3 = Sampling(n1,d1,f1),Sampling(n2,d2,f2),Sampling(n3,d3,f3)
-clip = 1.0
+
 dataDir = "/data/dhale/can/"
+clip = 1.0
 
-def main(args):
-  makeSubset1()
-  showSubset1()
-
-def showSubset1():
-  x = readImage("canf")
-  showOne(x,clip=clip)
-
-def makeSubset1():
-  global n1,n2,n3,s1,s2,s3
-  firstTime = False
-  if firstTime:
+def subset1(make):
+  """
+  s1 = 3.2 GB volume with interesting faults
+  use this volume for scanning and thinning
+  """
+  global n1,n2,n3,d1,d2,d3,f1,f2,f3,s1,s2,s3
+  j1,j2,j3 = 450,1463,0 # first samples in subset
+  m1,m2,m3 = 501,1601,1001 # numbers of samples in subset
+  if make:
     x = zerofloat(m1)
     aif = ArrayFile("/data/seis/can/canNZ.dat","r")
-    aos = ArrayOutputStream(dataDir+"canf.dat")
+    aos = ArrayOutputStream(dataDir+"s1/g.dat")
     for i3 in range(j3,j3+m3):
       for i2 in range(j2,j2+m2):
         aif.seek(4*(j1+n1*(i2+n2*i3)))
@@ -34,7 +30,44 @@ def makeSubset1():
     aos.close()
     aif.close()
   n1,n2,n3 = m1,m2,m3
+  d1,d2,d3 = d1,d2,d3
+  f1,f2,f3 = f1+j1*d1,f2+j2*d2,f3+j3*d3
   s1,s2,s3 = Sampling(n1,d1,f1),Sampling(n2,d2,f2),Sampling(n3,d3,f3)
+
+def subset1b(make):
+  """
+  s1b = bottom part of subset s1, below chaotic faulting
+  used for surface extraction and throw estimation
+  make this subset after scanning and thinning
+  """
+  subset1(False)
+  global n1,n2,n3,d1,d2,d3,f1,f2,f3,s1,s2,s3
+  j1,j2,j3 = 200,0,0 # first samples in subset
+  m1,m2,m3 = 301,1601,1001 # numbers of samples in subset
+  if make:
+    x = zerofloat(n1)
+    y = zerofloat(m1)
+    #for what in ["g","gs","p2","p3","fl","fp","ft","flt","fpt","ftt"]:
+    for what in ["g"]:
+      ais = ArrayInputStream(dataDir+"s1/"+what+".dat")
+      aos = ArrayOutputStream(dataDir+"s1b/"+what+".dat")
+      for i3 in n3:
+        for i2 in n2:
+          ais.readFloats(x)
+          copy(m1,j1,x,0,y)
+          aos.writeFloats(y)
+    ais.close()
+    aos.close()
+  n1,n2,n3 = m1,m2,m3
+  d1,d2,d3 = d1,d2,d3
+  f1,f2,f3 = f1+j1*d1,f2+j2*d2,f3+j3*d3
+  s1,s2,s3 = Sampling(n1,d1,f1),Sampling(n2,d2,f2),Sampling(n3,d3,f3)
+  x = readImage("s1b/g")
+  showOne(x,clip=clip)
+
+def main(args):
+  #subset1(True)
+  subset1b(True)
 
 #############################################################################
 
