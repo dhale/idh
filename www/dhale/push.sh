@@ -1,1 +1,1 @@
-scp -r build/* dhale@illuminate:public_html/
+scp -r build/* dhale@illuminate:public_htmlx/

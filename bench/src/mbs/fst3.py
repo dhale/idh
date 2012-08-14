@@ -32,10 +32,10 @@ def main(args):
   #goThin()
   #goSmooth()
   #goSurfing()
-  goDisplay("gs")
+  #goDisplay("gs")
   #goDisplay("gsf")
   #goDisplay("gflt")
-  #goDisplay("gfrs")
+  goDisplay("gfrs")
   #goDisplay("gft1")
 
 def goDisplay(what):

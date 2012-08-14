@@ -1,0 +1,169 @@
+<h3>My favorite ten-line computer program</h3>
+<p>August 13, 2012</p>
+<p>
+I write a lot of <a href="jtk/index.html">software</a>, 
+but here is my favorite ten-line program:
+</p><pre><code>
+  float b = 1.0f-a;
+  float sx = 1.0f, sy = a;
+  float yi = 0.0f;
+  y[0] = yi = sy*yi+sx*x[0];
+  for (int i=1; i&lt;n-1; ++i)
+    y[i] = yi = a*yi+b*x[i];
+  sx /= 1.0f+a; sy /= 1.0f+a;
+  y[n-1] = yi = sy*yi+sx*x[n-1];
+  for (int i=n-2; i&gt;=0; --i)
+    y[i] = yi = a*yi+b*y[i];
+</code></pre><p>
+Simon Luo, a Mines graduate student, recently helped to remove some
+clutter in a slightly longer version that I wrote awhile ago.
+Yes, we are cheating a little bit by putting two statements on one line,
+but our program still looks clean, with plenty of symmetry that makes us
+feel good.
+Besides, a real cheater would write this code in a one-line program!
+</p><p>
+This program is valid in the programming languages Java, C++, and 
+(with a few minor changes) C.
+The program inputs are a <code>float</code> parameter <code>a</code> 
+and a sequence of <code>n float</code> values <code>x[i]</code>, 
+for <code>i = 0, 1, ..., n-1</code>.
+The program output is a sequence of <code>n float</code> values 
+<code>y[i]</code> with the same length.
+Before I explain why this is my favorite ten-line program, let's 
+first look at an example of what it does.
+</p><p>
+In the following figure, the input sequence <code>x</code> in red 
+was recorded in a lab experiment.
+We suspect that the rapid fluctuations are noise, because they do not 
+fit any reasonable model of the signal we were expecting.
+The output sequence <code>y</code> (black) computed with our 
+ten-line program better approximates the expected signal.
+</p><dl class="img first">
+  <dt><img src="images/smoothizs.png" width="504" alt=""/></dt>
+  <dd><em>
+    A noisy input sequence (red) after smoothing (black)
+    with the ten-line program.
+  </em></dd>
+</dl><p>
+Each output value <code>y[i]</code> is a weighted average of 
+input values <code>x[j]</code>. 
+The weights are proportional to <code>a<sup>|i-j|</sup></code>, so 
+that (for <code>0 &lt;= a &lt;= 1</code>) they decrease exponentially 
+with increasing <code>|i-j|</code>.
+In this example, the parameter <code>a = 0.932</code>.
+</p><p>
+In effect, our ten-line program is a smoothing filter.
+The weights are normalized so that they sum to one, which means that
+when this filter is applied to a sequence with constant input value 
+<code>x[i] = constant</code> (already as smooth as can be), the output 
+values will be the same <code>y[i] = constant</code>.
+</p><p>
+The following figure illustrates weights for the exponential filter
+and two alternative smoothing filters with comparable widths.
+</p><dl class="img first">
+  <dt><img src="images/smoothimp.png" width="504" alt=""/></dt>
+  <dd><em>
+    Impulse responses of exponential (black), Gaussian (blue) and
+    boxcar (red) smoothing filters. 
+    For these filters, each output sample is a weighted average of 
+    nearby input samples; shown here are the weights.
+  </em></dd>
+</dl><p>
+All three of these smoothing filters can be implemented efficiently,
+with computational cost that is independent of their width.
+But efficient (recursive) implementations of both the Gaussian and 
+boxcar filters require more complex programs, especially when 
+carefully handling the ends of input and output sequences.
+</p><p>
+A less efficient (non-recursive) but simpler implementation of the 
+boxcar filter is often used, perhaps because it more obviously
+computes a moving average.
+But the abrupt transition from non-zero weight to zero weight makes no 
+sense for such an average, and it is hard to beat the simplicity of our 
+ten-line program.
+</p><p>
+To summarize, the exponential filter
+</p><ul>
+<li>
+gives more weight to input samples located (in time or space) near
+the output sample than to input samples located farther away
+<li>
+guarantees that all weights are non-negative, unlike many recursive 
+implementations of Gaussian filters
+<li>
+can be applied in-place, so that output values <code>y[i]</code>
+replace input values <code>x[i]</code> stored in the same array, which 
+is especially useful when filtering large arrays of arrays that consume
+a lot of memory
+<li>
+requires only six floating-point operations (multiplies and adds) 
+per output sample <code>y[i]</code>, and this computational cost 
+is independent of the extent of smoothing
+<li>
+can be implemented with a simple ten-line computer program that 
+includes careful treatment of the ends of input and output sequences
+</ul><p>
+Careful treatment of the ends is important. 
+When averaging input values to compute output values near the ends, 
+our ten-line program listed above implicitly assumes that input 
+values beyond the ends are equal to the end values.
+This <em>zero-slope</em> assumption is often appropriate.
+</p><p>
+Another common assumption is that input values beyond the ends are zero,
+and the figure below shows how this <em>zero-value</em> assumption may be 
+inappropriate, as the decrease in the output sequence near time zero seems
+inaccurate.
+</p><dl class="img first">
+  <dt><img src="images/smoothizv.png" width="504" alt=""/></dt>
+  <dd><em>
+    A noisy input sequence (red) after smoothing (black)
+    with the recursive two-sided exponential filter.
+    Input values off the ends have been assumed to be zero, which 
+    seems unreasonable for the left end where times are nearly zero.
+  </em></dd>
+</dl><p>
+But suppose that the data we are smoothing are known to have zero mean.
+In this case, the zero-value assumption may be more appropriate, and our
+ten-line program becomes
+</p><pre><code>
+  float b = 1.0f-a;
+  float sx = b, sy = a;
+  float yi = 0.0f;
+  y[0] = yi = sy*yi+sx*x[0];
+  for (int i=1; i&lt;n-1; ++i)
+    y[i] = yi = a*yi+b*x[i];
+  sx /= 1.0f+a; sy /= 1.0f+a;
+  y[n-1] = yi = sy*yi+sx*x[n-1];
+  for (int i=n-2; i&gt;=0; --i)
+    y[i] = yi = a*yi+b*y[i];
+</code></pre><p>
+Can you see the difference? 
+It is not obvious, but look carefully at the second line.
+That's it! 
+A simple change to the initialization of one variable switches 
+our treatment of the ends from zero-slope to zero-value.
+</p><p>
+One final tip.
+The relationship between the extent of smoothing and the 
+parameter <code>a</code> is not at all intuitive, 
+so I rarely specify this parameter directly.
+Instead, I compute the parameter <code>a</code> to obtain
+an exponential filter that (for low frequencies) is comparable to
+a Gaussian filter with a specified half-width <code>sigma</code>
+(measured in samples), using:
+</p><pre><code>
+  float ss = sigma*sigma;
+  float a = (1.0f+ss-sqrt(1.0f+2.0f*ss))/ss;
+</code></pre><p>
+So, in practice, this adds two lines to our ten-line program.
+And if you would rather think in terms of the integer half-width 
+<code>m</code> of a boxcar filter, then (again, for low frequencies)
+the half-width <code>sigma</code> of the comparable Gaussian filter 
+can be computed using:
+</p><pre><code>
+  float sigma = sqrt(m*(m+1)/3.0f);
+</code></pre><p>
+For the boxcar filter with half-width <code>m = 10</code> 
+displayed in the figure above, these expressions yield 
+<code>sigma = 6.06</code> and <code>a = 0.792</code>.
+</p>

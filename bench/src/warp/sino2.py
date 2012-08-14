@@ -5,17 +5,17 @@ from imports import *
 
 #############################################################################
 
-pngDir = "./png/sino/"
-#pngDir = None
+#pngDir = "./png/sino/"
+pngDir = None
 
 s1f,s1g,s2 = None,None,None
 
 # Different time windows for plotting
 ilims = ["0","1","2"]
-#flims = [(0.0,5.333),(1.0,3.0),(3.0,5.0)]
-#glims = [(0.0,8.000),(1.5,4.5),(4.5,7.5)]
 flims = [(0.0,5.333),(0.8,2.8),(2.8,4.8)]
 glims = [(0.0,8.000),(1.2,4.2),(4.2,7.2)]
+#flims = [(0.0,6.000),(0.8,2.8),(2.8,4.8)]
+#glims = [(0.0,8.000),(1.2,4.2),(4.2,7.2)]
 
 def main(args):
   #goSinoImages()
@@ -118,8 +118,10 @@ def warp2(f,g):
 def warp1(f,g):
   usmooth = 4.0
   strainMax1 = 0.125
+  #strainMax1 = 0.25
   shiftMin = 0
   shiftMax = 160
+  #shiftMax = 250
   dw = DynamicWarping(shiftMin,shiftMax)
   dw.setErrorExtrapolation(DynamicWarping.ErrorExtrapolation.REFLECT)
   dw.setStrainMax(strainMax1)
@@ -153,6 +155,8 @@ def getSinoImages():
   # Stretch f = PP to match g = PS for Vp/Vs = 2 (= 2*d1g/d1f - 1)
   n1f,d1f,f1f = 2001,0.00266667,0.0 # z component, 0 to 5.33333 s
   n1g,d1g,f1g = 2001,0.00400000,0.0 # x component, 0 to 8.00000 s
+  #n1f,d1f,f1f = 2001,0.00300000,0.0 # z component, 0 to 6.00000 s
+  #n1g,d1g,f1g = 2001,0.00400000,0.0 # x component, 0 to 8.00000 s
   n2,d2,f2 =  721,0.0150,0.000
   global s1f,s1g,s2
   s1f = Sampling(n1f,d1f,f1f)

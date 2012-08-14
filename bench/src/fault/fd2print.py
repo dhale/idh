@@ -66,9 +66,9 @@ def goShifts():
   s = neg(s)
   print "s min =",min(s)," max =",max(s)
   plot2(s1,s2,g,s,gmin=0,gmax=28,gmap=jetr,
-        label="Vertical fault throw (ms)",png="fs")
+        label="Vertical component of throw (ms)",png="fs")
   plot2(s1,s2,g,s,gmin=0,gmax=15,gmap=jetr,
-        label="Vertical fault throw (ms)",png="fs15")
+        label="Vertical component of throw (ms)",png="fs15")
 
 def goThin():
   s1,s2,g = getImage()
@@ -83,10 +83,12 @@ def goThin():
     fsc = FaultScanner2(sigmaTheta,[sn,sd],smoother)
     f,t = fsc.scan(-15,15)
     fs = copy(f); RecursiveGaussianFilter(1.0).apply00(fs,fs)
-    plot2(s1,s2,g,fs,gmin=0,gmax=1,gmap=jetr,label="Fault likelihood",png="fls")
+    plot2(s1,s2,g,fs,gmin=0.5,gmax=1,gmap=jetr,
+          label="Fault likelihood",png="fls")
     ft,tt = fsc.thin([f,t])
-    plot2(s1,s2,g,ft,gmin=0,gmax=1,gmap=jetr,label="Fault likelihood",png="flt")
-    g = fsc.smooth(4,p,ft,g)
+    g = fsc.smooth(8,p,ft,g)
+    plot2(s1,s2,g,ft,gmin=0.5,gmax=1,gmap=jetr,
+          label="Fault likelihood",png="flt")
     plot2(s1,s2,g,label="Log amplitude",png="gs")
 
 def goScan():
@@ -101,11 +103,10 @@ def goScan():
   for theta in st.values:
     f = fsc.likelihood(theta)
     png = "fl"+str(int(theta))
-    plot2(s1,s2,g,f,gmin=0,gmax=1,gmap=jetr,label="Fault likelihood",png=png)
+    plot2(s1,s2,g,f,gmin=0.5,gmax=1,gmap=jetr,label="Fault likelihood",png=png)
   tmin,tmax = st.first,st.last
   f,t = fsc.scan(tmin,tmax)
-  plot2(s1,s2,g,f,gmin=0,gmax=1,gmap=jetr,label="Fault likelihood",png="fl")
-  #plot2(s1,s2,g,t,gmin=tmin,gmax=tmax,label="Fault dip (degrees)",png="ft")
+  plot2(s1,s2,g,f,gmin=0.5,gmax=1,gmap=jetr,label="Fault likelihood",png="fl")
 
 def goSemblance():
   s1,s2,g = getImage()
@@ -126,7 +127,7 @@ def goSemblance():
     title = "semblance: sigma = "+str(sigma)
     png="s"+str(sigma)
     #plot2(s1,s2,g,s,gmin=0,gmax=1,title=title)
-    plot2(s1,s2,g,s,gmin=0,gmax=1,label="Semblance",png=png)
+    plot2(s1,s2,g,s,gmin=0.5,gmax=1,label="Semblance",png=png)
 
 def goAlign():
   s1,s2,g = getImage()
@@ -160,7 +161,7 @@ def goSlopes():
   p = fse.slopes(g)
   p = mul(s1.delta/s2.delta,p)
   #plot2(s1,s2,g,p,gmin=-0.9,gmax=0.9,title="slopes")
-  plot2(s1,s2,g,p,gmin=-0.12,gmax=0.12,gmap=bwrn,label="Slope (s/km)",png="p")
+  plot2(s1,s2,g,p,gmin=-0.07,gmax=0.07,gmap=bwrf,label="Slope (s/km)",png="p")
 
 def spow(p,f):
   return mul(sgn(f),pow(abs(f),p))
