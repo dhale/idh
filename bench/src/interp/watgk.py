@@ -156,9 +156,11 @@ def gridBlended(f,x1,x2,s1,s2,smooth=0.5,et=None):
   return bg.grid(s1,s2);
 
 def gridKriging(f,x1,x2,s1,s2,sigmaD=0.0,rangeM=40.0,et=None,pa=False):
+  cm = SmoothCovariance(1.5,1.0,rangeM,2)
+  cm.setTensors(et)
   kg = KrigingGridder2(f,x1,x2)
   kg.setDataError(sigmaD)
-  kg.setModelCovariance(Matern(1.0,1.0,rangeM))
+  kg.setModelCovariance(cm);
   kg.setPolyTrend(0)
   kg.setPaciorek(pa)
   #kg.setIdentityTensors()

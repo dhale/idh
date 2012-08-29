@@ -135,12 +135,12 @@ public class KrigingGridder2 implements Gridder2 {
 
   /**
    * Sets the model covariance function of distance.
-   * The default is a Matern covariance function with 
+   * The default is a smooth covariance function with 
    * parameters shape = sigma = range = 1.
    * @param cm the model covariance function.
    */
   public void setModelCovariance(Covariance model) {
-    _modelC = model;
+    _cm = model;
   }
 
   /**
@@ -218,7 +218,7 @@ public class KrigingGridder2 implements Gridder2 {
   private float[] _f,_x1,_x2; // scattered data
   private float[] _sd; // array of std devs for data errors
   private double _sdConstant = 0.0;  // std dev for data errors, if constant
-  private Covariance _modelC = new Matern(1.0,1.0,1.0); // model covariance
+  private Covariance _cm = new SmoothCovariance(1.0,1.0,1.0,2);
   private PolyTrend2 _trend; // polynomial trend; null, if none
   private int _order = -1; // order of poly trend; -1, if none
 
@@ -247,7 +247,7 @@ public class KrigingGridder2 implements Gridder2 {
         double x1j = _x1[j];
         double x2j = _x2[j];
         double r = distance(t11,t12,t22,x1i,x2i,x1j,x2j);
-        cm.set(i,j,_modelC.evaluate(r));
+        cm.set(i,j,_cm.evaluate(r));
       }
       cm.set(i,i,cm.get(i,i)+_sd[i]*_sd[i]);
       cf.set(i,0,_f[i]);
@@ -263,12 +263,44 @@ public class KrigingGridder2 implements Gridder2 {
           double x1j = _x1[j];
           double x2j = _x2[j];
           double r = distance(t11,t12,t22,x1i,x2i,x1j,x2j);
-          qi += cw.get(j,0)*_modelC.evaluate(r);
+          qi += cw.get(j,0)*_cm.evaluate(r);
         }
         q[i2][i1] = (float)qi;
       }
     }
     return q;
+  }
+
+  private static double distance(
+    double t11, double t12, double t22,
+    double x1a, double x2a, 
+    double x1b, double x2b) 
+  {
+    double dx1 = x1a-x1b;
+    double dx2 = x2a-x2b;
+    return sqrt(dx1*(t11*dx1+t12*dx2)+dx2*(t12*dx1+t22*dx2));
+  }
+
+  private static double evaluatePaciorek(
+    Sampling s1, Sampling s2, Tensors2 tensors, Covariance cm,
+    double d11i, double d12i, double d22i, double deti, float[] d,
+    double x1i, double x2i, double x1j, double x2j)
+  {
+    int j1 = s1.indexOfNearest(x1j);
+    int j2 = s2.indexOfNearest(x2j);
+    tensors.getTensor(j1,j2,d);
+    double d11j = d[0], d12j = d[1], d22j = d[2];
+    double detj = d11j*d22j-d12j*d12j;
+    double d11 = 0.5*(d11i+d11j);
+    double d12 = 0.5*(d12i+d12j);
+    double d22 = 0.5*(d22i+d22j);
+    double det = d11*d22-d12*d12;
+    double t11 =  d22/det;
+    double t12 = -d12/det;
+    double t22 =  d11/det;
+    double s = sqrt(sqrt(deti*detj)/det);
+    double r = distance(t11,t12,t22,x1i,x2i,x1j,x2j);
+    return s*cm.evaluate(r);
   }
 
   /**
@@ -292,21 +324,10 @@ public class KrigingGridder2 implements Gridder2 {
       for (int j=0; j<n; ++j) {
         double x1j = _x1[j];
         double x2j = _x2[j];
-        int j1 = s1.indexOfNearest(x1j);
-        int j2 = s2.indexOfNearest(x2j);
-        _tensors.getTensor(j1,j2,d);
-        double d11j = d[0], d12j = d[1], d22j = d[2];
-        double detj = d11j*d22j-d12j*d12j;
-        double d11 = 0.5*(d11i+d11j);
-        double d12 = 0.5*(d12i+d12j);
-        double d22 = 0.5*(d22i+d22j);
-        double det = d11*d22-d12*d12;
-        double t11 =  d22/det;
-        double t12 = -d12/det;
-        double t22 =  d11/det;
-        double s = sqrt(sqrt(deti*detj)/det);
-        double r = distance(t11,t12,t22,x1i,x2i,x1j,x2j);
-        cm.set(i,j,s*_modelC.evaluate(r));
+        double cij = evaluatePaciorek(s1,s2,_tensors,_cm,
+                                      d11i,d12i,d22i,deti,d,
+                                      x1i,x2i,x1j,x2j);
+        cm.set(i,j,cij);
       }
       cm.set(i,i,cm.get(i,i)+_sd[i]*_sd[i]);
       cf.set(i,0,_f[i]);
@@ -324,21 +345,10 @@ public class KrigingGridder2 implements Gridder2 {
         for (int j=0; j<n; ++j) {
           double x1j = _x1[j];
           double x2j = _x2[j];
-          int j1 = s1.indexOfNearest(x1j);
-          int j2 = s2.indexOfNearest(x2j);
-          _tensors.getTensor(j1,j2,d);
-          double d11j = d[0], d12j = d[1], d22j = d[2];
-          double detj = d11j*d22j-d12j*d12j;
-          double d11 = 0.5*(d11i+d11j);
-          double d12 = 0.5*(d12i+d12j);
-          double d22 = 0.5*(d22i+d22j);
-          double det = d11*d22-d12*d12;
-          double t11 =  d22/det;
-          double t12 = -d12/det;
-          double t22 =  d11/det;
-          double s = sqrt(sqrt(deti*detj)/det);
-          double r = distance(t11,t12,t22,x1i,x2i,x1j,x2j);
-          qi += cw.get(j,0)*s*_modelC.evaluate(r);
+          double cij = evaluatePaciorek(s1,s2,_tensors,_cm,
+                                        d11i,d12i,d22i,deti,d,
+                                        x1i,x2i,x1j,x2j);
+          qi += cij*cw.get(j,0);
         }
         q[i2][i1] = (float)qi;
       }
@@ -347,16 +357,16 @@ public class KrigingGridder2 implements Gridder2 {
   }
 
   /**
-   * Tensor-guided kriging for Matern model covariance with shape = 1. 
-   * This is a tensor-guided extension of Whittle's (1954) covariance
-   * for 2D models. Uses Paciorek's approximation as a preconditioner
-   * in an iterative CG computation of the kriging weights.
+   * Tensor-guided kriging for only smooth model covariance.
+   * Uses Paciorek's approximation as a preconditioner in
+   * an iterative CG computation of the kriging weights.
    */
   private float[][] gridForVariableTensors(Sampling s1, Sampling s2) {
+    Check.state(_cm instanceof SmoothCovariance,
+      "model covariance is a SmoothCovariance");
+    SmoothCovariance scm = (SmoothCovariance)_cm;
     int n1 = s1.getCount();
     int n2 = s2.getCount();
-    WhittleSmoother ws = new WhittleSmoother(n1,n2,_tensors,_modelC);
-    //ws.testSpd(n1,n2); if (ws!=null) return null;
     float[][] fxs = SimpleGridder2.samplesOnGrid(s1,s2,_f,_x1,_x2,_sd);
     float[] f = fxs[0];
     float[] x1 = fxs[1];
@@ -367,105 +377,20 @@ public class KrigingGridder2 implements Gridder2 {
     float[] az = new float[n];
     VecArrayFloat1 vf = new VecArrayFloat1(af);
     VecArrayFloat1 vz = new VecArrayFloat1(az);
-    A a = new A(x1,x2,s1,s2,ws,sd);
-    M m = new M(x1,x2,s1,s2,ws,sd);
+    SmoothA a = new SmoothA(x1,x2,s1,s2,scm,sd);
+    SmoothM m = new SmoothM(x1,x2,s1,s2,scm,sd);
     CgSolver cgs = new CgSolver(0.001,100);
     CgSolver.Info info = cgs.solve(a,m,vf,vz);
     //CgSolver.Info info = cgs.solve(a,vf,vz);
     cgs = null;
-    float[][] q = ws.apply(s1,s2,x1,x2,az);
+    float[][] q = scm.apply(s1,s2,x1,x2,az);
     return q;
   }
 
-  private static double distance(
-    double t11, double t12, double t22,
-    double x1a, double x2a, 
-    double x1b, double x2b) 
-  {
-    double dx1 = x1a-x1b;
-    double dx2 = x2a-x2b;
-    return sqrt(dx1*(t11*dx1+t12*dx2)+dx2*(t12*dx1+t22*dx2));
-  }
+  private static class SmoothA implements CgSolver.A {
 
-  private static class WhittleSmoother {
-    WhittleSmoother(int n1, int n2, Tensors2 tensors, Covariance modelC) {
-      Check.argument((modelC instanceof Matern),"Covariance is Matern");
-      double shapeM = ((Matern)modelC).getShape();
-      double sigmaM = ((Matern)modelC).getSigma();
-      double rangeM = ((Matern)modelC).getRange();
-      Check.argument(shapeM==1.0,"Matern shape = 1.0");
-      _tensors = tensors;
-      _modelC = (Matern)modelC;
-      _cscale = new float[n2][n1];
-      float[] d = new float[3];
-      float cscale = (float)(PI*sigmaM*sigmaM*rangeM*rangeM);
-      for (int i2=0; i2<n2; ++i2) {
-        for (int i1=0; i1<n1; ++i1) {
-          _tensors.getTensor(i1,i2,d);
-          float d11 = d[0], d12 = d[1], d22 = d[2];
-          float det = d11*d22-d12*d12;
-          _cscale[i2][i1] = cscale*det;
-        }
-      }
-      _dscale = (float)(rangeM*rangeM/4.0);
-      _lsf = new LocalSmoothingFilter(1.0e-6,1000);
-    }
-    void apply(float[][] q) {
-      int n1 = q[0].length;
-      int n2 = q.length;
-      float[][] t = new float[n2][n1];
-      _lsf.applySmoothS(q,q);
-      _lsf.apply(_tensors,_dscale,q,t);
-      mul(_cscale,t,t);
-      _lsf.apply(_tensors,_dscale,t,q);
-      _lsf.applySmoothS(q,q);
-    }
-    float[][] apply(Sampling s1, Sampling s2, 
-      float[] x1, float[] x2, float[] z) 
-    {
-      int n1 = s1.getCount();
-      int n2 = s2.getCount();
-      int n = z.length;
-      float[][] q = new float[n2][n1];
-      for (int i=0; i<n; ++i) {
-        int i1 = s1.indexOfNearest(x1[i]);
-        int i2 = s2.indexOfNearest(x2[i]);
-        q[i2][i1] = z[i];
-      }
-      apply(q);
-      return q;
-    }
-    Tensors2 getTensors() {
-      return _tensors;
-    }
-    Covariance getModelC() {
-      return _modelC;
-    }
-    void testSpd(int n1, int n2) {
-      float[][] x = sub(randfloat(n1,n2),0.5f);
-      float[][] y = sub(randfloat(n1,n2),0.5f);
-      float[][] ax = copy(x);
-      float[][] ay = copy(y);
-      apply(ax);
-      apply(ay);
-      float xay = sum(mul(x,ay));
-      float yax = sum(mul(y,ax));
-      float xax = sum(mul(x,ax));
-      float yay = sum(mul(y,ay));
-      System.out.println("xax="+xax+" yay="+yay);
-      System.out.println("xay="+xay+" yax="+yax);
-    }
-    private Tensors2 _tensors;
-    private Matern _modelC;
-    private float[][] _cscale;
-    private float _dscale;
-    private LocalSmoothingFilter _lsf;
-  }
-
-  private static class A implements CgSolver.A {
-
-    A(float[] x1, float[] x2, Sampling s1, Sampling s2,
-      WhittleSmoother ws, float[] sd) 
+    SmoothA(float[] x1, float[] x2, Sampling s1, Sampling s2,
+      SmoothCovariance cm, float[] sd) 
     {
       int n = x1.length;
       int n1 = s1.getCount();
@@ -477,8 +402,8 @@ public class KrigingGridder2 implements Gridder2 {
         _k2[i] = s2.indexOfNearest(x2[i]);
       }
       _bx = new float[n2][n1];
+      _cm = cm;
       _sd = sd;
-      _ws = ws;
     }
 
     public void apply(Vec x, Vec y) {
@@ -488,7 +413,7 @@ public class KrigingGridder2 implements Gridder2 {
       zero(_bx);
       for (int i=0; i<n; ++i)
         _bx[_k2[i]][_k1[i]] = ax[i];
-      _ws.apply(_bx);
+      _cm.apply(_bx);
       for (int i=0; i<n; ++i)
         ay[i] = _bx[_k2[i]][_k1[i]]+_sd[i]*_sd[i]*ax[i];
     }
@@ -496,20 +421,19 @@ public class KrigingGridder2 implements Gridder2 {
     private int[] _k1,_k2;
     private float[][] _bx;
     private float[] _sd;
-    private WhittleSmoother _ws;
+    private SmoothCovariance _cm;
   }
 
-  private static class M implements CgSolver.A {
+  private static class SmoothM implements CgSolver.A {
 
-    M(float[] x1, float[] x2, Sampling s1, Sampling s2,
-      WhittleSmoother ws, float[] sd) 
+    SmoothM(float[] x1, float[] x2, Sampling s1, Sampling s2,
+      SmoothCovariance cm, float[] sd) 
     {
-      Tensors2 tensors = ws.getTensors();
-      Covariance modelC = ws.getModelC();
+      Tensors2 tensors = cm.getTensors();
       int n1 = s1.getCount();
       int n2 = s2.getCount();
       int n = x1.length;
-      DMatrix cm = new DMatrix(n,n);
+      DMatrix am = new DMatrix(n,n);
       float[] d = new float[3];
       for (int i=0; i<n; ++i) {
         double x1i = x1[i];
@@ -522,29 +446,18 @@ public class KrigingGridder2 implements Gridder2 {
         for (int j=0; j<n; ++j) {
           double x1j = x1[j];
           double x2j = x2[j];
-          int j1 = s1.indexOfNearest(x1j);
-          int j2 = s2.indexOfNearest(x2j);
-          tensors.getTensor(j1,j2,d);
-          double d11j = d[0], d12j = d[1], d22j = d[2];
-          double detj = d11j*d22j-d12j*d12j;
-          double d11 = 0.5*(d11i+d11j);
-          double d12 = 0.5*(d12i+d12j);
-          double d22 = 0.5*(d22i+d22j);
-          double det = d11*d22-d12*d12;
-          double t11 =  d22/det;
-          double t12 = -d12/det;
-          double t22 =  d11/det;
-          double s = sqrt(sqrt(deti*detj)/det);
-          double r = distance(t11,t12,t22,x1i,x2i,x1j,x2j);
-          cm.set(i,j,s*modelC.evaluate(r));
+          double cij = evaluatePaciorek(s1,s2,tensors,cm,
+                                        d11i,d12i,d22i,deti,d,
+                                        x1i,x2i,x1j,x2j);
+          am.set(i,j,cij);
         }
-        cm.set(i,i,cm.get(i,i)+sd[i]*sd[i]);
+        am.set(i,i,am.get(i,i)+sd[i]*sd[i]);
       }
-      cm = cm.inverse();
+      am = am.inverse();
       _am = new float[n][n];
       for (int i=0; i<n; ++i) {
         for (int j=0; j<n; ++j) {
-          _am[i][j] = (float)cm.get(i,j);
+          _am[i][j] = (float)am.get(i,j);
         }
       }
     }

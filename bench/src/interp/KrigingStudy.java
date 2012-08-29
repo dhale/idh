@@ -187,7 +187,7 @@ public class KrigingStudy {
   public static DMatrix covM(
     double v, double sigma, double range, Sampling sx, Sampling sy)
   {
-    Matern cm = new Matern(v,sigma,range);
+    MaternCovariance cm = new MaternCovariance(v,sigma,range);
     int nx = sx.getCount();
     int ny = sy.getCount();
     int m = nx*ny;
@@ -219,7 +219,7 @@ public class KrigingStudy {
     float v, float sigma, float range,
     float[] f, float[] x, float[] y, Sampling sx, Sampling sy)
   {
-    Matern cm = new Matern(v,sigma,range);
+    MaternCovariance cm = new MaternCovariance(v,sigma,range);
     int n = f.length;
     int nx = sx.getCount();
     int ny = sy.getCount();

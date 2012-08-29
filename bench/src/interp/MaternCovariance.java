@@ -6,13 +6,13 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package interp;
 
-import static java.lang.Math.*;
+//import static java.lang.Math.*;
 
 // Testing only.
-//import static edu.mines.jtk.util.ArrayMath.*;
-//import javax.swing.*;
-//import edu.mines.jtk.dsp.*;
-//import edu.mines.jtk.mosaic.*;
+import static edu.mines.jtk.util.ArrayMath.*;
+import javax.swing.*;
+import edu.mines.jtk.dsp.*;
+import edu.mines.jtk.mosaic.*;
 
 /**
  * The Matern (Whittle-Matern) covariance function of distance.
@@ -25,7 +25,7 @@ import static java.lang.Math.*;
  *
  * @author Dave Hale, Colorado School of Mines.
  */
-public class Matern implements Covariance {
+public class MaternCovariance implements Covariance {
 
   /**
    * Constructs the covariance for specified parameters.
@@ -33,7 +33,7 @@ public class Matern implements Covariance {
    * @param sigma the sqrt(variance) for distance r = 0.
    * @param range the effective range.
    */
-  public Matern(double shape, double sigma, double range) {
+  public MaternCovariance(double shape, double sigma, double range) {
     if (shape==(int)shape) {
       _n = (int)shape;
       _half = false;
@@ -108,7 +108,7 @@ public class Matern implements Covariance {
     return sqrt(PI)*factorial(2*n)/factorial(n)/pow(4.0,n);
   }
 
-  /*
+  /**/
   ///////////////////////////////////////////////////////////////////////////
   // test
 
@@ -145,10 +145,12 @@ public class Matern implements Covariance {
   }
 
   public static void go() {
+    double sigma = 2.0;
+    double range = 2.0;
     double xmin = 0.0;
-    double xmax = 5.0;
+    double xmax = 2.0*sigma;
     double ymin = 0.0;
-    double ymax = 1.2;
+    double ymax = sigma*sigma+0.1;
     int nx = 1001;
     double dx = (xmax-xmin)/(nx-1);
     double fx = xmin;
@@ -158,12 +160,10 @@ public class Matern implements Covariance {
     float[] y15 = new float[nx];
     float[] y20 = new float[nx];
     float[] ygg = new float[nx];
-    double sigma = 1.0;
-    double range = 2.0;
-    Matern m05 = new Matern(0.5,sigma,range);
-    Matern m10 = new Matern(1.0,sigma,range);
-    Matern m15 = new Matern(1.5,sigma,range);
-    Matern m20 = new Matern(2.0,sigma,range);
+    MaternCovariance m05 = new MaternCovariance(0.5,sigma,range);
+    MaternCovariance m10 = new MaternCovariance(1.0,sigma,range);
+    MaternCovariance m15 = new MaternCovariance(1.5,sigma,range);
+    MaternCovariance m20 = new MaternCovariance(2.0,sigma,range);
     for (int ix=0; ix<nx; ++ix) {
       float x = (float)sx.getValue(ix);
       y05[ix] = (float)m05.evaluate(x);
@@ -179,5 +179,5 @@ public class Matern implements Covariance {
     plot(sx,ygg,ymin,ymax,"Gaussian");
     plot(sx,new float[][]{y05,y10,y15,y20,ygg},ymin,ymax,"All");
   }
-  */
+  /**/
 }
