@@ -25,10 +25,11 @@ def makeTensors():
   print "makeTensors ..."
   global eti,eta,etb,etr,ets
   eti = ConstantTensors2(s1.count,s2.count,-30,1.0,1.0)
-  eta = ConstantTensors2(s1.count,s2.count,-30,0.1,1.0)
-  etb = BlockTensors2(s1.count,s2.count)
-  etr = RandomTensors2(s1.count,s2.count)
-  ets = SineTensors2(s1.count,s2.count,100.0,30.0)
+  #eta = ConstantTensors2(s1.count,s2.count,-30,0.1,1.0)
+  #etb = BlockTensors2(s1.count,s2.count)
+  #etr = RandomTensors2(s1.count,s2.count)
+  ets = SineTensors2(s1.count,s2.count,40.0,60.0)
+  #plotElevation(s1,s2,ets.f)
   print "... done"
 
 def demoVariogram():
@@ -58,32 +59,29 @@ def demoKriging():
   #gkit = gridKriging(f,x1,x2,s1,s2,sigmaD=sd,rangeM=rm,et=eti,pa=False)
   #gkap = gridKriging(f,x1,x2,s1,s2,sigmaD=sd,rangeM=rm,et=eta,pa=True)
   #gkat = gridKriging(f,x1,x2,s1,s2,sigmaD=sd,rangeM=rm,et=eta,pa=False)
-  #gkb = gridKriging(f,x1,x2,s1,s2,sigmaD=sd,rangeM=rm,et=etb)
-  #gkr = gridKriging(f,x1,x2,s1,s2,sigmaD=sd,rangeM=rm,et=etr)
+  #gkbp = gridKriging(f,x1,x2,s1,s2,sigmaD=sd,rangeM=rm,et=etb,pa=True)
+  #gkbt = gridKriging(f,x1,x2,s1,s2,sigmaD=sd,rangeM=rm,et=etb,pa=False)
   gksp = gridKriging(f,x1,x2,s1,s2,sigmaD=sd,rangeM=rm,et=ets,pa=True)
   gkst = gridKriging(f,x1,x2,s1,s2,sigmaD=sd,rangeM=rm,et=ets,pa=False)
   #plot(f,x1,x2,s1,s2,gk0,"gk0")
   #plot(f,x1,x2,s1,s2,gki,"gki")
   #plot(f,x1,x2,s1,s2,gka,"gka")
-  #plot(f,x1,x2,s1,s2,gkb,"gkb")
-  #plot(f,x1,x2,s1,s2,gkr,"gkr")
-  #plot(f,x1,x2,s1,s2,gks,"gks")
   #plot(f,x1,x2,s1,s2,gk0,"gkt0",et=eti)
   #plot(f,x1,x2,s1,s2,gkip,"gktip",et=eti)
   #plot(f,x1,x2,s1,s2,gkit,"gktit",et=eti)
   #plot(f,x1,x2,s1,s2,gkap,"gktap",et=eta)
   #plot(f,x1,x2,s1,s2,gkat,"gktat",et=eta)
-  #plot(f,x1,x2,s1,s2,gkb,"gktb",et=etb)
-  #plot(f,x1,x2,s1,s2,gkr,"gktr",et=etr)
-  plot(f,x1,x2,s1,s2,gksp,"gktsp",et=ets)
-  plot(f,x1,x2,s1,s2,gkst,"gktst",et=ets)
+  #plot(f,x1,x2,s1,s2,gkbp,"gktbp",et=etb)
+  #plot(f,x1,x2,s1,s2,gkbt,"gktbt",et=etb)
+  #plot(f,x1,x2,s1,s2,gksp,"gktsp",et=ets)
+  #plot(f,x1,x2,s1,s2,gkst,"gktst",et=ets)
   #plot3(f,x1,x2,s1,s2,gk0)
   #plot3(f,x1,x2,s1,s2,gkip)
   #plot3(f,x1,x2,s1,s2,gkit)
   #plot3(f,x1,x2,s1,s2,gkap)
   #plot3(f,x1,x2,s1,s2,gkat)
-  #plot3(f,x1,x2,s1,s2,gkb)
-  #plot3(f,x1,x2,s1,s2,gkr)
+  #plot3(f,x1,x2,s1,s2,gkbp)
+  #plot3(f,x1,x2,s1,s2,gkbt)
   plot3(f,x1,x2,s1,s2,gksp)
   plot3(f,x1,x2,s1,s2,gkst)
   print "done"
@@ -105,7 +103,7 @@ def demoBlended():
   #plot(f,x1,x2,s1,s2,gba,"gbat",et=eta)
   #plot(f,x1,x2,s1,s2,gbb,"gbbt",et=etb)
   #plot(f,x1,x2,s1,s2,gbr,"gbrt",et=etr)
-  plot(f,x1,x2,s1,s2,gbs,"gbst",et=ets)
+  #plot(f,x1,x2,s1,s2,gbs,"gbst",et=ets)
   #plot3(f,x1,x2,s1,s2,gbi)
   #plot3(f,x1,x2,s1,s2,gba)
   #plot3(f,x1,x2,s1,s2,gbb)
@@ -156,8 +154,9 @@ def gridBlended(f,x1,x2,s1,s2,smooth=0.5,et=None):
   return bg.grid(s1,s2);
 
 def gridKriging(f,x1,x2,s1,s2,sigmaD=0.0,rangeM=40.0,et=None,pa=False):
-  cm = SmoothCovariance(1.5,1.0,rangeM,2)
+  cm = SmoothCovariance(0.9,1.0,rangeM,2)
   cm.setTensors(et)
+  #cm.testSpd(s1.count,s2.count)
   kg = KrigingGridder2(f,x1,x2)
   kg.setDataError(sigmaD)
   kg.setModelCovariance(cm);
@@ -321,6 +320,16 @@ def plot3(f,x1,x2,s1,s2,g):
   sf = SimpleFrame(world,AxesOrientation.XOUT_YRIGHT_ZUP)
   sf.setSize(1200,750)
   sf.setWorldSphere(-240.0,10.0,30.0,170.0,300.0,80.0)
+  ov = sf.getOrbitView()
+  ov.setScale(1.5)
+
+def plotElevation(s1,s2,e):
+  tg = makeTriangleGroup(s1,s2,e)
+  world = World()
+  world.addChild(tg)
+  sf = SimpleFrame(world,AxesOrientation.XOUT_YRIGHT_ZUP)
+  sf.setSize(1200,750)
+  #sf.setWorldSphere(-240.0,10.0,30.0,170.0,300.0,80.0)
   ov = sf.getOrbitView()
   ov.setScale(1.5)
 
