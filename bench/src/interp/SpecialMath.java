@@ -754,8 +754,8 @@ public class SpecialMath {
       if (floor(x)==x) {
         result *= factorial((int)x-1);
       } else {
-        result *= LANCZOS_SUM.sum(x);
-        double xgh = x+LANCZOS_SUM.G-0.5;
+        result *= LANCZOS.sum(x);
+        double xgh = x+LANCZOS.G-0.5;
         result *= pow(xgh,x-0.5)/exp(xgh);
       }
       return result;
@@ -790,7 +790,7 @@ public class SpecialMath {
    * Lanczos sum for N=11, G=10.900511. Produces slightly better than 
    * double precision when evaluated at extended-double precision.
    */
-  private static class LANCZOS_SUM {
+  private static class LANCZOS {
     static final double G = 10.90051099999999983936049829935654997826;
     static double sum(double x) {
       return rational(num,den,x);
@@ -821,48 +821,6 @@ public class SpecialMath {
       45.0,
       1.0
     };
-  }
-
-  private static double poly(double[] c, double x) {
-    int i = c.length-1;
-    double sum = c[i];
-    for (--i; i>=0; --i) {
-      sum *= x;
-      sum += c[i];
-    }
-    return sum;
-  }
-
-  private static double sign(double x) {
-    if (x>0.0) return 1.0;
-    else if (x<0.0) return -1.0;
-    else return 0.0;
-  }
-
-  private static double rational(double[] num, double[] den, double z) {
-    int n = num.length;
-    double s1,s2;
-    if (z<=1.0) {
-      s1 = num[n-1];
-      s2 = den[n-1];
-      for (int i=n-2; i>=0; --i) {
-        s1 *= z;
-        s2 *= z;
-        s1 += num[i];
-        s2 += den[i];
-      }
-    } else {
-      z = 1.0/z;
-      s1 = num[0];
-      s2 = den[0];
-      for (int i=1; i<n; ++i) {
-        s1 *= z;
-        s2 *= z;
-        s1 += num[i];
-        s2 += den[i];
-      }
-    }
-    return s1/s2;
   }
 
   /**
@@ -1052,12 +1010,45 @@ public class SpecialMath {
     0.7257415615307998967396728211129263114717e307,
   };
 
-  public static void main(String[] args) {
-    double[] xs = {-10.5,-1.5,-0.5,0.5,1.5,10.5};
-    for (double x:xs) {
-      double y = gamma(x);
-      double z = PI/sin(PI*x)/gamma(1.0-x);
-      System.out.println("x="+x+" y="+y+" z="+z);
+  private static double poly(double[] c, double x) {
+    int i = c.length-1;
+    double sum = c[i];
+    for (--i; i>=0; --i) {
+      sum *= x;
+      sum += c[i];
     }
+    return sum;
+  }
+
+  private static double sign(double x) {
+    if (x>0.0) return 1.0;
+    else if (x<0.0) return -1.0;
+    else return 0.0;
+  }
+
+  private static double rational(double[] num, double[] den, double z) {
+    int n = num.length;
+    double s1,s2;
+    if (z<=1.0) {
+      s1 = num[n-1];
+      s2 = den[n-1];
+      for (int i=n-2; i>=0; --i) {
+        s1 *= z;
+        s2 *= z;
+        s1 += num[i];
+        s2 += den[i];
+      }
+    } else {
+      z = 1.0/z;
+      s1 = num[0];
+      s2 = den[0];
+      for (int i=1; i<n; ++i) {
+        s1 *= z;
+        s2 *= z;
+        s1 += num[i];
+        s2 += den[i];
+      }
+    }
+    return s1/s2;
   }
 }

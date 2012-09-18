@@ -120,7 +120,7 @@ public class SeismicModel1D {
    * The default oversample factor is 2.0.
    * @param oversample the oversampling factor.
    */
-  public void setOverSample(double oversample) {
+  public void setOversample(double oversample) {
     Check.argument(oversample>=1.0,"oversample >= 1.0");
     _oversample = (float)oversample;
   }
@@ -330,7 +330,7 @@ public class SeismicModel1D {
       Cfloat ca21 = cr.times(cplus);
       Cfloat ca22 = cplus;
 
-      // Downgoing and upgoing waves (without source terms).
+      // Downgoing and upgoing waves, without source terms.
       Cfloat ctemp = c1d;
       c1d = ca11.times(ctemp).plus(ca12.times(c1u));
       c1u = ca21.times(ctemp).plus(ca22.times(c1u));
@@ -339,11 +339,13 @@ public class SeismicModel1D {
       ctemp = csd;
       csd = ca11.times(ctemp).plus(ca12.times(csu));
       csu = ca21.times(ctemp).plus(ca22.times(csu));
-      csd.minusEquals(cminus.times(l.a));
-      if (_sourceType==SourceType.ISOTROPIC) {
-        csu.plusEquals(cplus.times(l.a));
-      } else {
-        csu.minusEquals(cplus.times(cr.times(2.0f).plus(1.0f)).times(l.a));
+      if (l.a!=0.0f) {
+        csd.minusEquals(cminus.times(l.a));
+        if (_sourceType==SourceType.ISOTROPIC) {
+          csu.plusEquals(cplus.times(l.a));
+        } else {
+          csu.minusEquals(cplus.times(cr.times(2.0f).plus(1.0f)).times(l.a));
+        }
       }
 
       // Upper layer becomes lower layer in next iteration.
@@ -399,11 +401,13 @@ public class SeismicModel1D {
       u.cu = ca21.times(l.cd).plus(ca22.times(l.cu));
 
       // Add complex source terms.
-      u.cd.minusEquals(cminus.times(l.a));
-      if (_sourceType==SourceType.ISOTROPIC) {
-        u.cu.plusEquals(cplus.times(l.a));
-      } else {
-        u.cu.minusEquals(cplus.times(cr.times(2.0f).plus(1.0f)).times(l.a));
+      if (l.a!=0.0f) {
+        u.cd.minusEquals(cminus.times(l.a));
+        if (_sourceType==SourceType.ISOTROPIC) {
+          u.cu.plusEquals(cplus.times(l.a));
+        } else {
+          u.cu.minusEquals(cplus.times(cr.times(2.0f).plus(1.0f)).times(l.a));
+        }
       }
 
       // Upper layer becomes lower layer in next iteration.
@@ -553,6 +557,7 @@ public class SeismicModel1D {
     sm.setSourceType(SeismicModel1D.SourceType.MARINE_AIRGUN);
     sm.setSensorType(SeismicModel1D.SensorType.HYDROPHONE);
     sm.setSurfaceReflectionCoefficient(0.9);
+    sm.setDecay(0.9999);
     sm.addLayer(0.0,2.0,2.0,1.0e6);
     sm.addLayer(1.0,6.0,2.0,1.0e6);
     sm.addSource(0.02,2.0);

@@ -50,7 +50,7 @@ def demoSimple():
 
 def demoKriging():
   print "demoKriging ..."
-  sd,rm = 0.0,80.0
+  sd,rm = 2.0,80.0
   f,x1,x2 = readWolfcamp()
   f,x1,x2 = gridWolfcamp(f,x1,x2,s1,s2)
   #sd = mul(sd,randfloat(len(f)))
@@ -93,7 +93,7 @@ def demoBlended():
   #gba = gridBlended(f,x1,x2,s1,s2,0.5,et=eta)
   #gbb = gridBlended(f,x1,x2,s1,s2,0.5,et=etb)
   #gbr = gridBlended(f,x1,x2,s1,s2,0.5,et=etr)
-  gbs = gridBlended(f,x1,x2,s1,s2,0.5,et=ets)
+  gbs = gridBlended(f,x1,x2,s1,s2,1.0,et=ets)
   #plot(f,x1,x2,s1,s2,gbi,"gbi")
   #plot(f,x1,x2,s1,s2,gba,"gba")
   #plot(f,x1,x2,s1,s2,gbb,"gbb")
@@ -154,15 +154,17 @@ def gridBlended(f,x1,x2,s1,s2,smooth=0.5,et=None):
   return bg.grid(s1,s2);
 
 def gridKriging(f,x1,x2,s1,s2,sigmaD=0.0,rangeM=40.0,et=None,pa=False):
-  cm = SmoothCovariance(0.9,1.0,rangeM,2)
-  cm.setTensors(et)
-  #cm.testSpd(s1.count,s2.count)
+  sigma,shape = 2.0,1.0
+  if pa:
+    cm = MaternCovariance(sigma,shape,rangeM)
+  else:
+    cm = SmoothCovariance(sigma,shape,rangeM,2)
+  #cm.testSpd(s1.count,s2.count,et)
   kg = KrigingGridder2(f,x1,x2)
   kg.setDataError(sigmaD)
   kg.setModelCovariance(cm);
   kg.setPolyTrend(0)
   kg.setPaciorek(pa)
-  #kg.setIdentityTensors()
   kg.setTensors(et)
   return kg.grid(s1,s2)
 

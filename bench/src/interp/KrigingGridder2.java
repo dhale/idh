@@ -31,18 +31,16 @@ import dnp.*;
  * and Cm and Cd are model and covariance matrices.
  * <p>
  * If specified, the tensor field that guides the interpolation is
- * used to implement multiplication by the model covariance matrix
- * Cm. In practice, the elements of this matrix are never computed
- * explicitly, because the gridded model space is assumed to be much
- * larger than the scattered data space. Instead, multiplication by
- * Cm is implemented by tensor-guided smoothing filters.
+ * used to implement the model covariance matrix Cm. If a non-constant
+ * tensor field is specified, then the covariance model must have an
+ * apply method that implements a tensor-guided multiplication by Cm.
  * <p>
  * The data covariance matrix Cd is diagonal, with variances that
  * may be specified by one constant standard deviation or by an 
  * array of standard deviations, one for each sample of data.
  * 
  * @author Dave Hale, Colorado School of Mines
- * @version 2012.03.05
+ * @version 2012.09.18
  */
 public class KrigingGridder2 implements Gridder2 {
 
@@ -112,25 +110,15 @@ public class KrigingGridder2 implements Gridder2 {
   }
 
   /**
-   * Enables use of Paciorek's (2003) approximation in tensor-guided kriging.
-   * This approximation is relevant only if tensors are specified.
-   * @param p true, to use Paciorek's approximation; false, otherwise.
+   * Forces use of Paciorek's (2003) approximation for variable tensors.
+   * This option is relevant only if a variable tensor field has been
+   * specified. The default is false, so that this approximation will be 
+   * used only if the model covariance does not have an apply method that
+   * implements tensor-guided multiplication by Cm.
+   * @param p true, to force Paciorek's approximation; false, otherwise.
    */
   public void setPaciorek(boolean p) {
     _paciorek = p;
-  }
-
-  /**
-   * For testing, only.
-   */
-  public void setIdentityTensors() {
-    _tensors = new Tensors2() {
-      public void getTensor(int i1, int i2, float[] d) {
-        d[0] = 1.0f;
-        d[1] = 0.0f;
-        d[2] = 1.0f;
-      }
-    };
   }
 
   /**
@@ -193,10 +181,11 @@ public class KrigingGridder2 implements Gridder2 {
   public float[][] grid(Sampling s1, Sampling s2) {
     checkSamplings(s1,s2);
     checkScattered();
+    ensureModelCovariance();
     ensureDataErrors();
     float[][] q = null;
     if (_tensors!=null) {
-      if (_paciorek) {
+      if (_paciorek || !(_cm instanceof SmoothCovariance)) {
         q = gridForVariableTensorsP(s1,s2);
       } else {
         q = gridForVariableTensors(s1,s2);
@@ -218,9 +207,14 @@ public class KrigingGridder2 implements Gridder2 {
   private float[] _f,_x1,_x2; // scattered data
   private float[] _sd; // array of std devs for data errors
   private double _sdConstant = 0.0;  // std dev for data errors, if constant
-  private Covariance _cm = new SmoothCovariance(1.0,1.0,1.0,2);
+  private Covariance _cm; // model covariance
   private PolyTrend2 _trend; // polynomial trend; null, if none
   private int _order = -1; // order of poly trend; -1, if none
+
+  private void ensureModelCovariance() {
+    if (_cm==null)
+      _cm = new SmoothCovariance(1.0,1.0,1.0,2);
+  }
 
   private void ensureDataErrors() {
     if (_sd==null || _sd.length!=_f.length)
@@ -357,7 +351,7 @@ public class KrigingGridder2 implements Gridder2 {
   }
 
   /**
-   * Tensor-guided kriging for only smooth model covariance.
+   * Tensor-guided kriging for the smooth model covariance.
    * Uses Paciorek's approximation as a preconditioner in
    * an iterative CG computation of the kriging weights.
    */
@@ -377,19 +371,20 @@ public class KrigingGridder2 implements Gridder2 {
     float[] az = new float[n];
     VecArrayFloat1 vf = new VecArrayFloat1(af);
     VecArrayFloat1 vz = new VecArrayFloat1(az);
-    SmoothA a = new SmoothA(x1,x2,s1,s2,scm,sd);
-    SmoothM m = new SmoothM(x1,x2,s1,s2,scm,sd);
+    SmoothA a = new SmoothA(x1,x2,s1,s2,_tensors,scm,sd);
+    SmoothM m = new SmoothM(x1,x2,s1,s2,_tensors,scm,sd);
     CgSolver cgs = new CgSolver(0.001,100);
     CgSolver.Info info = cgs.solve(a,m,vf,vz);
     //CgSolver.Info info = cgs.solve(a,vf,vz);
     cgs = null;
-    float[][] q = scm.apply(s1,s2,x1,x2,az);
+    float[][] q = scm.apply(s1,s2,_tensors,x1,x2,az);
     return q;
   }
 
   private static class SmoothA implements CgSolver.A {
 
-    SmoothA(float[] x1, float[] x2, Sampling s1, Sampling s2,
+    SmoothA(float[] x1, float[] x2, 
+      Sampling s1, Sampling s2, Tensors2 t,
       SmoothCovariance cm, float[] sd) 
     {
       int n = x1.length;
@@ -404,6 +399,7 @@ public class KrigingGridder2 implements Gridder2 {
       _bx = new float[n2][n1];
       _cm = cm;
       _sd = sd;
+      _t = t;
     }
 
     public void apply(Vec x, Vec y) {
@@ -413,7 +409,7 @@ public class KrigingGridder2 implements Gridder2 {
       zero(_bx);
       for (int i=0; i<n; ++i)
         _bx[_k2[i]][_k1[i]] = ax[i];
-      _cm.apply(_bx);
+      _cm.apply(_t,_bx);
       for (int i=0; i<n; ++i)
         ay[i] = _bx[_k2[i]][_k1[i]]+_sd[i]*_sd[i]*ax[i];
     }
@@ -422,14 +418,15 @@ public class KrigingGridder2 implements Gridder2 {
     private float[][] _bx;
     private float[] _sd;
     private SmoothCovariance _cm;
+    private Tensors2 _t;
   }
 
   private static class SmoothM implements CgSolver.A {
 
-    SmoothM(float[] x1, float[] x2, Sampling s1, Sampling s2,
+    SmoothM(float[] x1, float[] x2, 
+      Sampling s1, Sampling s2, Tensors2 t,
       SmoothCovariance cm, float[] sd) 
     {
-      Tensors2 tensors = cm.getTensors();
       int n1 = s1.getCount();
       int n2 = s2.getCount();
       int n = x1.length;
@@ -440,13 +437,13 @@ public class KrigingGridder2 implements Gridder2 {
         double x2i = x2[i];
         int i1 = s1.indexOfNearest(x1i);
         int i2 = s2.indexOfNearest(x2i);
-        tensors.getTensor(i1,i2,d);
+        t.getTensor(i1,i2,d);
         double d11i = d[0], d12i = d[1], d22i = d[2];
         double deti = d11i*d22i-d12i*d12i;
         for (int j=0; j<n; ++j) {
           double x1j = x1[j];
           double x2j = x2[j];
-          double cij = evaluatePaciorek(s1,s2,tensors,cm,
+          double cij = evaluatePaciorek(s1,s2,t,cm,
                                         d11i,d12i,d22i,deti,d,
                                         x1i,x2i,x1j,x2j);
           am.set(i,j,cij);
