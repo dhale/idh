@@ -1,3 +1,9 @@
+/****************************************************************************
+Copyright (c) 2012, Colorado School of Mines and others. All rights reserved.
+This program and accompanying materials are made available under the terms of
+the Common Public License - v1.0, which accompanies this distribution, and is
+available at http://www.eclipse.org/legal/cpl-v10.html
+****************************************************************************/
 package warp;
 
 import edu.mines.jtk.dsp.*;
@@ -8,9 +14,9 @@ import static edu.mines.jtk.util.ArrayMath.*;
  * Dynamic warping of sequences and images.
  * <p>
  * For sequences f and g, dynamic warping finds a sequence of 
- * integer shifts u such that f[i1] ~ g[i1+u[i1]], subject to a 
- * bound b1 on strain, the rate at which the shifts u[i1] vary 
- * with sample index i1.
+ * shifts u such that f[i1] ~ g[i1+u[i1]], subject to a bound b1 
+ * on strain, the rate at which the shifts u[i1] vary with sample 
+ * index i1.
  * <p>
  * An increasing u[i1] = u[i1-1] + 1 implies that, between indices
  * i1-1 and i1, g[i1] is a stretched version of f[i1] ~ g[i1+u[i1]].
@@ -21,19 +27,16 @@ import static edu.mines.jtk.util.ArrayMath.*;
  * <p>
  * In practice, 100% strain (stretching or squeezing) may be extreme.
  * Therefore, the upper bound on strain may be smaller than one. For 
- * example, if the bound b1 = 0.5, then the local average strain is 
- * bounded by 0.5. This constraint is complicated by the fact that 
- * the shifts u[i1] are integers. The actual constraint for the bound 
- * b1 = 0.5 is |u[i1-1]-u[i1-2]| + |u[i1]-u[i1-1]| &le; 1.
+ * example, if the bound b1 = 0.5, then |u[i1]-u[i1-1]| &le; 0.5.
  * <p>
- * For 2D images f and g, dynamic warping finds a 2D array of integer 
- * shifts u[i2][i1] such that f[i2][i1] ~ g[i2][i1+u[i2][i1]], 
- * subject to bounds b1 and b2 on strains, the rates at which shifts 
- * u[i2][i1] vary with samples indices i1 and i2, respectively.
+ * For 2D images f and g, dynamic warping finds a 2D array of shifts
+ * u[i2][i1] such that f[i2][i1] ~ g[i2][i1+u[i2][i1]], subject to 
+ * bounds b1 and b2 on strains, the rates at which shifts u[i2][i1] 
+ * vary with samples indices i1 and i2, respectively.
  * <p>
- * For 3D images f and g, dynamic warping finds a 3D array of integer 
- * shifts u[i3][i2][i1] in a similar way. However, finding shifts for 
- * 3D images may require an excessive amount of memory. Dynamic image 
+ * For 3D images f and g, dynamic warping finds a 3D array of shifts
+ * u[i3][i2][i1] in a similar way. However, finding shifts for 3D 
+ * images may require an excessive amount of memory. Dynamic image 
  * warping requires a temporary array of nlag*nsample floats, where 
  * the number of lags nlag = 1+shiftMax-shiftMin and nsample is the 
  * number of image samples. For 3D images, the product nlag*nsample 
@@ -41,12 +44,11 @@ import static edu.mines.jtk.util.ArrayMath.*;
  * access memory (RAM). In this case, shifts u are obtained by blending 
  * together shifts computed from overlapping subsets of the 3D image.
  * <p>
- * Estimated shifts u are integers, but can be smoothed to obtain
- * non-integer shifts. The extent of smoothing along each dimension 
- * is inversely proportional to the strain limit for that dimension, 
- * and these extents can be scaled by specified factors for more or 
- * less smoothing. The default scale factors are zero, for no 
- * smoothing.
+ * Estimated shifts u can be smoothed, and the extent of smoothing 
+ * along each dimension is inversely proportional to the strain limit 
+ * for that dimension. These extents can be scaled by specified factors 
+ * for more or less smoothing. The default scale factors are zero, for 
+ * no smoothing.
  * <p>
  * This class provides numerous methods, but typical applications
  * require only several of these, usually only the methods that find
@@ -54,7 +56,7 @@ import static edu.mines.jtk.util.ArrayMath.*;
  * atypical applications and research.
  *
  * @author Dave Hale, Colorado School of Mines
- * @version 2012.06.01
+ * @version 2012.07.05
  */
 public class DynamicWarpingX {
 
@@ -71,20 +73,21 @@ public class DynamicWarpingX {
   public enum ErrorExtrapolation {
     /**
      * For each lag, extrapolate alignment errors using the nearest
-     * error not missing for that lag. This method is most sensitive 
-     * to the values of the first and last samples of the sequences 
-     * to be aligned.
+     * error not missing for that lag.
      * <p>
      * This is the default extrapolation method.
      */
     NEAREST,
     /**
      * For each lag, extrapolate alignment errors using the average
-     * of all errors not missing for that lag. This method is less
-     * sensitive to the values of the first and last samples of the
-     * sequences to be aligned.
+     * of all errors not missing for that lag.
      */
-    AVERAGE
+    AVERAGE,
+    /**
+     * For each lag, extrapolate alignment errors using a reflection
+     * of nearby errors not missing for that lag.
+     */
+    REFLECT
   }
 
   /**
@@ -184,7 +187,7 @@ public class DynamicWarpingX {
   }
 
   /**
-   * Sets extent of smoothing filters used to smooth integer shifts.
+   * Sets extent of smoothing filters used to smooth shifts.
    * Half-widths of smoothing filters are inversely proportional to
    * strain limits, and are scaled by the specified factor. Default 
    * factor is zero, for no smoothing.
@@ -195,7 +198,7 @@ public class DynamicWarpingX {
   }
 
   /**
-   * Sets extents of smoothing filters used to smooth integer shifts.
+   * Sets extents of smoothing filters used to smooth shifts.
    * Half-widths of smoothing filters are inversely proportional to
    * strain limits, and are scaled by the specified factors. Default 
    * factors are zero, for no smoothing.
@@ -207,7 +210,7 @@ public class DynamicWarpingX {
   }
 
   /**
-   * Sets extents of smoothing filters used to smooth integer shifts.
+   * Sets extents of smoothing filters used to smooth shifts.
    * Half-widths of smoothing filters are inversely proportional to
    * strain limits, and are scaled by the specified factors. Default 
    * factors are zero, for no smoothing.
@@ -291,6 +294,20 @@ public class DynamicWarpingX {
   }
 
   /**
+   * Computes and returns 1D shifts u for specified 2D images f and g.
+   * This method is useful in the case that shifts vary only slightly 
+   * (or perhaps not at all) in the 2nd image dimension.
+   * @param f array[n2][n1] for the image f.
+   * @param g array[n2][n1] for the image g.
+   * @return array[n1] of shifts u.
+   */
+  public float[] findShifts1(float[][] f, float[][] g) {
+    float[] u = like(f[0]);
+    findShifts1(f,g,u);
+    return u;
+  }
+
+  /**
    * Computes and returns 1D shifts u for specified 3D images f and g.
    * This method is useful in the case that shifts vary only slightly 
    * (or perhaps not at all) in the 2nd and 3rd image dimensions.
@@ -354,15 +371,16 @@ public class DynamicWarpingX {
     int n1 = f[0][0].length;
     int n2 = f[0].length;
     int n3 = f.length;
-    int l2 = _owl2, l3 = _owl3;
-    double f2 = _owf2, f3 = _owf3;
+    OverlappingWindows2 ow = 
+      new OverlappingWindows2(n2,n3,_owl2,_owl3,_owf2,_owf3);
+    int m2 = ow.getM1();
+    int m3 = ow.getM2();
+    int l2 = ow.getL1();
+    int l3 = ow.getL2();
     float[][][] fw = new float[l3][l2][];
     float[][][] gw = new float[l3][l2][];
     float[][][] uw = new float[l3][l2][n1];
     float[][][][] ew = new float[l3][l2][n1][_nl];
-    OverlappingWindows2 ow = new OverlappingWindows2(n2,n3,l2,l3,f2,f3);
-    int m2 = ow.getM1();
-    int m3 = ow.getM2();
     for (int k3=0; k3<m3; ++k3) {
       int i3 = ow.getI2(k3);
       for (int k2=0; k2<m2; ++k2) {
@@ -584,7 +602,9 @@ public class DynamicWarpingX {
     final int n2 = f.length;
     float[][] e = Parallel.reduce(n2,new Parallel.ReduceInt<float[][]>() {
     public float[][] compute(int i2) {
-      return computeErrors(ff[i2],gf[i2]);
+      float[][] e = new float[n1][nl];
+      computeErrors(ff[i2],gf[i2],e);
+      return e;
     }
     public float[][] combine(float[][] ea, float[][] eb) {
       return add(ea,eb);
@@ -613,7 +633,9 @@ public class DynamicWarpingX {
     public float[][] compute(int i23) {
       int i2 = i23%n2;
       int i3 = i23/n2;
-      return computeErrors(ff[i3][i2],gf[i3][i2]);
+      float[][] e = new float[n1][nl];
+      computeErrors(ff[i3][i2],gf[i3][i2],e);
+      return e;
     }
     public float[][] combine(float[][] ea, float[][] eb) {
       return add(ea,eb);
@@ -719,6 +741,89 @@ public class DynamicWarpingX {
     if (_ref2!=null)
       _ref2.apply2(us,us);
   }
+
+  /* NEW */
+  public float[] smoothShifts(Sampling sr, float[] u) {
+    float[] s = like(u);
+    smoothShifts(sr,u,s);
+    return s;
+  }
+  public void smoothShifts(Sampling sr, float[] u, float[] s) {
+    int nr = sr.getCount();
+    int ns = s.length;
+    float[][] d = new float[ns][nr];
+    float[][] e = new float[2][nr];
+
+    // Cache sampled values for shift increments r and initialize d and e.
+    float[] q = new float[nr];
+    for (int ir=0; ir<nr; ++ir) {
+      q[ir] = (float)sr.getValue(ir);
+      d[0][ir] = 0.0f;
+      e[0][ir] = 0.0f;
+    }
+
+    // Accumulate errors, absolute values of differences between s and u.
+    for (int is=1; is<ns; ++is) {
+      float[] di = d[is-1];
+      float[] e0 = e[0]; e[0] = e[1]; e[1] = e0;
+      for (int ir=0; ir<nr; ++ir) {
+        int im = ir;
+        float dm = di[im];
+        if (ir>0 && di[ir-1]<dm) {
+          im = ir-1;
+          dm = di[im];
+        }
+        if (ir<nr-1 && di[ir+1]<dm) {
+          im = ir+1;
+          dm = di[im];
+        }
+        float ei = e[0][ir] = e[1][im]+q[ir]-(u[is]-u[is-1]);
+        d[is][ir] = di[im]+abs(ei);
+      }
+    }
+
+    // Backtrack to find sequence of optimal shift increments r.
+    int im = sr.indexOfNearest(0.0);
+    double dm = d[ns-1][im];
+    for (int ir=0; ir<nr; ++ir) {
+      if (d[ns-1][ir]<dm) {
+        im = ir;
+        dm = d[ns-1][im];
+      }
+    }
+    float[] r = s;
+    r[ns-1] = q[im];
+    for (int is=ns-2; is>0; --is) {
+      float[] di = d[is];
+      int ir = im;
+      dm = di[im];
+      if (ir>0 && di[ir-1]<dm) {
+        im = ir-1;
+        dm = di[im];
+      }
+      if (ir<nr-1 && di[ir+1]<dm) {
+        im = ir+1;
+        dm = di[im];
+      }
+      r[is] = q[im];
+    }
+
+    // Accumulate shift increments to obtain smooth shifts s.
+    s[0] = u[0];
+    for (int is=1; is<ns; ++is)
+      s[is] = s[is-1]+r[is];
+  }
+  public float[][] smoothShifts(Sampling sr, float[][] u) {
+    float[][] s = like(u);
+    smoothShifts(sr,u,s);
+    return s;
+  }
+  public void smoothShifts(Sampling sr, float[][] u, float[][] s) {
+    int n2 = u.length;
+    for (int i2=0; i2<n2; ++i2)
+      smoothShifts(sr,u[i2],s[i2]);
+  }
+  /* NEW */
 
   /**
    * Returns errors accumulated in forward direction.
@@ -1111,6 +1216,7 @@ public class DynamicWarpingX {
     int n1m = n1-1;
     boolean average = _extrap==ErrorExtrapolation.AVERAGE;
     boolean nearest = _extrap==ErrorExtrapolation.NEAREST;
+    boolean reflect = _extrap==ErrorExtrapolation.REFLECT;
     float[] eavg = average?new float[nl]:null; 
     int[] navg = average?new int[nl]:null;
     float emax = 0.0f;
@@ -1162,8 +1268,10 @@ public class DynamicWarpingX {
             } else {
               e[i1][il] = emax;
             }
-          } else if (nearest) {
+          } else if (nearest || reflect) {
             int k1 = (il<illo)?-_lmin-il:n1m-_lmin-il;
+            if (reflect)
+              k1 += k1-i1;
             if (0<=k1 && k1<n1) {
               e[i1][il] = e[k1][il];
             } else {
@@ -1226,6 +1334,7 @@ public class DynamicWarpingX {
   private static void backtrack(
     int dir, int b, int lmin, float[][] d, float[][] e, float[] u) 
   {
+    float ob = 1.0f/b;
     int nl = d[0].length;
     int ni = d.length;
     int nlm1 = nl-1;
@@ -1234,7 +1343,7 @@ public class DynamicWarpingX {
     int ie = (dir>0)?nim1:0;
     int is = (dir>0)?1:-1;
     int ii = ib;
-    int il = 0;
+    int il = max(0,min(nlm1,-lmin));
     float dl = d[ii][il];
     for (int jl=1; jl<nl; ++jl) {
       if (d[ii][jl]<dl) {
@@ -1266,9 +1375,11 @@ public class DynamicWarpingX {
       ii += is;
       u[ii] = il+lmin;
       if (il==ilm1 || il==ilp1) {
+        float du = (u[ii]-u[ii-is])*ob;
+        u[ii] = u[ii-is]+du;
         for (int kb=ji; kb!=jb; kb+=is) {
           ii += is;
-          u[ii] = il+lmin;
+          u[ii] = u[ii-is]+du;
         }
       }
     }

@@ -2,6 +2,7 @@
 # Dynamic warping for 2D images
 
 from imports import *
+from warp import DynamicWarpingX as DynamicWarping
 
 #############################################################################
 
@@ -45,7 +46,7 @@ def goSinoWarp():
   u  = mul(1000.0*s1f.delta,u)
   u1 = mul(1000.0*s1f.delta,u1)
   u2 = mul(1000.0*s1f.delta,u2)
-  for i in [0,1,2]:
+  for i in [1]: #[0,1,2]:
     flim = flims[i]
     pre = "si"+ilims[i]
     plot(g ,s1f,fclips,flim,title="X component",cbar=fcbar,png=pre+"g")
@@ -97,8 +98,11 @@ def smoothX(sigma,x):
 def warp2(f,g):
   #esmooth,usmooth = 0,0.0
   esmooth,usmooth = 2,1.0
+  rsmooth = 101
   strainMax1 = 0.125
   strainMax2 = 0.125
+  nr = int(rsmooth); dr = 2.0*strainMax1/(nr-1); fr = -strainMax1
+  sr = Sampling(nr,dr,fr)
   shiftMax = 10
   shiftMin = -shiftMax
   dw = DynamicWarping(shiftMin,shiftMax)
@@ -110,18 +114,21 @@ def warp2(f,g):
     dw.smoothErrors(e,e)
   d = dw.accumulateForward1(e)
   u = dw.backtrackReverse1(d,e)
-  u = dw.smoothShifts(u)
+  u = dw.smoothShifts(sr,u)
   h = dw.applyShifts(u,g)
   print "warp2: u min =",min(u)," max =",max(u)
   return u,h
 
 def warp1(f,g):
   usmooth = 4.0
+  rsmooth = 101
   strainMax1 = 0.125
   #strainMax1 = 0.25
   shiftMin = 0
   shiftMax = 160
   #shiftMax = 250
+  nr = rsmooth; dr = 2.0*strainMax1/(nr-1); fr = -strainMax1
+  sr = Sampling(nr,dr,fr)
   dw = DynamicWarping(shiftMin,shiftMax)
   dw.setErrorExtrapolation(DynamicWarping.ErrorExtrapolation.REFLECT)
   dw.setStrainMax(strainMax1)
@@ -129,10 +136,7 @@ def warp1(f,g):
   e1 = dw.computeErrors1(f,g)
   d1 = dw.accumulateForward(e1)
   u1 = dw.backtrackReverse(d1,e1)
-  u1 = dw.smoothShifts(u1)
-  #u1 = dw.findShifts1(f,g)
-  n1,n2 = len(f[0]),len(f)
-  if True:
+  def plotShifts():
     nl = len(e1[0])
     sp = SimplePlot()
     sp.setSize(1800,500)
@@ -142,6 +146,11 @@ def warp1(f,g):
     pv.setColorModel(ColorMap.JET)
     pv.setPercentiles(2,98)
     pv = sp.addPoints(s1f,mul(s1f.delta,u1))
+  plotShifts()
+  u1 = dw.smoothShifts(sr,u1)
+  plotShifts()
+  #u1 = dw.findShifts1(f,g)
+  n1,n2 = len(f[0]),len(f)
   h = zerofloat(n1,n2)
   u = zerofloat(n1,n2)
   for i2 in range(n2):
