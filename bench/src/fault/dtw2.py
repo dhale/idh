@@ -155,8 +155,8 @@ def makeTestImages():
   return f,g,s
 
 def makeFaultImages():
-  n1,n2 = 222,220; f = readImage("/data/seis/f3d/faults/s1gfm.dat",n1,n2)
-  n1,n2 = 222,220; g = readImage("/data/seis/f3d/faults/s1gfp.dat",n1,n2)
+  n1,n2 = 222,220; f = readImage("/data/seis/f3d/faults/s1/gfm.dat",n1,n2)
+  n1,n2 = 222,220; g = readImage("/data/seis/f3d/faults/s1/gfp.dat",n1,n2)
   return f,g
 
 #############################################################################

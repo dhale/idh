@@ -6,20 +6,49 @@ from warp import DynamicWarpingX as DynamicWarping
 
 #############################################################################
 
+#pngDir = "./png/sino/"
+pngDir = None
+
 s1f,s1g,s2 = None,None,None
 
 # Different time windows for plotting
 ilims = ["0","1","2"]
-flims = [(0.0,5.333),(0.8,1.8),(2.8,4.8)] # for Geophysics
-glims = [(0.0,8.000),(1.2,2.7),(4.2,7.2)] # for Geophysics
-#flims = [(0.0,5.333),(0.8,2.8),(2.8,4.8)] # Vp/Vs = 2 => Tpp/Tps = 3/2
-#glims = [(0.0,8.000),(1.2,4.2),(4.2,7.2)] # Vp/Vs = 2 => Tpp/Tps = 3/2
+#flims = [(0.0,5.333),(0.8,1.8),(2.8,4.8)] # for Geophysics
+#glims = [(0.0,8.000),(1.2,2.7),(4.2,7.2)] # for Geophysics
+flims = [(0.0,5.333),(0.8,2.8),(2.8,4.8)]
+glims = [(0.0,8.000),(1.2,4.2),(4.2,7.2)]
 #flims = [(0.0,6.000),(0.8,2.8),(2.8,4.8)]
 #glims = [(0.0,8.000),(1.2,4.2),(4.2,7.2)]
 
 def main(args):
   #goSinoImages()
+  #goSinoSmooth()
   goSinoWarp()
+
+def goSinoSmooth():
+  f,g = getSinoImages()
+  sf,sg = smooth(f),smooth(g)
+  clips = (-2.0,2.0)
+  for i in [1]:
+    fpng = "si"+ilims[i]+"fpp"
+    gpng = "si"+ilims[i]+"gps"
+    plot = plotp
+    plot(f,s1f,clips,flims[i],title="PP image",cbar="Amplitude",png=fpng)
+    plot(sf,s1f,clips,flims[i],title="PP image",cbar="Amplitude",png=fpng)
+    plot(g,s1g,clips,glims[i],title="PS image",cbar="Amplitude",png=gpng)
+    plot(sg,s1g,clips,glims[i],title="PS image",cbar="Amplitude",png=gpng)
+
+def smooth(f):
+  lof = LocalOrientFilter(32.0,8.0)
+  lof.setGradientSmoothing(2.0)
+  tf = lof.applyForTensors(f)
+  tf.invertStructure(0.0,4.0)
+  lsf = LocalSmoothingFilter()
+  sigma = 32.0
+  c = 0.5*sigma*sigma
+  sf = copy(f)
+  lsf.apply(tf,c,f,sf)
+  return sf
 
 def goSinoImages():
   f,g = getSinoImages()
@@ -27,6 +56,7 @@ def goSinoImages():
   for i in [1]: #range(len(ilims)):
     fpng = "si"+ilims[i]+"fpp"
     gpng = "si"+ilims[i]+"gps"
+    plot = plotp
     plot(f,s1f,clips,flims[i],title="PP image",cbar="Amplitude",png=fpng)
     plot(g,s1g,clips,glims[i],title="PS image",cbar="Amplitude",png=gpng)
 
@@ -36,7 +66,9 @@ def goSinoWarp():
   ucbar = "Shift (ms)"
   psbar = "Vp/Vs"
   f,g = getSinoImages()
+  f,g = smooth(f),smooth(g)
   u1,h1 = warp1(f,g)
+  return
   u2,h2 = warp2(f,h1)
   u = addShifts(u1,u2)
   c = s1g.delta/s1f.delta
@@ -51,6 +83,7 @@ def goSinoWarp():
     flim = flims[i]
     glim = glims[i]
     pre = "si"+ilims[i]
+    plot = plotp
     plot(g ,s1f,fclips,flim,title="PS image",cbar=fcbar,png=pre+"g")
     #plot(h1,s1f,fclips,flim,title="PS 1st warp",cbar=fcbar,png=pre+"h1")
     plot(h2,s1f,fclips,flim,title="PS 2nd warp",cbar=fcbar,png=pre+"h2")
@@ -103,6 +136,8 @@ def warp2(f,g):
   rsmooth = 101
   strainMax1 = 0.125
   strainMax2 = 0.125
+  nr = int(rsmooth); dr = 2.0*strainMax1/(nr-1); fr = -strainMax1
+  sr = Sampling(nr,dr,fr)
   shiftMax = 10
   shiftMin = -shiftMax
   dw = DynamicWarping(shiftMin,shiftMax)
@@ -114,6 +149,7 @@ def warp2(f,g):
     dw.smoothErrors(e,e)
   d = dw.accumulateForward1(e)
   u = dw.backtrackReverse1(d,e)
+  #u = dw.smoothShifts(sr,u)
   u = dw.smoothShifts(u)
   h = dw.applyShifts(u,g)
   print "warp2: u min =",min(u)," max =",max(u)
@@ -121,9 +157,15 @@ def warp2(f,g):
 
 def warp1(f,g):
   usmooth = 8.0
+  rsmooth = 101
   strainMax1 = 0.125
+  #strainMax1 = 1.0
+  dstrainMax1 = 0.1
   shiftMin = 0
   shiftMax = 160
+  #shiftMax = 250
+  nr = rsmooth; dr = 2.0*strainMax1/(nr-1); fr = -strainMax1
+  sr = Sampling(nr,dr,fr)
   dw = DynamicWarping(shiftMin,shiftMax)
   dw.setErrorExtrapolation(DynamicWarping.ErrorExtrapolation.REFLECT)
   dw.setStrainMax(strainMax1)
@@ -143,8 +185,13 @@ def warp1(f,g):
     pv.setPercentiles(2,98)
     pv = sp.addPoints(s1f,mul(s1f.delta,u1))
   plotShifts()
-  u1 = dw.smoothShifts(u1)
+  #u1 = dw.smoothShifts(sr,u1)
+  #u1 = dw.smoothShifts(u1)
+  n1,n2 = len(f[0]),len(f)
+  e1 = dw.computeErrorsRaw(f[n2/2],g[n2/2]);
+  dw.findShiftsSmooth(dstrainMax1,u1[0],e1,u1)
   plotShifts()
+  #u1 = dw.findShifts1(f,g)
   n1,n2 = len(f[0]),len(f)
   h = zerofloat(n1,n2)
   u = zerofloat(n1,n2)
@@ -289,10 +336,6 @@ def plots(f,s1,clips=None,limits=None,title=None,
   sp.setVisible(True)
   if png and pngDir:
     sp.paintToPng(720,2.0,pngDir+png+".png")
-
-#pngDir = "./png/sino/"
-pngDir = None
-plot = plotp
 
 #############################################################################
 # Do everything on Swing thread.

@@ -45,8 +45,8 @@ from util import FakeData
 
 #############################################################################
 
-pngDir = "./png/geop"
-#pngDir = None
+#pngDir = "./png/geop"
+pngDir = None
 
 seed = abs(Random().nextInt()/1000000)
 seed = 580
@@ -71,12 +71,12 @@ def main(args):
   #goTestImages()
   #goTestShifts() #smax = 0.20, nrms = 2.0
   #goFaultImages()
-  #goFaultShifts()
+  goFaultShifts()
   #goOzImages()
   #goOzTeaser()
-  goOzFiguresFgus()
-  goOzFiguresNpass()
-  goOzFiguresDtwUv()
+  #goOzFiguresFgus()
+  #goOzFiguresNpass()
+  #goOzFiguresDtwUv()
 
 def goOzTeaser():
   global stretchMax1,stretchMax2,smoothShifts,nrms,teaser
@@ -244,23 +244,23 @@ def goFaultShifts():
   global smoothShifts,smoothSigma1,smoothSigma2; 
   smoothShifts = True
   smoothSigma1 = 2.0
-  smoothSigma2 = 2.0
+  smoothSigma2 = 4.0
   shift = 10
   ml = 2*shift
   uclips = (0,8)
   dw = DynamicWarping(0,ml)
-  dw.setStretchMax(0.25)
-  f,g = makeFaultImages()
+  dw.setStretchMax(0.25,0.125)
+  f,g = makeFaultImagesA()
   fclips = (-3.0,3.0)
   plot(f,fclips,label="Amplitude",png="faultf")
   plot(g,fclips,label="Amplitude",png="faultg")
   e = dw.computeErrors(f,g)
-  u = shifts121(dw,e)
-  uclips = (0.0,8*4)
-  plot(mul(4,u),uclips,label="Fault throw (ms)",png="faultu")
-  #v = copy(u)
-  #LocalShiftFinder(ml,shift).find1(0,ml,f,g,v)
-  #plot(mul(4,v),uclips,label="Fault throw (ms)",png="faultv")
+  u = shifts12121(dw,e)
+  uclips = (0.0,7*4)
+  plot(mul(4,u),uclips,label="Vertical throw (ms)",png="faultu")
+  v = copy(u)
+  LocalShiftFinder(ml,shift).find1(0,ml,f,g,v)
+  plot(mul(4,v),uclips,label="Vertical throw (ms)",png="faultv")
   h = align(u,g)
   plot(h,fclips,label="Amplitude",png="faulth")
 
@@ -271,7 +271,7 @@ def goTestImages():
   plot(s,title="s")
 
 def goFaultImages():
-  f,g = makeFaultImages()
+  f,g = makeFaultImagesA()
   clips = (-3,3)
   plot(f,clips,label="Amplitude",png="faultf")
   plot(g,clips,label="Amplitude",png="faultg")
@@ -358,8 +358,24 @@ def makeFaultImages():
   s2 = Sampling(n2,0.025,0.000)
   label1 = "Time (s)"
   label2 = "Distance along fault strike (km)"
-  f = readImage("/data/seis/f3d/faults/s1gfm.dat",n1,n2)
-  g = readImage("/data/seis/f3d/faults/s1gfp.dat",n1,n2)
+  f = readImage("/data/seis/f3d/faults/s1/gfm.dat",n1,n2)
+  g = readImage("/data/seis/f3d/faults/s1/gfp.dat",n1,n2)
+  return f,g
+def makeFaultImagesA():
+  n1,n2 = 222,220
+  m1,m2 =  90,220
+  j1,j2 = 130,0
+  d1,d2 = 0.004,0.025
+  f1,f2 = 1.484,2.500
+  global s1,s2,label1,label2
+  s1 = Sampling(m1,d1,f1)
+  s2 = Sampling(m2,d2,f2)
+  label1 = "Time (s)"
+  label2 = "Distance along fault strike (km)"
+  f = readImage("/data/seis/f3d/faults/s1/gfm.dat",n1,n2)
+  g = readImage("/data/seis/f3d/faults/s1/gfp.dat",n1,n2)
+  f = copy(m1,m2,j1,j2,f)
+  g = copy(m1,m2,j1,j2,g)
   return f,g
 
 #############################################################################
@@ -481,7 +497,10 @@ def addNoise(nrms,f,seed=0):
 
 def plot(f,clips=None,title=None,label=None,png=None):
   n1,n2 = len(f[0]),len(f)
-  if n1>510:
+  if n1<121:
+    width,height = 600,325
+    cbwm = 70
+  elif n1>510:
     if teaser:
       width,height = 500,415
       cbwm = 70
@@ -517,7 +536,10 @@ def plot(f,clips=None,title=None,label=None,png=None):
   sp.setHLabel(label2)
   #if clips[0]==0.0:
   #  pv.setColorModel(ColorMap.JET)
-  sp.setFontSizeForPrint(8,120)
+  if n1<121:
+    sp.setFontSizeForPrint(8,240)
+  else:
+    sp.setFontSizeForPrint(8,120)
   sp.setSize(width,height)
   sp.setVisible(True)
   if png and pngDir:

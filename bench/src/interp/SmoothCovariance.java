@@ -49,6 +49,7 @@ public class SmoothCovariance implements Covariance {
       init2();
     }
     _lsf = new LocalSmoothingFilter(1.0e-6,1000);
+    _lsf.setPreconditioner(true);
   }
 
   /**
@@ -115,6 +116,15 @@ public class SmoothCovariance implements Covariance {
       }
     }
   }
+  public void apply1(Tensors2 tensors, float[][] q) {
+    Check.state(_shape==1.0,"shape = 1");
+    int n1 = q[0].length;
+    int n2 = q.length;
+    float[][] t = new float[n2][n1];
+    cscale(tensors,q);
+    _lsf.applySmoothS(q,t);
+    _lsf.apply(tensors,_ascl*_kscl*_kscl,t,q);
+  }
 
   public float[][] apply(
     Sampling s1, Sampling s2, Tensors2 tensors,
@@ -150,9 +160,10 @@ public class SmoothCovariance implements Covariance {
     _nfac = mm2.n;
     _ascl = (float)mm2.a;
     _bscl = (float)mm2.b;
-    //System.out.println("nfac="+_nfac+" ascl="+_ascl+" bscl="+_bscl);
     _cscl = (float)(sqrt(PI)*_sigma*_range);
     _kscl = (float)(0.5*_range/sqrt(_shape));
+    //System.out.println(
+    //  "nfac="+_nfac+" ascl="+_ascl+" bscl="+_bscl+" cscl="+_cscl);
     double rmax =  16.0*_range; // c(r)/c(0) < 0.001, for r > rmax
     int nr = 10001;
     double dr = rmax/(nr-1);

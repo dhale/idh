@@ -149,6 +149,42 @@ public class SampledImage {
   }
 
   /**
+   * Returns a sampled image constructed from specified masked floats.
+   * @param sx sampling of x, the horizontal coordinate.
+   * @param sy sampling of y, the vertical coordinate.
+   * @param b array of booleans; false, for transparent.
+   * @param f array of floats to be mapped to image pixels.
+   * @param cm color map used to convert floats to colors.
+   * @return the sampled image.
+   */
+  public static SampledImage fromFloats(
+    Sampling sx, Sampling sy,
+    boolean[][] b, float[][] f, ColorMap cm) 
+  {
+    IndexColorModel icm = cm.getColorModel();
+    float fmin = (float)cm.getMinValue();
+    float fmax = (float)cm.getMaxValue();
+    float fscale = (fmax>fmin)?1.0f/(fmax-fmin):1.0f;
+    float fshift = fmin;
+    int m = f.length;
+    int n = f[0].length;
+    byte[][] rb = new byte[m][n];
+    byte[][] gb = new byte[m][n];
+    byte[][] bb = new byte[m][n];
+    byte[][] ab = new byte[m][n];
+    for (int i=0; i<m; ++i) {
+      for (int j=0; j<n; ++j) {
+        int kf = toInt((f[i][j]-fshift)*fscale);
+        rb[i][j] = (byte)icm.getRed(kf);
+        gb[i][j] = (byte)icm.getGreen(kf);
+        bb[i][j] = (byte)icm.getBlue(kf);
+        ab[i][j] = (b[i][j])?(byte)icm.getAlpha(kf):0;
+      }
+    }
+    return new SampledImage(sx,sy,rb,gb,bb,ab);
+  }
+
+  /**
    * Constructs a sampled image with specified samplings and colors.
    * Alphas are assumed to equal 255, for no transparency.
    * @param sx sampling of x, the horizontal coordinate.
