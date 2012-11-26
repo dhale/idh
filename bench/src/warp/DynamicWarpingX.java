@@ -6,6 +6,8 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package warp;
 
+import java.util.Random;
+
 import edu.mines.jtk.dsp.*;
 import edu.mines.jtk.util.*;
 import static edu.mines.jtk.util.ArrayMath.*;
@@ -337,9 +339,40 @@ public class DynamicWarpingX {
     smoothShifts(u,u);
   }
 
-  public void findShiftsSmooth(
-    double dstrainMax, double u0, float[][] e, float[] u) 
-  {
+  public float[][] fakeErrors(float c, int nl, int n1) {
+    Random r = new Random(1);
+    float[][] e = sub(mul(2.0f,randfloat(r,nl,n1)),1.0f);
+    RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(1.0);
+    rgf.apply00(e,e);
+    float u0 = 0.2f*(_lmax-_lmin)+_lmin;
+    float a = 0.7f*FLT_PI/n1;
+    float b = 0.7f*(_lmax-_lmin);
+    for (int i1=0; i1<n1; ++i1) {
+      for (int il=0; il<nl; ++il) {
+        float du = il+_lmin-u0-b*sin(a*i1); // u' = b*a, u'' = b*a*a
+        float sc = c; //*sin(i1*FLT_PI/n1);
+        float su = 1.0f-sc*exp(-0.5f*du*du);
+        e[i1][il] *= su;
+      }
+    }
+    return e;
+  }
+
+  public float sumErrorsInterpolated(float[][] e, float[] u) {
+    int nl = e[0].length;
+    int n1 = e.length;
+    _si.setExtrapolation(SincInterpolator.Extrapolation.CONSTANT);
+    _si.setUniformSampling(nl,1.0,_lmin);
+    float esum = 0.0f;
+    for (int i1=0; i1<n1; ++i1) {
+      _si.setUniformSamples(e[i1]);
+      float ei = _si.interpolate(u[i1]);
+      esum += ei*ei;
+    }
+    return esum;
+  }
+
+  public float findShiftsSmooth(double dstrainMax, float[][] e, float[] u) {
     int nl = e[0].length;
     int n1 = e.length;
     /*
@@ -355,21 +388,22 @@ public class DynamicWarpingX {
     quickIndexSort(d[0],jl);
     int l0 = jl[0];
     */
-    int l0 = (int)u0-_lmin;
-    System.out.println("l0="+l0);
     int nr = 1+2*(int)(_bstrain1/dstrainMax);
     float dr = 2.0f/_bstrain1/(nr-1);
     float fr = -1.0f/_bstrain1;
+    _si.setExtrapolation(SincInterpolator.Extrapolation.CONSTANT);
+    _si.setUniformSampling(nl,1.0,_lmin);
+    _si.setUniformSamples(e[0]);
+    float s0i = u[0];
+    float e0i = _si.interpolate(s0i);
     System.out.println("nr="+nr+" dr="+dr+" fr="+fr);
     int[][] m = new int[n1][nr];
     float[][] s = new float[n1][nr];
     float[][] d = new float[n1][nr];
     for (int ir=0; ir<nr; ++ir) {
-      s[0][ir] = l0;
-      d[0][ir] = e[0][l0]*e[0][l0];
+      s[0][ir] = s0i;
+      d[0][ir] = e0i*e0i;
     }
-    _si.setExtrapolation(SincInterpolator.Extrapolation.CONSTANT);
-    _si.setUniformSampling(nl,1.0,0.0);
     for (int i1=1; i1<n1; ++i1) {
       _si.setUniformSamples(e[i1]);
       for (int ir=0; ir<nr; ++ir) {
@@ -380,6 +414,9 @@ public class DynamicWarpingX {
         float s0 = s[i1-1][ir0]+ri;
         float sm = s[i1-1][irm]+ri;
         float sp = s[i1-1][irp]+ri;
+        s0 = max(_lmin,min(_lmax,s0));
+        sm = max(_lmin,min(_lmax,sm));
+        sp = max(_lmin,min(_lmax,sp));
         float e0 = _si.interpolate(s0);
         float em = _si.interpolate(sm);
         float ep = _si.interpolate(sp);
@@ -400,7 +437,7 @@ public class DynamicWarpingX {
           smin = sp;
           imin = irp;
         }
-        s[i1][ir] = max(0,min(nl-1,smin));
+        s[i1][ir] = smin;
         m[i1][ir] = imin;
         d[i1][ir] = dmin;
       }
@@ -408,16 +445,17 @@ public class DynamicWarpingX {
     //dump(d[n1-1]);
     int i1 = n1-1;
     int ir = (nr-1)/2;
-    float di = d[n1-1][ir];
+    float di = d[i1][ir];
     for (int jr=0; jr<nr; ++jr) {
       if (d[i1][jr]<di) {
         ir = jr;
         di = d[i1][jr];
       }
     }
-    u[i1] = s[i1][ir]+_lmin;
+    u[i1] = s[i1][ir];
     for (ir=m[i1][ir],--i1; i1>=0; ir=m[i1][ir],--i1)
-      u[i1] = s[i1][ir]+_lmin;
+      u[i1] = s[i1][ir];
+    return di;
   }
 
   /**

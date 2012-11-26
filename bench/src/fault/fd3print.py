@@ -1,60 +1,287 @@
 #############################################################################
-# Print figures for fault displacements in 3D images
+# Slides for fault displacements in 3D images
 
-import sys
-from java.awt import *
-from java.awt.image import *
-from java.io import *
-from java.lang import *
-from java.util import *
-from java.nio import *
-from javax.swing import *
+from common import *
 
-from edu.mines.jtk.awt import *
-from edu.mines.jtk.dsp import *
-from edu.mines.jtk.interp import *
-from edu.mines.jtk.io import *
-from edu.mines.jtk.mosaic import *
-from edu.mines.jtk.ogl.Gl import *
-from edu.mines.jtk.sgl import *
-from edu.mines.jtk.util import *
-from edu.mines.jtk.util.ArrayMath import *
-
-from fault import *
-
-gmin,gmax,gint,gatt,glab = -5.5,5.5,2.0,None,"Log amplitude"
-t1min,t1max,t1int,t1att = 0.0,15.0,1.0,None
-t1lab = "Vertical component of throw (ms)"
-flmin,flmax,flint,flatt,fllab = 0.5,1.0,0.05,None,"Fault likelihood"
-background = Color(255,255,255) # pure white for print
+gmin,gmax,gint,glab = -5.5,5.5,2.0,"Amplitude"
+smin,smax,sint,slab = -16.0,16.0,5.0,"Vertical component of throw (ms)"
+t1min,t1max,t1int,t1lab = -0.00001,16.0,5.0,"Vertical component of throw (ms)"
+flmin,flmax,flint,fllab = 0.5,1.0,0.1,"Fault likelihood"
+background = Color.WHITE
 pngDir = "png/"
 #pngDir = None
 
 def main(args):
-  #goFigures3d()
-  goFigures3f()
+  goFigures3()
 
-def goFigures3f():
-  global k1,k2,k3,pngPre
-  for subset in ["a","b"]:
-    setupForF3dSubset(subset)
-    #g = readImage("g")
-    #gs = readImage("gs")
-    h = readImage("h")
-    t1 = readImageX("t1"); t1 = mul(4.0,t1)
-    #fl = readImage("fl")
-    #flt = readImage("flt")
-    for kkk in kkks:
-      k1,k2,k3,pngPre = kkk
-      #plot3f(g,None,gmin,gmax,gint,gatt,glab,"g")
-      #plot3f(gs,None,gmin,gmax,gint,gatt,glab,"gs")
-      #plot3f(g,t1,t1min,t1max,t1int,t1att,t1lab,"gt1")
-      plot3f(h,t1,t1min,t1max,t1int,t1att,t1lab,"ht1")
+def goFigures3():
+  global s1,s2,s3
+  s1,s2,s3 = samplingS1A()
+  #s1,s2,s3 = samplingS1B()
+  g = readImage("g")
+  p2 = readImage("p2")
+  p3 = readImage("p3")
+  gs = readImage("gs")
+  fl = readImage("fl")
+  flt = readImage("flt")
+  fs = makeFaultSurfer()
+  surfs = getSurfs(fs)
+  #xyz = surfs[5].sampleFaultDip()
+  s = getShifts(gs,fs,surfs,p2,p3)
+  t1,t2,t3 = getThrows(fs,surfs)
+  s = mul(-4.0,s)
+  t1 = mul(4.0,t1)
+  print "s: min =",min(s)," max =",max(s)
+  print "t1: min =",min(t1)," max =",max(t1)
+  #kkkks = [[80,26,38,119]
+  #         [80,55,47,146],
+  #         [80,59,52,142]]
+  #kkkks = [[80,55,47,146]]
+  #kkkks = [[80,59,52,142]]
+  kkkks = [[80,55,35,135]]
+  global k1d,k1f,k2,k3,kp
+  plot = plot3d
+  #plot = plot3f
+  for kkkk in kkkks:
+    k1d,k1f,k2f,k3f = kkkk
+    #for kp in range(0,35):
+    for kp in range(0,1):
+      k2 = k2f+kp
+      k3 = k3f+kp
+      """
+      plot(g,a=s,amin=smin,amax=smax,amap=bwrNotch(1.0),
+           alab=slab,aint=sint,png="s")
+      plot(g,a=t1,amin=t1min,amax=t1max,amap=jetRamp(1.0),
+           alab=t1lab,aint=t1int,png="t")
+      """
+      plot(g,a=t1,amin=t1min,amax=t1max,amap=jetRamp(0.0),
+           alab=t1lab,aint=t1int,surfs=surfs,smax=t1max/4,png="ts")
+      """
+      plot(g,a=fl,amin=flmin,amax=flmax,amap=jetRamp(1.0),
+           alab=fllab,aint=flint,png="fl")
+      plot(g,a=flt,amin=flmin,amax=flmax,amap=jetRamp(1.0),
+           alab=fllab,aint=flint,png="flt")
+      #plot(g,a=fl,amin=flmin,amax=flmax,amap=jetRamp(0.0),
+      #     alab=fllab,aint=flint,surfs=surfs,png="fls")
+      plot(g,png="g")
+      """
 
-def goFigures3d():
-  global k1,k2,k3
-  k1,k2,k3 = 366,15,96 # good for 3D displays
-  s = rimage("tpsz"); plot3d1(s,smin,smax,sint,slog,slab)
+def makeFaultSurfer():
+  fl = readImage("fl")
+  fp = readImage("fp")
+  ft = readImage("ft")
+  fs = FaultSurfer3([fl,fp,ft])
+  fs.setThreshold(0.5)
+  return fs
+def getSurfs(fs):
+  quads = fs.findQuads()
+  quads = fs.linkQuads(quads)
+  surfs = fs.findSurfs(quads)
+  surfs = fs.getSurfsWithSize(surfs,2000)
+  return surfs
+def getShifts(gs,fs,surfs,p2,p3):
+  s = fs.findShifts(20.0,surfs,gs,p2,p3)
+  print "s: min =",min(s)," max =",max(s)
+  return s
+def getThrows(fs,surfs):
+  t1,t2,t3 = fs.findThrows(-0.0001,surfs)
+  return t1,t2,t3 
+
+def plot3d(g,a=None,amin=None,amax=None,amap=None,alab=None,aint=None,
+           xyz=None,surfs=None,smax=None,png=None):
+  n1 = len(g[0][0])
+  n2 = len(g[0])
+  n3 = len(g)
+  sf = SimpleFrame()
+  sf.setBackground(background)
+  if a==None:
+    ipg = sf.addImagePanels(g)
+    ipg.setClips(gmin,gmax)
+  else:
+    ipg = ImagePanelGroup2(g,a)
+    if amap==None:
+      amap = jetFill(0.8)
+    ipg.setColorModel2(amap)
+    if amin and amax:
+      ipg.setClips1(gmin,gmax)
+      ipg.setClips2(amin,amax)
+    sf.world.addChild(ipg)
+  ipg.setSlices(k1d,k2,k3)
+  if xyz:
+    pg = PointGroup(0.2,xyz)
+    ss = StateSet()
+    cs = ColorState()
+    cs.setColor(Color.YELLOW)
+    ss.add(cs)
+    pg.setStates(ss)
+    #ss = StateSet()
+    #ps = PointState()
+    #ps.setSize(5.0)
+    #ss.add(ps)
+    #pg.setStates(ss)
+    sf.world.addChild(pg)
+  if surfs:
+    sg = Group()
+    ss = StateSet()
+    lms = LightModelState()
+    lms.setTwoSide(True)
+    ss.add(lms)
+    ms = MaterialState()
+    ms.setSpecular(Color.GRAY)
+    ms.setShininess(100.0)
+    ms.setColorMaterial(GL_AMBIENT_AND_DIFFUSE)
+    #if not smax:
+    #  ms.setEmissiveBack(Color(0.0,0.0,0.5))
+    ss.add(ms)
+    sg.setStates(ss)
+    for surf in surfs:
+      #surf.blocky()
+      if smax:
+        xyz,uvw,rgb = surf.getXyzUvwRgbShifts(smax)
+      else:
+        xyz,uvw,rgb = surf.getXyzUvwRgb()
+      #qg = QuadGroup(False,xyz,rgb)
+      qg = QuadGroup(True,xyz,rgb) #qg = QuadGroup(xyz,uvw,rgb)
+      qg.setStates(None)
+      sg.addChild(qg)
+    sf.world.addChild(sg)
+  #ipg.setSlices(209,12,18)
+  #ipg.setSlices(200,0,0)
+  #ipg.setSlices(80,9,13)
+  #ipg.setSlices(80,9,209)
+  #sf.setSize(1300,1100)
+  #sf.setSize(1040,1124)
+  if a==None:
+    cbar = addColorBar3d(sf,glab,gint)
+    ipg.addColorMapListener(cbar)
+  else:
+    cbar = addColorBar3d(sf,alab,aint)
+    ipg.addColorMap2Listener(cbar)
+  sf.setSize(1000,800)
+  sf.setWorldSphere(n3/2,n2/2,n1/2,0.5*sqrt(n1*n1+n2*n2+n3*n3))
+  #sf.orbitView.setAzimuthAndElevation(90,40)
+  #sf.orbitView.setAzimuthAndElevation(-49,57)
+  #sf.orbitView.setAzimuthAndElevation(60,60)
+  #sf.orbitView.setAzimuthAndElevation(-90,80)
+  #sf.orbitView.setScale(1.42)
+  # good for subset a
+  ipg.setSlices(80,38,119) # t26
+  #ipg.setSlices(k1d,k2,k3)
+  sf.orbitView.setAzimuthAndElevation(-73,51)
+  sf.orbitView.setScale(1.35)
+  sf.orbitView.setTranslate(Vector3(0.0750,0.0664,0.0441))
+  # good for zoom of subset a above
+  #sf.orbitView.setAzimuthAndElevation(-73,51)
+  #sf.orbitView.setScale(8.806)
+  #sf.orbitView.setTranslate(Vector3(-0.0261,0.0664,-0.2864))
+  # good for zoom of overlap in subset a
+  #ipg.setSlices(72,200,182)
+  #sf.orbitView.setAzimuthAndElevation(68.8,32.7)
+  #sf.orbitView.setScale(3.71)
+  #sf.orbitView.setTranslate(Vector3(0.00957,0.45415,-0.17196))
+  # good for subset b
+  #ipg.setSlices(k1d,k2,k3)
+  #sf.orbitView.setAzimuthAndElevation(-99,67)
+  #sf.orbitView.setScale(1.56)
+  #sf.orbitView.setTranslate(Vector3(0.0435,0.0550,-0.0157))
+  # good for closeup view
+  #sf.orbitView.setAzimuthAndElevation(225.72,44.38)
+  #sf.orbitView.setScale(14.54)
+  #sf.orbitView.setTranslate(Vector3(-0.4886,0.1457,-0.3072))
+  sf.viewCanvas.setBackground(sf.getBackground())
+  sf.setVisible(True)
+  if png and pngDir:
+    png = pngDir+sampling()+"t"+str(k1d)+png
+    sf.paintToFile(png+".png");
+    cbar.paintToPng(cbar.getWidth(),1.0,png+"c.png")
+
+def plot3f(g,a=None,amin=None,amax=None,amap=None,alab=None,aint=None,
+           png=None):
+  pp = PlotPanelPixels3(
+    PlotPanelPixels3.Orientation.X1DOWN_X2RIGHT,
+    PlotPanelPixels3.AxesPlacement.LEFT_BOTTOM,
+    s1,s2,s3,g)
+  pp.setSlices(k1f,k2,k3)
+  pp.setLabel1("Time (s)")
+  pp.setLabel2("Inline (km)")
+  pp.setLabel3("Crossline (km)")
+  pp.mosaic.setHeightElastic(0,100)
+  pp.mosaic.setHeightElastic(1, 70)
+  pp.setClips(gmin,gmax)
+  if a:
+    pp.setLineColor(Color.WHITE)
+    cb = pp.addColorBar(alab)
+    if aint:
+      cb.setInterval(aint)
+  else:
+    pp.setLineColor(Color.WHITE)
+    cb = pp.addColorBar("Amplitude")
+    cb.setInterval(2.0)
+  pp.setInterval1(0.1)
+  pp.setInterval2(1.0)
+  pp.setInterval3(1.0)
+  if a:
+    pv12 = PixelsView(s1,s2,slice12(k3,a))
+    pv12.setOrientation(PixelsView.Orientation.X1DOWN_X2RIGHT)
+    pv12.setInterpolation(PixelsView.Interpolation.NEAREST)
+    pv13 = PixelsView(s1,s3,slice13(k2,a))
+    pv13.setOrientation(PixelsView.Orientation.X1DOWN_X2RIGHT)
+    pv13.setInterpolation(PixelsView.Interpolation.NEAREST)
+    pv23 = PixelsView(s2,s3,slice23(k1f,a))
+    pv23.setOrientation(PixelsView.Orientation.X1RIGHT_X2UP)
+    pv23.setInterpolation(PixelsView.Interpolation.NEAREST)
+    for pv in [pv12,pv13,pv23]:
+      pv.setColorModel(amap)
+      if amin!=amax:
+        pv.setClips(amin,amax)
+    pp.pixelsView12.tile.addTiledView(pv12)
+    pp.pixelsView13.tile.addTiledView(pv13)
+    pp.pixelsView23.tile.addTiledView(pv23)
+  pf = PlotFrame(pp)
+  pf.setBackground(background)
+  pp.setColorBarWidthMinimum(170)
+  pf.setFontSizeForSlide(1.0,0.8)
+  pf.setSize(1000,800)
+  pf.setVisible(True)
+  if png and pngDir:
+    png = pngDir+sampling()+"f"+str(k1f)+str(kp)+png
+    pf.paintToPng(360,7.0,png+".png")
+
+def addColorBar3d(frame,clab,cint=None):
+  cbar = ColorBar(clab)
+  cbar.setFont(Font("Arial",Font.PLAIN,40))
+  cbar.setBackground(background)
+  if cint:
+    cbar.setInterval(cint)
+  cbar.setWidthMinimum(120)
+  frame.add(cbar,BorderLayout.EAST)
+  return cbar
+
+def slice12(k3,f):
+  n1,n2,n3 = len(f[0][0]),len(f[0]),len(f)
+  s = zerofloat(n1,n2)
+  SimpleFloat3(f).get12(n1,n2,0,0,k3,s)
+  return s
+
+def slice13(k2,f):
+  n1,n2,n3 = len(f[0][0]),len(f[0]),len(f)
+  s = zerofloat(n1,n3)
+  SimpleFloat3(f).get13(n1,n3,0,k2,0,s)
+  return s
+
+def slice23(k1,f):
+  n1,n2,n3 = len(f[0][0]),len(f[0]),len(f)
+  s = zerofloat(n2,n3)
+  SimpleFloat3(f).get23(n2,n3,k1,0,0,s)
+  return s
+
+#############################################################################
+# Do everything on Swing thread.
+
+class RunMain(Runnable):
+  def run(self):
+    main(sys.argv)
+SwingUtilities.invokeLater(RunMain())
 
 def setupForF3dSubset(subset):
   global s1,s2,s3
@@ -88,176 +315,3 @@ def setupForF3dSubset(subset):
   n1,n2,n3 = m1,m2,m3
   f1,f2,f3 = f1+j1*d1,f2+j2*d2,f3+j3*d3
   s1,s2,s3 = Sampling(n1,d1,f1),Sampling(n2,d2,f2),Sampling(n3,d3,f3)
-
-def readImage(fileName):
-  f = zerofloat(n1,n2,n3)
-  ais = ArrayInputStream(dataDir+dataPre+fileName+".dat")
-  ais.readFloats(f)
-  ais.close()
-  return f
-
-def readImageX(fileName):
-  if dataPre=="b":
-    f = zerofloat(n1+30,n2,n3)
-  else:
-    f = zerofloat(n1,n2,n3)
-  ais = ArrayInputStream(dataDir+dataPre+fileName+".dat")
-  ais.readFloats(f)
-  ais.close()
-  if dataPre=="b":
-    f = copy(90,n2,n3,15,0,0,f)
-  return f
-
-def plot3f(g,c=None,cmin=0,cmax=0,cint=None,cmap=None,clab=None,png=None):
-  pp = PlotPanelPixels3(
-    PlotPanelPixels3.Orientation.X1DOWN_X2RIGHT,
-    PlotPanelPixels3.AxesPlacement.LEFT_BOTTOM,
-    s1,s2,s3,g)
-  pp.setSlices(k1,k2,k3)
-  pp.setLabel1("Time (s)")
-  pp.setLabel2("Inline (km)")
-  pp.setLabel3("Crossline (km)")
-  pp.mosaic.setHeightElastic(0,100)
-  pp.mosaic.setHeightElastic(1, 50)
-  if c:
-    pp.setLineColor(Color.WHITE)
-    cb = pp.addColorBar(clab)
-    if cint:
-      cb.setInterval(cint)
-  else:
-    pp.setLineColor(Color.WHITE)
-    cb = pp.addColorBar("Log amplitude")
-    #cb.setInterval(2.0)
-  pp.setInterval1(0.1)
-  #pp.setInterval2(1.0)
-  #pp.setInterval3(1.0)
-  if c:
-    pv12 = PixelsView(s1,s2,slice12(k3,c))
-    pv12.setOrientation(PixelsView.Orientation.X1DOWN_X2RIGHT)
-    pv12.setInterpolation(PixelsView.Interpolation.NEAREST)
-    pv13 = PixelsView(s1,s3,slice13(k2,c))
-    pv13.setOrientation(PixelsView.Orientation.X1DOWN_X2RIGHT)
-    pv13.setInterpolation(PixelsView.Interpolation.NEAREST)
-    pv23 = PixelsView(s2,s3,slice23(k1,c))
-    pv23.setOrientation(PixelsView.Orientation.X1RIGHT_X2UP)
-    pv23.setInterpolation(PixelsView.Interpolation.NEAREST)
-    for pv in [pv12,pv13,pv23]:
-      #pv.setColorModel(bwrNotch(1.0))
-      pv.setColorModel(jetRamp(1.0))
-      #pv.setColorModel(jetFill(0.5))
-      if cmin!=cmax:
-        pv.setClips(cmin,cmax)
-    pp.pixelsView12.tile.addTiledView(pv12)
-    pp.pixelsView13.tile.addTiledView(pv13)
-    pp.pixelsView23.tile.addTiledView(pv23)
-  pf = PlotFrame(pp)
-  pf.setBackground(background)
-  #pp.setColorBarWidthMinimum(120) # SEG abstract
-  #pf.setFontSizeForPrint(8,240)
-  #pf.setSize(1008,672)
-  pp.setColorBarWidthMinimum(70) # CWP report
-  pf.setFontSizeForPrint(8,504)
-  pf.setSize(1008,700)
-  pf.setVisible(True)
-  if png and pngDir:
-    #pf.paintToPng(720,3.3,pngDir+pngPre+dataPre+png+".png")
-    pf.paintToPng(720,7.0,pngDir+pngPre+dataPre+png+".png")
-
-def plot3d1(s,cmin,cmax,cint,logType,logLabel,horizons=[]):
-  world = World()
-  ipg = addImageToWorld(world,s)
-  ipg.setClips(smin,smax)
-  ipg.setSlices(k1,k2,k3)
-  frame = makeFrame(world)
-  frame.setSize(1460,980)
-  frame.viewCanvas.setBackground(background)
-  frame.orbitView.setAzimuth(-65.0)
-  if logLabel:
-    cbar = addColorBar3d(frame,logLabel,cint)
-    ipg.addColorMapListener(cbar)
-  if logType:
-    addLogsToWorld(world,logSet,logType,cmin,cmax,cbar)
-  for horizon in horizons:
-    addHorizonToWorld(world,horizon)
-
-def plot3d2(s,g,cmin,cmax,cint,logType,logLabel,horizons=[],cval=0):
-  world = World()
-  ipg = addImage2ToWorld(world,s,g)
-  ipg.setClips1(smin,smax)
-  ipg.setClips2(cmin,cmax)
-  ipg.setSlices(k1,k2,k3)
-  if logType:
-    addLogsToWorld(world,logSet,logType,cmin,cmax)
-  for horizon in horizons:
-    addHorizonToWorld(world,horizon)
-  if cval:
-    addContourToWorld(world,g,cval)
-  frame = makeFrame(world)
-  frame.setSize(1460,980)
-  frame.orbitView.setAzimuth(-65.0)
-  frame.viewCanvas.setBackground(background)
-  cbar = addColorBar3d(frame,logLabel,cint)
-  ipg.addColorMap2Listener(cbar)
-
-def addColorBar3d(frame,label,cint=None):
-  cbar = ColorBar(label)
-  cbar.setFont(Font("Arial",Font.PLAIN,48)) # ~ 8*1460/240 for one-column
-  cbar.setBackground(background)
-  if cint:
-    cbar.setInterval(cint)
-  frame.add(cbar,BorderLayout.EAST)
-  return cbar
-
-def jetFill(alpha):
-  return ColorMap.setAlpha(ColorMap.JET,alpha)
-def bwrFill(alpha):
-  return ColorMap.setAlpha(ColorMap.BLUE_WHITE_RED,alpha)
-def jetRamp(alpha):
-  return ColorMap.setAlpha(ColorMap.JET,rampfloat(0.0,1.0/256,256))
-def bwrNotch(alpha):
-  a = zerofloat(256)
-  for i in range(len(a)):
-    if i<128:
-      a[i] = alpha*(128.0-i)/128.0
-    else:
-      a[i] = alpha*(i-127.0)/128.0
-    """
-    if i<96:
-      a[i] = 1.0
-    elif i<128:
-      a[i] = alpha*(128.0-i)/32.0
-    elif i<160:
-      a[i] = alpha*(i-127.0)/32.0
-    else:
-      a[i] = 1.0
-    """
-  return ColorMap.setAlpha(ColorMap.BLUE_WHITE_RED,a)
-
-def slice12(k3,f):
-  n1,n2,n3 = len(f[0][0]),len(f[0]),len(f)
-  s = zerofloat(n1,n2)
-  SimpleFloat3(f).get12(n1,n2,0,0,k3,s)
-  return s
-
-def slice13(k2,f):
-  n1,n2,n3 = len(f[0][0]),len(f[0]),len(f)
-  s = zerofloat(n1,n3)
-  SimpleFloat3(f).get13(n1,n3,0,k2,0,s)
-  return s
-
-def slice23(k1,f):
-  n1,n2,n3 = len(f[0][0]),len(f[0]),len(f)
-  s = zerofloat(n2,n3)
-  SimpleFloat3(f).get23(n2,n3,k1,0,0,s)
-  return s
-
-def slog(f):
-  return mul(sgn(f),log(add(1.0,abs(f))))
-
-#############################################################################
-# Do everything on Swing thread.
-
-class RunMain(Runnable):
-  def run(self):
-    main(sys.argv)
-SwingUtilities.invokeLater(RunMain())

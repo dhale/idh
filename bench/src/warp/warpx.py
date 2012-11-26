@@ -9,21 +9,41 @@ from warp import DynamicWarpingX as DynamicWarping
 #pngDir = "./png/sino/"
 pngDir = None
 
-s1f,s1g,s2 = None,None,None
-
-# Different time windows for plotting
-ilims = ["0","1","2"]
-#flims = [(0.0,5.333),(0.8,1.8),(2.8,4.8)] # for Geophysics
-#glims = [(0.0,8.000),(1.2,2.7),(4.2,7.2)] # for Geophysics
-flims = [(0.0,5.333),(0.8,2.8),(2.8,4.8)]
-glims = [(0.0,8.000),(1.2,4.2),(4.2,7.2)]
-#flims = [(0.0,6.000),(0.8,2.8),(2.8,4.8)]
-#glims = [(0.0,8.000),(1.2,4.2),(4.2,7.2)]
+shiftMin = -10
+shiftMax =  40
+nl = 1+shiftMax-shiftMin
+n1 = 201
+sl = Sampling(nl,1.0,shiftMin)
+s1 = Sampling(n1,1.0,0.0)
 
 def main(args):
-  #goSinoImages()
-  #goSinoSmooth()
-  goSinoWarp()
+  goFakeErrors()
+
+def goFakeErrors():
+  dw = DynamicWarping(shiftMin,shiftMax)
+  u = zerofloat(n1)
+  for cs in [1.0,0.5]:
+    e = dw.fakeErrors(cs,nl,n1)
+    plotShifts(e)
+    for ds in [1.0,0.1,0.01]:
+      u[0] = 0.0
+      esum = dw.findShiftsSmooth(ds,e,u)
+      print "cs =",cs," ds=",ds," esum =",esum
+      plotShifts(e,u)
+
+def plotShifts(e,u=None):
+  nl,n1 = len(e[0]),len(e)
+  sp = SimplePlot()
+  sp.setSize(1400,500)
+  sp.setHLimits(0,n1-1)
+  pv = sp.addPixels(s1,sl,transpose(e))
+  pv.setInterpolation(PixelsView.Interpolation.NEAREST)
+  #pv.setColorModel(ColorMap.JET)
+  pv.setPercentiles(2,98)
+  if u:
+    pv = sp.addPoints(s1,u)
+    pv.setLineColor(Color.WHITE)
+    pv.setLineWidth(3)
 
 def goSinoSmooth():
   f,g = getSinoImages()

@@ -21,7 +21,7 @@ False = 0
 fontSize = 24
 width = 800
 height = 600
-pngDir = "./png"
+pngDir = "png"
 #pngDir = None
 
 #############################################################################
@@ -45,7 +45,7 @@ def plot(w,png):
   for iw in range(nw):
     pv = pp.addPoints(sx,w[iw])
     pv.setLineColor(colors[iw%3])
-    pv.setLineWidth(3)
+    pv.setLineWidth(2)
   pf = PlotFrame(pp)
   pf.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE)
   pf.setFontSizeForSlide(1.0,0.9)
@@ -85,8 +85,8 @@ def test1():
     mt = 125
     methods = [
       Wave1.Method.SYMMETRIC,
-      Wave1.Method.PRODUCT1,
-      Wave1.Method.PRODUCT2
+      #Wave1.Method.PRODUCT1,
+      #Wave1.Method.PRODUCT2
     ]
     nmethod = len(methods)
     f = zerofloat(nx,nmethod,nt)

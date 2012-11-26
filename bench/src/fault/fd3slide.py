@@ -8,24 +8,26 @@ smin,smax,sint,slab = -16.0,16.0,5.0,"Vertical throw (ms)"
 t1min,t1max,t1int,t1lab = -0.00001,16.0,5.0,"Vertical throw (ms)"
 flmin,flmax,flint,fllab = 0.5,1.0,0.1,"Fault likelihood"
 background = Color(253,254,255) # off-white for slide; will be transparent
-pngDir = "png/"
-#pngDir = None
+#pngDir = "png/"
+pngDir = None
 
 def main(args):
   goFigures3()
 
 def goFigures3():
   global s1,s2,s3
-  #s1,s2,s3 = samplingS1A()
-  s1,s2,s3 = samplingS1B()
+  s1,s2,s3 = samplingS1A()
+  #s1,s2,s3 = samplingS1B()
   g = readImage("g")
+  p2 = readImage("p2")
+  p3 = readImage("p3")
   gs = readImage("gs")
   fl = readImage("fl")
   flt = readImage("flt")
   fs = makeFaultSurfer()
   surfs = getSurfs(fs)
   #xyz = surfs[5].sampleFaultDip()
-  s = getShifts(gs,fs,surfs)
+  s = getShifts(gs,fs,surfs,p2,p3)
   t1,t2,t3 = getThrows(fs,surfs)
   s = mul(-4.0,s)
   t1 = mul(4.0,t1)
@@ -38,11 +40,12 @@ def goFigures3():
   #kkkks = [[80,59,52,142]]
   kkkks = [[80,55,35,135]]
   global k1d,k1f,k2,k3,kp
-  #plot = plot3d
-  plot = plot3f
+  plot = plot3d
+  #plot = plot3f
   for kkkk in kkkks:
     k1d,k1f,k2f,k3f = kkkk
-    for kp in range(0,35):
+    #for kp in range(0,35):
+    for kp in range(0,1):
       k2 = k2f+kp
       k3 = k3f+kp
       plot(g,a=s,amin=smin,amax=smax,amap=bwrNotch(1.0),
@@ -74,8 +77,8 @@ def getSurfs(fs):
   surfs = fs.findSurfs(quads)
   surfs = fs.getSurfsWithSize(surfs,2000)
   return surfs
-def getShifts(gs,fs,surfs):
-  s = fs.findShifts(20.0,surfs,gs)
+def getShifts(gs,fs,surfs,p2,p3):
+  s = fs.findShifts(20.0,surfs,gs,p2,p3)
   print "s: min =",min(s)," max =",max(s)
   return s
 def getThrows(fs,surfs):

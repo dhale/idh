@@ -27,7 +27,7 @@ from fault import *
 
 def main(args):
   #goS1()
-  #goS1A()
+  goS1A()
   goS1B()
 def goS1():
   samplingS1()
@@ -344,7 +344,7 @@ def samplings(n1,d1,f1,n2,d2,f2,n3,d3,f3):
 def jetFill(alpha):
   return ColorMap.setAlpha(ColorMap.JET,alpha)
 def bwrFill(alpha):
-  return ColorMap.setAlpha(ColorMap.BLUE_WHITE_RED,alpha)
+  return ColorMap.setAlpha(ColorMap.RED_WHITE_BLUE,alpha)
 def jetRamp(alpha):
   return ColorMap.setAlpha(ColorMap.JET,fillfloat(0.0,1.0/256,256))
 def bwrNotch(alpha):
@@ -364,7 +364,7 @@ def bwrNotch(alpha):
     else:
       a[i] = 1.0
     """
-  return ColorMap.setAlpha(ColorMap.BLUE_WHITE_RED,a)
+  return ColorMap.setAlpha(ColorMap.RED_WHITE_BLUE,a)
 
 def plot3(f,g=None,gmin=None,gmax=None,gmap=None,h=None,
           xyz=None,surfs=None,smax=None):
