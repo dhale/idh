@@ -322,15 +322,15 @@ public class FakeData {
     int n2 = f.length;
     float[][] s1 = s[0];
     float[][] s2 = s[1];
-    SincInterpolator si = new SincInterpolator();
-    si.setExtrapolation(SincInterpolator.Extrapolation.CONSTANT);
-    si.setUniform(n1,1.0,0.0,n2,1.0,0.0,f);
+    SincInterp si = new SincInterp();
+    si.setExtrapolation(SincInterp.Extrapolation.CONSTANT);
     float[][] g = new float[n2][n1];
     for (int i2=0; i2<n2; ++i2) {
       double x2 = i2;
       for (int i1=0; i1<n1; ++i1) {
         double x1 = i1;
-        g[i2][i1] = si.interpolate(x1+s1[i2][i1],x2+s2[i2][i1]);
+        g[i2][i1] = si.interpolate(
+          n1,1.0,0.0,n2,1.0,0.0,f,x1+s1[i2][i1],x2+s2[i2][i1]);
       }
     }
     return g;
@@ -345,15 +345,15 @@ public class FakeData {
     int n2 = g.length;
     float[][] r1 = r[0];
     float[][] r2 = r[1];
-    SincInterpolator si = new SincInterpolator();
-    si.setExtrapolation(SincInterpolator.Extrapolation.CONSTANT);
-    si.setUniform(n1,1.0,0.0,n2,1.0,0.0,g);
+    SincInterp si = new SincInterp();
+    si.setExtrapolation(SincInterp.Extrapolation.CONSTANT);
     float[][] f = new float[n2][n1];
     for (int i2=0; i2<n2; ++i2) {
       double u2 = i2;
       for (int i1=0; i1<n1; ++i1) {
         double u1 = i1;
-        f[i2][i1] = si.interpolate(u1-r1[i2][i1],u2-r2[i2][i1]);
+        f[i2][i1] = si.interpolate(
+          n1,1.0,0.0,n2,1.0,0.0,g,u1-r1[i2][i1],u2-r2[i2][i1]);
       }
     }
     return f;
@@ -472,14 +472,12 @@ public class FakeData {
     s1 = limitShifts(smax,fmax,s1);
     s2 = limitShifts(smax,fmax,s2);
     float[][] g = new float[n2][n1];
-    SincInterpolator si = new SincInterpolator();
-    si.setUniformSampling(n1,1.0,0.0);
+    SincInterp si = new SincInterp();
     for (int i2=0; i2<n2; ++i2) {
       float fs = s1[i2];
       float ds = 1.0f+(s2[i2]-fs)/n1;;
       float[] s = rampfloat(fs,ds,n1);
-      si.setUniformSamples(f[i2]);
-      si.interpolate(n1,s,g[i2]);
+      si.interpolate(n1,1.0,0.0,f[i2],n1,s,g[i2]);
     }
     return g;
   }
@@ -509,15 +507,13 @@ public class FakeData {
     s1 = limitShifts(smax,fmax,s1);
     s2 = limitShifts(smax,fmax,s2);
     float[][][] g = new float[n3][n2][n1];
-    SincInterpolator si = new SincInterpolator();
-    si.setUniformSampling(n1,1.0,0.0);
+    SincInterp si = new SincInterp();
     for (int i3=0; i3<n3; ++i3) {
       for (int i2=0; i2<n2; ++i2) {
         float fs = s1[i3][i2];
         float ds = 1.0f+(s2[i3][i2]-fs)/n1;;
         float[] s = rampfloat(fs,ds,n1);
-        si.setUniformSamples(f[i3][i2]);
-        si.interpolate(n1,s,g[i3][i2]);
+        si.interpolate(n1,1.0,0.0,f[i3][i2],n1,s,g[i3][i2]);
       }
     }
     return g;
@@ -552,15 +548,13 @@ public class FakeData {
     float c2 = -n2;
     float d2 = n2/2-c2;
     float rs = d2*d2;
-    SincInterpolator si = new SincInterpolator();
-    si.setUniformSampling(n1,1.0,0.0);
+    SincInterp si = new SincInterp();
     for (int i2=0; i2<n2; ++i2) {
       d2 = i2-c2;
       float ds = d2*d2-rs;
       if (ds<0.0) {
         float[] x1 = rampfloat(0.0f,1.0f-smax/n1,n1);
-        si.setUniformSamples(f[i2]);
-        si.interpolate(n1,x1,g[i2]);
+        si.interpolate(n1,1.0,0.0,f[i2],n1,x1,g[i2]);
       } else {
         copy(f[i2],g[i2]);
       }
@@ -590,8 +584,7 @@ public class FakeData {
     float d2 = n2/2-c2;
     float d3 = n3/2-c3;
     float rs = d2*d2+d3*d3;
-    SincInterpolator si = new SincInterpolator();
-    si.setUniformSampling(n1,1.0,0.0);
+    SincInterp si = new SincInterp();
     for (int i3=0; i3<n3; ++i3) {
       d3 = i3-c3;
       for (int i2=0; i2<n2; ++i2) {
@@ -599,8 +592,7 @@ public class FakeData {
         float ds = d2*d2+d3*d3-rs;
         if (ds<0.0) {
           float[] x1 = rampfloat(0.0f,1.0f-smax/n1,n1);
-          si.setUniformSamples(f[i3][i2]);
-          si.interpolate(n1,x1,g[i3][i2]);
+          si.interpolate(n1,1.0,0.0,f[i3][i2],n1,x1,g[i3][i2]);
         } else {
           copy(f[i3][i2],g[i3][i2]);
         }

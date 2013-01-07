@@ -286,8 +286,7 @@ public class LocalSemblanceFilterX {
     float[] tnum = x1;
     float[] tden = f1;
     float[][] s = new float[n2][n1];
-    SincInterpolator si = new SincInterpolator();
-    si.setUniformSampling(n1,1.0,0.0);
+    SincInterp si = new SincInterp();
     float sigma2 = sigmaGaussian(hw2);
     RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(sigma2);
 
@@ -319,8 +318,7 @@ public class LocalSemblanceFilterX {
         float d2 = j2-i2;
         for (int i1=0; i1<n1; ++i1)
           x1[i1] = i1+p[i1]*d2;
-        si.setUniformSamples(f[j2]);
-        si.interpolate(n1,x1,f1);
+        si.interpolate(n1,1.0,0.0,f[j2],n1,x1,f1);
 
         // Accumulate semblance numerators and denominators.
         for (int i1=0; i1<n1; ++i1) {
@@ -389,8 +387,7 @@ public class LocalSemblanceFilterX {
     float[] tnum = x1;
     float[] tden = f1;
     float[][][] s = new float[n3][n2][n1];
-    SincInterpolator si = new SincInterpolator();
-    si.setUniformSampling(n1,1.0,0.0);
+    SincInterp si = new SincInterp();
     float sigma2 = sigmaGaussian(hw2);
     RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(sigma2);
 
@@ -431,8 +428,7 @@ public class LocalSemblanceFilterX {
         float d3 = j3-i3;
         for (int i1=0; i1<n1; ++i1)
           x1[i1] = i1+p[i1]*d2+q[i1]*d3;
-        si.setUniformSamples(f[j3][j2]);
-        si.interpolate(n1,x1,f1);
+        si.interpolate(n1,1.0,0.0,f[j3][j2],n1,x1,f1);
 
         // Accumulate semblance numerators and denominators.
         for (int i1=0; i1<n1; ++i1) {
@@ -620,10 +616,8 @@ public class LocalSemblanceFilterX {
       int n = w.length;
       int m = (n-1)/2;
       float[] r = new float[2];
-      SincInterpolator si = new SincInterpolator();
-      si.setExtrapolation(SincInterpolator.Extrapolation.CONSTANT);
-      si.setUniformSampling(n1,1.0,0.0,n2,1.0,0.0);
-      si.setUniformSamples(f);
+      SincInterp si = new SincInterp();
+      si.setExtrapolation(SincInterp.Extrapolation.CONSTANT);
       for (int i2=0; i2<n2; ++i2) {
         for (int i1=0; i1<n1; ++i1) {
           if (d==Direction2.U)
@@ -635,7 +629,7 @@ public class LocalSemblanceFilterX {
           for (int i=0,ir=-m; i<n; ++i,++ir) {
             float ir1 = ir*r1, ir2 = ir*r2;
             float x1 = i1+ir1, x2 = i2+ir2;
-            gi += w[i]*si.interpolate(x1,x2);
+            gi += w[i]*si.interpolate(n1,1.0,0.0,n2,1.0,0.0,f,x1,x2);
           }
           g[i2][i1] = gi;
         }

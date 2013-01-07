@@ -124,9 +124,7 @@ def makeSeismicSlice(i1):
   n3m = 1+int((e3m-f3m)/d3m+0.5)
   s2m,s3m = Sampling(n2m,d2m,f2m),Sampling(n3m,d3m,f3m)
   y23 = zerofloat(n2m,n3m)
-  si = SincInterpolator()
-  si.setUniformSampling(n2d,d2d,f2d,n3d,d3d,f3d)
-  si.setUniformSamples(x23)
+  si = SincInterp()
   e2d,e3d = f2d+(n2d-1)*d2d,f3d+(n3d-1)*d3d
   for i3 in range(n3m):
     x3m = f3m+i3*d3m
@@ -139,7 +137,7 @@ def makeSeismicSlice(i1):
       if x2d<f2d or x2d>e2d or x3d<f3d or x3d>e3d:
         y23[i3][i2] = xmax
       else:
-        y23[i3][i2] = si.interpolate(x2d,x3d)
+        y23[i3][i2] = si.interpolate(n2d,d2d,f2d,n3d,d3d,f3d,x23,x2d,x3d)
   ymin,ymax = min(y23),max(y23)
   print "ymin =",ymin," ymax =",ymax
   return s2m,s3m,y23

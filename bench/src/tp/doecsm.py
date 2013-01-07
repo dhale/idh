@@ -69,18 +69,17 @@ def resample():
   y23 = zerofloat(n2c,n3c) # 23 slice of output array
   sx = SimpleFloat3(x)
   sy = SimpleFloat3(y)
-  si = SincInterpolator()
-  si.setUniformSampling(n2d,d2d,f2d,n3d,d3d,f3d)
+  si = SincInterp()
   ais = ArrayInputStream(doeFile)
   ais.readFloats(x)
   ais.close()
   for i1 in range(n1c):
     if i1%100==0: print "i1 =",i1
     sx.get23(n2d,n3d,i1,0,0,x23)
-    si.setUniformSamples(x23)
     for i3 in range(n3c):
       for i2 in range(n2c):
-        y23[i3][i2] = si.interpolate(x2d[i3][i2],x3d[i3][i2])
+        y23[i3][i2] = si.interpolate(
+          n2d,d2d,f2d,n3d,d3d,f3d,x23,x2d[i3][i2],x3d[i3][i2])
     sy.set23(n2c,n3c,i1,0,0,y23)
   aos = ArrayOutputStream(csmFile)
   aos.writeFloats(y)

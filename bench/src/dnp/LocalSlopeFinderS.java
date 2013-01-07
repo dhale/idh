@@ -119,8 +119,7 @@ public class LocalSlopeFinderS {
         LocalCorrelationFilter.Type.SIMPLE,
         LocalCorrelationFilter.Window.GAUSSIAN,
         _sigma1);
-    SincInterpolator si = new SincInterpolator();
-    si.setUniformSampling(n1,1.0,0.0);
+    SincInterp si = new SincInterp();
     float[] gt = zerofloat(n1);
     float[] u = zerofloat(n1);
     float[] r = rampfloat(0.0f,1.0f,n1);
@@ -138,8 +137,7 @@ public class LocalSlopeFinderS {
       //fill(1.0f,el[i2]); zero(u); zero(p2[i2]);
       mul(pscale,u,p2[i2]);
       add(r,u,u);
-      si.setUniformSamples(g[i2-i2d]);
-      si.interpolate(n1,u,gt);
+      si.interpolate(n1,1.0,0.0,g[i2-i2d],n1,u,gt);
       for (int i1=0; i1<n1; ++i1) {
         //float e = pow(el[i2][i1],2.0f);
         float e = el[i2][i1];
@@ -166,8 +164,7 @@ public class LocalSlopeFinderS {
         LocalCorrelationFilter.Type.SIMPLE,
         LocalCorrelationFilter.Window.GAUSSIAN,
         _sigma1);
-    SincInterpolator si = new SincInterpolator();
-    si.setUniformSampling(n1,1.0,0.0);
+    SincInterp si = new SincInterp();
     float[][] gm = new float[n2][n1];
     float[][] gp = new float[n2][n1];
     float[] r = rampfloat(0.0f,1.0f,n1);
@@ -191,8 +188,7 @@ public class LocalSlopeFinderS {
     for (int i2=1; i2<n2; ++i2) {
       findShifts(lcf,-lmax,-lmin,f[i2],gm[i2-1],u,c);
       add(r,u,t);
-      si.setUniformSamples(gm[i2-1]);
-      si.interpolate(n1,t,gt);
+      si.interpolate(n1,1.0,0.0,gm[i2-1],n1,t,gt);
       for (int i1=0; i1<n1; ++i1)
         gm[i2][i1] = a*gt[i1]+b*f[i2][i1];
     }
@@ -202,8 +198,7 @@ public class LocalSlopeFinderS {
     for (int i2=n2-2; i2>=0; --i2) {
       findShifts(lcf,lmin,lmax,f[i2],gp[i2+1],u,c);
       add(r,u,t);
-      si.setUniformSamples(gp[i2+1]);
-      si.interpolate(n1,t,gt);
+      si.interpolate(n1,1.0,0.0,gp[i2+1],n1,t,gt);
       for (int i1=0; i1<n1; ++i1)
         gp[i2][i1] = a*gt[i1]+b*f[i2][i1];
     }

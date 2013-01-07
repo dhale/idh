@@ -72,7 +72,7 @@ public class SampledImage {
    * @return the sampled image.
    */
   public static SampledImage fromResource(
-    Sampling sx, Sampling sy, Class klass, String fileName) 
+    Sampling sx, Sampling sy, Class<?> klass, String fileName) 
   {
     BufferedImage bi = null;
     try {

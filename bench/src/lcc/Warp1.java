@@ -238,24 +238,22 @@ public class Warp1 {
       return u;
     }
     public float[] warp(float[] f) {
-      SincInterpolator si = new SincInterpolator();
-      si.setUniform(_n,1.0,0.0,f);
+      SincInterp si = new SincInterp();
       float[] g = new float[_n];
       for (int i=0; i<_n; ++i) {
         double y = i;
         double x = y-uy(y);
-        g[i] = si.interpolate(x);
+        g[i] = si.interpolate(_n,1.0,0.0,f,x);
       }
       return g;
     }
     public float[] unwarp(float[] g) {
-      SincInterpolator si = new SincInterpolator();
-      si.setUniform(_n,1.0,0.0,g);
+      SincInterp si = new SincInterp();
       float[] f = new float[_n];
       for (int i=0; i<_n; ++i) {
         double x = i;
         double y = x+ux(x);
-        f[i] = si.interpolate(y);
+        f[i] = si.interpolate(_n,1.0,0.0,g,y);
       }
       return f;
     }

@@ -279,8 +279,7 @@ public class Velan {
     double fx = sx.getFirst();
     float[] t = new float[nt];
     float[][] q = new float[nx][nt];
-    SincInterpolator si = new SincInterpolator();
-    si.setUniformSampling(nt,dt,ft);
+    SincInterp si = new SincInterp();
     for (int ix=0; ix<nx; ++ix) {
       double x = sx.getValue(ix);
       double xxg = (x*x)/(vnmo*vnmo);
@@ -288,8 +287,7 @@ public class Velan {
         double t0 = st.getValue(it);
         t[it] = (float)sqrt(t0*t0+xxg); 
       }
-      si.setUniformSamples(p[ix]);
-      si.interpolate(nt,t,q[ix]);
+      si.interpolate(nt,dt,ft,p[ix],nt,t,q[ix]);
     }
     return q;
   }
@@ -305,8 +303,7 @@ public class Velan {
     double fx = sx.getFirst();
     float[] t = new float[nt];
     float[][] q = new float[nx][nt];
-    SincInterpolator si = new SincInterpolator();
-    si.setUniformSampling(nt,dt,ft);
+    SincInterp si = new SincInterp();
     for (int ix=0; ix<nx; ++ix) {
       double x = sx.getValue(ix);
       for (int it=0; it<nt; ++it) {
@@ -315,8 +312,7 @@ public class Velan {
         double xxg = (x*x)/(v0*v0);
         t[it] = (float)sqrt(t0*t0+xxg); 
       }
-      si.setUniformSamples(p[ix]);
-      si.interpolate(nt,t,q[ix]);
+      si.interpolate(nt,dt,ft,p[ix],nt,t,q[ix]);
     }
     return q;
   }

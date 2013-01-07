@@ -104,14 +104,12 @@ def nmo(v,st,sx,f):
   nx = len(f)
   t = rampfloat(ft,dt,nt) # sampled times
   tt = mul(t,t) # sampled times squared
-  si = SincInterpolator() # high-fidelity sinc interpolation
-  si.setUniformSampling(nt,dt,ft) # time sampling constant within gather
+  si = SincInterp() # high-fidelity sinc interpolation
   g = zerofloat(nt,nx) # the output gather
   for ix in range(nx): # loop over all traces in gather
     x = sx.getValue(ix) # source-receiver offset x
     t = sqrt(add(tt,(x*x)/(v*v))) # sqrt(t*t+(x*x)/(v*v))
-    si.setUniformSamples(f[ix]) # trace to be interpolated
-    si.interpolate(nt,t,g[ix]) # interpolated trace
+    si.interpolate(nt,dt,ft,f[ix],nt,t,g[ix]) # interpolated trace
   return g
 
 def stack(f):

@@ -57,12 +57,11 @@ public class First {
     int n3 = f.length;
     float[][][] t = makeT(n1,n2,n3);
     float[][][] g = zerofloat(n1,n2,n3);
-    SincInterpolator si = new SincInterpolator();
+    SincInterp si = new SincInterp();
     for (int i3=0; i3<n3; ++i3) {
-        for (int i2=0; i2<n2; ++i2) {
-            si.setUniform(n1,1.0f,0.0f,f[i3][i2]);
-            si.interpolate(n1,t[i3][i2],g[i3][i2]);
-        }
+      for (int i2=0; i2<n2; ++i2) {
+        si.interpolate(n1,1.0,0.0,f[i3][i2],n1,t[i3][i2],g[i3][i2]);
+      }
     }
     return g;
   }

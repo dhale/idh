@@ -102,7 +102,7 @@ public class DynamicWarpingX {
     _lmin = shiftMin;
     _lmax = shiftMax;
     _nl = 1+_lmax-_lmin;
-    _si = new SincInterpolator();
+    _si = new SincInterp();
     _li = new LinearInterpolator();
     _extrap = ErrorExtrapolation.NEAREST;
   }
@@ -361,12 +361,10 @@ public class DynamicWarpingX {
   public float sumErrorsInterpolated(float[][] e, float[] u) {
     int nl = e[0].length;
     int n1 = e.length;
-    _si.setExtrapolation(SincInterpolator.Extrapolation.CONSTANT);
-    _si.setUniformSampling(nl,1.0,_lmin);
+    _si.setExtrapolation(SincInterp.Extrapolation.CONSTANT);
     float esum = 0.0f;
     for (int i1=0; i1<n1; ++i1) {
-      _si.setUniformSamples(e[i1]);
-      float ei = _si.interpolate(u[i1]);
+      float ei = _si.interpolate(nl,1.0,_lmin,e[i1],u[i1]);
       esum += ei*ei;
     }
     return esum;
@@ -391,11 +389,9 @@ public class DynamicWarpingX {
     int nr = 1+2*(int)(_bstrain1/dstrainMax);
     float dr = 2.0f/_bstrain1/(nr-1);
     float fr = -1.0f/_bstrain1;
-    _si.setExtrapolation(SincInterpolator.Extrapolation.CONSTANT);
-    _si.setUniformSampling(nl,1.0,_lmin);
-    _si.setUniformSamples(e[0]);
+    _si.setExtrapolation(SincInterp.Extrapolation.CONSTANT);
     float s0i = u[0];
-    float e0i = _si.interpolate(s0i);
+    float e0i = _si.interpolate(nl,1.0,_lmin,e[0],s0i);
     System.out.println("nr="+nr+" dr="+dr+" fr="+fr);
     int[][] m = new int[n1][nr];
     float[][] s = new float[n1][nr];
@@ -405,7 +401,6 @@ public class DynamicWarpingX {
       d[0][ir] = e0i*e0i;
     }
     for (int i1=1; i1<n1; ++i1) {
-      _si.setUniformSamples(e[i1]);
       for (int ir=0; ir<nr; ++ir) {
         float ri = fr+ir*dr;
         int ir0 = ir;
@@ -417,9 +412,9 @@ public class DynamicWarpingX {
         s0 = max(_lmin,min(_lmax,s0));
         sm = max(_lmin,min(_lmax,sm));
         sp = max(_lmin,min(_lmax,sp));
-        float e0 = _si.interpolate(s0);
-        float em = _si.interpolate(sm);
-        float ep = _si.interpolate(sp);
+        float e0 = _si.interpolate(nl,1.0,_lmin,e[i1],s0);
+        float em = _si.interpolate(nl,1.0,_lmin,e[i1],sm);
+        float ep = _si.interpolate(nl,1.0,_lmin,e[i1],sp);
         float d0 = d[i1-1][ir0]+e0*e0;
         float dm = d[i1-1][irm]+em*em;
         float dp = d[i1-1][irp]+ep*ep;
@@ -609,10 +604,8 @@ public class DynamicWarpingX {
    */
   public void applyShifts(float[] u, float[] g, float[] h) {
     int n1 = u.length;
-    _si.setUniformSampling(n1,1.0,0.0);
-    _si.setUniformSamples(g);
     for (int i1=0; i1<n1; ++i1) {
-      h[i1] = _si.interpolate(i1+u[i1]);
+      h[i1] = _si.interpolate(n1,1.0,0.0,g,i1+u[i1]);
     }
   }
 
@@ -628,19 +621,10 @@ public class DynamicWarpingX {
     final float[][] uf = u;
     final float[][] gf = g;
     final float[][] hf = h;
-    final Parallel.Unsafe<SincInterpolator> siu =
-      new Parallel.Unsafe<SincInterpolator>();
     Parallel.loop(n2,new Parallel.LoopInt() {
     public void compute(int i2) {
-      SincInterpolator si = siu.get();
-      if (si==null) {
-        si = new SincInterpolator();
-        si.setUniformSampling(n1,1.0,0.0);
-        siu.set(si);
-      }
-      si.setUniformSamples(gf[i2]);
       for (int i1=0; i1<n1; ++i1) {
-        hf[i2][i1] = si.interpolate(i1+uf[i2][i1]);
+        hf[i2][i1] = _si.interpolate(n1,1.0,0.0,gf[i2],i1+uf[i2][i1]);
       }
     }});
   }
@@ -1314,7 +1298,7 @@ public class DynamicWarpingX {
   private RecursiveExponentialFilter _ref1; // for smoothing shifts
   private RecursiveExponentialFilter _ref2; // for smoothing shifts
   private RecursiveExponentialFilter _ref3; // for smoothing shifts
-  private SincInterpolator _si; // for warping with non-integer shifts
+  private SincInterp _si; // for warping with non-integer shifts
   private LinearInterpolator _li; // for interpolating alignment errors
   private int _owl2 = 50; // window size in 2nd dimension for 3D images
   private int _owl3 = 50; // window size in 3rd dimension for 3D images

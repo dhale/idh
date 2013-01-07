@@ -175,12 +175,12 @@ public class FlattenerVS {
     int n1 = f[0].length;
     int n2 = f.length;
     float[][] s1 = s[0], s2 = s[1];
-    SincInterpolator si = new SincInterpolator();
-    si.setUniform(n1,1.0,0.0,n2,1.0,0.0,f);
+    SincInterp si = new SincInterp();
     float[][] g = zerofloat(n1,n2);
     for (int i2=0; i2<n2; ++i2) {
       for (int i1=0; i1<n1; ++i1) {
-        g[i2][i1] = si.interpolate(i1-s1[i2][i1],i2-s2[i2][i1]);
+        g[i2][i1] = si.interpolate(
+          n1,1.0,0.0,n2,1.0,0.0,f,i1-s1[i2][i1],i2-s2[i2][i1]);
       }
     }
     return g;

@@ -26,9 +26,9 @@ from fault import *
 #############################################################################
 
 def main(args):
-  #goS1()
-  goS1A()
-  goS1B()
+  goS1()
+  #goS1A()
+  #goS1B()
 def goS1():
   samplingS1()
   #goSurfingFake()
@@ -40,7 +40,8 @@ def goS1():
   #goThin()
   #goSmooth()
   #goSurfing()
-  goPartsAB()
+  #goPartsAB()
+  goSliceC()
 def goS1A():
   samplingS1A()
   goSurfing()
@@ -264,8 +265,7 @@ def goPartsAB():
   j1b,j2b,j3b = 15,0,0
   samplingS1()
   global dataSub
-  #for fileName in ["fl","fp","ft","flt","g","gs","p2","p3"]:
-  for fileName in ["p2","p3"]:
+  for fileName in ["fl","fp","ft","flt","g","gs","p2","p3"]:
     dataSub = "s1/"
     x = readImage(fileName)
     x = copy(n1a,n2a,n3a,j1a,j2a,j3a,x)
@@ -276,6 +276,49 @@ def goPartsAB():
     x = copy(n1b,n2b,n3b,j1b,j2b,j3b,x)
     dataSub = "s1b/"
     writeImage(x,fileName)
+
+def goSliceC():
+  # for Rick Groshong
+  #n1,n2,n3 = 222,221,220
+  #d1,d2,d3 = 0.004,0.025,0.025
+  #f1,f2,f3 = 0.964,1.250,2.500
+  samplingS1()
+  global dataSub; dataSub = "s1/"
+  g = readImage("g")
+  #g = slog(g)
+  def plot2(i3,aspect11):
+    sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
+    sp.setTitle("Inline section "+str(i3))
+    sp.setHLabel("Inline (km)")
+    sp.setVLabel("Time (s)")
+    sp.setHLimits(3.60,5.40)
+    sp.setVLimits(1.05,1.55)
+    if aspect11:
+      sp.setSize(500,800)
+    else:
+      sp.setSize(1400,600)
+    pv = sp.addPixels(s1,s2,g[i3])
+    pv.setClips(-5.0,5.0)
+    pngfile="png/cone"+str(i3)
+    if aspect11:
+      pngfile += "a.png"
+    else:
+      pngfile += "b.png"
+    sp.paintToPng(300,sp.width/100,pngfile)
+  for i3 in [145,146]: # intersects two prominent cones
+    plot2(i3,False)
+    plot2(i3,True)
+
+def samplingS1():
+  global n1,n2,n3
+  global s1,s2,s3
+  global dataDir,dataSub
+  dataDir = "/data/seis/f3d/faults/"
+  dataSub = "s1/"
+  n1,n2,n3 = 222,221,220
+  d1,d2,d3 = 0.004,0.025,0.025
+  f1,f2,f3 = 0.964,1.250,2.500
+  s1,s2,s3 = samplings(n1,d1,f1,n2,d2,f2,n3,d3,f3)
 
 def spow(p,f):
   return mul(sgn(f),pow(abs(f),p))

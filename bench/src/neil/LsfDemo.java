@@ -126,11 +126,10 @@ public class LsfDemo {
     float[][][] x1 = rampfloat(0.0f,1.0f,0.0f,0.0f,n1,n2,n3);
     x1 = add(x1,s1);
     float[][][] f = zerofloat(n1,n2,n3);
-    SincInterpolator si = new SincInterpolator();
+    SincInterp si = new SincInterp();
     for (int i3=0; i3<n3; ++i3) {
       for (int i2=0; i2<n2; ++i2) {
-        si.setUniform(n1,1.0f,0.0f,g[i3][i2]);
-        si.interpolate(n1,x1[i3][i2],f[i3][i2]);
+        si.interpolate(n1,1.0f,0.0f,g[i3][i2],n1,x1[i3][i2],f[i3][i2]);
       }
     }
     return f;

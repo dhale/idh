@@ -1,6 +1,6 @@
 package lcc;
 
-import edu.mines.jtk.dsp.SincInterpolator;
+import edu.mines.jtk.dsp.SincInterp;
 import static edu.mines.jtk.util.MathPlus.*;
 
 /**
@@ -266,8 +266,7 @@ public abstract class Displacement3 {
   }
 
   public float[][][] warp(float[][][] f) {
-    SincInterpolator si = new SincInterpolator();
-    si.setUniform(_n1,1.0,0.0,_n2,1.0,0.0,_n3,1.0,0.0,f);
+    SincInterp si = new SincInterp();
     float[][][] g = new float[_n3][_n2][_n1];
     for (int i3=0; i3<_n3; ++i3) {
       double y3 = i3;
@@ -278,7 +277,8 @@ public abstract class Displacement3 {
           double x1 = y1-u1y(y1,y2,y3);
           double x2 = y2-u2y(y1,y2,y3);
           double x3 = y3-u3y(y1,y2,y3);
-          g[i3][i2][i1] = si.interpolate(x1,x2,x3);
+          g[i3][i2][i1] = si.interpolate(
+            _n1,1.0,0.0,_n2,1.0,0.0,_n3,1.0,0.0,f,x1,x2,x3);
         }
       }
     }
@@ -286,8 +286,7 @@ public abstract class Displacement3 {
   }
 
   public float[][][] unwarp(float[][][] g) {
-    SincInterpolator si = new SincInterpolator();
-    si.setUniform(_n1,1.0,0.0,_n2,1.0,0.0,_n3,1.0,0.0,g);
+    SincInterp si = new SincInterp();
     float[][][] f = new float[_n3][_n2][_n1];
     for (int i3=0; i3<_n3; ++i3) {
       double x3 = i3;
@@ -298,7 +297,8 @@ public abstract class Displacement3 {
           double y1 = x1+u1x(x1,x2,x3);
           double y2 = x2+u2x(x1,x2,x3);
           double y3 = x3+u3x(x1,x2,x3);
-          f[i3][i2][i1] = si.interpolate(y1,y2,y3);
+          f[i3][i2][i1] = si.interpolate(
+            _n1,1.0,0.0,_n2,1.0,0.0,_n3,1.0,0.0,g,y1,y2,y3);
         }
       }
     }

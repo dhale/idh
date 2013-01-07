@@ -1,6 +1,6 @@
 package fault;
 
-import edu.mines.jtk.dsp.SincInterpolator;
+import edu.mines.jtk.dsp.SincInterp;
 import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
@@ -160,8 +160,7 @@ public abstract class Warp2 {
     return u;
   }
   public float[][] warp(float[][] f) {
-    SincInterpolator si = new SincInterpolator();
-    si.setUniform(_n1,1.0,0.0,_n2,1.0,0.0,f);
+    SincInterp si = new SincInterp();
     float[][] g = new float[_n2][_n1];
     for (int i2=0; i2<_n2; ++i2) {
       double y2 = i2;
@@ -169,14 +168,13 @@ public abstract class Warp2 {
         double y1 = i1;
         double x1 = y1-u1y(y1,y2);
         double x2 = y2-u2y(y1,y2);
-        g[i2][i1] = si.interpolate(x1,x2);
+        g[i2][i1] = si.interpolate(_n1,1.0,0.0,_n2,1.0,0.0,f,x1,x2);
       }
     }
     return g;
   }
   public float[][] unwarp(float[][] g) {
-    SincInterpolator si = new SincInterpolator();
-    si.setUniform(_n1,1.0,0.0,_n2,1.0,0.0,g);
+    SincInterp si = new SincInterp();
     float[][] f = new float[_n2][_n1];
     for (int i2=0; i2<_n2; ++i2) {
       double x2 = i2;
@@ -184,7 +182,7 @@ public abstract class Warp2 {
         double x1 = i1;
         double y1 = x1+u1x(x1,x2);
         double y2 = x2+u2x(x1,x2);
-        f[i2][i1] = si.interpolate(y1,y2);
+        f[i2][i1] = si.interpolate(_n1,1.0,0.0,_n2,1.0,0.0,g,y1,y2);
       }
     }
     return f;

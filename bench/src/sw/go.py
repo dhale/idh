@@ -509,25 +509,23 @@ def subtract():
   writeFloats3("r13.dat",r);
 
 def correct1():
-  si = SincInterpolator()
+  si = SincInterp()
   f = readFloats3("sw04a.dat")
   u = readFloats3("u1.dat")
   g = zerofloat(n1,n2,n3)
   s = rampfloat(0.0,1.0,n1)
   t = zerofloat(n1)
-  si.setUniformSampling(n1,1.0,0.0)
   for i3 in range(n3):
     for i2 in range(n2):
       add(s,u[i3][i2],t)
-      si.setUniformSamples(f[i3][i2])
-      si.interpolate(n1,t,g[i3][i2])
+      si.interpolate(n1,1.0,0.0,f[i3][i2],n1,t,g[i3][i2])
   writeFloats3("sw04a1.dat",g)
   f = readFloats3("sw02a.dat")
   r = sub(g,f)
   writeFloats3("r1x.dat",r);
 
 def correct3():
-  si = SincInterpolator()
+  si = SincInterp()
   f = readFloats3("sw04a.dat")
   u = readFloats3("u3.dat")
   g = zerofloat(n1,n2,n3)
@@ -536,7 +534,6 @@ def correct3():
   f3 = zerofloat(n3)
   g3 = zerofloat(n3)
   u3 = zerofloat(n3)
-  si.setUniformSampling(n3,1.0,0.0)
   for i2 in range(n2):
     print "correct3: i2 =",i2
     for i1 in range(n1):
@@ -544,8 +541,7 @@ def correct3():
         f3[i3] = f[i3][i2][i1]
         u3[i3] = u[i3][i2][i1]
       add(s,u3,t)
-      si.setUniformSamples(f3)
-      si.interpolate(n3,t,g3)
+      si.interpolate(n3,1.0,0.0,f3,n3,t,g3)
       for i3 in range(n3):
         g[i3][i2][i1] = g3[i3]
   writeFloats3("sw04a13.dat",g)

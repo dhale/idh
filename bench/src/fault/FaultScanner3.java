@@ -453,7 +453,7 @@ public class FaultScanner3 {
 
   // Shear horizontally such that q(i1,i2) = p(i1,i2+s*i1).
   private static float[][] shear(
-    SincInterpolator si, double s, float[][] p) 
+    SincInterp si, double s, float[][] p) 
   {
     int n1 = p[0].length;
     int n2p = p.length;
@@ -462,12 +462,11 @@ public class FaultScanner3 {
     float[][] q = new float[n2q][n1]; 
     float[] pp = new float[n2p];
     float[] qq = new float[n2q];
-    si.setUniform(n2p,1.0,0.0,pp);
     for (int i1=0; i1<n1; ++i1) {
       for (int i2=0; i2<n2p; ++i2)
         pp[i2] = p[i2][i1];
       double f2q = (s<0.0f)?s*i1:s*i1-dqp;
-      si.interpolate(n2q,1.0f,f2q,qq);
+      si.interpolate(n2p,1.0,0.0,pp,n2q,1.0f,f2q,qq);
       for (int i2=0; i2<n2q; ++i2)
         q[i2][i1] = qq[i2];
     }
@@ -476,7 +475,7 @@ public class FaultScanner3 {
 
   // Unshear horizontally such that p(i1,i2) = q(i1,i2-s*i1).
   private static float[][] unshear(
-    SincInterpolator si, double s, float[][] q) 
+    SincInterp si, double s, float[][] q) 
   {
     int n1 = q[0].length;
     int n2q = q.length;
@@ -485,12 +484,11 @@ public class FaultScanner3 {
     float[][] p = new float[n2p][n1]; 
     float[] pp = new float[n2p];
     float[] qq = new float[n2q];
-    si.setUniform(n2q,1.0,0.0,qq);
     for (int i1=0; i1<n1; ++i1) {
       for (int i2=0; i2<n2q; ++i2)
         qq[i2] = q[i2][i1];
       double f2p = (s<0.0f)?-s*i1:-s*i1+dqp;
-      si.interpolate(n2p,1.0f,f2p,pp);
+      si.interpolate(n2q,1.0,0.0,qq,n2p,1.0f,f2p,pp);
       for (int i2=0; i2<n2p; ++i2)
         p[i2][i1] = pp[i2];
     }
@@ -529,14 +527,10 @@ public class FaultScanner3 {
     final float[][][] sd = snd[1];
     final float[][][] f = ft[0];
     final float[][][] t = ft[1];
-    final Unsafe<SincInterpolator> usi = new Unsafe<SincInterpolator>();
+    final SincInterp si = new SincInterp();
+    si.setExtrapolation(SincInterp.Extrapolation.CONSTANT);
     loop(n2,new LoopInt() {
     public void compute(int i2) {
-      SincInterpolator si = usi.get();
-      if (si==null) {
-        usi.set(si=new SincInterpolator());
-        si.setExtrapolation(SincInterpolator.Extrapolation.CONSTANT);
-      }
       float[][] sn2 = extractSlice2(i2,sn);
       float[][] sd2 = extractSlice2(i2,sd);
       if (sn2==null)
@@ -810,7 +804,7 @@ public class FaultScanner3 {
     private static float[][] _siTable; // sinc interpolation coefficients
     private static int HALF_LSINC; // half length of sinc interpolator
     static {
-      SincInterpolator si = new SincInterpolator();
+      SincInterp si = new SincInterp();
       _siTable = si.getTable();
       HALF_LSINC = _siTable[0].length/2;
     }

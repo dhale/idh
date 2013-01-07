@@ -7,7 +7,7 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 package lcc;
 
 import edu.mines.jtk.dsp.RecursiveGaussianFilter;
-import edu.mines.jtk.dsp.SincInterpolator;
+import edu.mines.jtk.dsp.SincInterp;
 import edu.mines.jtk.util.Check;
 import static edu.mines.jtk.util.ArrayMath.*;
 
@@ -85,8 +85,8 @@ public class ShiftFinder {
       LocalCorrelationFilter.Type.SIMPLE,
       LocalCorrelationFilter.Window.GAUSSIAN,
       sigma1,sigma2,sigma3);
-    _si = new SincInterpolator();
-    _si.setExtrapolation(SincInterpolator.Extrapolation.CONSTANT);
+    _si = new SincInterp();
+    _si.setExtrapolation(SincInterp.Extrapolation.CONSTANT);
   }
 
   /**
@@ -198,13 +198,10 @@ public class ShiftFinder {
     float[] hb = new float[n1];
     for (int i1=0; i1<n1; ++i1)
       xu1[i1] = (float)(i1)+du[i1];
-    _si.setUniformSampling(n1,1.0,0.0);
-    _si.setUniformSamples(ha);
-    _si.interpolate(n1,xu1,hb);
+    _si.interpolate(n1,1.0,0.0,ha,n1,xu1,hb);
       copy(hb,h);
     if (_interpolateDisplacements) {
-      _si.setUniformSamples(u1a);
-      _si.interpolate(n1,xu1,u1b);
+      _si.interpolate(n1,1.0,0.0,u1a,n1,xu1,u1b);
       copy(u1b,u1);
     }
   }
@@ -223,7 +220,6 @@ public class ShiftFinder {
     float[] u1b = new float[n1];
     float[] u2b = new float[n1];
     float[] hb = new float[n1];
-    _si.setUniformSampling(n1,1.0,0.0);
     for (int i2=0; i2<n2; ++i2) {
       float[] ha = h[i2];
       float[] u1a = u1[i2];
@@ -232,13 +228,10 @@ public class ShiftFinder {
       for (int i1=0; i1<n1; ++i1) {
         xu1[i1] = (float)(i1)+du1[i1];
       }
-      _si.setUniformSamples(ha);
-      _si.interpolate(n1,xu1,hb);
+      _si.interpolate(n1,1.0,0.0,ha,n1,xu1,hb);
       if (_interpolateDisplacements) {
-        _si.setUniformSamples(u1a);
-        _si.interpolate(n1,xu1,u1b);
-        _si.setUniformSamples(u2a);
-        _si.interpolate(n1,xu1,u2b);
+        _si.interpolate(n1,1.0,0.0,u1a,n1,xu1,u1b);
+        _si.interpolate(n1,1.0,0.0,u2a,n1,xu1,u2b);
       } else {
         copy(u1a,u1b);
         copy(u2a,u2b);
@@ -269,7 +262,6 @@ public class ShiftFinder {
     float[] u2b = new float[n2];
     float[] ha = new float[n2];
     float[] hb = new float[n2];
-    _si.setUniformSampling(n2,1.0,0.0);
     for (int i1=0; i1<n1; ++i1) {
       for (int i2=0; i2<n2; ++i2) {
         ha[i2] = h[i2][i1];
@@ -278,13 +270,10 @@ public class ShiftFinder {
         du2[i2] = du[i2][i1];
         xu2[i2] = (float)(i2)+du2[i2];
       }
-      _si.setUniformSamples(ha);
-      _si.interpolate(n2,xu2,hb);
+      _si.interpolate(n2,1.0,0.0,ha,n2,xu2,hb);
       if (_interpolateDisplacements) {
-        _si.setUniformSamples(u1a);
-        _si.interpolate(n2,xu2,u1b);
-        _si.setUniformSamples(u2a);
-        _si.interpolate(n2,xu2,u2b);
+        _si.interpolate(n2,1.0,0.0,u1a,n2,xu2,u1b);
+        _si.interpolate(n2,1.0,0.0,u2a,n2,xu2,u2b);
       } else {
         copy(u1a,u1b);
         copy(u2a,u2b);
@@ -317,7 +306,6 @@ public class ShiftFinder {
     float[] u2b = new float[n1];
     float[] u3b = new float[n1];
     float[] hb = new float[n1];
-    _si.setUniformSampling(n1,1.0,0.0);
     for (int i3=0; i3<n3; ++i3) {
       for (int i2=0; i2<n2; ++i2) {
         float[] ha = h[i3][i2];
@@ -328,15 +316,11 @@ public class ShiftFinder {
         for (int i1=0; i1<n1; ++i1) {
           xu1[i1] = (float)(i1)+du1[i1];
         }
-        _si.setUniformSamples(ha);
-        _si.interpolate(n1,xu1,hb);
+        _si.interpolate(n1,1.0,0.0,ha,n1,xu1,hb);
         if (_interpolateDisplacements) {
-          _si.setUniformSamples(u1a);
-          _si.interpolate(n1,xu1,u1b);
-          _si.setUniformSamples(u2a);
-          _si.interpolate(n1,xu1,u2b);
-          _si.setUniformSamples(u3a);
-          _si.interpolate(n1,xu1,u3b);
+          _si.interpolate(n1,1.0,0.0,u1a,n1,xu1,u1b);
+          _si.interpolate(n1,1.0,0.0,u2a,n1,xu1,u2b);
+          _si.interpolate(n1,1.0,0.0,u3a,n1,xu1,u3b);
         } else {
           copy(u1a,u1b);
           copy(u2a,u2b);
@@ -377,7 +361,6 @@ public class ShiftFinder {
     float[] u3b = new float[n2];
     float[] ha = new float[n2];
     float[] hb = new float[n2];
-    _si.setUniformSampling(n2,1.0,0.0);
     for (int i3=0; i3<n3; ++i3) {
       for (int i1=0; i1<n1; ++i1) {
         for (int i2=0; i2<n2; ++i2) {
@@ -388,15 +371,11 @@ public class ShiftFinder {
           du2[i2] = du[i3][i2][i1];
           xu2[i2] = (float)(i2)+du2[i2];
         }
-        _si.setUniformSamples(ha);
-        _si.interpolate(n2,xu2,hb);
+        _si.interpolate(n2,1.0,0.0,ha,n2,xu2,hb);
         if (_interpolateDisplacements) {
-          _si.setUniformSamples(u1a);
-          _si.interpolate(n2,xu2,u1b);
-          _si.setUniformSamples(u2a);
-          _si.interpolate(n2,xu2,u2b);
-          _si.setUniformSamples(u3a);
-          _si.interpolate(n2,xu2,u3b);
+          _si.interpolate(n2,1.0,0.0,u1a,n2,xu2,u1b);
+          _si.interpolate(n2,1.0,0.0,u2a,n2,xu2,u2b);
+          _si.interpolate(n2,1.0,0.0,u3a,n2,xu2,u3b);
         } else {
           copy(u1a,u1b);
           copy(u2a,u2b);
@@ -437,7 +416,6 @@ public class ShiftFinder {
     float[] u3b = new float[n3];
     float[] ha = new float[n3];
     float[] hb = new float[n3];
-    _si.setUniformSampling(n3,1.0,0.0);
     for (int i2=0; i2<n2; ++i2) {
       for (int i1=0; i1<n1; ++i1) {
         for (int i3=0; i3<n3; ++i3) {
@@ -448,15 +426,11 @@ public class ShiftFinder {
           du3[i3] = du[i3][i2][i1];
           xu3[i3] = (float)(i3)+du3[i3];
         }
-        _si.setUniformSamples(ha);
-        _si.interpolate(n3,xu3,hb);
+        _si.interpolate(n3,1.0,0.0,ha,n3,xu3,hb);
         if (_interpolateDisplacements) {
-          _si.setUniformSamples(u1a);
-          _si.interpolate(n3,xu3,u1b);
-          _si.setUniformSamples(u2a);
-          _si.interpolate(n3,xu3,u2b);
-          _si.setUniformSamples(u3a);
-          _si.interpolate(n3,xu3,u3b);
+          _si.interpolate(n3,1.0,0.0,u1a,n3,xu3,u1b);
+          _si.interpolate(n3,1.0,0.0,u2a,n3,xu3,u2b);
+          _si.interpolate(n3,1.0,0.0,u3a,n3,xu3,u3b);
         } else {
           copy(u1a,u1b);
           copy(u2a,u2b);
@@ -650,7 +624,7 @@ public class ShiftFinder {
   // private
 
   private LocalCorrelationFilter _lcfSimple;
-  private SincInterpolator _si;
+  private SincInterp _si;
   private boolean _interpolateDisplacements = true;
 
   private void findShifts(

@@ -221,7 +221,7 @@ public class FaultScanner2 {
     float[][] sd = _snd[1];
     float[][] f = new float[n2][n1];
     float[][] t = new float[n2][n1];
-    SincInterpolator si = new SincInterpolator();
+    SincInterp si = new SincInterp();
     RecursiveExponentialFilter ref = makeRef(_sigmaTheta);
     for (int it=0; it<nt; ++it) {
       float ti = (float)st.getValue(it);
@@ -265,7 +265,7 @@ public class FaultScanner2 {
 
   // Shear horizontally such that q(i1,i2) = p(i1,i2+s*i1).
   private static float[][] shear(
-    SincInterpolator si, double s, float[][] p) 
+    SincInterp si, double s, float[][] p) 
   {
     int n1 = p[0].length;
     int n2p = p.length;
@@ -274,12 +274,11 @@ public class FaultScanner2 {
     float[][] q = new float[n2q][n1]; 
     float[] pp = new float[n2p];
     float[] qq = new float[n2q];
-    si.setUniform(n2p,1.0,0.0,pp);
     for (int i1=0; i1<n1; ++i1) {
       for (int i2=0; i2<n2p; ++i2)
         pp[i2] = p[i2][i1];
       double f2q = (s<0.0f)?s*i1:s*i1-dqp;
-      si.interpolate(n2q,1.0f,f2q,qq);
+      si.interpolate(n2p,1.0,0.0,pp,n2q,1.0f,f2q,qq);
       for (int i2=0; i2<n2q; ++i2)
         q[i2][i1] = qq[i2];
     }
@@ -288,7 +287,7 @@ public class FaultScanner2 {
 
   // Unshear horizontally such that p(i1,i2) = q(i1,i2-s*i1).
   private static float[][] unshear(
-    SincInterpolator si, double s, float[][] q) 
+    SincInterp si, double s, float[][] q) 
   {
     int n1 = q[0].length;
     int n2q = q.length;
@@ -297,12 +296,11 @@ public class FaultScanner2 {
     float[][] p = new float[n2p][n1]; 
     float[] pp = new float[n2p];
     float[] qq = new float[n2q];
-    si.setUniform(n2q,1.0,0.0,qq);
     for (int i1=0; i1<n1; ++i1) {
       for (int i2=0; i2<n2q; ++i2)
         qq[i2] = q[i2][i1];
       double f2p = (s<0.0f)?-s*i1:-s*i1+dqp;
-      si.interpolate(n2p,1.0f,f2p,pp);
+      si.interpolate(n2q,1.0,0.0,qq,n2p,1.0f,f2p,pp);
       for (int i2=0; i2<n2p; ++i2)
         p[i2][i1] = pp[i2];
     }

@@ -32,8 +32,8 @@ public class FaultSemblance {
    * Constructs a fault semblance computer.
    */
   public FaultSemblance() {
-    _si = new SincInterpolator();
-    _si.setExtrapolation(SincInterpolator.Extrapolation.CONSTANT);
+    _si = new SincInterp();
+    _si.setExtrapolation(SincInterp.Extrapolation.CONSTANT);
   }
 
   /**
@@ -81,7 +81,6 @@ public class FaultSemblance {
     float[] fp = new float[n1];
     float[][] sn = new float[n2][n1];
     float[][] sd = new float[n2][n1];
-    _si.setUniformSampling(n1,1.0,0.0);
     for (int i2=0; i2<n2; ++i2) {
       int i2m = max(i2-1,0);
       int i2p = min(i2+1,n2-1);
@@ -96,10 +95,8 @@ public class FaultSemblance {
         xm[i1] = i1-p2m[i1];
         xp[i1] = i1+p2p[i1];
       }
-      _si.setUniformSamples(f2m);
-      _si.interpolate(n1,xm,fm);
-      _si.setUniformSamples(f2p);
-      _si.interpolate(n1,xp,fp);
+      _si.interpolate(n1,1.0,0.0,f2m,n1,xm,fm);
+      _si.interpolate(n1,1.0,0.0,f2p,n1,xp,fp);
       float[] gm = fm, g0 = f2, gp = fp;
       if (i2==0   ) gm = g0;
       if (i2==n2-1) gp = g0;
@@ -134,15 +131,10 @@ public class FaultSemblance {
     final int n3 = f.length;
     final float[][][] sn = new float[n3][n2][n1];
     final float[][][] sd = new float[n3][n2][n1];
-    final Unsafe<SincInterpolator> usi = new Unsafe<SincInterpolator>();
+    final SincInterp si = new SincInterp();
+    si.setExtrapolation(SincInterp.Extrapolation.CONSTANT);
     loop(n3,new LoopInt() {
     public void compute(int i3) {
-      SincInterpolator si = usi.get();
-      if (si==null) {
-        usi.set(si=new SincInterpolator());
-        si.setExtrapolation(SincInterpolator.Extrapolation.CONSTANT);
-        si.setUniformSampling(n1,1.0,0.0);
-      }
       float[] xmm = new float[n1];
       float[] xm0 = new float[n1];
       float[] xmp = new float[n1];
@@ -203,14 +195,14 @@ public class FaultSemblance {
           xp0[i1] = i1+p3p0[i1]         ;
           xpp[i1] = i1+p3pp[i1]+p2pp[i1];
         }
-        si.setUniformSamples(fmm); si.interpolate(n1,xmm,gmm);
-        si.setUniformSamples(fm0); si.interpolate(n1,xm0,gm0);
-        si.setUniformSamples(fmp); si.interpolate(n1,xmp,gmp);
-        si.setUniformSamples(f0m); si.interpolate(n1,x0m,g0m);
-        si.setUniformSamples(f0p); si.interpolate(n1,x0p,g0p);
-        si.setUniformSamples(fpm); si.interpolate(n1,xpm,gpm);
-        si.setUniformSamples(fp0); si.interpolate(n1,xp0,gp0);
-        si.setUniformSamples(fpp); si.interpolate(n1,xpp,gpp);
+        si.interpolate(n1,1.0,0.0,fmm,n1,xmm,gmm);
+        si.interpolate(n1,1.0,0.0,fm0,n1,xm0,gm0);
+        si.interpolate(n1,1.0,0.0,fmp,n1,xmp,gmp);
+        si.interpolate(n1,1.0,0.0,f0m,n1,x0m,g0m);
+        si.interpolate(n1,1.0,0.0,f0p,n1,x0p,g0p);
+        si.interpolate(n1,1.0,0.0,fpm,n1,xpm,gpm);
+        si.interpolate(n1,1.0,0.0,fp0,n1,xp0,gp0);
+        si.interpolate(n1,1.0,0.0,fpp,n1,xpp,gpp);
         float[] hmm = gmm, hm0 = gm0, hmp = gmp;
         float[] h0m = g0m, h00 = f00, h0p = g0p;
         float[] hpm = gpm, hp0 = gp0, hpp = gpp;
@@ -442,5 +434,5 @@ public class FaultSemblance {
   private static float SIGMA1 = 8.0f;
   private static float SLOPE_MAX = 5.0f;
 
-  private SincInterpolator _si;
+  private SincInterp _si;
 }

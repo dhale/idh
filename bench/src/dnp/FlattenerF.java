@@ -120,15 +120,13 @@ public class FlattenerF {
   public float[][] applyShifts(float[][] f, float[][] s) {
     int n1 = f[0].length;
     int n2 = f.length;
-    SincInterpolator si = new SincInterpolator();
-    si.setUniformSampling(n1,1.0,0.0);
+    SincInterp si = new SincInterp();
     float[] r = rampfloat(0.0f,1.0f,n1);
     float[] t = zerofloat(n1);
     float[][] g = zerofloat(n1,n2);
     for (int i2=0; i2<n2; ++i2) {
       sub(r,s[i2],t);
-      si.setUniformSamples(f[i2]);
-      si.interpolate(n1,t,g[i2]);
+      si.interpolate(n1,1.0,0.0,f[i2],n1,t,g[i2]);
     }
     return g;
   }

@@ -11,12 +11,12 @@ global n1,n2,n3
 
 #############################################################################
 def main(args):
-  goPnz()
+  #goPnz()
   #goGbc()
   #goMbs()
   #goNorne()
   #goSino()
-  #goF3d()
+  goF3d()
 
 def goGbc():
   """
@@ -302,19 +302,20 @@ def goF3d():
     i2max =  1250, i3max =   750, x =  629.122600, y = 6090.463200
   grid azimuth: 88.40 degrees
   ****** end of SEG-Y file info ******
-  good subset
+  good subset with no dead traces
   i1min,i1max,i2min,i2max,i3min,i3max = 0,461,300,1250,100,690
   n1,n2,n3 = 462,951,591
   ***************************************************************************
   """
   firstLook = False # fast, does not read all trace headers
   secondLook = False # slow, must read all trace headers
-  writeImage = False # reads all traces, writes an image
+  writeImage = True # reads all traces, writes an image
   showImage = True # displays the image
   basedir = "/data/seis/f3d/"
-  sgyfile = basedir+"f3draw.sgy"
-  datfile = basedir+"f3draw.dat"
-  i1min,i1max,i2min,i2max,i3min,i3max = 0,461,300,1250,100,690
+  sgyfile = basedir+"f3d.sgy"
+  datfile = basedir+"f3dall.dat"
+  #i1min,i1max,i2min,i2max,i3min,i3max = 0,461,300,1250,100,690
+  i1min,i1max,i2min,i2max,i3min,i3max = 0,461,300,1250,100,750
   n1,n2,n3 = 1+i1max-i1min,1+i2max-i2min,1+i3max-i3min
   si = SegyImage(sgyfile)
   if firstLook:
@@ -503,12 +504,10 @@ def gain(hw,f):
 def stretch(c,f):
   n1,n2 = len(f[0]),len(f)
   t = rampfloat(0.0,1.0/c,n1)
-  si = SincInterpolator()
-  si.setUniformSampling(n1,1.0,0.0)
+  si = SincInterp()
   g = zerofloat(n1)
   for i2 in range(n2):
-    si.setUniformSamples(f[i2])
-    si.interpolate(n1,1.0/c,0.0,g)
+    si.interpolate(n1,1.0,0.0,f[i2],n1,1.0/c,0.0,g)
     copy(g,f[i2])
 
 def spow(p,f):

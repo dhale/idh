@@ -244,9 +244,8 @@ def shiftRamp(f):
   n = len(f)
   g = copy(f)
   t = rampfloat(0.0,1.0-8.0/(n-1),n)
-  si = SincInterpolator()
-  si.setUniform(n,1.0,0.0,f)
-  si.interpolate(n,t,g)
+  si = SincInterp()
+  si.interpolate(n,1.0,0.0,f,n,t,g)
   return g
 
 def randomNoise(a,n1,n2):

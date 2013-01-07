@@ -1,3 +1,9 @@
+/****************************************************************************
+Copyright (c) 2012, Colorado School of Mines and others. All rights reserved.
+This program and accompanying materials are made available under the terms of
+the Common Public License - v1.0, which accompanies this distribution, and is 
+available at http://www.eclipse.org/legal/cpl-v10.html
+****************************************************************************/
 package model;
 
 import java.util.*;
@@ -14,6 +20,8 @@ import edu.mines.jtk.mosaic.*;
  * Synthetic seismograms for vertically propagating plane waves 
  * in layered media. Layer parameters include depth, velocity, 
  * density and Q.
+ * @author Dave Hale, Colorado School of Mines
+ * @version 2012.11.01
  */
 public class SeismicModel1D {
 
