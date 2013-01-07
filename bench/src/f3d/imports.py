@@ -20,3 +20,4 @@ from edu.mines.jtk.sgl import *
 from edu.mines.jtk.util import *
 from edu.mines.jtk.util.ArrayMath import *
 
+from f3d import *
