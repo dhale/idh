@@ -96,7 +96,7 @@ public class LanguageHits {
 
   private static void sleep(int seconds) {
     try {
-      Thread.currentThread().sleep(seconds*1000);
+      Thread.sleep(seconds*1000);
     } catch (Exception e) {
     }
   }
