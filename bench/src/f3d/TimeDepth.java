@@ -11,6 +11,8 @@ import edu.mines.jtk.mosaic.*;
 
 /**
  * Time-depth conversion for F3.
+ * <em>Not yet working, because the interval velocity file (includes
+ *     time-depth pairs) provided with the F3 dataset is wrong. </em>
  * @author Dave Hale, Colorado School of Mines
  * @version 2012.12.29
  */

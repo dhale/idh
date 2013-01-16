@@ -57,11 +57,11 @@ def goSinoShifts():
       ei = dtw.computeErrors(sf,f[i2],sg,g[i2])
       add(ei,e,e)
     dtw.normalizeErrors(e)
-    aos = ArrayOutputStream("esino.dat")
+    aos = ArrayOutputStream("/data/seis/sino/esino.dat")
     aos.writeFloats(e)
     aos.close()
   else:
-    ais = ArrayInputStream("esino.dat")
+    ais = ArrayInputStream("/data/seis/sino/esino.dat")
     ais.readFloats(e)
     ais.close()
   plotc(s1,ss,e,       cmax=0.5)

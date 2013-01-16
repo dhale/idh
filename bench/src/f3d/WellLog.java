@@ -6,7 +6,7 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import edu.mines.jtk.dsp.RecursiveGaussianFilter;
+import edu.mines.jtk.dsp.RecursiveExponentialFilter;
 import edu.mines.jtk.dsp.Sampling;
 import edu.mines.jtk.interp.CubicInterpolator;
 import edu.mines.jtk.io.ArrayInputStream;
@@ -576,20 +576,20 @@ public class WellLog {
   }
 
   /**
-   * Applies a Gaussian smoothing filter to all curves for this log.
+   * Applies an exponential smoothing filter to all curves for this log.
    * Any null values are ignored and remain null during smoothing.
-   * @param sigma the half-width of the Gaussian.
+   * @param sigma the half-width of the smoothing filter.
    */
   public void smooth(double sigma) {
     int lpad = 1+(int)(3.0*sigma);
-    RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(sigma);
-    smooth(rgf,lpad,v);
-    smooth(rgf,lpad,d);
-    smooth(rgf,lpad,g);
-    smooth(rgf,lpad,p);
+    RecursiveExponentialFilter ref = new RecursiveExponentialFilter(sigma);
+    smooth(ref,lpad,v);
+    smooth(ref,lpad,d);
+    smooth(ref,lpad,g);
+    smooth(ref,lpad,p);
   }
   private void smooth(
-    RecursiveGaussianFilter rgf, int lpad, float[] f)
+    RecursiveExponentialFilter ref, int lpad, float[] f)
   {
     if (f==null) 
       return;
@@ -615,7 +615,7 @@ public class WellLog {
         float[] fpad = pad(lpad,j,k,f);
 
         // Apply the smoothing filter.
-        rgf.apply0(fpad,fpad);
+        ref.apply(fpad,fpad);
 
         // Replace input samples with smoothed samples.
         copy(k-j,lpad,fpad,j,f);
@@ -710,6 +710,46 @@ public class WellLog {
     if (fs==null)
       return null;
     return new float[][]{fs,x1s,x2s,x3s};
+  }
+
+  /**
+   * Resamples the specified well log curve to make it uniform.
+   * @param curve the curve name; e.g., "velocity".
+   * @param fnull value to use when log values are null
+   * @return array of resampled log values.
+   */
+  public float[] resample(String curve, float fnull, Sampling s1) {
+    float[] f = getCurve(curve);
+    if (f==null)
+      return null;
+    int n1 = s1.getCount();
+    float f1 = (float)s1.getFirst();
+    float l1 = (float)s1.getLast();
+    float t1 = (float)(1.0/s1.getDelta());
+
+    // Accumulate log values into samples.
+    float[] g = new float[n1];
+    float[] c = new float[n1];
+    for (int i=0; i<n; ++i) {
+      if (f[i]!=NULL_VALUE) {
+        float x1i = x1[i];
+        if (f1<=x1i && x1i<=l1) {
+          int i1 = (int)((x1i-f1)*t1);
+          g[i1] += f[i];
+          c[i1] += 1.0f;
+        }
+      }
+    }
+
+    // Complete averaging for samples with non-zero counts.
+    for (int i1=0; i1<n1; ++i1) {
+      if (c[i1]>0.0f) {
+        g[i1] /= c[i1];
+      } else {
+        g[i1] = fnull;
+      }
+    }
+    return g;
   }
 
   /**

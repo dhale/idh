@@ -11,35 +11,49 @@ from imports import *
 _f3dDir = "/data/seis/f3d/"
 
 #############################################################################
-# Setup
-
-seismicDir = _f3dDir
-wellLogsDir = _f3dDir
+# Setup (default is subset with live traces only)
 s1 = Sampling(462,0.004,0.004)
 s2 = Sampling(951,0.025,0.000)
 s3 = Sampling(591,0.025,0.000)
+f3dDataDir = _f3dDir
+f3dBaseName = "f3d"
 def setupForSubset(name):
-  global s1,s2,s3
+  global s1,s2,s3,f3dBaseName
   if name=="all":
     s1 = Sampling(462,0.004,0.004)
     s2 = Sampling(951,0.025,0.000)
     s3 = Sampling(651,0.025,0.000)
+    f3dBaseName = "f3dall"
+  elif name=="live":
+    s1 = Sampling(462,0.004,0.004)
+    s2 = Sampling(951,0.025,0.000)
+    s3 = Sampling(591,0.025,0.000)
+    f3dBaseName = "f3d"
 
 def getSamplings():
   return s1,s2,s3
-
-def getSeismicDir():
-  return seismicDir
+def getF3dDataDir():
+  return f3dDataDir
+def getF3dBaseName():
+  return f3dBaseName
+def getF3dSlice1Name(k1):
+  return f3dBaseName+"k1"+str(k1)
+def getF3dSlice3Name(k3):
+  return f3dBaseName+"k3"+str(k3)
 
 #############################################################################
 # read/write files
+
+def readF3dImage():
+  """Reads the current subset of the F3D seismic image."""
+  return readImage(f3dBaseName)
 
 def readImage(name):
   """ 
   Reads an image from a file with specified name.
   name: base name of image file; e.g., "f3d"
   """
-  fileName = seismicDir+name+".dat"
+  fileName = f3dDataDir+name+".dat"
   n1,n2,n3 = s1.count,s2.count,s3.count
   image = zerofloat(n1,n2,n3)
   ais = ArrayInputStream(fileName)
@@ -53,27 +67,32 @@ def writeImage(name,image):
   name: base name of image file; e.g., "f3gp"
   image: the image
   """
-  fileName = seismicDir+name+".dat"
+  fileName = f3dDataDir+name+".dat"
   aos = ArrayOutputStream(fileName)
   aos.writeFloats(image)
   aos.close()
   return image
 
-def readSlice3(name):
-  fileName = seismicDir+name+".dat"
-  n1,n2 = s1.count,s2.count
+def readImage2(name,n1,n2):
+  fileName = f3dDataDir+name+".dat"
   image = zerofloat(n1,n2)
   ais = ArrayInputStream(fileName)
   ais.readFloats(image)
   ais.close()
   return image
 
+def writeImage2(name,image):
+  fileName = f3dDataDir+name+".dat"
+  aos = ArrayOutputStream(fileName)
+  aos.writeFloats(image)
+  aos.close()
+
 from org.python.util import PythonObjectInputStream
 def readTensors(name):
   """
   Reads tensors from file with specified basename; e.g., "f3et".
   """
-  fis = FileInputStream(seismicDir+name+".dat")
+  fis = FileInputStream(f3dDataDir+name+".dat")
   ois = PythonObjectInputStream(fis)
   tensors = ois.readObject()
   fis.close()
@@ -82,10 +101,14 @@ def writeTensors(name,tensors):
   """
   Writes tensors to file with specified basename; e.g., "f3et".
   """
-  fos = FileOutputStream(seismicDir+name+".dat")
+  fos = FileOutputStream(f3dDataDir+name+".dat")
   oos = ObjectOutputStream(fos)
   oos.writeObject(tensors)
   fos.close()
+
+def readWellLogData():
+  fileName = f3dDataDir+f3dBaseName+"well.dat"
+  return WellLog.Data.readBinary(fileName)
 
 def readLogSamples(type,smooth=0):
   """ 
@@ -94,9 +117,8 @@ def readLogSamples(type,smooth=0):
   smooth: half-width of Gaussian smoothing filter
   Returns a tuple (f,x1,x2,x3) of lists of arrays of samples f(x1,x2,x3)
   """
-  fileName = wellLogsDir+"f3dwell.dat"
-  wdata = WellLog.Data.readBinary(fileName)
-  logs = wdata.getLogsWith(type)
+  wldata = readWellLogData()
+  logs = wldata.getLogsWith(type)
   fl,x1l,x2l,x3l = [],[],[],[]
   for log in logs:
     print log.name
@@ -138,7 +160,7 @@ def readLogSamplesMerged(set,type,smooth=0):
   return f,x1,x2,x3
 
 def getWellIntersections(type,x1):
-  fileName = wellLogsDir+"welli.dat"
+  fileName = f3dDataDir+f3dBaseName+"welli.dat"
   wdata = WellLog.Data.readBinary(fileName)
   x2,x3 = wdata.getIntersections(type,x1)
   return x2,x3
