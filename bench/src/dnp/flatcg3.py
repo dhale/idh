@@ -23,7 +23,6 @@ s1 = Sampling(251,0.004,0.500)
 s2 = Sampling(357,0.025,0.000)
 s3 = Sampling(161,0.025,0.000)
 n1,n2,n3 = s1.count,s2.count,s3.count
-d1,d2,d3 = s1.delta,s2.delta,s3.delta
 #k1,k2,k3 = n1/2,n2/2,n3/2
 #k1,k2,k3 = 173,n2/2,n3/2
 #k1,k2,k3 = 173,0,120
@@ -46,8 +45,9 @@ def main(args):
   #display("tpst"); display("tpsf")
   #displayHorizons()
   #figures()
-  #slopes()
+  slopes()
   flatten()
+  #flattenTest()
 
 def figures():
   f = readImage("tpst")
@@ -121,24 +121,61 @@ def slopes():
 def flatten():
   findShifts = True
   f = readImage("tpst")
-  p2 = readImage("tpp2")
-  p3 = readImage("tpp3")
-  ep = readImage("tpep")
-  p2 = mul(d1/d2,p2)
-  p3 = mul(d1/d3,p3)
-  ep = pow(ep,6.0)
-  fl = Flattener3()
-  fm = fl.getMappingsFromSlopes(s1,s2,s3,p2,p3,ep)
-  g = fm.flatten(f)
+  fl = FlattenerCg(6.0,6.0)
+  if findShifts:
+    p2 = readImage("tpp2")
+    p3 = readImage("tpp3")
+    ep = readImage("tpep")
+    ep = pow(ep,6.0)
+    s = fl.findShifts(p2,p3,ep)
+    writeImage("tpss",s)
+  s = readImage("tpss")
+  print "s min =",min(s),"max =",max(s),"avg =",sum(s)/n1/n2/n3
+  #adjustShifts(n2/2,n3/2,s)
+  print "s min =",min(s),"max =",max(s),"avg =",sum(s)/n1/n2/n3
+  g = fl.applyShifts(f,s)
   writeImage("tpsf",g)
   g = readImage("tpsf")
-  s = fm.getShiftsS()
-  writeImage("tpss",s)
-  print "s min =",min(s),"max =",max(s),"avg =",sum(s)/n1/n2/n3
   world = World()
   addImageToWorld(world,f)
   addImageToWorld(world,g)
   #addImage2ToWorld(world,f,s)
+  makeFrame(world)
+
+def adjustShifts(k2,k3,s):
+  r = copy(s[k3][k2]);
+  for i3 in range(n3):
+    for i2 in range(n2):
+      sub(s[i3][i2],r,s[i3][i2])
+
+#n1,n2,n3 = 101,101,101
+#s1,s2,s3 = Sampling(n1),Sampling(n2),Sampling(n3)
+def flattenTest():
+  """Test for t(tau,x) = tau*(1+a*sin(bx)*sin(cy))"""
+  x = rampfloat(0,0,0,1,n1,n2,n3)
+  y = rampfloat(0,0,1,0,n1,n2,n3)
+  t = rampfloat(0,1,0,0,n1,n2,n3)
+  smax = 5.0
+  a = smax/(n1-1)
+  b = 2*PI/(n2-1)
+  c = 2*PI/(n3-1)
+  bx = mul(b,x)
+  cy = mul(c,y)
+  cosbx,coscy = cos(bx),cos(cy)
+  sinbx,sincy = sin(bx),sin(cy)
+  asinbx,asincy = mul(a,sinbx),mul(a,sincy)
+  bcosbx,ccoscy = mul(b,cosbx),mul(c,coscy)
+  asinbxsincy = mul(asinbx,sincy)
+  den = add(1,asinbxsincy)
+  p2 = div(mul(t,mul(asinbx,ccoscy)),den)
+  p3 = div(mul(t,mul(bcosbx,asincy)),den)
+  ep = fillfloat(1,n1,n2,n3)
+  fl = FlattenerCg(6.0,12.0)
+  sf = fl.findShifts(p2,p3,ep) # found shifts
+  se = neg(mul(t,asinbxsincy)) # exact shifts
+  world = World()
+  addImageToWorld(world,sf,jet,-smax,smax)
+  addImageToWorld(world,se,jet,-smax,smax)
   makeFrame(world)
 
 #############################################################################

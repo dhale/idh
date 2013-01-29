@@ -98,7 +98,7 @@ public class Flattener2 {
     }
 
     /**
-     * Gets the unflattening shifts r(u1,u2) = u1(x1,x2) - x1.
+     * Gets the unflattening shifts r(x1,x2) = u1(x1,x2) - x1.
      * @return the unflattening shifts.
      */
     public float[][] getShiftsR() {
@@ -124,8 +124,8 @@ public class Flattener2 {
     }
 
     private float[][] apply(float[][] ux, float[][] f) {
-      int n2 = s2.getCount();
       int n1 = s1.getCount();
+      int n2 = s2.getCount();
       double d1 = s1.getDelta();
       double f1 = s1.getFirst();
       SincInterp si = new SincInterp();
@@ -183,10 +183,10 @@ public class Flattener2 {
   {
     // Sampling parameters.
     int n1 = s1.getCount();
-    float d1 = (float)s1.getDelta();
-    float f1 = (float)s1.getFirst();
     int n2 = s2.getCount();
+    float d1 = (float)s1.getDelta();
     float d2 = (float)s2.getDelta();
+    float f1 = (float)s1.getFirst();
 
     // If necessary, convert units for slopes to samples per sample.
     if (d1!=d2)
@@ -235,10 +235,10 @@ public class Flattener2 {
 
   // Conjugate-gradient operators.
   private static class A2 implements CgSolver.A {
-    A2(Smoother2 s2, float w1, float[][] w2, float[][] p2) {
+    A2(Smoother2 s2, float w1, float[][] wp, float[][] p2) {
       _s2 = s2;
       _w1 = w1;
-      _w2 = w2;
+      _wp = wp;
       _p2 = p2;
     }
     public void apply(Vec vx, Vec vy) {
@@ -250,12 +250,12 @@ public class Flattener2 {
       float[][] z = v2z.getArray();
       _s2.apply(z);
       zero(y);
-      applyLhs(_w1,_w2,_p2,z,y);
+      applyLhs(_w1,_wp,_p2,z,y);
       _s2.applyTranspose(y);
     }
     private Smoother2 _s2;
     private float _w1;
-    private float[][] _w2;
+    private float[][] _wp;
     private float[][] _p2;
   }
 
@@ -315,18 +315,18 @@ public class Flattener2 {
     }
   }
 
-  private static void makeRhs(float[][] w2, float[][] p2, float[][] y) {
+  private static void makeRhs(float[][] wp, float[][] p2, float[][] y) {
     int n1 = y[0].length;
     int n2 = y.length;
     int i1l = 1; // lower limit so that y[i2][0] = 0
     int i1u = n1-1; // upper limit so that y[i2][n1-1] = 0
     for (int i2=1; i2<n2; ++i2) {
       for (int i1=1; i1<n1; ++i1) {
-        float w2i = (w2!=null)?w2[i2][i1]:1.000f;
+        float wpi = (wp!=null)?wp[i2][i1]:1.000f;
         float p2i = p2[i2][i1];
-        float b12 = w2i*p2i;
-        float b22 = w2i;
-        float x2 = -w2i*p2i;
+        float b12 = wpi*p2i;
+        float b22 = wpi;
+        float x2 = -wpi*p2i;
         float y1 = b12*x2;
         float y2 = b22*x2;
         float ya = 0.5f*(y1+y2);
@@ -339,23 +339,22 @@ public class Flattener2 {
     }
   }
   private static void applyLhs(
-    float w1, float[][] w2, float[][] p2, float[][] x, float[][] y) 
+    float w1, float[][] wp, float[][] p2, float[][] x, float[][] y) 
   {
-    float w1i = w1;
     int n1 = x[0].length;
     int n2 = x.length;
     int i1l = 1; // lower limit so that y[i2][0] = 0
     int i1u = n1-1; // upper limit so that y[i2][n1-1] = 0
+    float w1s = w1*w1;
     for (int i2=1; i2<n2; ++i2) {
       for (int i1=1; i1<n1; ++i1) {
-        float w2i = (w2!=null)?w2[i2][i1]:1.000f;
+        float wpi = (wp!=null)?wp[i2][i1]:1.000f;
         float p2i = p2[i2][i1];
-        float w1s = w1i*w1i;
-        float w2s = w2i*w2i;
+        float wps = wpi*wpi;
         float p2s = p2i*p2i;
-        float d11 = w1s+w2s*p2s;
-        float d12 = w2s*p2i;
-        float d22 = w2s;
+        float d11 = w1s+wps*p2s;
+        float d12 = wps*p2i;
+        float d22 = wps;
         float xa = 0.0f;
         float xb = 0.0f;
         if (i1<i1u) xa += x[i2  ][i1  ];
