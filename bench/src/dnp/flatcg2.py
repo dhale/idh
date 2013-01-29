@@ -17,57 +17,92 @@ from util import FakeData
 
 seismicDir = "/data/seis/tpd/csm/oldslices/"
 ffile = "tp73"
-s1 = Sampling(251,0.004,0.500)
-s2 = Sampling(357,0.025,0.000)
+s1 = Sampling(251,1.000,0.000)
+s2 = Sampling(357,1.000,0.000)
 n1,n2 = s1.count,s2.count
-d1,d2 = s1.delta,s2.delta
+#s1 = Sampling(251,0.004,0.500)
+#s2 = Sampling(357,0.025,0.000)
+#n1,n2 = s1.count,s2.count
+
+#s1 = Sampling(251,1.000,0.500)
+#s2 = Sampling(501,1.000,0.000)
+#n1,n2 = s1.count,s2.count
 
 def main(args):
   flatten()
+  #slopes()
+  #flattenTest()
+
+def slopes():
+  f = readImage(ffile)
+  pmax = 10.0
+  sigma1 = 20.0
+  sigma2 = 10.0
+  p2 = zerofloat(n1,n2)
+  el = zerofloat(n1,n2)
+  lsf = LocalSlopeFinderS(sigma1,sigma2,pmax)
+  lsf.findSlopes(f,p2,el)
+  plot(f)
+  plot(p2,jet)
+  plot(el,jet)
 
 def flatten():
-  #f = FakeData.seismic2d2011A(n1,n2,30)
   f = readImage(ffile)
-  #sigma = 1.0 # good for fake data
-  sigma = 8.0 # good for Teapot Dome image tp73
+  #f = FakeData.seismic2d2011A(n1,n2,45)
+  sigma = 8.0
   pmax = 10.0
   lsf = LocalSlopeFinder(sigma,pmax)
+  sigma1 = 6.0
+  sigma2 = 12.0
+  fl = FlattenerCg(sigma1,sigma2)
   p2 = zerofloat(n1,n2)
   el = zerofloat(n1,n2)
   lsf.findSlopes(f,p2,el)
-  p2 = mul(d1/d2,p2)
   el = pow(el,6)
-  plot(s1,s2,el,cmap=jet)
-  plot(s1,s2,p2,cmap=jet,cmin=-0.1,cmax=0.1)
-  fl = Flattener2()
-  fm = fl.getMappingsFromSlopes(s1,s2,p2,el)
-  g = fm.flatten(f)
-  s = fm.getShiftsS()
-  plot(s1,s2,f,u=fm.u1)
-  plot(s1,s2,g)
-  plot(s1,s2,s,cmap=jet)
+  #plot(el,gray)
+  #plot(p2,gray,-1,1)
+  #el = None
+  s = fl.findShifts(p2,el)
+  g = fl.applyShifts(f,s)
+  plot(f)
+  plot(g)
+  plot(s,jet)
   print "average shift =",sum(s)/(n1*n2),"samples"
 
-#############################################################################
-# graphics
+def flattenTest():
+  """Test for t(tau,x) = tau*(1+a*sin(b*x))"""
+  x = rampfloat(0,0,1,n1,n2)
+  t = rampfloat(0,1,0,n1,n2)
+  smax = 5.0
+  a = smax/(n1-1)
+  b = 2*PI/(n2-1)
+  bx = mul(b,x)
+  bt = mul(b,t)
+  cosbx = cos(bx)
+  sinbx = sin(bx)
+  acosbx = mul(a,cosbx)
+  asinbx = mul(a,sinbx)
+  p2 = div(mul(bt,acosbx),add(1,asinbx))
+  el = fillfloat(1,n1,n2)
+  fl = FlattenerCg(8.0,0.01)
+  sf = fl.findShifts(p2,el) # found shifts
+  se = neg(mul(t,asinbx)) # exact shifts
+  plot(sf,jet,-smax,smax)
+  plot(se,jet,-smax,smax)
 
 gray = ColorMap.GRAY
 jet = ColorMap.JET
-def plot(s1,s2,x,u=None,cmap=ColorMap.GRAY,cmin=0,cmax=0):
+def plot(x,cmap=ColorMap.GRAY,cmin=0,cmax=0):
   sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
   sp.addColorBar();
   sp.setSize(600,900)
-  sp.plotPanel.setColorBarWidthMinimum(80)
-  pv = sp.addPixels(s1,s2,x)
+  pv = sp.addPixels(x)
   pv.setColorModel(cmap)
   if cmin<cmax:
     pv.setClips(cmin,cmax)
-  if u:
-    cv = sp.addContours(s1,s2,u)
-    cv.setLineColor(Color.YELLOW)
 
 #############################################################################
-# utilities
+# read/write files
 
 def readImage(name):
   fileName = seismicDir+name+".dat"

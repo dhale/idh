@@ -1,5 +1,5 @@
 /****************************************************************************
-Copyright (c) 2012, Colorado School of Mines and others. All rights reserved.
+Copyright (c) 2013, Colorado School of Mines and others. All rights reserved.
 This program and accompanying materials are made available under the terms of
 the Common Public License - v1.0, which accompanies this distribution, and is
 available at http://www.eclipse.org/legal/cpl-v10.html
@@ -13,96 +13,76 @@ import edu.mines.jtk.util.*;
 import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
- * Dynamic warping to find shifts between two sequences or images.
- * For 1D sequences f(x) and g(x), dynamic warping computes shifts u(x) such
- * that f(x) ~ g(x+u(x)). For 2D images f(x1,x2) and g(x1,x2), it finds shifts
- * u(x1,x2) such that f(x1,x2) ~ g(x1+u(x1,x2),x2). Note that the shifts
- * u(x1,x2,...) are computed for only the first dimension of multi-dimensional
- * images. For example, if the 1st dimension of an image is time, then only
- * time shifts are computed.
- * <p>
- * Constraints are placed on strains, the rates at which shifts change in any
- * dimension. For example, strain r1 = du/d1 is the derivative of shift
- * u(x1,x2,...) with respect to the x1 coordinate, and is constrained to lie
- * between lower and upper bounds r1min and r1max. Default bounds are 
- * r1min = -1.0 and r1max = 1.0.
- * <p>
- * In many applications of warping, strains derived from estimated shifts may
- * be an important by-product. However, when computing shifts, only a finite
- * number of strains are permitted, and this quantization may yield
- * unrealistic estimates of strain. To address this problem, this dynamic
- * warping provides control over the sampling of strains, in the form of a
- * smoothness value. The number of strains sampled is proportional to this
- * value.
- * <p>
- * Smoothness values represent approximate intervals for a quasi-uniform
- * subsampling grid on which shifts are computed. For example, for a time
- * sampling interval of 4 ms, one might specify a smoothness of 200 ms, so
- * that shifts are computed on a grid that is 50 times more coarse than the 4
- * ms sampling grid. However, strains on this coarse grid would be sampled 50
- * times more finely. After initially computing shifts on the coarse grid,
- * shifts are interpolated onto the finer grid.
+ * Dynamic warping for PP and PS seismic images.
  *
  * @author Dave Hale, Colorado School of Mines
- * @version 2012.12.18
+ * @version 2013.01.23
  */
-public class DynamicWarpingR {
+public class PsWarping {
 
   /**
-   * Constructs a dynamic warping.
-   * If this warping is used for 2D or 3D images, then default unit samplings
-   * are assumed for 2nd and 3rd dimensions.
-   * @param smin lower bound on shift.
-   * @param smax upper bound on shift.
-   * @param s1 sampling of shifts for 1st dimension.
+   * Constructs a warping for a pair of PP and PS traces.
+   * @param gamin lower bound on average gamma = average Vp/Vs.
+   * @param gamax upper bound on average gamma = average Vp/Vs.
+   * @param spp time sampling for PP trace.
+   * @param sps time sampling for PS trace.
    */
-  public DynamicWarpingR(double smin, double smax, Sampling s1) {
-    this(smin,smax,s1,null,null);
+  public PsWarping(double gamin, double gamax, Sampling spp, Sampling sps) {
+    this(gamin,gamax,spp,sps,null,null);
   }
 
   /**
-   * Constructs a dynamic warping.
-   * If this warping is used for 3D images, then default unit samplings
-   * are assumed for the 3rd dimensions.
-   * @param smin lower bound on shift.
-   * @param smax upper bound on shift.
-   * @param s1 sampling of shifts for 1st dimension.
-   * @param s2 sampling of shifts for 2nd dimension.
+   * Constructs a warping for a pair of 2D PP and PS images.
+   * @param gamin lower bound on average gamma = average Vp/Vs.
+   * @param gamax upper bound on average gamma = average Vp/Vs.
+   * @param spp time sampling for PP image.
+   * @param sps time sampling for PS image.
+   * @param s2 sampling for 2nd image dimension.
    */
-  public DynamicWarpingR(double smin, double smax, Sampling s1, Sampling s2) {
-    this(smin,smax,s1,s2,null);
-  }
-
-  /**
-   * Constructs a dynamic warping.
-   * @param smin lower bound on shift.
-   * @param smax upper bound on shift.
-   * @param s1 sampling of shifts for 1st dimension.
-   * @param s2 sampling of shifts for 2nd dimension.
-   * @param s3 sampling of shifts for 3rd dimension.
-   */
-  public DynamicWarpingR(
-    double smin, double smax, 
-    Sampling s1, Sampling s2, Sampling s3) 
+  public PsWarping(
+    double gamin, double gamax, 
+    Sampling spp, Sampling sps, Sampling s2) 
   {
-    double ds = s1.getDelta(); // shift sampling interval
-    int ismin = (int) ceil(smin/ds);
-    int ismax = (int)floor(smax/ds);
-    _ss = new Sampling(1+ismax-ismin,ds,ismin*ds);
-    _s1 = s1;
+    this(gamin,gamax,spp,sps,s2,null);
+  }
+
+  /**
+   * Constructs a warping for a pair of 3D PP and PS images.
+   * @param gamin lower bound on average gamma = average Vp/Vs.
+   * @param gamax upper bound on average gamma = average Vp/Vs.
+   * @param spp time sampling for PP image.
+   * @param sps time sampling for PS image.
+   * @param s2 sampling for 2nd image dimension.
+   * @param s3 sampling for 3rd image dimension.
+   */
+  public PsWarping(
+    double gamin, double gamax, 
+    Sampling spp, Sampling sps, Sampling s2, Sampling s3) 
+  {
+    double c = 0.5*(1.0+gamin);
+    double df = spp.getDelta();
+    double ff = spp.getFirst();
+    double lf = spp.getLast();
+    int nf = spp.getCount();
+    double dg = sps.getDelta()/c;
+    double fg = sps.getFirst()/c;
+    double lg = sps.getLast()/c;
+    int ng = sps.getCount();
+    double d1 = df;
+    double f1 = ff;
+    double l1 = lg*(1.0+gamin)/(1.0+gamax);
+    int n1 = 1+(int)((l1-f1)/d1);
+    double ds = d1;
+    double fs = 0.0;
+    double ls = lg-l1;
+    int ns = 1+(int)((ls-fs)/ds);
+    _sf = new Sampling(nf,df,ff);
+    _sg = new Sampling(ng,dg,fg);
+    _ss = new Sampling(ns,ds,fs);
+    _s1 = new Sampling(n1,d1,f1);
     _s2 = s2;
     _s3 = s3;
-    _r1min = -1.0;
-    _r2min = -1.0;
-    _r3min = -1.0;
-    _r1max =  1.0;
-    _r2max =  1.0;
-    _r3max =  1.0;
-    _k1min = 10;
-    _k2min = 10;
-    _k3min = 10;
-    _si = new SincInterp();
-    _si.setExtrapolation(SincInterp.Extrapolation.CONSTANT);
+    //_dw = new DynamicWarpingR(_ss.getFirst(),_ss.getLast(),_s1,_s2,_s3);
   }
 
   /**
@@ -417,7 +397,7 @@ public class DynamicWarpingR {
   ///////////////////////////////////////////////////////////////////////////
   // private
 
-  private Sampling _ss,_s1,_s2,_s3;
+  private Sampling _sf,_sg,_ss,_s1,_s2,_s3;
   private double _r1min,_r2min,_r3min;
   private double _r1max,_r2max,_r3max;
   private int _k1min,_k2min,_k3min;

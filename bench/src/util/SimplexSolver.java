@@ -9,6 +9,8 @@ package util;
 import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
+ * <em>NOTE: NOT YET RELIABLE ENOUGH TO USE FOR GENERAL PROBLEMS.</em>
+ *
  * The simplex method for a linear objective function with linear constraints.
  * The simplex algorithm solves linear programs. The standard form of a linear
  * program is to find a set of non-negative variables x that maximize the
@@ -17,7 +19,7 @@ import static edu.mines.jtk.util.ArrayMath.*;
  * m-by-n matrix of coefficients that together with b define the inequality
  * constraints.
  * <p>
- * This implementation of the simplex algorithm follows that described by
+ * This implementation of the simplex algorithm is based on Chapter 29 of
  * Cormen, T.H., C.E. Leiserson, R.L. Rivest, and C. Stein, 2009,
  * Introduction to Algorithms, 3rd edition, MIT Press.
  *
@@ -60,11 +62,13 @@ public class SimplexSolver {
    * @param b input array[m] of bounds in the constraints Ax&le;b.
    * @param c input array[n] of coefficients in the objective function c'x.
    * @return array[n] containing the solution x.
+   * @throws UnboundedException if objective function is unbounded.
+   * @throws InfeasibleException if no feasible solution exists.
    */
-  public double[] solve(double[][] a, double[] b, double[] c) {
+  public double[] solve(double[][] a, double[] b, double[] c) 
+  throws UnboundedException, InfeasibleException {
     double[] x = new double[c.length];
-    SlackForm sf = new SlackForm(a,b,c);
-    sf.solve(x);
+    solve(a,b,c,x);
     return x;
   }
 
@@ -75,8 +79,11 @@ public class SimplexSolver {
    * @param c input array[n] of coefficients in the objective function c'x.
    * @param x output array[n] containing the solution x.
    * @return value of the objective function c'x for solution x.
+   * @throws UnboundedException if objective function is unbounded.
+   * @throws InfeasibleException if no feasible solution exists.
    */
-  public double solve(double[][] a, double[] b, double[] c, double[] x) {
+  public double solve(double[][] a, double[] b, double[] c, double[] x)
+  throws UnboundedException, InfeasibleException {
     SlackForm sf = new SlackForm(a,b,c);
     return sf.solve(x);
   }
@@ -90,8 +97,9 @@ public class SimplexSolver {
    * In CLRS, integers i, j, l and e are indices of variables. Here, i and l
    * denote row indices of basic variables, and j and e are column indices of
    * non-basic variables. This difference enables use of i, j, l and e
-   * directly as indices in arrays of coefficients a, b and c. Here, the
-   * integer k is the variable index in the range [0:m+n).
+   * directly as indices in arrays of coefficients a, b and c. Here, an
+   * integer k is a variable index in the range [0:m+n), and I maintain
+   * mappings from row and column indices i and j to variable indices k.
    */
   private static class SlackForm {
 
@@ -116,18 +124,33 @@ public class SimplexSolver {
     // ij[kn[j]] =   j, for j in [0,n)
     int[] km; // km[i] is index k of variable with row index i
     int[] kn; // kn[i] is index k of variable with column index j
+    void validate() {
+      for (int i=0; i<m; ++i)
+        assert ij[km[i]]==n+i;
+      for (int j=0; j<n; ++j)
+        assert ij[kn[j]]==j;
+    }
 
     /**
      * Constructs a slack form from specified standard form.
      */
     SlackForm(double[][] a, double[] b, double[] c) {
+      this(a,b,c,true);
+    }
+    SlackForm(double[][] a, double[] b, double[] c, boolean copy) {
       int m = b.length;
       int n = c.length;
       this.m = m;
       this.n = n;
-      this.a = copy(a);
-      this.b = copy(b);
-      this.c = copy(c);
+      if (copy) {
+        this.a = copy(a);
+        this.b = copy(b);
+        this.c = copy(c);
+      } else {
+        this.a = a;
+        this.b = b;
+        this.c = c;
+      }
       this.v = 0.0;
       this.ij = new int[n+m];
       this.km = new int[m];
@@ -142,17 +165,9 @@ public class SimplexSolver {
       }
     }
 
-    void dumpState() {
-      trace("m="+m+" n="+n+" v="+v);
-      trace("a="); dump(a);
-      trace("b="); dump(b);
-      trace("c="); dump(c);
-      trace("km="); dump(km);
-      trace("kn="); dump(kn);
-    }
-
     /**
      * Pivots this slack form by exchanging basic and non-basic variables.
+     * This method corresponds to procedure PIVOT on page 869 of CLRS.
      * @param l row index in [0:m) of basic variable that is leaving.
      * @param e column index in [0:n) of non-basic variable that is entering.
      */
@@ -203,6 +218,7 @@ public class SimplexSolver {
 
     /**
      * Solves the equations represented by this slack form.
+     * This method corresponds to procedure SIMPLEX on page 871 of CLRS.
      * @param x output array[n] containing the solution x.
      * @return the value of the objective function.
      */
@@ -212,13 +228,16 @@ public class SimplexSolver {
       boolean feasible = init();
       if (!feasible)
         throw new InfeasibleException();
-      //dumpState();
+      //validate();
+      //traceState();
 
       // While we have a column index e for which c[e] > 0, ...
       for (int e=nexte(); e<n; e=nexte()) {
 
-        // The column index e is for the entering variable.
-        // Now find the row index l of the leaving variable.
+        // The column index e is for the entering variable. Now find the row
+        // index l of the leaving variable. Use the minimum ratio test,
+        // breaking ties with Bland's 2nd rule: choose the row index i for
+        // which the variable index k is smallest.
         double dmin = Double.MAX_VALUE;
         int l = m;
         for (int i=0; i<m; ++i) {
@@ -227,25 +246,26 @@ public class SimplexSolver {
             if (d<dmin) {
               dmin = d;
               l = i;
+            } else if (d==dmin && km[i]<km[l]) {
+              l = i;
             }
           }
         }
 
-        // If a leaving variable was found, do the pivot.
+        // If a leaving variable was found, do the pivot;
+        // otherwise, objective function is unbounded.
         if (l<m) {
           pivot(l,e);
-        } 
-        
-        // Otherwise, objective function is unbounded.
-        else {
+        } else {
           throw new UnboundedException();
         }
-        //dumpState();
+        //validate();
+        //traceState();
       }
 
       // All c[e]>0, so objective function is bounded; get solution x.
       for (int k=0; k<n; ++k) {
-        int i = ij[k]-n; // row index, if non-negative
+        int i = ij[k]-n; // non-negative if variable k is basic
         x[k] = (i>=0)?b[i]:0.0;
       }
       return v;
@@ -255,17 +275,9 @@ public class SimplexSolver {
      * Returns e (column index of entering variable) for next iteration.
      */
     private int nexte() {
-      return bland();
-    }
-
-    /**
-     * Bland's method returns e for smallest k for which c > 0.
-     * If no such index exists, returns n.
-     */
-    private int bland() {
-      for (int k=0; k<m+n; ++k) {
-        int e = ij[k];
-        if (e<n && c[e]>0.0)
+      // Bland's rule 1: return smallest index e for which c[e]>0.
+      for (int e=0; e<n; ++e) {
+        if (c[e]>0.0)
           return e;
       }
       return n;
@@ -288,11 +300,11 @@ public class SimplexSolver {
           aa[i][j+1] = a[i][j];
         }
       }
-      SlackForm sf = new SlackForm(aa,bb,cc);
-      //sf.dumpState();
+      SlackForm sf = new SlackForm(aa,bb,cc,false);
+      //sf.traceState();
       //trace("i0="+i0);
       sf.pivot(i0,0);
-      //sf.dumpState();
+      //sf.traceState();
       return sf;
     }
 
@@ -305,10 +317,10 @@ public class SimplexSolver {
     private boolean solveAuxiliary() {
       double[] x = new double[n];
       solve(x);
-      //dumpState();
+      //traceState();
 
       // If the auxiliary variable x0 is non-zero, then infeasible.
-      if (x[0]!=0.0)
+      if (abs(x[0])>10.0*DBL_EPSILON*sum(x))
         return false;
 
       // If x0 is basic, use one degenerate pivot to make it non-basic.
@@ -320,14 +332,14 @@ public class SimplexSolver {
           ++e;
         pivot(l,e);
       }
-      //dumpState();
+      //traceState();
 
-      // Remove the column containing x0 from this auxiliary short form.
+      // Remove the column containing x0 from this auxiliary slack form.
       // After removal, some arrays will have an extra element that will be
       // ignored, because here we decrement the number of columns n.
       // Note that indices k of all variables are decremented by one; after
-      // removal, the indices k are consistent with those in the short form
-      // from which this auxiliary short form was constructed.
+      // removal, the indices k are consistent with those in the slack form
+      // from which this auxiliary slack form was constructed.
       --n;
       for (int i=0; i<m; ++i) {
         for (int j=0,jj=0; j<n; ++j,++jj) {
@@ -348,12 +360,14 @@ public class SimplexSolver {
         kn[j] = kn[jj]-1;
         ij[kn[j]] = j;
       }
-      //dumpState();
+      //traceState();
       return true;
     }
 
     /**
      * Initialize this slack form so that its basic solution is feasible.
+     * This method corresponds to procedure INITIALIZE-SIMPLEX on page 887 
+     * of CLRS.
      * @return true, if feasible; false, otherwise.
      */
     private boolean init() {
@@ -383,7 +397,7 @@ public class SimplexSolver {
       if (!feasible)
         return false;
 
-      // Update the objective function in the auxiliary short form.
+      // Update the objective function in the auxiliary slack form.
       // This part is tricky, because we use coefficients and mappings
       // from both this slack form and the auxiliary slack form.
       sf.v = 0.0;
@@ -418,8 +432,20 @@ public class SimplexSolver {
       }
       v = sf.v;
 
-      //dumpState();
+      //traceState();
       return true;
+    }
+
+    /**
+     * For debugging only.
+     */
+    void traceState() {
+      trace("m="+m+" n="+n+" v="+v);
+      trace("a="); dump(a);
+      trace("b="); dump(b);
+      trace("c="); dump(c);
+      trace("km="); dump(km);
+      trace("kn="); dump(kn);
     }
   }
 
@@ -436,6 +462,21 @@ public class SimplexSolver {
     public double[] c;
     public double[] x;
     public double v;
+    public double tiny;
+    void check(double[] x) {
+      int m = b.length;
+      int n = c.length;
+      for (int j=0; j<n; ++j)
+        if (x[j]<0.0) 
+          trace("check: j="+j+" x="+x[j]);
+      for (int i=0; i<m; ++i) {
+        double ax = 0.0;
+        for (int j=0; j<n; ++j)
+          ax += a[i][j]*x[j];
+        if (ax>b[i]+FLT_EPSILON)
+          trace("check: i="+i+" ax="+ax+" b="+b[i]);
+      }
+    }
   }
   private static class LinearProgram1 extends LinearProgram {
     LinearProgram1() {
@@ -446,6 +487,7 @@ public class SimplexSolver {
       c = new double[]{3.0,1.0,2.0};
       x = new double[]{8.0,4.0,0.0};
       v = 28.0;
+      tiny = 1.0e-10;
     }
   }
   private static class LinearProgram2 extends LinearProgram {
@@ -454,8 +496,9 @@ public class SimplexSolver {
                          {1.0,-5.0}};
       b = new double[]{2.0,-4.0};
       c = new double[]{2.0,-1.0};
-      x = new double[]{1.55556,1.11111};
+      x = new double[]{1.555555555555,1.111111111111};
       v = 2.0;
+      tiny = 1.0e-10;
     }
   }
   private static class LinearProgram3 extends LinearProgram {
@@ -467,6 +510,7 @@ public class SimplexSolver {
       c = new double[]{ 1.0,-1.0, 1.0};
       x = new double[]{ 0.0, 2.8, 3.4};
       v = 0.6;
+      tiny = 1.0e-10;
     }
   }
   private static class LinearProgram4 extends LinearProgram {
@@ -476,6 +520,7 @@ public class SimplexSolver {
       c = new double[]{1.0,1.0};
       x = new double[]{0.0,2.0};
       v = 2.0;
+      tiny = 1.0e-10;
     }
   }
   private static class LinearProgram5 extends LinearProgram {
@@ -486,24 +531,96 @@ public class SimplexSolver {
       c = new double[]{1.0,1.0};
       x = new double[]{2.0,0.0};
       v = 2.0;
+      tiny = 1.0e-10;
+    }
+  }
+  private static class LinearProgram6 extends LinearProgram {
+    LinearProgram6() {
+      a = new double[][]{{ -2.0,-7.5, -3.0},
+                         {-20.0,-5.0,-10.0}};
+      b = new double[]{-10000.0,-30000.0};
+      c = new double[]{-1.0,-1.0,-1.0};
+      x = new double[]{1250.0,1000.0,0.0};
+      v = -2250.0;
+      tiny = 1.0e-10;
+    }
+  }
+  private static class LinearProgram7 extends LinearProgram {
+    LinearProgram7() {
+      a = new double[][]{
+        { 1, 0, 0, 0, 0, 0, 0, 0},
+        {-1, 0, 0, 0, 0, 0, 0, 0},
+        { 0, 1, 0, 0, 0, 0, 0, 0},
+        { 0,-1, 0, 0, 0, 0, 0, 0},
+        { 0, 1,-1, 0, 0, 0, 0, 0},
+        { 0, 2, 1, 0, 0, 0, 0, 0},
+        { 0, 1, 2, 0, 0, 0, 0, 0},
+        { 0,-1, 1, 0, 0, 0, 0, 0},
+        { 0, 0, 1, 0, 0, 0, 0, 0},
+        { 0, 0,-1, 0, 0, 0, 0, 0},
+        { 0, 0, 0, 1, 0, 0, 0, 0},
+        { 0, 0, 0,-1, 0, 0, 0, 0},
+        { 0, 0, 0, 1,-1, 0, 0, 0},
+        { 0, 0, 0, 2, 1, 0, 0, 0},
+        { 0, 0, 0, 1, 2, 0, 0, 0},
+        { 0, 0, 0,-1, 1, 0, 0, 0},
+        { 1, 4, 1, 0, 0,-1, 0, 0},
+        {-1,-4,-1, 0, 0,-1, 0, 0},
+        { 0, 1, 4, 1, 0, 0,-1, 0},
+        { 0,-1,-4,-1, 0, 0,-1, 0},
+        { 0, 0, 1, 4, 1, 0, 0,-1},
+        { 0, 0,-1,-4,-1, 0, 0,-1},
+      };
+      b = new double[]{
+        0, 0, 0, 0, 3, 9, 9, 3, 0, 0, 0, 0, 3, 9, 9, 3,
+        3,-3,3,-3,3,-3
+      };
+      c = new double[]{ 0, 0, 0, 0, 0,-1,-1,-1};
+      x = new double[]{ 0, 0, 0, 0, 0, 0, 0, 0};
+      v = 0.0;
+      tiny = 1.0e10;
     }
   }
 
   public static void main(String[] args) {
-    //test(new LinearProgram1());
-    //test(new LinearProgram2());
-    //test(new LinearProgram3());
-    test(new LinearProgram4());
-    //test(new LinearProgram5());
+    testAll();
+  }
+  public static void testAll() {
+    LinearProgram[] lps = {
+     new LinearProgram1(),
+     new LinearProgram2(),
+     new LinearProgram3(),
+     new LinearProgram4(),
+     new LinearProgram5(),
+     new LinearProgram6(),
+     new LinearProgram7(),
+    };
+    for (LinearProgram lp:lps)
+      test(lp);
   }
   private static void test(LinearProgram lp) {
     int n = lp.c.length;
     double[] x = new double[n];
     SimplexSolver ss = new SimplexSolver();
     double v = ss.solve(lp.a,lp.b,lp.c,x);
+    /*
     trace("solution v: "+v);
     trace("expected v: "+lp.v); 
     trace("solution x:"); dump(x);
     trace("expected x:"); dump(lp.x);
+    */
+    //lp.check(x);
+    assertEquals(lp.v,v,lp.tiny);
+    assertEquals(lp.x,x,lp.tiny);
+  }
+
+  private static void assertEquals(double e, double a, double tiny) {
+    assert abs(e-a)<tiny;
+  }
+
+  private static void assertEquals(double[] e, double[] a, double tiny) {
+    assert e.length==a.length;
+    for (int i=0; i<e.length; ++i)
+      assertEquals(e[i],a[i],tiny);
   }
 }

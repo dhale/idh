@@ -18,7 +18,7 @@ from dnp import *
 
 #pngDir = None
 pngDir = "./png/"
-seismicDir = "/data/seis/tp/csm/seismict/subt_251_4_500/"
+seismicDir = "/data/seis/tpd/csm/seismict/subt_251_4_500/"
 s1 = Sampling(251,0.004,0.500)
 s2 = Sampling(357,0.025,0.000)
 s3 = Sampling(161,0.025,0.000)
@@ -42,11 +42,11 @@ k1,k2,k3 = 197,310,110; azimuth=240; elevation=20 # for 3D views
 fmin,fmax = -5.5,5.5
 
 def main(args):
-  display("tpst"); display("tpsf")
+  #display("tpst"); display("tpsf")
   #displayHorizons()
   #figures()
-  #slopes()
-  #flatten()
+  slopes()
+  flatten()
   #flattenTest()
 
 def figures():
@@ -119,7 +119,7 @@ def slopes():
     makeFrame(world)
 
 def flatten():
-  findShifts = False
+  findShifts = True
   f = readImage("tpst")
   fl = FlattenerCg(6.0,6.0)
   if findShifts:
