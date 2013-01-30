@@ -304,16 +304,16 @@ public class Flattener3 {
       _ep = ep;
     }
     public void apply(float[][][] x) {
-      smooth1(_sigma1,x);
-      smooth2(_sigma2,_ep,x);
       smooth3(_sigma3,_ep,x);
+      smooth2(_sigma2,_ep,x);
+      smooth1(_sigma1,x);
       zero1(x);
     }
     public void applyTranspose(float[][][] x) {
       zero1(x);
-      smooth3(_sigma3,_ep,x);
-      smooth2(_sigma2,_ep,x);
       smooth1(_sigma1,x);
+      smooth2(_sigma2,_ep,x);
+      smooth3(_sigma3,_ep,x);
     }
     private float _sigma1,_sigma2,_sigma3;
     private float[][][] _ep;
@@ -401,8 +401,6 @@ public class Flattener3 {
     int n1 = y[0][0].length;
     int n2 = y[0].length;
     int n3 = y.length;
-    int i1l = 1; // lower limit so that y[i3][i2][0] = 0
-    int i1u = n1-1; // upper limit so that y[i3][i2][n1-1] = 0
     for (int i3=1,i3m=0; i3<n3; ++i3,++i3m) {
       for (int i2=1,i2m=0; i2<n2; ++i2,++i2m) {
         for (int i1=1,i1m=0; i1<n1; ++i1,++i1m) {
@@ -422,14 +420,14 @@ public class Flattener3 {
           float yb = 0.25f*(y1-y2+y3);
           float yc = 0.25f*(y1+y2-y3);
           float yd = 0.25f*(y1-y2-y3);
-          if (i1<i1u) y[i3 ][i2 ][i1 ] += ya;
-          if (i1>i1l) y[i3 ][i2 ][i1m] -= yd;
-          if (i1<i1u) y[i3 ][i2m][i1 ] += yb;
-          if (i1>i1l) y[i3 ][i2m][i1m] -= yc;
-          if (i1<i1u) y[i3m][i2 ][i1 ] += yc;
-          if (i1>i1l) y[i3m][i2 ][i1m] -= yb;
-          if (i1<i1u) y[i3m][i2m][i1 ] += yd;
-          if (i1>i1l) y[i3m][i2m][i1m] -= ya;
+          y[i3 ][i2 ][i1 ] += ya;
+          y[i3 ][i2 ][i1m] -= yd;
+          y[i3 ][i2m][i1 ] += yb;
+          y[i3 ][i2m][i1m] -= yc;
+          y[i3m][i2 ][i1 ] += yc;
+          y[i3m][i2 ][i1m] -= yb;
+          y[i3m][i2m][i1 ] += yd;
+          y[i3m][i2m][i1m] -= ya;
         }
       }
     }
@@ -456,8 +454,6 @@ public class Flattener3 {
   {
     int n1 = x[0][0].length;
     int n2 = x[0].length;
-    int i1l = 1; // lower limit so that y[i3][i2][0] = 0
-    int i1u = n1-1; // upper limit so that y[i3][i2][n1-1] = 0
     float w1s = w1*w1;
     for (int i2=1; i2<n2; ++i2) {
       float[] x00 = x[i3  ][i2  ];
@@ -484,14 +480,14 @@ public class Flattener3 {
         float xb = 0.0f;
         float xc = 0.0f;
         float xd = 0.0f;
-        if (i1<i1u) xa += x00[i1 ];
-        if (i1>i1l) xd -= x00[i1m];
-        if (i1<i1u) xb += x01[i1 ];
-        if (i1>i1l) xc -= x01[i1m];
-        if (i1<i1u) xc += x10[i1 ];
-        if (i1>i1l) xb -= x10[i1m];
-        if (i1<i1u) xd += x11[i1 ];
-        if (i1>i1l) xa -= x11[i1m];
+        xa += x00[i1 ];
+        xd -= x00[i1m];
+        xb += x01[i1 ];
+        xc -= x01[i1m];
+        xc += x10[i1 ];
+        xb -= x10[i1m];
+        xd += x11[i1 ];
+        xa -= x11[i1m];
         float x1 = 0.25f*(xa+xb+xc+xd);
         float x2 = 0.25f*(xa-xb+xc-xd);
         float x3 = 0.25f*(xa+xb-xc-xd);
@@ -502,14 +498,14 @@ public class Flattener3 {
         float yb = 0.25f*(y1-y2+y3);
         float yc = 0.25f*(y1+y2-y3);
         float yd = 0.25f*(y1-y2-y3);
-        if (i1<i1u) y00[i1 ] += ya;
-        if (i1>i1l) y00[i1m] -= yd;
-        if (i1<i1u) y01[i1 ] += yb;
-        if (i1>i1l) y01[i1m] -= yc;
-        if (i1<i1u) y10[i1 ] += yc;
-        if (i1>i1l) y10[i1m] -= yb;
-        if (i1<i1u) y11[i1 ] += yd;
-        if (i1>i1l) y11[i1m] -= ya;
+        y00[i1 ] += ya;
+        y00[i1m] -= yd;
+        y01[i1 ] += yb;
+        y01[i1m] -= yc;
+        y10[i1 ] += yc;
+        y10[i1m] -= yb;
+        y11[i1 ] += yd;
+        y11[i1m] -= ya;
       }
     }
   }

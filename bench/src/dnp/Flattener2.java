@@ -271,14 +271,14 @@ public class Flattener2 {
       _el = el;
     }
     public void apply(float[][] x) {
-      smooth1(_sigma1,x);
       smooth2(_sigma2,_el,x);
+      smooth1(_sigma1,x);
       zero1(x);
     }
     public void applyTranspose(float[][] x) {
       zero1(x);
-      smooth2(_sigma2,_el,x);
       smooth1(_sigma1,x);
+      smooth2(_sigma2,_el,x);
     }
     private float _sigma1,_sigma2;
     private float[][] _el;
@@ -330,8 +330,6 @@ public class Flattener2 {
   private static void makeRhs(float[][] wp, float[][] p2, float[][] y) {
     int n1 = y[0].length;
     int n2 = y.length;
-    int i1l = 1; // lower limit so that y[i2][0] = 0
-    int i1u = n1-1; // upper limit so that y[i2][n1-1] = 0
     for (int i2=1; i2<n2; ++i2) {
       for (int i1=1; i1<n1; ++i1) {
         float wpi = (wp!=null)?wp[i2][i1]:1.000f;
@@ -343,10 +341,10 @@ public class Flattener2 {
         float y2 = b22*x2;
         float ya = 0.5f*(y1+y2);
         float yb = 0.5f*(y1-y2);
-        if (i1<i1u) y[i2  ][i1  ] += ya;
-        if (i1>i1l) y[i2  ][i1-1] -= yb;
-        if (i1<i1u) y[i2-1][i1  ] += yb;
-        if (i1>i1l) y[i2-1][i1-1] -= ya;
+        y[i2  ][i1  ] += ya;
+        y[i2  ][i1-1] -= yb;
+        y[i2-1][i1  ] += yb;
+        y[i2-1][i1-1] -= ya;
       }
     }
   }
@@ -355,8 +353,6 @@ public class Flattener2 {
   {
     int n1 = x[0].length;
     int n2 = x.length;
-    int i1l = 1; // lower limit so that y[i2][0] = 0
-    int i1u = n1-1; // upper limit so that y[i2][n1-1] = 0
     float w1s = w1*w1;
     for (int i2=1; i2<n2; ++i2) {
       for (int i1=1; i1<n1; ++i1) {
@@ -369,26 +365,22 @@ public class Flattener2 {
         float d22 = wps;
         float xa = 0.0f;
         float xb = 0.0f;
-        if (i1<i1u) xa += x[i2  ][i1  ];
-        if (i1>i1l) xb -= x[i2  ][i1-1];
-        if (i1<i1u) xb += x[i2-1][i1  ];
-        if (i1>i1l) xa -= x[i2-1][i1-1];
+        xa += x[i2  ][i1  ];
+        xb -= x[i2  ][i1-1];
+        xb += x[i2-1][i1  ];
+        xa -= x[i2-1][i1-1];
         float x1 = 0.5f*(xa+xb);
         float x2 = 0.5f*(xa-xb);
         float y1 = d11*x1+d12*x2;
         float y2 = d12*x1+d22*x2;
         float ya = 0.5f*(y1+y2);
         float yb = 0.5f*(y1-y2);
-        if (i1<i1u) y[i2  ][i1  ] += ya;
-        if (i1>i1l) y[i2  ][i1-1] -= yb;
-        if (i1<i1u) y[i2-1][i1  ] += yb;
-        if (i1>i1l) y[i2-1][i1-1] -= ya;
+        y[i2  ][i1  ] += ya;
+        y[i2  ][i1-1] -= yb;
+        y[i2-1][i1  ] += yb;
+        y[i2-1][i1-1] -= ya;
       }
     }
-    //for (int i2=0; i2<n2; ++i2) {
-    //  y[i2][   0] = x[i2][   0];
-    //  y[i2][n1-1] = x[i2][n1-1];
-    //}
   }
 
   // Post-processing of computed shifts to ensure monotonic u1.
