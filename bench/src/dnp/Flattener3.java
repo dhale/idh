@@ -291,7 +291,8 @@ public class Flattener3 {
     private float[][][] _p3;
   }
 
-  // Smoothers used as preconditioners.
+  // Smoother used as a preconditioner. After smoothing, enforces zero-shift
+  // boundary conditions at top and bottom.
   private static class Smoother3 {
     public Smoother3(
       int n1, int n2, int n3, 
@@ -306,14 +307,27 @@ public class Flattener3 {
       smooth1(_sigma1,x);
       smooth2(_sigma2,_ep,x);
       smooth3(_sigma3,_ep,x);
+      zero1(x);
     }
     public void applyTranspose(float[][][] x) {
+      zero1(x);
       smooth3(_sigma3,_ep,x);
       smooth2(_sigma2,_ep,x);
       smooth1(_sigma1,x);
     }
     private float _sigma1,_sigma2,_sigma3;
     private float[][][] _ep;
+    private void zero1(float[][][] x) {
+      int n1 = x[0][0].length;
+      int n2 = x[0].length;
+      int n3 = x.length;
+      for (int i3=0; i3<n3; ++i3) {
+        for (int i2=0; i2<n2; ++i2) {
+          x[i3][i2][   0] = 0.0f;
+          x[i3][i2][n1-1] = 0.0f;
+        }
+      }
+    }
   }
 
   // Smoothing for dimension 1.
@@ -497,10 +511,6 @@ public class Flattener3 {
         if (i1<i1u) y11[i1 ] += yd;
         if (i1>i1l) y11[i1m] -= ya;
       }
-    }
-    for (int i2=0; i2<n2; ++i2) {
-      y[i3][i2][   0] = x[i3][i2][   0];
-      y[i3][i2][n1-1] = x[i3][i2][n1-1];
     }
   }
 

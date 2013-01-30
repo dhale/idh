@@ -44,9 +44,9 @@ def flatten():
   g = fm.flatten(f)
   h = fm.unflatten(g)
   s = fm.getShiftsS()
-  plot(s1,s2,h,u=fm.u1)
   plot(s1,s2,f,u=fm.u1)
   plot(s1,s2,g)
+  plot(s1,s2,h)
   plot(s1,s2,s,cmap=jet)
   print "average shift =",sum(s)/(n1*n2),"samples"
 

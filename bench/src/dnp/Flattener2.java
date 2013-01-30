@@ -251,6 +251,7 @@ public class Flattener2 {
       _s2.apply(z);
       zero(y);
       applyLhs(_w1,_wp,_p2,z,y);
+      int n1 = x[0].length;
       _s2.applyTranspose(y);
     }
     private Smoother2 _s2;
@@ -259,7 +260,8 @@ public class Flattener2 {
     private float[][] _p2;
   }
 
-  // Smoothers used as preconditioners.
+  // Smoother used as a preconditioner. After smoothing, enforces zero-shift
+  // boundary conditions at top and bottom.
   private static class Smoother2 {
     public Smoother2(
       int n1, int n2, float sigma1, float sigma2, float[][] el) 
@@ -271,13 +273,23 @@ public class Flattener2 {
     public void apply(float[][] x) {
       smooth1(_sigma1,x);
       smooth2(_sigma2,_el,x);
+      zero1(x);
     }
     public void applyTranspose(float[][] x) {
+      zero1(x);
       smooth2(_sigma2,_el,x);
       smooth1(_sigma1,x);
     }
     private float _sigma1,_sigma2;
     private float[][] _el;
+    private void zero1(float[][] x) {
+      int n1 = x[0].length;
+      int n2 = x.length;
+      for (int i2=0; i2<n2; ++i2) {
+        x[i2][   0] = 0.0f;
+        x[i2][n1-1] = 0.0f;
+      }
+    }
   }
 
   // Smoothing for dimension 1.
@@ -373,10 +385,10 @@ public class Flattener2 {
         if (i1>i1l) y[i2-1][i1-1] -= ya;
       }
     }
-    for (int i2=0; i2<n2; ++i2) {
-      y[i2][   0] = x[i2][   0];
-      y[i2][n1-1] = x[i2][n1-1];
-    }
+    //for (int i2=0; i2<n2; ++i2) {
+    //  y[i2][   0] = x[i2][   0];
+    //  y[i2][n1-1] = x[i2][n1-1];
+    //}
   }
 
   // Post-processing of computed shifts to ensure monotonic u1.
@@ -389,5 +401,16 @@ public class Flattener2 {
           r[i2][i1] = r[i2][i1-1]-0.99f;
       }
     }
+  }
+
+  private static void printStats(String s, int i1, float[][] a) {
+    int n2 = a.length;
+    float amin = a[0][i1];
+    float amax = a[0][i1];
+    for (int i2=1; i2<n2; ++i2) {
+      if (a[i2][i1]<amin) amin = a[i2][i1];
+      if (a[i2][i1]>amax) amax = a[i2][i1];
+    }
+    System.out.println(s+": i1="+i1+" min="+amin+" max="+amax);
   }
 }
