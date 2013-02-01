@@ -46,8 +46,8 @@ def goDemo1():
   SimplePlot.asPoints(st,s)
 
 def goDemo2():
-  nt,dt = 1251,0.004
-  nz,dz = 10000,0.00039
+  nt,dt = 501,0.004
+  nz,dz = 10000,0.0001524 # six inches, as in well logs
   v = add(1.987,mul(0.01,randfloat(nz)))
   p = add(2.123,mul(0.01,randfloat(nz)))
   fpeak = 25.0
