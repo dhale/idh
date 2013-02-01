@@ -1,7 +1,6 @@
 /****************************************************************************
 Copyright (c) 2012, Colorado School of Mines and others. All rights reserved.
 This program and accompanying materials are made available under the terms of
-the Common Public License - v1.0, which accompanies this distribution, and is 
 available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package model;
@@ -9,7 +8,7 @@ package model;
 import java.util.*;
 import edu.mines.jtk.dsp.*;
 import edu.mines.jtk.util.*;
-import static edu.mines.jtk.util.Cfloat.*;
+import static edu.mines.jtk.util.Cdouble.*;
 import static edu.mines.jtk.util.ArrayMath.*;
 
 // FOR TESTING ONLY
@@ -117,7 +116,7 @@ public class SeismicModel1D {
    */
   public void setSurfaceReflectionCoefficient(double c) {
     Check.argument(abs(c)<=1.0,"c <= 1.0");
-    _surfaceRC = (float)c;
+    _surfaceRC = c;
   }
 
   /**
@@ -130,7 +129,7 @@ public class SeismicModel1D {
    */
   public void setOversample(double oversample) {
     Check.argument(oversample>=1.0,"oversample >= 1.0");
-    _oversample = (float)oversample;
+    _oversample = oversample;
   }
 
   /**
@@ -143,7 +142,26 @@ public class SeismicModel1D {
    */
   public void setDecay(double decay) {
     Check.argument(decay<=1.0,"decay <= 1.0");
-    _decay = (float)decay;
+    _decay = decay;
+  }
+
+  /**
+   * Enables or disables use of a Ricker wavelet.
+   * The default peak frequency is zero, for no Ricker wavelet.
+   * @param fpeak if non-zero, peak frequency for Ricker wavelet.
+   */
+  public void setRickerWavelet(double fpeak) {
+    _fpeak = fpeak;
+  }
+
+  /**
+   * Enables or disables use of an anti-alias filter.
+   * The anti-alias filter is a 12-pole causal Butterworth filter with 
+   * amplitude that is 3dB down at half the Nyquist frequency.
+   * @param aaf true, for anti-alias filter; false, otherwise.
+   */
+  public void setAntiAlias(boolean aaf) {
+    _aaf = aaf;
   }
 
   /**
@@ -154,9 +172,6 @@ public class SeismicModel1D {
    * @param q quality factor Q.
    */
   public void addLayer(double z, double v, double p, double q) {
-    addLayer((float)z,(float)v,(float)p,(float)q);
-  }
-  private void addLayer(float z, float v, float p, float q) {
     // If layer already exists for the specified depth z, modify
     // the layer v, p, and q. Otherwise, insert a new layer.
     Layer layer = _layers.get(z);
@@ -166,11 +181,11 @@ public class SeismicModel1D {
       layer.q = q;
       layer.fake = false;
     } else {
-      layer = new Layer(z,v,p,q,0.0f,false);
+      layer = new Layer(z,v,p,q,0.0,false);
       _layers.put(z,layer);
     }
     // Update any fake layers within this layer.
-    for (Float zk = _layers.higherKey(z); 
+    for (Double zk = _layers.higherKey(z); 
          zk!=null;
          zk = _layers.higherKey(zk)) {
       Layer lk = _layers.get(zk);
@@ -190,9 +205,6 @@ public class SeismicModel1D {
    * @param a source amplitude.
    */
   public void addSource(double z, double a) {
-    addSource((float)z,(float)a);
-  }
-  private void addSource(float z, float a) {
     // If layer already exists for source at specified depth,
     // then simply modify its amplitude. Otherwise, insert a
     // new fake layer, with existing v, p, and q.
@@ -200,7 +212,7 @@ public class SeismicModel1D {
     if (layer!=null) {
       layer.a = a;
     } else {
-      Float zk = _layers.floorKey(z);
+      Double zk = _layers.floorKey(z);
       Layer lk = _layers.get(zk);
       layer = new Layer(z,lk.v,lk.p,lk.q,a,true);
       _layers.put(z,layer);
@@ -212,9 +224,6 @@ public class SeismicModel1D {
    * @param z sensor depth.
    */
   public void addSensor(double z) {
-    addSensor((float)z);
-  }
-  private void addSensor(float z) {
     _sensorDepths.add(z);
   }
 
@@ -226,20 +235,139 @@ public class SeismicModel1D {
    * @param nt number of time samples.
    * @param dt time sampling interval.
    * @param fref reference frequency, in cycles per unit time.
-   * @param aaf true, for anti-alias filtering.
    * @return array[ns][nt] of seismograms.
    */
-  public float[][] makeSeismograms(
-    int nt, double dt, double fref, boolean aaf) 
-  {
-    return makeSeismograms(nt,(float)dt,(float)fref,aaf);
+  public float[][] makeSeismograms(int nt, double dt, double fref) {
+
+    // Constants.
+    Cdouble ci = new Cdouble(0.0,1.0);
+
+    // Reference frequency in radians.
+    double wref = 2.0*PI*fref;
+
+    // Frequency sampling.
+    int ntpad = (int)(_oversample*nt);
+    int ntfft = FftReal.nfftFast(ntpad);
+    int nw = ntfft/2+1;
+    double dw = 2.0*PI/(ntfft*dt);
+
+    // Imaginary part of complex frequency.
+    double eps = -log(_decay)/(nt*dt);
+
+    // Seismograms as functions of complex frequency.
+    int nr = _sensorDepths.size();
+    float[][] cs = new float[nr][2*nw];
+
+    // Depth of surface.
+    Double zs = _layers.firstKey();
+
+    // For all complex frequencies, ...
+    for (int iw=0,iwr=0,iwi=1; iw<nw; ++iw,iwr+=2,iwi+=2) {
+      Cdouble cw = new Cdouble(iw*dw,eps);
+
+      // Downgoing and upgoing waves for all layers.
+      makeWaves(cw,wref);
+
+      // At all receiver depths, evaluate wavefields.
+      int ir = 0;
+      for (Double zr:_sensorDepths) {
+
+        boolean between = _layers.containsKey(zr);
+        Double zabove = _layers.floorKey(zr);
+
+        // If receiver is located exactly at a interface
+        // (not including the surface interface), then
+        // average wavefields above and below interface.
+        if (!zr.equals(zs) && _layers.containsKey(zr)) {
+          Layer l = _layers.get(zr);
+          Layer u = _layers.get(_layers.lowerKey(zr));
+          Cdouble cpower = ci.times(u.ck).times(l.z-u.z);
+          Cdouble cexpd = exp(cpower);
+          Cdouble cexpu = exp(neg(cpower));
+          Cdouble csi = u.cd.times(cexpd).plus(u.cu.times(cexpu)
+                       .plus(l.cd).plus(l.cu)).times(0.5);
+          cs[ir][iwr] = (float)csi.r;
+          cs[ir][iwi] = (float)csi.i;
+        } 
+        // Otherwise, if receiver is located exactly at the
+        // surface or within a layer, then evaluate wavefield 
+        // at receiver depth.
+        else if (zr.equals(zs) || zabove!=null) {
+          Layer u = _layers.get(zabove);
+          Cdouble cpower = ci.times(u.ck).times(zr-u.z);
+          Cdouble cexpd = exp(cpower);
+          Cdouble cexpu = exp(neg(cpower));
+          Cdouble csi = u.cd.times(cexpd).plus(u.cu.times(cexpu));
+          cs[ir][iwr] = (float)csi.r;
+          cs[ir][iwi] = (float)csi.i;
+        }
+        ++ir;
+      }
+    }
+
+    // Butterworth anti-alias filter, if requested.
+    if (_aaf) {
+      int npole = 12;
+      double pio2 = PI/2.0;
+      double w3db = pio2/dt;
+      for (int ipole=0; ipole<npole; ++ipole) {
+        Cdouble cpower = new Cdouble(0.0,-(2*ipole+1)*pio2/npole);
+        Cdouble cpole = exp(cpower).times(w3db);
+        for (int iw=0,iwr=0,iwi=1; iw<nw; ++iw,iwr+=2,iwi+=2) {
+          Cdouble cw = new Cdouble(iw*dw,eps);
+          Cdouble ch = cpole.over(cpole.minus(cw));
+          for (int ir=0; ir<nr; ++ir) {
+            float csr = cs[ir][iwr];
+            float csi = cs[ir][iwi];
+            float chr = (float)ch.r;
+            float chi = (float)ch.i;
+            cs[ir][iwr] = csr*chr-csi*chi;
+            cs[ir][iwi] = csr*chi+csi*chr;
+          }
+        }
+      }
+    }
+
+    // Ricker wavelet, if requested.
+    if (_fpeak>0.0) {
+      double wpeak = 2.0*PI*_fpeak;
+      double sigma = sqrt(2.0)/wpeak;
+      float scale = (float)(4.0*sqrt(PI)/(dt*wpeak*wpeak*wpeak));
+      for (int iw=0,iwr=0,iwi=1; iw<nw; ++iw,iwr+=2,iwi+=2) {
+        Cdouble cw = new Cdouble(iw*dw,eps);
+        Cdouble cws = cw.times(cw);
+        Cdouble ch = cws.times(exp(neg(cws.over(wpeak*wpeak))));
+        for (int ir=0; ir<nr; ++ir) {
+          float csr = cs[ir][iwr];
+          float csi = cs[ir][iwi];
+          float chr = (float)ch.r;
+          float chi = (float)ch.i;
+          cs[ir][iwr] = scale*(csr*chr-csi*chi);
+          cs[ir][iwi] = scale*(csr*chi+csi*chr);
+        }
+      }
+    }
+
+    // Transform frequency to time.
+    float[][] s = new float[nr][nt];
+    FftReal fft = new FftReal(ntfft);
+    float[] sfft = new float[ntfft];
+    float[] scal = new float[nt];
+    for (int it=0; it<nt; ++it)
+      scal[it] = (float)(exp(eps*it*dt)/ntfft);
+    for (int ir=0; ir<nr; ++ir) {
+      fft.complexToReal(-1,cs[ir],sfft);
+      for (int it=0; it<nt; ++it)
+        s[ir][it] = sfft[it]*scal[it];
+    }
+    return s;
   }
 
   /**
    * Prints parameters for all layers.
    */
   public void dumpLayers() {
-    for (Float z:_layers.keySet()) {
+    for (Double z:_layers.keySet()) {
       Layer l = _layers.get(z);
       System.out.println("Layer top      = "+l.z);
       System.out.println("      velocity = "+l.v);
@@ -258,16 +386,16 @@ public class SeismicModel1D {
   // private
 
   private static class Layer {
-    float z; // depth at top of layer
-    float v; // layer velocity
-    float p; // layer density
-    float q; // layer quality factor
-    float a; // source amplitude at top of layer; zero, if none
+    double z; // depth at top of layer
+    double v; // layer velocity
+    double p; // layer density
+    double q; // layer quality factor
+    double a; // source amplitude at top of layer; zero, if none
     boolean fake; // true, if this layer exists merely for source at top
-    Cfloat cd; // downgoing wave at top of this layer
-    Cfloat cu; // upgoing wave at top of this layer
-    Cfloat ck; // complex wavenumber k = w/v within this layer
-    Layer(float z, float v, float p, float q, float a, boolean fake) {
+    Cdouble cd; // downgoing wave at top of this layer
+    Cdouble cu; // upgoing wave at top of this layer
+    Cdouble ck; // complex wavenumber k = w/v within this layer
+    Layer(double z, double v, double p, double q, double a, boolean fake) {
       this.z = z;
       this.v = v;
       this.p = p;
@@ -276,41 +404,43 @@ public class SeismicModel1D {
       this.fake = fake;
     }
   }
-  private TreeMap<Float,Layer> _layers = new TreeMap<Float,Layer>();
-  private TreeSet<Float> _sensorDepths = new TreeSet<Float>();
-  private float _surfaceRC = 0.9f; // absolute value of refl coeff at surface
-  private float _decay = 0.1f; // determines imag part of complex frequency
-  private float _oversample = 2.0f; // factor by which to oversample frequency
+  private TreeMap<Double,Layer> _layers = new TreeMap<Double,Layer>();
+  private TreeSet<Double> _sensorDepths = new TreeSet<Double>();
+  private double _surfaceRC = 0.9f; // absolute value of refl coeff at surface
+  private double _decay = 0.1f; // determines imag part of complex frequency
+  private double _oversample = 2.0; // factor by which to oversample frequency
   private SourceType _sourceType = SourceType.MARINE_AIRGUN;
   private SensorType _sensorType = SensorType.HYDROPHONE;
+  private boolean _aaf; // true, for anti-alias filter
+  private double _fpeak; // non-zero, for Ricker wavelet
 
-  private void makeWaves(Cfloat cw, float wref) {
+  private void makeWaves(Cdouble cw, double wref) {
 
     // Constants.
-    Cfloat ciw = new Cfloat(-cw.i,cw.r);
-    Cfloat cmiw = ciw.neg();
+    Cdouble ciw = new Cdouble(-cw.i,cw.r);
+    Cdouble cmiw = ciw.neg();
 
     // Lower and upper depths and layers. 
-    Float zl,zu;
+    Double zl,zu;
     Layer l,u;
 
     // Complex wavenumber for lower halfspace.
     zl = _layers.lastKey();
     l = _layers.get(zl);
-    float gamma = atan(1.0f/l.q)/FLT_PI;
-    Cfloat cv = pow(cmiw.over(wref),gamma).times(l.v*cos(gamma*0.5f*FLT_PI));
+    double gamma = atan(1.0/l.q)/PI;
+    Cdouble cv = pow(cmiw.over(wref),gamma).times(l.v*cos(gamma*0.5*PI));
     l.ck = cw.over(cv);
 
     // Complex impedance of lower halfspace.
-    Cfloat cil = cv.times(l.p);
+    Cdouble cil = cv.times(l.p);
 
     // Initially assume unit-amplitude downgoing wave in lower halfspace.
-    Cfloat c1d = new Cfloat(1.0f,0.0f);
-    Cfloat c1u = new Cfloat(0.0f,0.0f);
+    Cdouble c1d = new Cdouble(1.0,0.0);
+    Cdouble c1u = new Cdouble(0.0,0.0);
 
     // Initialize source terms to zero.
-    Cfloat csd = new Cfloat(0.0f,0.0f);
-    Cfloat csu = new Cfloat(0.0f,0.0f);
+    Cdouble csd = new Cdouble(0.0,0.0);
+    Cdouble csu = new Cdouble(0.0,0.0);
 
     // First loop over layers, bottom to top.
     for (zu=_layers.lowerKey(zl); zu!=null; zl=zu,zu=_layers.lowerKey(zl)) {
@@ -318,28 +448,28 @@ public class SeismicModel1D {
       u = _layers.get(zu);
 
       // Complex velocity, wavenumber, impedance, and reflection coefficient.
-      gamma = atan(1.0f/l.q)/FLT_PI;
-      cv = pow(cmiw.over(wref),gamma).times(u.v*cos(gamma*0.5f*FLT_PI));
+      gamma = atan(1.0/l.q)/PI;
+      cv = pow(cmiw.over(wref),gamma).times(u.v*cos(gamma*0.5*PI));
       u.ck = cw.over(cv);
-      Cfloat ciu = cv.times(u.p);
-      Cfloat cr = ciu.minus(cil).over(ciu.plus(cil));
+      Cdouble ciu = cv.times(u.p);
+      Cdouble cr = ciu.minus(cil).over(ciu.plus(cil));
       if (_sensorType==SensorType.PRESSURE) 
         cr.negEquals();
 
       // Complex inverse transmission coefficient.
-      Cfloat cit = inv(cr.plus(1.0f));
+      Cdouble cit = inv(cr.plus(1.0));
 
       // Complex propagation matrix.
-      Cfloat cpower = ciw.over(cv).times(l.z-u.z);
-      Cfloat cplus = cit.times(exp(cpower));
-      Cfloat cminus = cit.times(exp(neg(cpower)));
-      Cfloat ca11 = cminus;
-      Cfloat ca12 = cr.times(cminus);
-      Cfloat ca21 = cr.times(cplus);
-      Cfloat ca22 = cplus;
+      Cdouble cpower = ciw.over(cv).times(l.z-u.z);
+      Cdouble cplus = cit.times(exp(cpower));
+      Cdouble cminus = cit.times(exp(neg(cpower)));
+      Cdouble ca11 = cminus;
+      Cdouble ca12 = cr.times(cminus);
+      Cdouble ca21 = cr.times(cplus);
+      Cdouble ca22 = cplus;
 
       // Downgoing and upgoing waves, without source terms.
-      Cfloat ctemp = c1d;
+      Cdouble ctemp = c1d;
       c1d = ca11.times(ctemp).plus(ca12.times(c1u));
       c1u = ca21.times(ctemp).plus(ca22.times(c1u));
 
@@ -347,12 +477,12 @@ public class SeismicModel1D {
       ctemp = csd;
       csd = ca11.times(ctemp).plus(ca12.times(csu));
       csu = ca21.times(ctemp).plus(ca22.times(csu));
-      if (l.a!=0.0f) {
+      if (l.a!=0.0) {
         csd.minusEquals(cminus.times(l.a));
         if (_sourceType==SourceType.ISOTROPIC) {
           csu.plusEquals(cplus.times(l.a));
         } else {
-          csu.minusEquals(cplus.times(cr.times(2.0f).plus(1.0f)).times(l.a));
+          csu.minusEquals(cplus.times(cr.times(2.0).plus(1.0)).times(l.a));
         }
       }
 
@@ -361,23 +491,23 @@ public class SeismicModel1D {
     }
 
     // Reflection coefficient at surface.
-    float rs = abs(_surfaceRC);
+    double rs = abs(_surfaceRC);
     if (_sensorType==SensorType.PRESSURE)
       rs = -rs;
 
     // Amplitude of source at surface.
     l = _layers.get(zl);
-    float as = l.a;
+    double as = l.a;
 
     // Downgoing and upgoing wave in lower halfspace.
     zl = _layers.lastKey();
     l = _layers.get(zl);
     l.cd = csu.times(rs).minus(csd).plus(as).over(c1d.minus(c1u.times(rs)));
-    l.cu = new Cfloat(0.0f,0.0f);
+    l.cu = new Cdouble(0.0,0.0);
 
     // Complex impedance of lower halfspace.
-    gamma = atan(1.0f/l.q)/FLT_PI;
-    cil = pow(cmiw.over(wref),gamma).times(l.p*l.v*cos(gamma*0.5f*FLT_PI));
+    gamma = atan(1.0/l.q)/PI;
+    cil = pow(cmiw.over(wref),gamma).times(l.p*l.v*cos(gamma*0.5*PI));
 
     // Second loop over layers, bottom to top.
     for (zu=_layers.lowerKey(zl); zu!=null; zl=zu,zu=_layers.lowerKey(zl)) {
@@ -385,148 +515,42 @@ public class SeismicModel1D {
       u = _layers.get(zu);
 
       // Complex velocity, impedance, and reflection coefficient.
-      gamma = atan(1.0f/l.q)/FLT_PI;
-      cv = pow(cmiw.over(wref),gamma).times(u.v*cos(gamma*0.5f*FLT_PI));
-      Cfloat ciu = cv.times(u.p);
-      Cfloat cr = ciu.minus(cil).over(ciu.plus(cil));
+      gamma = atan(1.0/l.q)/PI;
+      cv = pow(cmiw.over(wref),gamma).times(u.v*cos(gamma*0.5*PI));
+      Cdouble ciu = cv.times(u.p);
+      Cdouble cr = ciu.minus(cil).over(ciu.plus(cil));
       if (_sensorType==SensorType.PRESSURE) 
         cr.negEquals();
 
       // Complex inverse transmission coefficient.
-      Cfloat cit = inv(cr.plus(1.0f));
+      Cdouble cit = inv(cr.plus(1.0));
 
       // Complex propagation matrix.
-      Cfloat cpower = ciw.over(cv).times(l.z-u.z);
-      Cfloat cplus = cit.times(exp(cpower));
-      Cfloat cminus = cit.times(exp(neg(cpower)));
-      Cfloat ca11 = cminus;
-      Cfloat ca12 = cr.times(cminus);
-      Cfloat ca21 = cr.times(cplus);
-      Cfloat ca22 = cplus;
+      Cdouble cpower = ciw.over(cv).times(l.z-u.z);
+      Cdouble cplus = cit.times(exp(cpower));
+      Cdouble cminus = cit.times(exp(neg(cpower)));
+      Cdouble ca11 = cminus;
+      Cdouble ca12 = cr.times(cminus);
+      Cdouble ca21 = cr.times(cplus);
+      Cdouble ca22 = cplus;
 
       // Downgoing and upgoing waves, without source terms.
       u.cd = ca11.times(l.cd).plus(ca12.times(l.cu));
       u.cu = ca21.times(l.cd).plus(ca22.times(l.cu));
 
       // Add complex source terms.
-      if (l.a!=0.0f) {
+      if (l.a!=0.0) {
         u.cd.minusEquals(cminus.times(l.a));
         if (_sourceType==SourceType.ISOTROPIC) {
           u.cu.plusEquals(cplus.times(l.a));
         } else {
-          u.cu.minusEquals(cplus.times(cr.times(2.0f).plus(1.0f)).times(l.a));
+          u.cu.minusEquals(cplus.times(cr.times(2.0).plus(1.0)).times(l.a));
         }
       }
 
       // Upper layer becomes lower layer in next iteration.
       cil = ciu;
     }
-  }
-
-  private float[][] makeSeismograms(
-    int nt, float dt, float fref, boolean aaf) 
-  {
-
-    // Constants.
-    Cfloat ci = new Cfloat(0.0f,1.0f);
-
-    // Reference frequency in radians.
-    float wref = 2.0f*FLT_PI*fref;
-
-    // Frequency sampling.
-    int ntpad = (int)(_oversample*nt);
-    int ntfft = FftReal.nfftFast(ntpad);
-    int nw = ntfft/2+1;
-    float dw = 2.0f*FLT_PI/(ntfft*dt);
-
-    // Imaginary part of complex frequency.
-    float eps = -log(_decay)/(nt*dt);
-
-    // Seismograms as functions of complex frequency.
-    int nr = _sensorDepths.size();
-    float[][] cs = new float[nr][2*nw];
-
-    // Depth of surface.
-    Float zs = _layers.firstKey();
-
-    // For all complex frequencies, ...
-    for (int iw=0,iwr=0,iwi=1; iw<nw; ++iw,iwr+=2,iwi+=2) {
-      Cfloat cw = new Cfloat(iw*dw,eps);
-
-      // Downgoing and upgoing waves for all layers.
-      makeWaves(cw,wref);
-
-      // At all receiver depths, evaluate wavefields.
-      int ir = 0;
-      for (Float zr:_sensorDepths) {
-
-        boolean between = _layers.containsKey(zr);
-        Float zabove = _layers.floorKey(zr);
-
-        // If receiver is located exactly at a interface
-        // (not including the surface interface), then
-        // average wavefields above and below interface.
-        if (!zr.equals(zs) && _layers.containsKey(zr)) {
-          Layer l = _layers.get(zr);
-          Layer u = _layers.get(_layers.lowerKey(zr));
-          Cfloat cpower = ci.times(u.ck).times(l.z-u.z);
-          Cfloat cexpd = exp(cpower);
-          Cfloat cexpu = exp(neg(cpower));
-          Cfloat csi = u.cd.times(cexpd).plus(u.cu.times(cexpu)
-                       .plus(l.cd).plus(l.cu)).times(0.5f);
-          cs[ir][iwr] = csi.r;
-          cs[ir][iwi] = csi.i;
-        } 
-        // Otherwise, if receiver is located exactly at the
-        // surface or within a layer, then evaluate wavefield 
-        // at receiver depth.
-        else if (zr.equals(zs) || zabove!=null) {
-          Layer u = _layers.get(zabove);
-          Cfloat cpower = ci.times(u.ck).times(zr-u.z);
-          Cfloat cexpd = exp(cpower);
-          Cfloat cexpu = exp(neg(cpower));
-          Cfloat csi = u.cd.times(cexpd).plus(u.cu.times(cexpu));
-          cs[ir][iwr] = csi.r;
-          cs[ir][iwi] = csi.i;
-        }
-        ++ir;
-      }
-    }
-
-    // Butterworth anti-alias filter, if requested.
-    if (aaf) {
-      int npole = 12;
-      float pio2 = FLT_PI/2.0f;
-      float w3db = pio2/dt;
-      for (int ipole=0; ipole<npole; ++ipole) {
-        Cfloat cpower = new Cfloat(0.0f,-(2*ipole+1)*pio2/npole);
-        Cfloat cpole = exp(cpower).times(w3db);
-        for (int iw=0,iwr=0,iwi=1; iw<nw; ++iw,iwr+=2,iwi+=2) {
-          Cfloat cw = new Cfloat(iw*dw,eps);
-          Cfloat ch = cpole.over(cpole.minus(cw));
-          for (int ir=0; ir<nr; ++ir) {
-            float csr = cs[ir][iwr];
-            float csi = cs[ir][iwi];
-            cs[ir][iwr] = csr*ch.r-csi*ch.i;
-            cs[ir][iwi] = csr*ch.i+csi*ch.r;
-          }
-        }
-      }
-    }
-
-    // Transform frequency to time.
-    float[][] s = new float[nr][nt];
-    FftReal fft = new FftReal(ntfft);
-    float[] sfft = new float[ntfft];
-    float[] scal = new float[nt];
-    for (int it=0; it<nt; ++it)
-      scal[it] = exp(eps*it*dt)/ntfft;
-    for (int ir=0; ir<nr; ++ir) {
-      fft.complexToReal(-1,cs[ir],sfft);
-      for (int it=0; it<nt; ++it)
-        s[ir][it] = sfft[it]*scal[it];
-    }
-    return s;
   }
 
   ///////////////////////////////////////////////////////////////////////////
@@ -555,7 +579,7 @@ public class SeismicModel1D {
     double fref = 0.5/dt;
     boolean aaf = false;
     Sampling st = new Sampling(nt,dt,0.0);
-    float[][] s = sm.makeSeismograms(nt,dt,fref,aaf);
+    float[][] s = sm.makeSeismograms(nt,dt,fref);
     System.out.println("min = "+min(s[0])+" max = "+max(s[0]));
     SimplePlot sp = new SimplePlot();
     sp.addPoints(st,s[0]);
@@ -576,7 +600,7 @@ public class SeismicModel1D {
     double fref = 0.5/dt;
     boolean aaf = false;
     Sampling st = new Sampling(nt,dt,0.0);
-    float[][] s = sm.makeSeismograms(nt,dt,fref,aaf);
+    float[][] s = sm.makeSeismograms(nt,dt,fref);
     System.out.println("min = "+min(s[0])+" max = "+max(s[0]));
     SimplePlot sp = new SimplePlot();
     sp.addPoints(st,s[0]);
