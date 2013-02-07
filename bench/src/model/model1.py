@@ -22,13 +22,13 @@ from model import *
 #############################################################################
 
 def main(args):
-  goDemo2()
+  goDemo1()
 
 def goDemo1():
   sm = SeismicModel1D()
   sm.setSourceType(SeismicModel1D.SourceType.LAND_VIBROSEIS)
   sm.setSensorType(SeismicModel1D.SensorType.GEOPHONE)
-  sm.setSurfaceReflectionCoefficient(0.0)
+  sm.setSurfaceReflectionCoefficient(1.0)
   sm.addLayer(0.0,2.0,2.0,1.0e6)
   sm.addLayer(1.0,6.0,2.0,1.0e6)
   sm.addSource(0.0,1.0)
