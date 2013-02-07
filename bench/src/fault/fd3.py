@@ -121,12 +121,18 @@ def goSmooth():
     fl = readImage("flt")
     p2 = readImage("p2")
     p3 = readImage("p3")
-    gs = FaultScanner3.smooth(16.0,p2,p3,fl,g)
-    writeImage(gs,"gs")
-  g = readImage("g"); g = slog(g)
-  gs = readImage("gs"); gs = slog(gs)
-  plot3(g)
-  plot3(gs)
+    #gs = FaultScanner3.smooth(16.0,p2,p3,fl,g)
+    #gs = FaultScanner3.smooth(8.0,p2,p3,fl,g)
+    gs = FaultScanner3.smooth(4.0,p2,p3,fl,g)
+    writeImage(gs,"gs8")
+  g = readImage("g")#; g = slog(g)
+  gs = readImage("gs8")#; gs = slog(gs)
+  #plot3(g)
+  #plot3(gs)
+  sf = SimpleFrame()
+  for image in [gs]:
+    ipg = sf.addImagePanels(image)
+    ipg.setClips(-5,5)
 
 def goThin():
   doThin = False
@@ -284,8 +290,41 @@ def goSliceC():
   #f1,f2,f3 = 0.964,1.250,2.500
   samplingS1()
   global dataSub; dataSub = "s1/"
-  g = readImage("g")
-  #g = slog(g)
+  g = readImage("g"); #g = slog(g)
+  i2,i3,nd,na = 45,148,73,36 # fat cone
+  #i2,i3,nd,na = 131,146,73,36 # skinny cone
+  #i2,i3,nd,na = 90,58,73,72 # fat cone without much throw
+  s1,sd,sa,h = makeConeSlices(i2,i3,nd,na,g)
+  def plota(ia,aspect11):
+    sia = str(int(sa.getValue(ia)))
+    if len(sia)==1:
+      sia = "00"+sia
+    elif len(sia)==2:
+      sia = "0"+sia
+    sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
+    sp.setTitle("Azimuth = "+sia+" degrees")
+    sp.setHLabel("Radial distance (km)")
+    sp.setVLabel("Time (s)")
+    sp.setHLimits(sd.first,sd.last)
+    sp.setVLimits(1.05,1.55)
+    if aspect11:
+      sp.setSize(1400,540)
+    else:
+      sp.setSize(500,800)
+    pv = sp.addPixels(s1,sd,h[ia])
+    pv.setClips(-5.0,5.0)
+    pngfile="png/cone"
+    if aspect11:
+      pngfile += "asa"+sia+".png"
+    else:
+      pngfile += "asb"+sia+".png"
+    sp.paintToPng(360,sp.width/100,pngfile)
+  #sf = SimpleFrame()
+  #ipg = sf.addImagePanels(h)
+  #ipg.setClips(-5,5)
+  for ia in range(na):
+    plota(ia,False)
+  return
   def plot2(i3,aspect11):
     sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
     sp.setTitle("Inline section "+str(i3))
@@ -294,9 +333,9 @@ def goSliceC():
     sp.setHLimits(3.60,5.40)
     sp.setVLimits(1.05,1.55)
     if aspect11:
-      sp.setSize(500,800)
+      sp.setSize(1400,540)
     else:
-      sp.setSize(1400,600)
+      sp.setSize(500,800)
     pv = sp.addPixels(s1,s2,g[i3])
     pv.setClips(-5.0,5.0)
     pngfile="png/cone"+str(i3)
@@ -304,10 +343,41 @@ def goSliceC():
       pngfile += "a.png"
     else:
       pngfile += "b.png"
-    sp.paintToPng(300,sp.width/100,pngfile)
+    #sp.paintToPng(300,sp.width/100,pngfile)
   for i3 in [145,146]: # intersects two prominent cones
     plot2(i3,False)
     plot2(i3,True)
+
+def makeConeSlices(i2,i3,nd,na,g):
+  """i2,i3 = cone center; nd,na = # of distances,azimuths"""
+  # output array is a 3D image[na][nd][n1]
+  h = zerofloat(n1,nd,na)
+  # center of cone
+  c2 = s2.getValue(i2)
+  c3 = s3.getValue(i3)
+  # sampling of azimuth, measured from inline x2 toward xline x3
+  da = 360.0/na
+  fa = 0.0
+  sa = Sampling(na,da,fa)
+  # sampling of distance from center of cone
+  dd = s2.delta
+  fd = -dd*(nd-1)/2
+  sd = Sampling(nd,dd,fd)
+  # interpolate slices
+  si = SincInterp()
+  for ja in range(na):
+    aj = sa.getValue(ja)
+    pj = toRadians(aj)
+    cj = cos(pj)
+    sj = sin(pj)
+    for jd in range(nd):
+      dj = sd.getValue(jd)
+      x2 = c2+cj*dj;
+      x3 = c3+sj*dj;
+      for j1 in range(n1):
+        x1 = s1.getValue(j1)
+        h[ja][jd][j1] = si.interpolate(s1,s2,s3,g,x1,x2,x3)
+  return s1,sd,sa,h
 
 def samplingS1():
   global n1,n2,n3
