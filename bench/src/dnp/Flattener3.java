@@ -271,6 +271,7 @@ public class Flattener3 {
       _wp = wp;
       _p2 = p2;
       _p3 = p3;
+      //testSpd();
     }
     public void apply(Vec vx, Vec vy) {
       VecArrayFloat3 v3x = (VecArrayFloat3)vx;
@@ -289,6 +290,29 @@ public class Flattener3 {
     private float[][][] _wp;
     private float[][][] _p2;
     private float[][][] _p3;
+    public void testSpd() {
+      // symmetric: y'Ax = x'(A'y) = x'Ay
+      // positive-semidefinite: x'Ax >= 0
+      int n1 = _wp[0][0].length;
+      int n2 = _wp[0].length;
+      int n3 = _wp.length;
+      float[][][] x = sub(randfloat(n1,n2,n3),0.5f);
+      float[][][] y = sub(randfloat(n1,n2,n3),0.5f);
+      float[][][] ax = zerofloat(n1,n2,n3);
+      float[][][] ay = zerofloat(n1,n2,n3);
+      VecArrayFloat3 vx = new VecArrayFloat3(x);
+      VecArrayFloat3 vy = new VecArrayFloat3(y);
+      VecArrayFloat3 vax = new VecArrayFloat3(ax);
+      VecArrayFloat3 vay = new VecArrayFloat3(ay);
+      apply(vx,vax);
+      apply(vy,vay);
+      double yax = vy.dot(vax);
+      double xay = vx.dot(vay);
+      double xax = vx.dot(vax);
+      double yay = vy.dot(vay);
+      System.out.println("A3: yax="+yax+" xay="+xay);
+      System.out.println("A3: xax="+xax+" yay="+yay);
+    }
   }
 
   // Smoother used as a preconditioner. After smoothing, enforces zero-shift
@@ -302,6 +326,7 @@ public class Flattener3 {
       _sigma2 = sigma2;
       _sigma3 = sigma3;
       _ep = ep;
+      //testSpd();
     }
     public void apply(float[][][] x) {
       smooth3(_sigma3,_ep,x);
@@ -327,6 +352,31 @@ public class Flattener3 {
           x[i3][i2][n1-1] = 0.0f;
         }
       }
+    }
+    public void testSpd() {
+      // symmetric: y'Ax = x'(A'y) = x'Ay
+      // positive-semidefinite: x'Ax >= 0
+      int n1 = _ep[0][0].length;
+      int n2 = _ep[0].length;
+      int n3 = _ep.length;
+      float[][][] x = sub(randfloat(n1,n2,n3),0.5f);
+      float[][][] y = sub(randfloat(n1,n2,n3),0.5f);
+      float[][][] ax = copy(x);
+      float[][][] ay = copy(y);
+      VecArrayFloat3 vx = new VecArrayFloat3(x);
+      VecArrayFloat3 vy = new VecArrayFloat3(y);
+      VecArrayFloat3 vax = new VecArrayFloat3(ax);
+      VecArrayFloat3 vay = new VecArrayFloat3(ay);
+      apply(ax);
+      apply(ay);
+      applyTranspose(ax);
+      applyTranspose(ay);
+      double yax = vy.dot(vax);
+      double xay = vx.dot(vay);
+      double xax = vx.dot(vax);
+      double yay = vy.dot(vay);
+      System.out.println("S3: yax="+yax+" xay="+xay);
+      System.out.println("S3: xax="+xax+" yay="+yay);
     }
   }
 
