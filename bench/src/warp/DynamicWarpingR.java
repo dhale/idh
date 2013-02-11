@@ -12,6 +12,9 @@ import edu.mines.jtk.interp.*;
 import edu.mines.jtk.util.*;
 import static edu.mines.jtk.util.ArrayMath.*;
 
+// FOR DEVELOPMENT ONLY
+import edu.mines.jtk.sgl.*;
+
 /**
  * Dynamic warping to find shifts between two sequences or images.
  * For 1D sequences f(x) and g(x), dynamic warping computes shifts u(x) such
@@ -278,43 +281,36 @@ public class DynamicWarpingR {
     trace("k1s:"); dump(k1s);
     trace("k2s:"); dump(k2s);
 
-    // ek[n2][nk1][ns] = errors subsampled in 1st dimension
-    trace("findShifts: loop over i2 ...");
+    trace("findShifts: smoothing in 1st dimension ...");
     final float[][][] ek = new float[n2][][];
     Parallel.loop(n2,new Parallel.LoopInt() {
     public void compute(int i2) {
-      // e1[n1][ns] are errors for 1st dimension
       float[][] e1 = computeErrors(sf,f[i2],sg,g[i2]);
       ek[i2] = subsampleErrors(_r1min,_r1max,k1s,ss,s1,e1);
     }});
+    normalizeErrors(ek);
 
-    trace("findShifts: loop over ik1 ...");
-    // ekk[nk2][nk1][ns] = errors subsampled in both 1st and 2nd dimensions
+    trace("findShifts: smoothing in 2nd dimension ...");
     final float[][][] ekk = new float[nk2][nk1][ns];
     Parallel.loop(nk1,new Parallel.LoopInt() {
     public void compute(int ik1) {
-
-      // e2[n2][ns] = errors for 2nd dimension
       float[][] e2 = new float[n2][ns];
-      for (int i2=0; i2<n2; ++i2) {
-        for (int is=0; is<ns; ++is) {
+      for (int i2=0; i2<n2; ++i2)
+        for (int is=0; is<ns; ++is)
           e2[i2][is] = ek[i2][ik1][is];
-        }
-      }
-
-      // ek2[nk2][ns] = errors subsampled in 2nd dimension
       float[][] ek2 = subsampleErrors(_r2min,_r2max,k2s,ss,s2,e2);
-
-      // copy to ekk[nk2][nk1][ns]
-      for (int ik2=0; ik2<nk2; ++ik2) {
-        for (int is=0; is<ns; ++is) {
+      for (int ik2=0; ik2<nk2; ++ik2)
+        for (int is=0; is<ns; ++is)
           ekk[ik2][ik1][is] = ek2[ik2][is];
-        }
-      }
     }});
+    normalizeErrors(ekk);
 
-    trace("findShifts: smoothing subsampled errors ...");
-    smoothSubsampledErrors(_r1min,_r1max,k1s,_r2min,_r2max,k2s,ss,s1,s2,ekk);
+    //trace("findShifts: smoothing subsampled errors ...");
+    //smoothSubsampledErrors(_r1min,_r1max,k1s,_r2min,_r2max,k2s,ss,s1,s2,ekk);
+    //normalizeErrors(ekk);
+
+    SimpleFrame frame = new SimpleFrame();
+    frame.addImagePanels(pow(ekk,0.1f)).setPercentiles(2,98);
 
     trace("findShifts: finding shifts ...");
     float[][] ukk = new float[nk2][];
@@ -324,6 +320,75 @@ public class DynamicWarpingR {
     }
     trace("findShifts: interpolating shifts ...");
     float[][] u = interpolateShifts(s1,s2,k1s,k2s,ukk);
+    trace("findShifts: ... done");
+    return u;
+  }
+
+  /**
+   * Returns shifts computed for specified 2D images.
+   * @param sf sampling of 1st dimension for the image f.
+   * @param f array of values for image f.
+   * @param sg sampling of 1st dimension for the image g.
+   * @param g array of values for image g.
+   * @return array of shifts.
+   */
+  public float[][] findShiftsX(
+    final Sampling sf, final float[][] f,
+    final Sampling sg, final float[][] g)
+  {
+    // Samplings.
+    final Sampling ss = _ss;
+    final Sampling s1 = _s1;
+    final Sampling s2 = sampling2(f);
+    final int ns = ss.getCount();
+    final int n1 = s1.getCount();
+    final int n2 = s2.getCount();
+    final int m1 = (int)ceil(sqrt(_k1min));
+    final int m2 = (int)ceil(sqrt(_k2min));
+    trace("findShifts: m1="+m1+" m2="+m2);
+
+    // Alignment errors e[n2][n1][ns].
+    final float[][][] e = new float[n2][][];
+    Parallel.loop(n2,new Parallel.LoopInt() {
+    public void compute(int i2) {
+      e[i2] = computeErrors(sf,f[i2],sg,g[i2]);
+    }});
+
+    // Smooth alignment errors once in all dimensions.
+    for (int ismooth=0; ismooth<1; ++ismooth) {
+
+      // Smooth in 1st dimension.
+      trace("findShifts: smoothing errors in 1st dimension ...");
+      Parallel.loop(n2,new Parallel.LoopInt() {
+      public void compute(int i2) {
+        e[i2] = smoothErrors(_r1min,_r1max,m1,ss,s1,e[i2]);
+      }});
+      normalizeErrors(e);
+
+      // Smooth in 2nd dimension.
+      trace("findShifts: smoothing errors in 2nd dimension ...");
+      Parallel.loop(n1,new Parallel.LoopInt() {
+      public void compute(int i1) {
+        float[][] e1 = new float[n2][ns];
+        for (int i2=0; i2<n2; ++i2)
+          for (int is=0; is<ns; ++is)
+            e1[i2][is] = e[i2][i1][is];
+        e1 = smoothErrors(_r2min,_r2max,m2,ss,s2,e1);
+        for (int i2=0; i2<n2; ++i2)
+          for (int is=0; is<ns; ++is)
+            e[i2][i1][is] = e1[i2][is];
+      }});
+      normalizeErrors(e);
+    }
+
+    // Find shifts from smoothed alignment errors.
+    trace("findShifts: finding shifts ...");
+    final float[][] u = new float[n2][];
+    Parallel.loop(n2,new Parallel.LoopInt() {
+    public void compute(int i2) {
+      u[i2] = findShifts(e[i2]);
+    }});
+
     trace("findShifts: ... done");
     return u;
   }
@@ -400,6 +465,7 @@ public class DynamicWarpingR {
    * Returns uniformly sampled warped sequence h(x1) = g(x1+u(x1)).
    * @param sg sampling of the sequence g to be warped.
    * @param g array for the sequence g to be warped.
+   * @param u array of shifts.
    * @return array for the warped sequence h.
    */
   public float[] applyShifts(Sampling sg, float[] g, float[] u) {
@@ -423,6 +489,18 @@ public class DynamicWarpingR {
   private int _k1min,_k2min,_k3min;
   private SincInterp _si;
   private float _epow = 2.0f;
+
+  private static CubicInterpolator makeLinearInterpolator(
+    float[] x, float[] y) 
+  {
+    return new CubicInterpolator(CubicInterpolator.Method.LINEAR,x,y);
+  }
+
+  private static CubicInterpolator makeSplineInterpolator(
+    float[] x, float[] y) 
+  {
+    return new CubicInterpolator(CubicInterpolator.Method.SPLINE,x,y);
+  }
 
   private static CubicInterpolator makeCubicInterpolator(
     float[] x, float[] y) 
@@ -492,6 +570,36 @@ public class DynamicWarpingR {
         e[i1][il] = (e[i1][il]-eshift)*escale;
       }
     }
+  }
+
+  /**
+   * Smooths alignment errors.
+   * @param rmin lower bound on strain.
+   * @param rmax upper bound on strain.
+   * @param me number of errors summed per smoothed error.
+   * @param ss uniform sampling of ns shifts.
+   * @param se uniform sampling of ne errors.
+   * @param e input array[ne][ns] of alignment errors.
+   * @return array[ne][ns] of subsampled errors.
+   */
+  private static float[][] smoothErrors(
+    double rmin, double rmax, int me, 
+    Sampling ss, Sampling se, float[][] e) 
+  {
+    int ns = ss.getCount();
+    int ne = se.getCount();
+    float[][] df = new float[ne][ns];
+    float[][] dr = new float[ne][ns];
+    accumulate( 1,rmin,rmax,me,ss,se,e,df);
+    accumulate(-1,rmin,rmax,me,ss,se,e,dr);
+    float[][] d = df;
+    float scale = 1.0f/ne;
+    for (int ie=0; ie<ne; ++ie) {
+      for (int is=0; is<ns; ++is) {
+        d[ie][is] = scale*(df[ie][is]+dr[ie][is]-e[ie][is]);
+      }
+    }
+    return d;
   }
 
   /**
@@ -641,13 +749,18 @@ public class DynamicWarpingR {
       int je = kes[ike-iked];
       int ie = kes[ike];
       int me = ie-je;
-      int msmin = (int) ceil(-rmax*me*de/ds);
-      int msmax = (int)floor(-rmin*me*de/ds);
-      if (msmin>msmax) {
-        int mstmp = msmin;
-        msmin = msmax;
-        msmax = mstmp;
+      int msmin,msmax;
+      if (me>0) {
+        msmin = (int) ceil(-rmax*me*de/ds);
+        msmax = (int)floor(-rmin*me*de/ds);
+      } else {
+        msmin = (int) ceil(-rmin*me*de/ds);
+        msmax = (int)floor(-rmax*me*de/ds);
       }
+      if (msmin>msmax) {
+        trace("ie="+ie+" je="+je+" me="+me+" msmin="+msmin+" msmax="+msmax);
+      }
+      assert msmin<=msmax:"msmin<=msmax";
       fill(Float.MAX_VALUE,d[ike]);
       for (int ms=msmin; ms<=msmax; ++ms) {
         int islo = max(0,-ms);
@@ -658,6 +771,54 @@ public class DynamicWarpingR {
           updateSumsOfErrors(ie,je,ms,e,dprev,d[ike],m[ike]);
         else
           updateSumsOfErrors(ie,je,ms,e,dprev,d[ike],null);
+      }
+    }
+  }
+
+  /**
+   * Accumulates alignment errors in forward or reverse direction.
+   * Does not subsample the accumulated errors.
+   * @param dir direction, 1 for forward, -1 for reverse.
+   * @param rmin lower bound on strain.
+   * @param rmax upper bound on strain.
+   * @param me number of errors e summed per accumulated error d
+   * @param ss uniform sampling of ns shifts.
+   * @param se uniform sampling of ne errors.
+   * @param e input array[ne][ns] of alignment errors.
+   * @param d output array[ne][ns] of accumulated errors.
+   */
+  private static void accumulate(
+    int dir, double rmin, double rmax, int me, 
+    Sampling ss, Sampling se, float[][] e, float[][] d) 
+  {
+    int ns = ss.getCount();
+    int ne = se.getCount();
+    double ds = ss.getDelta();
+    double de = se.getDelta();
+    int ied = dir>0?1:-1;
+    int ieb = dir>0?0:ne-1;
+    int iee = dir>0?ne:-1;
+    for (int is=0; is<ns; ++is)
+      d[ieb][is] = e[ieb][is];
+    float[] dprev = new float[ns];
+    for (int ie=ieb+ied; ie!=iee; ie+=ied) {
+      int je = max(0,min(ne-1,ie-dir*me));
+      int ke = ie-je;
+      int msmin,msmax;
+      if (ke>0) {
+        msmin = (int) ceil(-rmax*ke*de/ds);
+        msmax = (int)floor(-rmin*ke*de/ds);
+      } else {
+        msmin = (int) ceil(-rmin*ke*de/ds);
+        msmax = (int)floor(-rmax*ke*de/ds);
+      }
+      fill(Float.MAX_VALUE,d[ie]);
+      for (int ms=msmin; ms<=msmax; ++ms) {
+        int islo = max(0,-ms);
+        int ishi = min(ns,ns-ms);
+        for (int is=islo; is<ishi; ++is)
+          dprev[is] = d[ie-ied][is+ms];
+        updateSumsOfErrors(ie,je,ms,e,dprev,d[ie],null);
       }
     }
   }
@@ -747,12 +908,13 @@ public class DynamicWarpingR {
     for (int ike=ikeb+iked; ike!=ikee; ike+=iked) {
       float[] dprev = d[ike-iked];
       int me = kes[ike]-kes[ike-iked];
-      int msmin = (int) ceil(-rmax*me*de/ds);
-      int msmax = (int)floor(-rmin*me*de/ds);
-      if (msmin>msmax) {
-        int mstmp = msmin;
-        msmin = msmax;
-        msmax = mstmp;
+      int msmin,msmax;
+      if (me>0) {
+        msmin = (int) ceil(-rmax*me*de/ds);
+        msmax = (int)floor(-rmin*me*de/ds);
+      } else {
+        msmin = (int) ceil(-rmin*me*de/ds);
+        msmax = (int)floor(-rmax*me*de/ds);
       }
       for (int is=0; is<ns; ++is) {
         float dmin = Float.MAX_VALUE;
@@ -816,7 +978,7 @@ public class DynamicWarpingR {
     float[] xk1 = new float[nk1];
     for (int jk1=0; jk1<nk1; ++jk1)
       xk1[jk1] = (float)s1.getValue(k1s[jk1]);
-    CubicInterpolator ci = makeCubicInterpolator(xk1,uk);
+    CubicInterpolator ci = makeLinearInterpolator(xk1,uk);
     float[] u = new float[n1];
     for (int j1=0; j1<n1; ++j1) {
       float x1 = (float)s1.getValue(j1);
@@ -844,7 +1006,7 @@ public class DynamicWarpingR {
     // Compute 1st derivatives in 1st dimension.
     float[][] vkk = new float[nk2][nk1];
     for (int jk2=0; jk2<nk2; ++jk2) {
-      CubicInterpolator ci = makeCubicInterpolator(xk1,ukk[jk2]);
+      CubicInterpolator ci = makeLinearInterpolator(xk1,ukk[jk2]);
       ci.interpolate1(xk1,vkk[jk2]);
     }
       
@@ -858,8 +1020,8 @@ public class DynamicWarpingR {
         uk2[jk2] = ukk[jk2][jk1];
         vk2[jk2] = vkk[jk2][jk1];
       }
-      CubicInterpolator ciu = makeCubicInterpolator(xk2,uk2);
-      CubicInterpolator civ = makeCubicInterpolator(xk2,vk2);
+      CubicInterpolator ciu = makeSplineInterpolator(xk2,uk2);
+      CubicInterpolator civ = makeSplineInterpolator(xk2,vk2);
       for (int j2=0; j2<n2; ++j2) {
         float x2 = (float)s2.getValue(j2);
         uk[j2][jk1] = ciu.interpolate(x2);
@@ -902,5 +1064,64 @@ public class DynamicWarpingR {
     } else {
       return new Sampling(f.length,1.0,0.0);
     }
+  }
+
+  /**
+   * Normalizes alignment errors to be in range [0,1].
+   * @param e input/output array of alignment errors.
+   */
+  private static void normalizeErrors(float[][][] e) {
+    final int ns = e[0][0].length;
+    final int n1 = e[0].length;
+    final int n2 = e.length;
+    final float[][][] ef = e;
+    MinMax mm = Parallel.reduce(n2,new Parallel.ReduceInt<MinMax>() {
+    public MinMax compute(int i2) {
+      float emin =  Float.MAX_VALUE;
+      float emax = -Float.MAX_VALUE;
+      for (int i1=0; i1<n1; ++i1) {
+        for (int is=0; is<ns; ++is) {
+          float ei = ef[i2][i1][is];
+          if (ei<emin) emin = ei;
+          if (ei>emax) emax = ei;
+        }
+      }
+      return new MinMax(emin,emax);
+    }
+    public MinMax combine(MinMax mm1, MinMax mm2) {
+      return new MinMax(min(mm1.emin,mm2.emin),max(mm1.emax,mm2.emax));
+    }});
+    shiftAndScale(mm.emin,mm.emax,e);
+  }
+  private static class MinMax {
+    float emin,emax;
+    MinMax(float emin, float emax) {
+      this.emin = emin;
+      this.emax = emax;
+    }
+  }
+
+  /**
+   * Shifts and scales alignment errors to be in range [0,1].
+   * @param emin minimum alignment error before normalizing.
+   * @param emax maximum alignment error before normalizing.
+   * @param e input/output array of alignment errors.
+   */
+  private static void shiftAndScale(float emin, float emax, float[][][] e) {
+    trace("shiftAndScale: emin="+emin+" emax="+emax);
+    final int ns = e[0][0].length;
+    final int n1 = e[0].length;
+    final int n2 = e.length;
+    final float eshift = emin;
+    final float escale = (emax>emin)?1.0f/(emax-emin):1.0f;
+    final float[][][] ef = e;
+    Parallel.loop(n2,new Parallel.LoopInt() {
+    public void compute(int i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        for (int is=0; is<ns; ++is) {
+          ef[i2][i1][is] = (ef[i2][i1][is]-eshift)*escale;
+        }
+      }
+    }});
   }
 }

@@ -10,7 +10,7 @@ import static java.lang.Math.*;
 
 /**
  * Simplified dynamic warping to find shifts between two sequences.
- * This version implements pseudocode in Hale and Compton.
+ * This class implements the pseudocode in Hale and Compton (2013).
  *
  * @author Dave Hale, Colorado School of Mines
  * @version 2013.02.04
@@ -69,20 +69,19 @@ public class DynamicWarpingS {
     return u;
   }
 
-  public static float[] findShiftsK(
-    double rl, double ru, float[][] e, int[] k) 
+  public static float[] findShiftsI(
+    double rl, double ru, float[][] e, int[] i) 
   {
     int ni = e.length;
     int nl = e[0].length;
-    int nj = k.length;
+    int nj = i.length;
     float[][] d = new float[nj][nl];
     int[][] m = new int[nj][nl];
-    float[] uk = new float[nj];
+    float[] ui = new float[nj];
     for (int l=0; l<nl; ++l) // initialize
       d[0][l] = e[0][l];
     for (int j=1; j<nj; ++j) { // accumulate
-      int i = k[j];
-      int h = k[j]-k[j-1];
+      int h = i[j]-i[j-1];
       for (int l=0; l<nl; ++l) {
         float dl = Float.MAX_VALUE;
         int ml = -1;
@@ -92,7 +91,7 @@ public class DynamicWarpingS {
           float dq = d[j-1][l-q];
           for (int p=0; p<h; ++p) {
             int s = (int)(l-(float)p*q/h+0.5);
-            dq += e[i-p][s];
+            dq += e[i[j]-p][s];
           }
           if (dq<dl) {
             dl = dq;
@@ -108,13 +107,13 @@ public class DynamicWarpingS {
     for (int l=0; l<nl; ++l) {
       if (d[j][l]<dj) {
         dj = d[j][l];
-        uk[j] = l;
+        ui[j] = l;
       }
     }
     while (j>0) { // backtrack
-      uk[j-1] = uk[j]-m[j][(int)uk[j]];
+      ui[j-1] = ui[j]-m[j][(int)ui[j]];
       j = j-1;
     }
-    return uk;
+    return ui;
   }
 }
