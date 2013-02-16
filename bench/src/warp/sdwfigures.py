@@ -1,9 +1,10 @@
 #############################################################################
-# Dynamic warping for 2D images
+# Make figures to illustrate smooth dynamic warping
 """
 two noisy images
 pp ps (no zoom)
 ppz1 psz1 (zoomed)
+ps is *not* simply a warped version of pp
 
 smoother shifts
 e005h001
@@ -18,7 +19,6 @@ smoothing rough shifts will not work
 more accurate shifts (h = 50)
 e001z1 e001uz1
 e005z1 e005uz1
-e011z1 e011uz1
 e721z1 e721uz1 (show zoom box for e721uz2 below)
 ps image is not shifted version of pp image
   due to noise, differences in reflection coefficients
@@ -50,10 +50,10 @@ pngDir = "./png/sinos/"
 #pngDir = None
 
 def main(args):
-  goImages()
-  goErrors()
-  #goShifts1()
-  #goShifts2()
+  #goImages()
+  #goErrors()
+  goShifts1()
+  goShifts2()
 
 def vpvs(u):
   n1,n2 = len(u[0]),len(u)
@@ -74,25 +74,23 @@ def goShifts2():
   sf = Sampling(ni)
   sg = Sampling(ni+nl)
   dw = DynamicWarpingR(sl.first,sl.last,si,sx)
-  dw.setStrainLimits(0.0,2.0,-0.1,0.1)
-  dw.setSmoothness(50,20)
+  dw.setStrainLimits(0.0,5.0,-0.2,0.2)
+  dw.setSmoothness(50,50)
   u = dw.findShifts(sf,f,sg,g)
   v = vpvs(u)
   h = dw.applyShifts(sg,g,u)
   d = sub(h,f)
   print "nrms(h,f) =",nrms2(h,f)
   zoom = True
-  #plotImage(f,fmax=5,pp=True,zoom=zoom)
+  plotImage(f,fmax=5,pp=True,zoom=zoom)
   plotImage(h,fmax=5,pp=True,zoom=zoom,png="pw2z")
   plotImage(d,fmax=5,pp=True,zoom=zoom,png="pd2z")
-  """
   if zoom:
     plotImage(v,fmin=1.9,fmax=2.3,pp=True,zoom=zoom)
     plotImage(u,fmin=150,fmax=250,pp=True,zoom=zoom,cv=True)
   else:
-    plotImage(v,fmin=2.0,fmax=3.0,pp=True,zoom=zoom)
+    plotImage(v,fmin=1.5,fmax=2.5,pp=True,zoom=zoom)
     plotImage(u,fmin=50,fmax=350,pp=True,zoom=zoom,cv=True)
-    """
   
 def goShifts1():
   f,g = getSinoImages()
@@ -198,8 +196,8 @@ def plotImage(f,fmin=None,fmax=None,pp=True,zoom=False,cv=False,png=None):
     cv.setContours(Sampling(36,10,0))
     cv.setLineColor(Color.YELLOW)
   sp.setFontSizeForPrint(8,wpt)
-  sp.setHLabel("trace index")
-  sp.setVLabel("sample index")
+  sp.setHLabel("Trace index")
+  sp.setVLabel("Sample index")
   if zoom:
     if pp:
       sp.setLimits(290,145,410,305)
@@ -214,8 +212,8 @@ def plotErrors(e,ua=None,ub=None,tj=None,uj=None,zoom=0,png=None):
   nl,ni = len(e[0]),len(e)
   sp = SimplePlot()
   sp.setFontSizeForPrint(8,wpt)
-  sp.setHLabel("sample index")
-  sp.setVLabel("lag index")
+  sp.setHLabel("Sample index")
+  sp.setVLabel("Lag index")
   pv = sp.addPixels(transpose(e))
   pv.setInterpolation(PixelsView.Interpolation.NEAREST)
   pv.setColorModel(ColorMap.GRAY)
@@ -275,9 +273,6 @@ def goTest():
       plotErrors(e,None,u2,tj,uj)
     else:
       plotErrors(e,None,u2)
-
-def goNoisy():
-  pass
 
 def getSinoImages():
   dataDir = "/data/seis/sino/"
