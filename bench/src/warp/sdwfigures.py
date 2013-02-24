@@ -1,6 +1,9 @@
 #############################################################################
 # Make figures to illustrate smooth dynamic warping
 """
+teaser
+ppt pst ut (show shifts in color with contours)
+
 two noisy images
 pp ps (no zoom)
 ppz1 psz1 (zoomed)
@@ -8,7 +11,6 @@ ps is *not* simply a warped version of pp
 
 smoother shifts
 e005h001
-e005h025
 e005h050
 e005h100
 shows subsampling of shifts
@@ -52,8 +54,9 @@ pngDir = "./png/sinos/"
 def main(args):
   #goImages()
   #goErrors()
-  goShifts1()
-  goShifts2()
+  #goShifts1()
+  #goShifts2()
+  goTeaser()
 
 def vpvs(u):
   n1,n2 = len(u[0]),len(u)
@@ -65,6 +68,22 @@ def vpvs(u):
     v[i2][0] = v[i2][1]
   print "v: min =",min(v)," max =",max(v)
   return v
+
+def goTeaser():
+  f,g = getSinoImages()
+  f = copy(ni,nx,f)
+  g = copy(ni+nl,nx,g)
+  h = copy(f)
+  sf = Sampling(ni)
+  sg = Sampling(ni+nl)
+  dw = DynamicWarpingR(sl.first,sl.last,si,sx)
+  dw.setStrainLimits(0.0,5.0,-0.2,0.2)
+  dw.setSmoothness(50,50)
+  u = dw.findShifts(sf,f,sg,g)
+  h = dw.applyShifts(sg,g,u)
+  plotTeaser(f,fmax=5,png="ppt")
+  plotTeaser(h,fmax=5,png="pst")
+  plotTeaser(u,fmin=150,fmax=250,cv=True,png="ut")
 
 def goShifts2():
   f,g = getSinoImages()
@@ -181,6 +200,34 @@ def computeErrors(mx,f,g):
     ei = DynamicWarpingS.computeErrors(nl,f[ix],g[ix])
     add(ei,e,e)
   return e
+
+def plotTeaser(f,fmin=None,fmax=None,cv=False,png=None):
+  wpt = 216 # width (in points) of plot
+  sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
+  pv = sp.addPixels(f)
+  if fmax:
+    if fmin:
+      pv.setClips(fmin,fmax)
+    else:
+      pv.setClips(-fmax,fmax)
+  if cv:
+    pv.setColorModel(ColorMap.JET)
+    cv = sp.addContours(f)
+    cv.setContours(Sampling(36,10,0))
+    cv.setLineColor(Color.BLACK)
+    cv.setLineWidth(3.0)
+    cv.setLineStyle(ContoursView.Line.DOT)
+    sp.addColorBar("Shift (samples)")
+  else:
+    sp.addColorBar("Amplitude")
+  sp.setFontSizeForPrint(8,wpt)
+  sp.setHLabel("Trace index")
+  sp.setVLabel("Sample index")
+  sp.setLimits(290,145,410,305)
+  sp.plotPanel.setColorBarWidthMinimum(60)
+  sp.setSize(430,300)
+  if pngDir and png:
+    sp.paintToPng(720,wpt/72.0,pngDir+png+".png")
 
 def plotImage(f,fmin=None,fmax=None,pp=True,zoom=False,cv=False,png=None):
   wpt = 252 # width (in points) of plot
