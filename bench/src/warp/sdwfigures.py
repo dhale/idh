@@ -48,8 +48,8 @@ nt,nx = 2001,721
 ni,nl = 501,351
 st,sx = Sampling(nt),Sampling(nx)
 si,sl = Sampling(ni),Sampling(nl)
-pngDir = "./png/sinos/"
-#pngDir = None
+#pngDir = "./png/sinos/"
+pngDir = None
 
 def main(args):
   #goImages()

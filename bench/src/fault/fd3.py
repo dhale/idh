@@ -26,9 +26,20 @@ from fault import *
 #############################################################################
 
 def main(args):
-  goS1()
+  goSA()
+  #goS1()
   #goS1A()
   #goS1B()
+def goSA():
+  samplingSA()
+  goSlopes()
+  #goAlign()
+  #goSemblance()
+  #goScan()
+  #goThin()
+  #goSmooth()
+  #goSurfing()
+  #goPartsAB()
 def goS1():
   samplingS1()
   #goSurfingFake()
@@ -379,17 +390,6 @@ def makeConeSlices(i2,i3,nd,na,g):
         h[ja][jd][j1] = si.interpolate(s1,s2,s3,g,x1,x2,x3)
   return s1,sd,sa,h
 
-def samplingS1():
-  global n1,n2,n3
-  global s1,s2,s3
-  global dataDir,dataSub
-  dataDir = "/data/seis/f3d/faults/"
-  dataSub = "s1/"
-  n1,n2,n3 = 222,221,220
-  d1,d2,d3 = 0.004,0.025,0.025
-  f1,f2,f3 = 0.964,1.250,2.500
-  s1,s2,s3 = samplings(n1,d1,f1,n2,d2,f2,n3,d3,f3)
-
 def spow(p,f):
   return mul(sgn(f),pow(abs(f),p))
 
@@ -414,6 +414,16 @@ def writeImage(f,fileName):
   aos = ArrayOutputStream(dataDir+dataSub+fileName+".dat")
   aos.writeFloats(f)
   aos.close()
+def samplingSA():
+  global n1,n2,n3
+  global s1,s2,s3
+  global dataDir,dataSub
+  dataDir = "/data/seis/f3d/faults/"
+  dataSub = "sa/"
+  n1,n2,n3 = 462,951,591
+  d1,d2,d3 = 0.004,0.025,0.025
+  f1,f2,f3 = 0.000,0.000,0.000
+  s1,s2,s3 = samplings(n1,d1,f1,n2,d2,f2,n3,d3,f3)
 def samplingS1():
   global n1,n2,n3
   global s1,s2,s3
