@@ -29,6 +29,11 @@ def setupForSubset(name):
     s2 = Sampling(951,0.025,0.000)
     s3 = Sampling(591,0.025,0.000)
     f3dBaseName = "f3d"
+  elif name=="alls8":
+    s1 = Sampling(462,0.004,0.004)
+    s2 = Sampling(951,0.025,0.000)
+    s3 = Sampling(651,0.025,0.000)
+    f3dBaseName = "f3dalls8"
 
 def getSamplings():
   return s1,s2,s3

@@ -4,7 +4,7 @@ Slices of F3 Demo data.
 from f3utils import *
 
 #############################################################################
-setupForSubset("all")
+setupForSubset("alls8")
 s1,s2,s3 = getSamplings()
 n1,n2,n3 = s1.count,s2.count,s3.count
 d1,d2,d3 = s1.delta,s2.delta,s3.delta
@@ -15,11 +15,11 @@ clip = 1.0
 
 #############################################################################
 def main(args):
-  #slice1(309)
+  slice1(309)
   #slice1(310)
   #slice3( 75)
   plotSlice1(309)
-  plotSlice1(310)
+  #plotSlice1(310)
   #plotSlice3( 75)
 
 def slice1(k1):

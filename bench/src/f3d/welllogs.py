@@ -6,12 +6,13 @@ Version: 2012.12.29
 from f3utils import *
 
 #############################################################################
-setupForSubset("all")
+setupForSubset("alls8")
 s1,s2,s3 = getSamplings()
 n1,n2,n3 = s1.count,s2.count,s3.count
 d1,d2,d3 = s1.delta,s2.delta,s3.delta
 f1,f2,f3 = s1.first,s2.first,s3.first
-ss = Sampling(1176,d2,0.0)
+#ss = Sampling(1176,d2,0.0) # wells only
+ss = Sampling(1281,d2,0.0) # wells and one extra point at cone
 ns,ds,fs = ss.count,ss.delta,ss.first
 f3dDataDir = getF3dDataDir()
 odtWellLogsDir = f3dDataDir+"odt/"
@@ -88,11 +89,13 @@ def displaySlicesThruWells():
   pv = sp.addPoints(x2s,x3s)
   pv.setLineColor(Color.YELLOW)
   pv.setLineWidth(3.0)
+  x2w = [x2w[0],x2w[1],x2w[3],x2w[4]]
+  x3w = [x3w[0],x3w[1],x3w[3],x3w[4]]
   pv = sp.addPoints(x2w,x3w)
   pv.setLineStyle(PointsView.Line.NONE)
   pv.setMarkStyle(PointsView.Mark.FILLED_CIRCLE)
-  pv.setMarkSize(16.0)
-  pv.setMarkColor(Color.YELLOW)
+  pv.setMarkSize(12.0)
+  pv.setMarkColor(Color.CYAN)
   #sp.setHLimits(s2.first,s2.last)
   #sp.setVLimits(s3.first,s3.last)
   sp.setHLabel("Inline (km)")
@@ -145,6 +148,8 @@ def getWellLocations():
   ns = nw
   x2s = zerofloat(nw); copy(x2,x2s)
   x3s = zerofloat(nw); copy(x3,x3s)
+  x2s = [x2s[0],x2s[1],7.02,x2s[2],x2s[3]]
+  x3s = [x3s[0],x3s[1],1.02,x3s[2],x3s[3]]
   return x2s,x3s
 
 # Gets finely sampled curve through points (well locations).
