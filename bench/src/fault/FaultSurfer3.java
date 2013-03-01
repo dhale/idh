@@ -1553,6 +1553,11 @@ public class FaultSurfer3 {
     for (int i2=1; i2<n2-1; ++i2) {
       for (int i1=1; i1<n1-1; ++i1) {
 
+        // Components of vector h are initially zero.
+        float h1i = h1[i2][i1] = 0.0f;
+        float h2i = h2[i2][i1] = 0.0f;
+        float h3i = h3[i2][i1] = 0.0f;
+
         // Skip samples with small fault likelihoods.
         if (fl[i3][i2][i1]<flmin) continue;
 
@@ -1575,11 +1580,6 @@ public class FaultSurfer3 {
         float ev = (float)e[1];
         float ew = (float)e[2];
 
-        // Components of vector h are initially zero.
-        float h1i = 0.0f;
-        float h2i = 0.0f;
-        float h3i = 0.0f;
-
         // If we might have a ridge in fault likelihood, ...
         if (ew<0.0f) {
 
@@ -1599,12 +1599,14 @@ public class FaultSurfer3 {
           float u2 = -sp*ct;
           float u3 =  cp*ct;
 
-          // If normal vectors are consistent, ...
+          // Ensure normal vectors are consistent. 
+          // Bounds on u-w angle: 
+          //   0.00f for < 90 degrees
+          //   0.25f for < 60 degrees // OK for F3D
+          //   0.50f for < 45 degrees
+          //   0.75f for < 30 degrees
           float uw = u1*w1+u2*w2+u3*w3;
-          //if (uw*uw>0.75f) { // if u-w angle < 30 degrees
-          //if (uw*uw>0.50f) { // if u-w angle < 45 degrees
-          if (uw*uw>0.25f) { // if u-w angle < 60 degrees // OK for F3D
-          //if (uw*uw>0.0f) { // if u-w angle < 90 degrees
+          if (uw*uw>0.25f) { 
 
             // The non-unit eigenvalue eu of T.
             float eu = 0.0f;
