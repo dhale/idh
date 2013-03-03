@@ -17,9 +17,9 @@ clip = 1.0
 pngDir = "png/"
 #pngDir = None
 
-###
-# for 1:1 plots, pixel_ratio = 1.1*value_ratio
-# for vertical exaggeration, divide pixel_ratio by factor > 1
+# P-wave velocities for sediments with cones ~ 2.2 km/s => dz ~ 1.1*dt 
+# So, for 1:1 plots, make pixel_ratio = 1.1*value_ratio
+# for vertical exaggeration by s, scale pixel_ratio by 1/s
 
 #############################################################################
 def main(args):
@@ -33,29 +33,41 @@ def goFigures():
   
 def displayCones(name):
   g = readImage(name)
+  nt = 126 # sampling of times with cones present
+  dt = 0.004
+  ft = 1.040
+  st = Sampling(nt,dt,ft)
+  nd = 73  # sampling of distance d from center of cone
+  dd = s2.delta
+  fd = -dd*(nd-1)/2
+  sd = Sampling(nd,dd,fd)
+  na = 6 # sampling of azimuth a; north = 0 degrees
+  da = 30.0
+  fa = 0.0
+  sa = Sampling(na,da,fa)
   c2s,c3s = getConeLocations()
-  nd,na = 73,36 # number of distances, azimuths
-  #for ic in [0,1,2,3]:
-  for ic in [3]:
+  for ic in [0,1,2,3]:
+  #for ic in [0]:
     c2,c3 = c2s[ic],c3s[ic]
-    s1,sd,sa,h = makeConeSlices(c2,c3,nd,na,g)
+    h = makeConeSlices(c2,c3,st,sd,sa,g)
     def plota(ia,aspect11):
       sia = str(int(sa.getValue(ia)))
       sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
-      sp.setTitle("Azimuth = "+sia+" degrees")
+      #sp.setTitle("Azimuth = "+sia+" degrees")
       sp.setHLabel("Radial distance (km)")
       sp.setVLabel("Time (s)")
-      sp.setHLimits(sd.first,sd.last)
-      sp.setVLimits(1.05,1.55)
+      #sp.setHLimits(sd.first,sd.last)
+      #sp.setVLimits(1.05,1.55)
       if aspect11:
         sp.setSize(1400,580) # 1:1 scale
       else:
-        sp.setSize(590,765) # 1:5 scale (vertical exaggeration)
-      wpt = 240.0
+        #sp.setSize(590,765) # 1:5 scale (vertical exaggeration with title)
+        sp.setSize(590,712) # 1:5 scale (vertical exaggeration)
+      wpt = 200.0
       sp.setFontSizeForPrint(8,wpt)
-      pv = sp.addPixels(s1,sd,h[ia])
+      pv = sp.addPixels(st,sd,h[ia])
       pv.setClips(-1.0,1.0)
-      pv = sp.addPoints([1.05,1.55],[0,0])
+      pv = sp.addPoints([st.first,st.last],[0,0])
       pv.setLineColor(Color.WHITE)
       pngFile="cone"+str(ic)+name
       if len(sia)==1:
@@ -102,7 +114,7 @@ def displaySlicesThruCones(name,points):
   sp.setFontSizeForPrint(8,wpt)
   sp.setSize(460,710)
   if pngDir:
-    sp.paintToPng(720,wpt/72,pngDir+name+points+"23.png")
+    sp.paintToPng(360,wpt/72,pngDir+name+points+"23.png")
   sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
   pv = sp.addPixels(s1,ss,fcp)
   pv.setClips(-clip,clip)
@@ -110,7 +122,6 @@ def displaySlicesThruCones(name,points):
   pv = sp.plotPanel.addPoints(x1,xs)
   pv.setLineColor(Color.WHITE)
   sp.setVLimits(1.0,s1.last)
-  #sp.setVLimits(1.05,1.55)
   sp.setHLimits(ss.first,ss.last)
   sp.setHLabel("Distance (km)")
   sp.setVLabel("Time (s)")
@@ -119,7 +130,7 @@ def displaySlicesThruCones(name,points):
   #sp.setSize(775,440)
   sp.setSize(775,255)
   if pngDir:
-    sp.paintToPng(720,wpt/72,pngDir+name+points+"1s.png")
+    sp.paintToPng(360,wpt/72,pngDir+name+points+"1s.png")
 
 # Gets cone locations in CSM (x2,x3) coordinates
 def getConeLocations():
@@ -194,7 +205,7 @@ def linesThruCones(x2c,x3c,x2s,x3s,ss):
     i = indexOfNearestPoint(x2c[ic],x3c[ic],x2s,x3s)
     if i>=0:
       xi = ss.getValue(i)
-      x1.append([1.05,1.55])
+      x1.append([1.04,1.54])
       xs.append([xi,xi])
   return x1,xs
 
@@ -215,20 +226,14 @@ def indexOfNearestPoint(x2,x3,x2s,x3s):
     jsmin = -1
   return jsmin
 
-def makeConeSlices(c2,c3,nd,na,g):
-  """c2,c3 = cone center; nd,na = # of distances,azimuths"""
+def makeConeSlices(c2,c3,st,sd,sa,g):
+  nt,nd,na = st.count,sd.count,sa.count
+  dt,dd,da = st.delta,sd.delta,sa.delta
+  ft,fd,fa = st.first,sd.first,sa.first
   # output array is a 3D image[na][nd][n1]
-  h = zerofloat(n1,nd,na)
+  h = zerofloat(nt,nd,na)
   # survey azimuth is 88.4 degrees
   ps = toRadians(88.4)
-  # sampling of azimuth, measured from inline x2 toward xline x3
-  da = 360.0/na
-  fa = 0.0
-  sa = Sampling(na,da,fa)
-  # sampling of distance from center of cone
-  dd = s2.delta
-  fd = -dd*(nd-1)/2
-  sd = Sampling(nd,dd,fd)
   # interpolate slices
   si = SincInterp()
   for ja in range(na):
@@ -240,10 +245,10 @@ def makeConeSlices(c2,c3,nd,na,g):
       dj = sd.getValue(jd)
       x2 = c2+cj*dj;
       x3 = c3-sj*dj;
-      for j1 in range(n1):
-        x1 = s1.getValue(j1)
-        h[ja][jd][j1] = si.interpolate(s1,s2,s3,g,x1,x2,x3)
-  return s1,sd,sa,h
+      for jt in range(nt):
+        x1 = st.getValue(jt)
+        h[ja][jd][jt] = si.interpolate(s1,s2,s3,g,x1,x2,x3)
+  return h
 
 #############################################################################
 run(main)
