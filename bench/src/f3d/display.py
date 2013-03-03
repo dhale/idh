@@ -4,7 +4,7 @@ Displays F3 data.
 from f3utils import *
 
 #############################################################################
-setupForSubset("all")
+setupForDataSet("seta")
 s1,s2,s3 = getSamplings()
 clip = 1.0
 
@@ -14,7 +14,7 @@ def main(args):
   #displaySlice3()
 
 def display3d():
-  x = readF3dImage()
+  x = readImage("gs8")
   print "x min =",min(x)," max =",max(x)
   frame = SimpleFrame()
   ipg = frame.addImagePanels(s1,s2,s3,x)
@@ -26,11 +26,10 @@ def display3d():
   frame.setVisible(True)
 
 def displaySlice3():
-  k3 = 75
-  x = readF3dImage()
-  y = x[k3]
+  n1,n2 = s1.count,s2.count
+  x = readImage2(getF3dSlice3Name("g",75),n1,n2)
   sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
-  pv = sp.addPixels(y)
+  pv = sp.addPixels(x)
   pv.setClips(-clip,clip)
 
 #############################################################################

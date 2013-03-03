@@ -1,64 +1,56 @@
 """
 Jython utilities for F3 dataset.
 Author: Dave Hale, Colorado School of Mines
-Version: 2012.12.30
+Version: 2013.03.02
 """
 from imports import *
 
 #############################################################################
-# Internal constants
-
-_f3dDir = "/data/seis/f3d/"
+# Base directory for F3 data
+f3dDataDir = "/data/seis/f3d/"
 
 #############################################################################
-# Setup (default is subset with live traces only)
+# Setup (default is set with all traces)
 s1 = Sampling(462,0.004,0.004)
 s2 = Sampling(951,0.025,0.000)
-s3 = Sampling(591,0.025,0.000)
-f3dDataDir = _f3dDir
-f3dBaseName = "f3d"
-def setupForSubset(name):
+s3 = Sampling(651,0.025,0.000)
+f3dDataSetDir = f3dDataDir+"seta/"
+f3dDataWellDir = f3dDataDir+"well/"
+def setupForDataSet(name):
   global s1,s2,s3,f3dBaseName
-  if name=="all":
+  if name=="seta": # all traces, including dead traces
     s1 = Sampling(462,0.004,0.004)
     s2 = Sampling(951,0.025,0.000)
     s3 = Sampling(651,0.025,0.000)
-    f3dBaseName = "f3dall"
-  elif name=="live":
+    f3dDataSetDir = f3dDataDir+"seta/"
+  elif name=="setl": # live traces only
     s1 = Sampling(462,0.004,0.004)
     s2 = Sampling(951,0.025,0.000)
     s3 = Sampling(591,0.025,0.000)
-    f3dBaseName = "f3d"
-  elif name=="alls8":
-    s1 = Sampling(462,0.004,0.004)
-    s2 = Sampling(951,0.025,0.000)
-    s3 = Sampling(651,0.025,0.000)
-    f3dBaseName = "f3dalls8"
+    f3dDataSetDir = f3dDataDir+"setl/"
 
 def getSamplings():
   return s1,s2,s3
 def getF3dDataDir():
   return f3dDataDir
-def getF3dBaseName():
-  return f3dBaseName
-def getF3dSlice1Name(k1):
-  return f3dBaseName+"k1"+str(k1)
-def getF3dSlice3Name(k3):
-  return f3dBaseName+"k3"+str(k3)
+def getF3dWellDir():
+  return f3dDataWellDir
+def getF3dDataSetDir():
+  return f3dDataSetDir
+def getF3dSlice1Name(name,k1):
+  return "slices/"+name+"k1"+str(k1)
+def getF3dSlice3Name(name,k3):
+  return "slices/"+name+"k3"+str(k3)
 
 #############################################################################
 # read/write files
 
-def readF3dImage():
-  """Reads the current subset of the F3D seismic image."""
-  return readImage(f3dBaseName)
-
 def readImage(name):
   """ 
   Reads an image from a file with specified name.
-  name: base name of image file; e.g., "f3d"
+  name: base name of image file; e.g., "g"
   """
-  fileName = f3dDataDir+name+".dat"
+  fileName = f3dDataSetDir+name+".dat"
   n1,n2,n3 = s1.count,s2.count,s3.count
   image = zerofloat(n1,n2,n3)
   ais = ArrayInputStream(fileName)
@@ -72,14 +64,14 @@ def writeImage(name,image):
   name: base name of image file; e.g., "f3gp"
   image: the image
   """
-  fileName = f3dDataDir+name+".dat"
+  fileName = f3dDataSetDir+name+".dat"
   aos = ArrayOutputStream(fileName)
   aos.writeFloats(image)
   aos.close()
   return image
 
 def readImage2(name,n1,n2):
-  fileName = f3dDataDir+name+".dat"
+  fileName = f3dDataSetDir+name+".dat"
   image = zerofloat(n1,n2)
   ais = ArrayInputStream(fileName)
   ais.readFloats(image)
@@ -87,7 +79,7 @@ def readImage2(name,n1,n2):
   return image
 
 def writeImage2(name,image):
-  fileName = f3dDataDir+name+".dat"
+  fileName = f3dDataSetDir+name+".dat"
   aos = ArrayOutputStream(fileName)
   aos.writeFloats(image)
   aos.close()
@@ -97,7 +89,7 @@ def readTensors(name):
   """
   Reads tensors from file with specified basename; e.g., "f3et".
   """
-  fis = FileInputStream(f3dDataDir+name+".dat")
+  fis = FileInputStream(f3dDataSetDir+name+".dat")
   ois = PythonObjectInputStream(fis)
   tensors = ois.readObject()
   fis.close()
@@ -106,13 +98,13 @@ def writeTensors(name,tensors):
   """
   Writes tensors to file with specified basename; e.g., "f3et".
   """
-  fos = FileOutputStream(f3dDataDir+name+".dat")
+  fos = FileOutputStream(f3dDataSetDir+name+".dat")
   oos = ObjectOutputStream(fos)
   oos.writeObject(tensors)
   fos.close()
 
 def readWellLogData():
-  fileName = f3dDataDir+f3dBaseName+"well.dat"
+  fileName = f3dDataWellDir+"welllogs.dat"
   return WellLog.Data.readBinary(fileName)
 
 def readLogSamples(type,smooth=0):

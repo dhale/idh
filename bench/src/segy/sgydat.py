@@ -312,8 +312,8 @@ def goF3d():
   writeImage = True # reads all traces, writes an image
   showImage = True # displays the image
   basedir = "/data/seis/f3d/"
-  sgyfile = basedir+"f3d.sgy"
-  datfile = basedir+"f3dall.dat"
+  sgyfile = basedir+"odt/seis/f3d.sgy"
+  datfile = basedir+"seta/g.dat"
   #i1min,i1max,i2min,i2max,i3min,i3max = 0,461,300,1250,100,690
   i1min,i1max,i2min,i2max,i3min,i3max = 0,461,300,1250,100,750
   n1,n2,n3 = 1+i1max-i1min,1+i2max-i2min,1+i3max-i3min
