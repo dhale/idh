@@ -18,8 +18,8 @@ pngDir = "png/"
 #pngDir = None
 
 # P-wave velocities for sediments with cones ~ 2.2 km/s => dz ~ 1.1*dt 
-# So, for 1:1 plots, make pixel_ratio = 1.1*value_ratio
-# for vertical exaggeration by s, scale pixel_ratio by 1/s
+# For aspect ratio = w:h = 1:1, make pixel_ratio = value_ratio/1.1
+# For aspect ratio = w:h = 1:5, make pixel_ratio = value_ratio/5.5
 
 #############################################################################
 def main(args):
@@ -28,8 +28,8 @@ def main(args):
 def goFigures():
   for name in ["g","gs8"]:
     #makeSliceThruPoints(name,"c1")
-    #displaySlicesThruCones(name,"c1")
-    displayCones(name)
+    displaySlicesThruCones(name,"c1")
+    #displayCones(name)
   
 def displayCones(name):
   g = readImage(name)
@@ -59,29 +59,32 @@ def displayCones(name):
       #sp.setHLimits(sd.first,sd.last)
       #sp.setVLimits(1.05,1.55)
       if aspect11:
-        sp.setSize(1400,580) # 1:1 scale
+        sp.setSize(1400,498) # 1:1 scale
       else:
-        #sp.setSize(590,765) # 1:5 scale (vertical exaggeration with title)
-        sp.setSize(590,712) # 1:5 scale (vertical exaggeration)
-      wpt = 200.0
+        sp.setSize(498,712) # 1:5 scale
+      if aspect11:
+        wpt = 504.0
+      else:
+        wpt = 200.0
       sp.setFontSizeForPrint(8,wpt)
       pv = sp.addPixels(st,sd,h[ia])
       pv.setClips(-1.0,1.0)
       pv = sp.addPoints([st.first,st.last],[0,0])
       pv.setLineColor(Color.WHITE)
-      pngFile="cone"+str(ic)+name
+      pngFile="cone"+str(ic)
+      if aspect11:
+        pngFile += "r11a"
+      else:
+        pngFile += "r15a"
       if len(sia)==1:
         sia = "00"+sia
       elif len(sia)==2:
         sia = "0"+sia
-      if aspect11:
-        pngFile += "asa"+sia+".png"
-      else:
-        pngFile += "asb"+sia+".png"
+      pngFile += sia+name+".png"
       if pngDir:
         sp.paintToPng(360,wpt/72,pngDir+pngFile)
     for ia in range(na):
-      plota(ia,False)
+      plota(ia,True)
 
 def displaySlicesThruCones(name,points):
   ss = getSamplingS(name,points)
@@ -127,8 +130,7 @@ def displaySlicesThruCones(name,points):
   sp.setVLabel("Time (s)")
   wpt = 504.0
   sp.setFontSizeForPrint(8,wpt)
-  #sp.setSize(775,440)
-  sp.setSize(775,255)
+  sp.setSize(670,255)
   if pngDir:
     sp.paintToPng(360,wpt/72,pngDir+name+points+"1s.png")
 
