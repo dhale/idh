@@ -6,13 +6,6 @@ Version: 2013.03.02
 from f3utils import *
 
 #############################################################################
-setupForDataSet("seta")
-s1,s2,s3 = getSamplings()
-n1,n2,n3 = s1.count,s2.count,s3.count
-d1,d2,d3 = s1.delta,s2.delta,s3.delta
-f1,f2,f3 = s1.first,s2.first,s3.first
-f3dDataDir = getF3dDataDir()
-clip = 1.0
 
 pngDir = "png/"
 #pngDir = None
@@ -21,36 +14,130 @@ pngDir = "png/"
 # For aspect ratio = w:h = 1:1, make pixel_ratio = value_ratio/1.1
 # For aspect ratio = w:h = 1:5, make pixel_ratio = value_ratio/5.5
 
+coneSurfBounds = {
+  # cone:(x1,x2,x3,h,r)
+  0:(35,37,99,80,25),
+  1:(14,99,101,108,29),
+  2:(7,100,100,78,18),
+  3:(10,100,43,69,16),
+}
+coneViewParams = {
+  # cone:(k1,k2,k3,az,el,sc,tx,ty,tz)
+  0:(94,32,121,-34.4,20.4,5.3,0.159,-0.058,0.196),
+  1:(91,84, 85, 41.4,19.0,3.5,0.000,-0.014,0.007),
+  2:(81,88,112,-25.7,27.8,3.3,0.000, 0.000,0.000),
+  3:(72,89, 54,-54.1,18.7,3.1,0.136, 0.022,0.174),
+}
+
 #############################################################################
 def main(args):
-  goFigures()
+  goConeSurfing()
+  #goConeSubsets()
+  #goFigures()
 
+def goConeSurfing():
+  makeColorBar3d(0.0,8.00*1.1*4.0,"Fault throw (m)")
+  for cone in [0,1,2,3]:
+    surfCone(cone)
+def surfCone(cone):
+  scone = str(cone)
+  setup("setc"+scone);
+  g = readImage("g")
+  gs = readImage("gs8")
+  p2 = readImage("p2")
+  p3 = readImage("p3")
+  fl = readImage("fl")
+  fp = readImage("fp")
+  ft = readImage("ft")
+  flt = readImage("flt")
+  fs = FaultSurfer3([fl,fp,ft])
+  csb = coneSurfBounds[cone]
+  if csb:
+    c1,c2,c3,hc,rc = csb
+    qf = Util.QuadInsideCone(c1,c2,c3,hc,rc)
+    fs.addQuadFilter(qf)
+  fs.setThreshold(0.7)
+  quads = fs.findQuads()
+  quads = fs.linkQuads(quads)
+  surfs = fs.findSurfs(quads)
+  surfs = fs.getSurfsWithSize(surfs,2000)
+  s = fs.findShifts(20.0,surfs,gs,p2,p3)
+  print "s: min =",min(s)," max =",max(s)
+  #t1,t2,t3 = fs.findThrows(-0.12345,surfs)
+  #plot3(g,surfs=surfs)
+  plot3(g,surfs=surfs,smax=8.0,cone=cone,png="csurf"+str(cone))
+  #plot3(g,s,-10,10,gmap=bwrFill(0.7))
+  #plot3(g,t1,-10.0,10.0,gmap=bwrFill(0.7))
+  #plot3(g,t2,-0.50,0.50,gmap=bwrFill(0.7))
+  #plot3(g,t3,-0.50,0.50,gmap=bwrFill(0.7))
+  #plot3(g,s,-5,5,gmap=bwrNotch(1.0))
+  #plot3(g,s,-5,5,gmap=bwrNotch(1.0))
+  #plot3(gs,s,-5,5,gmap=bwrNotch(1.0))
+  #plot3(gs,flt,0,1,gmap=jetRamp())
+  #plot3(gs,fl,0.5,1,gmap=jetRamp())
+  #plot3(gs)
+
+def goConeSubsets():
+  setup("seta")
+  def makeConeSubset(cone):
+    x2c,x3c = getConeLocations()
+    x2c,x3c = x2c[cone],x3c[cone]
+    i2c = s2.indexOfNearest(x2c)
+    i3c = s3.indexOfNearest(x3c)
+    m1,m2,m3 = 126,201,201
+    j1 = s1.indexOfNearest(1.04)
+    j2 = max(0,min(n2-m2,i2c-(m2-1)/2))
+    j3 = max(0,min(n3-m3,i3c-(m3-1)/2))
+    print "cone: "+str(cone)
+    print "s1.first = ",s1.getValue(j1)
+    print "s2.first = ",s2.getValue(j2)
+    print "s3.first = ",s3.getValue(j3)
+    if True:
+      for name in ["g","gs8","p2","p3","fl","fp","ft","flt","fpt","ftt"]:
+        g = readImage(name)
+        g = copy(m1,m2,m3,j1,j2,j3,g)
+        dataSetDir = f3dDataDir+"setc"+str(cone)+"/"
+        aos = ArrayOutputStream(dataSetDir+name+".dat")
+        aos.writeFloats(g)
+        aos.close()
+  for cone in [0,1,2,3]:
+    makeConeSubset(cone)
+  
 def goFigures():
   for name in ["g","gs8"]:
     #makeSliceThruPoints(name,"c1")
-    displaySlicesThruCones(name,"c1")
-    #displayCones(name)
+    #displaySlicesThruCones(name,"c1")
+    displayCones(name)
   
 def displayCones(name):
+  regional = True # for Rick's interpretation
+  #regional = False # narrower for composition
   g = readImage(name)
   nt = 126 # sampling of times with cones present
   dt = 0.004
   ft = 1.040
   st = Sampling(nt,dt,ft)
-  nd = 73  # sampling of distance d from center of cone
+  #nd = 73  # sampling of distance d from center of cone
+  nd = 119  # sampling of distance d from center of cone
   dd = s2.delta
   fd = -dd*(nd-1)/2
   sd = Sampling(nd,dd,fd)
-  na = 6 # sampling of azimuth a; north = 0 degrees
+  if regional:
+    na = 1 # sampling of azimuth a; north = 0 degrees
+  else:
+    na = 6 # sampling of azimuth a; north = 0 degrees
   da = 30.0
   fa = 0.0
   sa = Sampling(na,da,fa)
   c2s,c3s = getConeLocations()
-  for ic in [0,1,2,3]:
-  #for ic in [0]:
+  if regional:
+    ics = [0]
+  else:
+    ics = [0,1,2,3]
+  for ic in ics:
     c2,c3 = c2s[ic],c3s[ic]
     h = makeConeSlices(c2,c3,st,sd,sa,g)
-    def plota(ia,aspect11):
+    def plota(ia,aspect11=False):
       sia = str(int(sa.getValue(ia)))
       sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
       #sp.setTitle("Azimuth = "+sia+" degrees")
@@ -59,18 +146,26 @@ def displayCones(name):
       #sp.setHLimits(sd.first,sd.last)
       #sp.setVLimits(1.05,1.55)
       if aspect11:
-        sp.setSize(1400,498) # 1:1 scale
+        if regional:
+          sp.setSize(1400,344) # 1:1 scale, width = 3 km
+        else:
+          sp.setSize(1400,498) # 1:1 scale
       else:
-        sp.setSize(498,712) # 1:5 scale
+        if regional:
+          sp.setSize(498,472) # 1:5 scale, width = 3 km
+        else:
+          sp.setSize(498,712) # 1:5 scale
       if aspect11:
         wpt = 504.0
       else:
         wpt = 200.0
       sp.setFontSizeForPrint(8,wpt)
       pv = sp.addPixels(st,sd,h[ia])
+      pv.setInterpolation(PixelsView.Interpolation.NEAREST)
       pv.setClips(-1.0,1.0)
-      pv = sp.addPoints([st.first,st.last],[0,0])
-      pv.setLineColor(Color.WHITE)
+      if not regional:
+        pv = sp.addPoints([st.first,st.last],[0,0])
+        pv.setLineColor(Color.WHITE)
       pngFile="cone"+str(ic)
       if aspect11:
         pngFile += "r11a"
@@ -85,6 +180,7 @@ def displayCones(name):
         sp.paintToPng(360,wpt/72,pngDir+pngFile)
     for ia in range(na):
       plota(ia,True)
+      plota(ia,False)
 
 def displaySlicesThruCones(name,points):
   ss = getSamplingS(name,points)
@@ -136,8 +232,6 @@ def displaySlicesThruCones(name,points):
 
 # Gets cone locations in CSM (x2,x3) coordinates
 def getConeLocations():
-  #x2c = [ 0.910, 2.387, 4.533, 6.225, 7.002]
-  #x3c = [11.896, 6.229, 6.140, 1.678, 1.013]
   x2c = [ 0.910, 2.387, 4.533, 7.002]
   x3c = [11.896, 6.229, 6.140, 1.013]
   return x2c,x3c
@@ -251,6 +345,132 @@ def makeConeSlices(c2,c3,st,sd,sa,g):
         x1 = st.getValue(jt)
         h[ja][jd][jt] = si.interpolate(s1,s2,s3,g,x1,x2,x3)
   return h
+
+def setup(dataset):
+  global s1,s2,s3,n1,n2,n3,d1,d2,d3,f1,f2,f3,f3dDataDir,clip
+  setupForDataSet(dataset)
+  s1,s2,s3 = getSamplings()
+  n1,n2,n3 = s1.count,s2.count,s3.count
+  d1,d2,d3 = s1.delta,s2.delta,s3.delta
+  f1,f2,f3 = s1.first,s2.first,s3.first
+  f3dDataDir = getF3dDataDir()
+  clip = 1.0
+
+#############################################################################
+# plotting
+
+def jetFill(alpha):
+  return ColorMap.setAlpha(ColorMap.JET,alpha)
+def bwrFill(alpha):
+  return ColorMap.setAlpha(ColorMap.RED_WHITE_BLUE,alpha)
+def jetRamp():
+  return ColorMap.setAlpha(ColorMap.JET,rampfloat(0.0,1.0/256,256))
+def bwrNotch(alpha):
+  a = zerofloat(256)
+  for i in range(len(a)):
+    if i<128:
+      a[i] = alpha*(128.0-i)/128.0
+    else:
+      a[i] = alpha*(i-127.0)/128.0
+  return ColorMap.setAlpha(ColorMap.RED_WHITE_BLUE,a)
+
+def plot3(f,g=None,gmin=None,gmax=None,gmap=None,
+          xyz=None,surfs=None,smax=None,cone=None,png=None):
+  n1 = len(f[0][0])
+  n2 = len(f[0])
+  n3 = len(f)
+  sf = SimpleFrame()
+  sf.setBackground(Color(255,255,255))
+  if g==None:
+    ipg = sf.addImagePanels(f)
+    ipg.setClips(-1.0,1.0)
+  else:
+    ipg = ImagePanelGroup2(f,g)
+    ipg.setClips1(-1.0,1.0)
+    if gmap==None:
+      gmap = jetFill(0.8)
+    ipg.setColorModel2(gmap)
+    if gmin and gmax:
+      ipg.setClips2(gmin,gmax)
+    sf.world.addChild(ipg)
+  if xyz:
+    pg = PointGroup(0.2,xyz)
+    ss = StateSet()
+    cs = ColorState()
+    cs.setColor(Color.YELLOW)
+    ss.add(cs)
+    pg.setStates(ss)
+    #ss = StateSet()
+    #ps = PointState()
+    #ps.setSize(5.0)
+    #ss.add(ps)
+    #pg.setStates(ss)
+    sf.world.addChild(pg)
+  if surfs:
+    sg = Group()
+    ss = StateSet()
+    lms = LightModelState()
+    lms.setTwoSide(True)
+    ss.add(lms)
+    ms = MaterialState()
+    ms.setSpecular(Color.GRAY)
+    ms.setShininess(100.0)
+    ms.setColorMaterial(GL_AMBIENT_AND_DIFFUSE)
+    if not smax:
+      ms.setEmissiveBack(Color(0.0,0.0,0.5))
+    ss.add(ms)
+    sg.setStates(ss)
+    isurf = 0
+    for surf in surfs:
+      #surf.blocky()
+      if smax:
+        xyz,uvw,rgb = surf.getXyzUvwRgbShifts(smax)
+      else:
+        xyz,uvw,rgb = surf.getXyzUvwRgb()
+      #qg = QuadGroup(False,xyz,rgb)
+      qg = QuadGroup(True,xyz,rgb) #qg = QuadGroup(xyz,uvw,rgb)
+      qg.setStates(None)
+      #if isurf==11: sg.addChild(qg) # cone0
+      #if isurf==6: sg.addChild(qg) # cone0
+      #if isurf==5: sg.addChild(qg) # cone1
+      #if isurf==6: sg.addChild(qg) # cone2
+      #if isurf==3: sg.addChild(qg) # cone3
+      sg.addChild(qg)
+      print "isurf =",isurf," size =",surf.size()," qg =",qg
+      isurf += 1
+    sf.world.addChild(sg)
+  #ipg.setSlices(209,12,18)
+  #ipg.setSlices(200,0,0)
+  #ipg.setSlices(80,9,13)
+  #ipg.setSlices(80,9,209)
+  #sf.setSize(1300,1100)
+  sf.setSize(1040,1124)
+  sf.setWorldSphere(n3/2,n2/2,n1/2,0.5*sqrt(n1*n1+n2*n2+n3*n3))
+  if cone!=None:
+    k1,k2,k3,az,el,sc,tx,ty,tz = coneViewParams[cone]
+    ipg.setSlices(k1,k2,k3)
+    sf.orbitView.setAzimuthAndElevation(az,el)
+    sf.orbitView.setScale(sc)
+    sf.orbitView.setTranslate(Vector3(tx,ty,tz))
+    sf.orbitView.setAxesScale(1.0,1.0,5.0*1.1*0.004/0.025) # 1:5 aspect ratio
+  #sf.viewCanvas.setBackground(sf.getBackground())
+  if png and pngDir:
+    sf.paintToFile(pngDir+png+".png")
+
+def makeColorBar3d(cmin,cmax,clab,cint=None):
+  cbar = ColorBar(clab)
+  cbar.setFont(Font("Arial",Font.PLAIN,24))
+  cbar.setBackground(Color.WHITE)
+  if cint:
+    cbar.setInterval(cint)
+  cbar.setWidthMinimum(80)
+  cmap = ColorMap(cmin,cmax,ColorMap.JET)
+  cmap.addListener(cbar)
+  frame = JFrame()
+  frame.setSize(140,800)
+  frame.add(cbar,BorderLayout.EAST)
+  frame.setVisible(True)
+  cbar.paintToPng(400,0.5,"cbar.png")
 
 #############################################################################
 run(main)

@@ -17,7 +17,7 @@ s3 = Sampling(651,0.025,0.000)
 f3dDataSetDir = f3dDataDir+"seta/"
 f3dDataWellDir = f3dDataDir+"well/"
 def setupForDataSet(name):
-  global s1,s2,s3,f3dBaseName
+  global s1,s2,s3,f3dDataSetDir
   if name=="seta": # all traces, including dead traces
     s1 = Sampling(462,0.004,0.004)
     s2 = Sampling(951,0.025,0.000)
@@ -28,6 +28,26 @@ def setupForDataSet(name):
     s2 = Sampling(951,0.025,0.000)
     s3 = Sampling(591,0.025,0.000)
     f3dDataSetDir = f3dDataDir+"setl/"
+  elif name=="setc0": # subset nearest cone0
+    s1 = Sampling(126,0.004,1.040)
+    s2 = Sampling(201,0.025,0.000)
+    s3 = Sampling(201,0.025,9.400)
+    f3dDataSetDir = f3dDataDir+"setc0/"
+  elif name=="setc1": # subset nearest cone1
+    s1 = Sampling(126,0.004,1.040)
+    s2 = Sampling(201,0.025,0.000)
+    s3 = Sampling(201,0.025,3.725)
+    f3dDataSetDir = f3dDataDir+"setc1/"
+  elif name=="setc2": # subset nearest cone2
+    s1 = Sampling(126,0.004,1.040)
+    s2 = Sampling(201,0.025,2.025)
+    s3 = Sampling(201,0.025,3.650)
+    f3dDataSetDir = f3dDataDir+"setc2/"
+  elif name=="setc3": # subset nearest cone3
+    s1 = Sampling(126,0.004,1.040)
+    s2 = Sampling(201,0.025,4.500)
+    s3 = Sampling(201,0.025,0.000)
+    f3dDataSetDir = f3dDataDir+"setc3/"
 
 def getSamplings():
   return s1,s2,s3

@@ -36,7 +36,7 @@ def goSA():
   #goAlign()
   #goSemblance()
   #goScan()
-  goThin()
+  #goThin()
   #goSmooth()
   #goSurfing()
   #goPartsAB()
@@ -418,8 +418,8 @@ def samplingSA():
   global n1,n2,n3
   global s1,s2,s3
   global dataDir,dataSub
-  dataDir = "/data/seis/f3d/faults/"
-  dataSub = "sa/"
+  dataDir = "/data/seis/f3d/"
+  dataSub = "seta/"
   n1,n2,n3 = 462,951,651
   d1,d2,d3 = 0.004,0.025,0.025
   f1,f2,f3 = 0.000,0.000,0.000
@@ -428,8 +428,8 @@ def samplingS1():
   global n1,n2,n3
   global s1,s2,s3
   global dataDir,dataSub
-  dataDir = "/data/seis/f3d/faults/"
-  dataSub = "s1/"
+  dataDir = "/data/seis/f3d/"
+  dataSub = "set1/"
   n1,n2,n3 = 222,221,220
   d1,d2,d3 = 0.004,0.025,0.025
   f1,f2,f3 = 0.964,1.250,2.500
@@ -438,8 +438,8 @@ def samplingS1A():
   global n1,n2,n3
   global s1,s2,s3
   global dataDir,dataSub
-  dataDir = "/data/seis/f3d/faults/"
-  dataSub = "s1a/"
+  dataDir = "/data/seis/f3d/"
+  dataSub = "set1a/"
   n1,n2,n3 = 90,221,220
   d1,d2,d3 = 0.004,0.025,0.025
   f1,f2,f3 = 1.484,1.250,2.500
@@ -448,8 +448,8 @@ def samplingS1B():
   global n1,n2,n3
   global s1,s2,s3
   global dataDir,dataSub
-  dataDir = "/data/seis/f3d/faults/"
-  dataSub = "s1b/"
+  dataDir = "/data/seis/f3d/"
+  dataSub = "set1b/"
   n1,n2,n3 = 90,221,220
   d1,d2,d3 = 0.004,0.025,0.025
   f1,f2,f3 = 1.024,1.250,2.500

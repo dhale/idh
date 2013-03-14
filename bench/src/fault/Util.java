@@ -9,6 +9,31 @@ import static edu.mines.jtk.util.ArrayMath.*;
  */
 public class Util {
 
+  public static class QuadInsideCone implements FaultSurfer3.QuadFilter {
+    public QuadInsideCone(
+      double x1, double x2, double x3, double h, double r)
+    {
+      _x1 = x1;
+      _x2 = x2;
+      _x3 = x3;
+      _xh = x1+h;
+      _roh = r/h;
+    }
+    public boolean good(FaultSurfer3.Quad quad) {
+      double c1 = quad.c1;
+      boolean good = false;
+      if (_x1<=c1 && c1<=_xh) {
+        double d2 = quad.c2-_x2;
+        double d3 = quad.c3-_x3;
+        double rc = (c1-_x1)*_roh;
+        if (d2*d2+d3*d3<=rc*rc)
+          good = true;
+      }
+      return good;
+    }
+    private double _x1,_x2,_x3,_xh,_roh;
+  }
+
   public static float[][][][] fakeSpheresFpt(int n1, int n2, int n3) {
     float ra=1.8f*n2, sa=0.0f, c1a= 0.0f*n1, c2a=-0.7f*n2, c3a=-0.7f*n3;
     float rb=1.9f*n2, sb=0.3f, c1b=-0.3f*n1, c2b=-0.9f*n2, c3b=-0.5f*n3;

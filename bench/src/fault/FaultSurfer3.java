@@ -311,10 +311,11 @@ public class FaultSurfer3 {
     }
     private boolean goodNormal(Node n) {
       float uu = u1*n.u1+u2*n.u2+u3*n.u3;
-      return uu*uu>0.75f; // angle less than 30 degrees // OK for F3D
+      //return uu*uu>0.80f;
+      //return uu*uu>0.75f; // angle less than 30 degrees // OK for F3D
       //return uu*uu>0.50f; // angle less than 45 degrees
       //return uu*uu>0.25f; // angle less than 60 degrees
-      //return uu*uu>0.0f; // angle less than 90 degrees
+      return uu*uu>0.0f; // angle less than 90 degrees
     }
 
     /**
@@ -1521,6 +1522,62 @@ public class FaultSurfer3 {
   }
 
   /**
+   * Computes vectors h = uu'g for one constant-i3 slice. 
+   * Unit vector u is the fault normal vector; g is the gradient vector.
+   */
+  private static void computeVectorsH(
+    int i3, float flmin, float[][][] fs,
+    float[][][] fl, float[][][] fp, float[][][] ft,
+    float[][] h1, float[][] h2, float[][] h3)
+  {
+    int n1 = fs[0][0].length;
+    int n2 = fs[0].length;
+
+    // For all samples in this constant-i3 slice, ...
+    for (int i2=1; i2<n2-1; ++i2) {
+      for (int i1=1; i1<n1-1; ++i1) {
+
+        // Components of vector h are initially zero.
+        float h1i = 0.0f;
+        float h2i = 0.0f;
+        float h3i = 0.0f;
+
+        // If fault likelihood not less than threshold, ...
+        if (fl[i3][i2][i1]>=flmin) {
+
+          // Normal vector u from fault strike and dip.
+          float pr = toRadians(fp[i3][i2][i1]);
+          float tr = toRadians(ft[i3][i2][i1]);
+          float cp = cos(pr);
+          float sp = sin(pr);
+          float ct = cos(tr);
+          float st = sin(tr);
+          float u1 = -st;
+          float u2 = -sp*ct;
+          float u3 =  cp*ct;
+
+          // Gradient of fault likelihood.
+          float g1 = 0.5f*(fs[i3][i2][i1+1]-fs[i3][i2][i1-1]);
+          float g2 = 0.5f*(fs[i3][i2+1][i1]-fs[i3][i2-1][i1]);
+          float g3 = 0.5f*(fs[i3+1][i2][i1]-fs[i3-1][i2][i1]);
+
+          // Scaled dot product u'g.
+          float ug = u1*g1+u2*g2+u3*g3;
+
+          // Components of vector h = uu'g.
+          h1i = u1*ug;
+          h2i = u2*ug;
+          h3i = u3*ug;
+        }
+
+        h1[i2][i1] = h1i;
+        h2[i2][i1] = h2i;
+        h3[i2][i1] = h3i;
+      }
+    }
+  }
+
+  /**
    * Computes vectors h = (1-eu)uu'g = g-Tg for one constant-i3 slice. 
    * The matrix T is defined by Schultz et al. (2010), except that the 
    * eigenvectors of that matrix are determined by fault strike and dip, 
@@ -1533,7 +1590,7 @@ public class FaultSurfer3 {
    * (2) the fault normal vector u is not aligned with the eigenvector 
    * w of H corresponding to the most negative eigenvalue ew.
    */
-  private static void computeVectorsH(
+  private static void computeVectorsHSchultz(
     int i3, float flmin, float[][][] fs,
     float[][][] fl, float[][][] fp, float[][][] ft,
     float[][] h1, float[][] h2, float[][] h3)
@@ -1606,7 +1663,7 @@ public class FaultSurfer3 {
           //   0.50f for < 45 degrees
           //   0.75f for < 30 degrees
           float uw = u1*w1+u2*w2+u3*w3;
-          if (uw*uw>0.25f) { 
+          if (uw*uw>0.00f) { 
 
             // The non-unit eigenvalue eu of T.
             float eu = 0.0f;
@@ -1642,6 +1699,118 @@ public class FaultSurfer3 {
    * new intersecting quad referencing four nodes within the fault.
    */
   private static void processEdge(
+    int i1, int i2, int i3, int j1, int j2, int j3,
+    float[][][] fl, float[][][] fp, float[][][] ft,
+    float[][][] h1, float[][][] h2, float[][][] h3,
+    Node[][][] nodes, ArrayList<Quad> quads)
+  {
+    // Avoid division by zero below.
+    final float hsdtiny = 1.0e-6f;
+
+    // If no edge i---j to process, simply return.
+    if (i1==j1 && i2==j2 && i3==j3)
+      return;
+
+    // Vectors ei = xi-xj and ej = xj-xi.
+    float e1i = i1-j1;
+    float e2i = i2-j2;
+    float e3i = i3-j3;
+    float e1j = j1-i1;
+    float e2j = j2-i2;
+    float e3j = j3-i3;
+
+    // Vectors h at endpoints of edge i---j.
+    float h1i = h1[i3%2][i2][i1];
+    float h2i = h2[i3%2][i2][i1];
+    float h3i = h3[i3%2][i2][i1];
+    float h1j = h1[j3%2][j2][j1];
+    float h2j = h2[j3%2][j2][j1];
+    float h3j = h3[j3%2][j2][j1];
+
+    // If a fault intersects edge i---j, ...
+    if (h1i*h1j+h2i*h2j+h3i*h3j<0.0f &&
+        h1i*e1i+h2i*e2i+h3i*e3i<0.0f &&
+        h1j*e1j+h2j*e2j+h3j*e3j<0.0f) {
+
+      // Fault attributes for indices i and j.
+      float fli = fl[i3][i2][i1];
+      float fpi = fp[i3][i2][i1];
+      float fti = ft[i3][i2][i1];
+      float flj = fl[j3][j2][j1];
+      float fpj = fp[j3][j2][j1];
+      float ftj = ft[j3][j2][j1];
+      fpi = toRadians(fpi); 
+      fpj = toRadians(fpj); 
+      float cpi = cos(fpi), spi = sin(fpi);
+      float cpj = cos(fpj), spj = sin(fpj);
+      float cci = cpi*cpi, ssi = spi*spi, csi = cpi*spi;
+      float ccj = cpj*cpj, ssj = spj*spj, csj = cpj*spj;
+
+      // Weights for interpolation of values for indices i and j.
+      float h1d = h1j-h1i;
+      float h2d = h2j-h2i;
+      float h3d = h3j-h3i;
+      float hsd = h1d*h1d+h2d*h2d+h3d*h3d;
+      float wi = (hsd>hsdtiny)?(h1j*h1d+h2j*h2d+h3j*h3d)/hsd:0.5f;
+      //if (wi>0.99f) wi = 0.99f;
+      float wj = 1.0f-wi;
+
+      // Compute values on edge of sampling grid via linear interpolation.
+      float el = wi*fli+wj*flj;
+      float et = wi*fti+wj*ftj;
+      float cc = wi*cci+wj*ccj;
+      float ss = wi*ssi+wj*ssj;
+      float cs = wi*csi+wj*csj;
+      float x1 = wi*i1+wj*j1;
+      float x2 = wi*i2+wj*j2;
+      float x3 = wi*i3+wj*j3;
+
+      // The edge intersected and the four nodes for a new quad.
+      int edge;
+      Node na,nb,nc,nd;
+      if (i1<j1) { // if edge i1---j1, ...
+        edge = 1;
+        na = nodeAt(i1,i2  ,i3  ,nodes);
+        nb = nodeAt(i1,i2-1,i3  ,nodes);
+        nc = nodeAt(i1,i2-1,i3-1,nodes);
+        nd = nodeAt(i1,i2  ,i3-1,nodes);
+      } else if (i2<j2) { // else if edge i2---j2, ...
+        edge = 2;
+        na = nodeAt(i1  ,i2,i3  ,nodes);
+        nb = nodeAt(i1-1,i2,i3  ,nodes);
+        nc = nodeAt(i1-1,i2,i3-1,nodes);
+        nd = nodeAt(i1  ,i2,i3-1,nodes);
+      } else { // else edge i3---j3, ...
+        edge = 3;
+        na = nodeAt(i1  ,i2  ,i3,nodes);
+        nb = nodeAt(i1-1,i2  ,i3,nodes);
+        nc = nodeAt(i1-1,i2-1,i3,nodes);
+        nd = nodeAt(i1  ,i2-1,i3,nodes);
+      }
+
+      // Accumulate values in those four nodes.
+      na.x1 += x1; nb.x1 += x1; nc.x1 += x1; nd.x1 += x1;
+      na.x2 += x2; nb.x2 += x2; nc.x2 += x2; nd.x2 += x2;
+      na.x3 += x3; nb.x3 += x3; nc.x3 += x3; nd.x3 += x3;
+      na.fl += el; nb.fl += el; nc.fl += el; nd.fl += el;
+      na.ft += et; nb.ft += et; nc.ft += et; nd.ft += et;
+      na.u1 += cc; nb.u1 += cc; nc.u1 += cc; nd.u1 += cc;
+      na.u2 += cs; nb.u2 += cs; nc.u2 += cs; nd.u2 += cs;
+      na.u3 += ss; nb.u3 += ss; nc.u3 += ss; nd.u3 += ss;
+      na.v1 +=  1; nb.v1 +=  1; nc.v1 +=  1; nd.v1 +=  1;
+
+      // Construct a new quad that references the four nodes.
+      Quad quad = new Quad(edge,i1,i2,i3,na,nb,nc,nd);
+      quads.add(quad);
+    }
+  }
+
+  /**
+   * Processes one edge i---j of the image sampling grid.
+   * If a fault intersects this edge, then this method constructs a 
+   * new intersecting quad referencing four nodes within the fault.
+   */
+  private static void processEdgeSchultz(
     int i1, int i2, int i3, int j1, int j2, int j3,
     float[][][] fl, float[][][] fp, float[][][] ft,
     float[][][] h1, float[][][] h2, float[][][] h3,
@@ -1790,11 +1959,29 @@ public class FaultSurfer3 {
    */
   private ArrayList<Quad> cleanQuads(ArrayList<Quad> quads) {
     ArrayList<Quad> quadsGood = new ArrayList<Quad>(quads.size());
-    for (Quad quad:quads)
-      if (quad.isGood())
+    int nqf = _quadFilters.size();
+    for (Quad quad:quads) {
+      boolean good = quad.isGood();
+      for (int iqf=0; good && iqf<nqf; ++iqf) {
+        QuadFilter qf = _quadFilters.get(iqf);
+        if (!qf.good(quad))
+            good = false;
+      }
+      if (good)
         quadsGood.add(quad);
+    }
     return quadsGood;
   }
+  public interface QuadFilter {
+    boolean good(Quad quad);
+  }
+  public void addQuadFilter(QuadFilter qf) {
+    _quadFilters.add(qf);
+  }
+  public void removeQuadFilter(QuadFilter qf) {
+    _quadFilters.remove(qf);
+  }
+  private ArrayList<QuadFilter> _quadFilters = new ArrayList<QuadFilter>();
 
   /**
    * Removes any quads that have no nabors.
