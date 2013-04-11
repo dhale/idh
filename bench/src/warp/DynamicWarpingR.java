@@ -445,7 +445,8 @@ public class DynamicWarpingR {
   private static CubicInterpolator makeInterpolator1(
     float[] x, float[] y) 
   {
-    return new CubicInterpolator(CubicInterpolator.Method.LINEAR,x,y);
+    //return new CubicInterpolator(CubicInterpolator.Method.LINEAR,x,y);
+    return new CubicInterpolator(CubicInterpolator.Method.SPLINE,x,y);
   }
   private static CubicInterpolator makeInterpolator2(
     float[] x, float[] y) 

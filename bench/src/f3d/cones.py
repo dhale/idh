@@ -7,6 +7,7 @@ from f3utils import *
 
 #############################################################################
 
+slides = True
 pngDir = "png/"
 #pngDir = None
 
@@ -31,9 +32,10 @@ coneViewParams = {
 
 #############################################################################
 def main(args):
-  goConeSurfing()
+  #goConeSurfing()
   #goConeSubsets()
   #goFigures()
+  makeColorBar3dForSlide(0.0,8.00*1.1*4.0,"Fault throw (m)")
 
 def goConeSurfing():
   makeColorBar3d(0.0,8.00*1.1*4.0,"Fault throw (m)")
@@ -104,14 +106,18 @@ def goConeSubsets():
     makeConeSubset(cone)
   
 def goFigures():
+  setup("seta")
   for name in ["g","gs8"]:
     #makeSliceThruPoints(name,"c1")
     #displaySlicesThruCones(name,"c1")
-    displayCones(name)
-  
-def displayCones(name):
-  regional = True # for Rick's interpretation
-  #regional = False # narrower for composition
+    if not slides:
+      displayConesForPrint(name)
+  if slides:
+    displayConesForSlides()
+ 
+def displayConesForPrint(name):
+  #regional = True # for Rick's interpretation
+  regional = False # narrower for composition
   g = readImage(name)
   nt = 126 # sampling of times with cones present
   dt = 0.004
@@ -181,6 +187,65 @@ def displayCones(name):
     for ia in range(na):
       plota(ia,True)
       plota(ia,False)
+ 
+def displayConesForSlides():
+  #regional = True # for Rick's interpretation
+  regional = False # narrower for composition
+  g1 = readImage("g")
+  g2 = readImage("gs8")
+  nt = 126 # sampling of times with cones present
+  dt = 0.004
+  ft = 1.040
+  st = Sampling(nt,dt,ft)
+  nd = 73  # sampling of distance d from center of cone
+  #nd = 119  # sampling of distance d from center of cone
+  dd = s2.delta
+  fd = -dd*(nd-1)/2
+  sd = Sampling(nd,dd,fd)
+  na = 12 # sampling of azimuth a; north = 0 degrees
+  da = 30.0
+  fa = 0.0
+  sa = Sampling(na,da,fa)
+  c2s,c3s = getConeLocations()
+  ics = [0,1,2,3]
+  for ic in ics:
+    c2,c3 = c2s[ic],c3s[ic]
+    h1 = makeConeSlices(c2,c3,st,sd,sa,g1)
+    h2 = makeConeSlices(c2,c3,st,sd,sa,g2)
+    def plota(ia):
+      sia = str(int(sa.getValue(ia)))
+      pp = PlotPanel(1,2,PlotPanel.Orientation.X1DOWN_X2RIGHT)
+      #sp.setTitle("Azimuth = "+sia+" degrees")
+      pp.setHLabel(0,"Radial distance (km)")
+      pp.setHLabel(1,"Radial distance (km)")
+      pp.setVLabel("Time (s)")
+      #sp.setHLimits(sd.first,sd.last)
+      #sp.setVLimits(1.05,1.55)
+      pv1 = pp.addPixels(0,0,st,sd,h1[ia])
+      pv1.setInterpolation(PixelsView.Interpolation.NEAREST)
+      pv1.setClips(-1.0,1.0)
+      pv1 = pp.addPoints(0,0,[st.first,st.last],[0,0])
+      pv1.setLineColor(Color.WHITE)
+      pv2 = pp.addPixels(0,1,st,sd,h2[ia])
+      pv2.setInterpolation(PixelsView.Interpolation.NEAREST)
+      pv2.setClips(-1.0,1.0)
+      pv2 = pp.addPoints(0,1,[st.first,st.last],[0,0])
+      pv2.setLineColor(Color.WHITE)
+      pf = PlotFrame(pp)
+      pf.setSize(900,718) # 1:5 scale
+      pf.setFontSizeForSlide(1.0,0.9)
+      pf.setVisible(True)
+      pngFile="cone"+str(ic)
+      pngFile += "r15a"
+      if len(sia)==1:
+        sia = "00"+sia
+      elif len(sia)==2:
+        sia = "0"+sia
+      pngFile += sia+"ggs8.png"
+      if pngDir:
+        pf.paintToPng(256,8,pngDir+pngFile)
+    for ia in range(na):
+      plota(ia)
 
 def displaySlicesThruCones(name,points):
   ss = getSamplingS(name,points)
@@ -201,19 +266,29 @@ def displaySlicesThruCones(name,points):
   pv.setMarkStyle(PointsView.Mark.HOLLOW_CIRCLE)
   pv.setMarkSize(64.0)
   pv.setMarkColor(Color.WHITE)
-  #sp.setHLimits(s2.first,s2.last)
-  #sp.setVLimits(s3.first,s3.last)
-  sp.setHLimits(0.0,9.0)
-  sp.setVLimits(0.0,15.0)
-  sp.setHInterval(2.0)
-  sp.setVInterval(2.0)
+  if slides:
+    sp.setHLimits(s2.first,s2.last)
+    sp.setVLimits(s3.first,s3.last)
+    sp.setHInterval(5.0)
+    sp.setVInterval(5.0)
+  else:
+    sp.setHLimits(0.0,9.0)
+    sp.setVLimits(0.0,15.0)
+    sp.setHInterval(2.0)
+    sp.setVInterval(2.0)
   sp.setHLabel("Inline (km)")
   sp.setVLabel("Crossline (km)")
-  wpt = 240.0
-  sp.setFontSizeForPrint(8,wpt)
-  sp.setSize(460,710)
-  if pngDir:
-    sp.paintToPng(360,wpt/72,pngDir+name+points+"23.png")
+  if slides:
+    sp.setFontSizeForSlide(1.0,0.9)
+    sp.setSize(900,680)
+    if pngDir:
+      sp.paintToPng(256,8.0,pngDir+name+points+"23.png")
+  else:
+    wpt = 240.0
+    sp.setFontSizeForPrint(8,wpt)
+    sp.setSize(460,710)
+    if pngDir:
+      sp.paintToPng(360,wpt/72,pngDir+name+points+"23.png")
   sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
   pv = sp.addPixels(s1,ss,fcp)
   pv.setClips(-clip,clip)
@@ -224,11 +299,17 @@ def displaySlicesThruCones(name,points):
   sp.setHLimits(ss.first,ss.last)
   sp.setHLabel("Distance (km)")
   sp.setVLabel("Time (s)")
-  wpt = 504.0
-  sp.setFontSizeForPrint(8,wpt)
-  sp.setSize(670,255)
-  if pngDir:
-    sp.paintToPng(360,wpt/72,pngDir+name+points+"1s.png")
+  if slides:
+    sp.setFontSizeForSlide(1.0,0.9)
+    sp.setSize(670,465)
+    if pngDir:
+      sp.paintToPng(256,8.0,pngDir+name+points+"1s.png")
+  else:
+    wpt = 504.0
+    sp.setFontSizeForPrint(8,wpt)
+    sp.setSize(670,255)
+    if pngDir:
+      sp.paintToPng(360,wpt/72,pngDir+name+points+"1s.png")
 
 # Gets cone locations in CSM (x2,x3) coordinates
 def getConeLocations():
@@ -468,6 +549,21 @@ def makeColorBar3d(cmin,cmax,clab,cint=None):
   cmap.addListener(cbar)
   frame = JFrame()
   frame.setSize(140,800)
+  frame.add(cbar,BorderLayout.EAST)
+  frame.setVisible(True)
+  cbar.paintToPng(400,0.5,"cbar.png")
+
+def makeColorBar3dForSlide(cmin,cmax,clab,cint=None):
+  cbar = ColorBar(clab)
+  cbar.setFont(Font("Arial",Font.PLAIN,40))
+  cbar.setBackground(Color.WHITE)
+  if cint:
+    cbar.setInterval(cint)
+  cbar.setWidthMinimum(140)
+  cmap = ColorMap(cmin,cmax,ColorMap.JET)
+  cmap.addListener(cbar)
+  frame = JFrame()
+  frame.setSize(170,700)
   frame.add(cbar,BorderLayout.EAST)
   frame.setVisible(True)
   cbar.paintToPng(400,0.5,"cbar.png")

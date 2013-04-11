@@ -13,7 +13,8 @@ def main(args):
   #makeBinaryWellLogs("shallow")
   #makeBinaryWellLogs("all")
   #viewWellCoordinates("deep")
-  viewWellCurves("deep","velocity")
+  viewReflectivity(490252305400)
+  #viewWellCurves("deep","velocity")
   #viewWellCurves("deep","density")
   #viewWellCurves("deep","gamma")
   #viewWellCurves("deep","porosity")
@@ -24,8 +25,43 @@ def main(args):
   #viewElevations("deep")
   pass
 
+def viewReflectivity(id):
+  setGlobals("all")
+  wldata = WellLog.Data.readBinary(csmWellLogs)
+  log = wldata.get(id)
+  n = log.n
+  v = log.v
+  d = log.d
+  z = log.z
+  r = zerofloat(n)
+  fnull = WellLog.NULL_VALUE
+  for i in range(1,n):
+    m = i-1
+    vi,di = v[i],d[i]
+    vm,dm = v[m],d[m]
+    if vi!=fnull and di!=fnull and vm!=fnull and dm!=fnull:
+      zi,zm = vi*di,vm*dm
+      r[i] = (zm-zi)/(zm+zi)
+  for i in range(n):
+    if z[i]==fnull: z[i] = 0.0
+    if v[i]==fnull: v[i] = 2.0
+    if d[i]==fnull: d[i] = 2.0
+  print "r: min =",min(r)," max =",max(r)
+  sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
+  pv = sp.addPoints(z)
+  sp.setSize(300,800)
+  sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
+  pv = sp.addPoints(z,v)
+  sp.setSize(300,800)
+  sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
+  pv = sp.addPoints(z,d)
+  sp.setSize(300,800)
+  sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
+  pv = sp.addPoints(z,r)
+  sp.setSize(300,800)
+
 # Directories and files for well logs, headers, directional surveys
-tpDir = "/data/seis/tp/"
+tpDir = "/data/seis/tpd/"
 doeWellLogsDir = tpDir+"doe/WellLogs/"
 csmWellLogsDir = tpDir+"csm/welllogs/"
 doeWellHeaders = doeWellLogsDir+"WellHeaders.txt"
@@ -172,14 +208,14 @@ def viewWellCoordinates(what):
   spz1.add(tv)
   tv = PointsView(x2list,x3list)
   sp23.add(tv)
-
+  
 def viewWellCurves(what,curve):
   setGlobals(what)
   wldata = WellLog.Data.readBinary(csmWellLogs)
   flist,zlist = [],[]
   for log in wldata.getLogsWith(curve):
     #log.despike(3)
-    log.smooth(25)
+    #log.smooth(25)
     f,z,y,x = log.getSamples(curve)
     flist.append(f)
     zlist.append(z)
