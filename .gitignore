@@ -6,6 +6,7 @@
 build/
 new/
 old/
+*.iml
 *.png
 *.zip
 *.swp

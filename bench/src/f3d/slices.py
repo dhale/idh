@@ -13,19 +13,19 @@ clip = 1.0
 
 #############################################################################
 def main(args):
-  #slice1("g",309)
-  #slice3("g",75)
-  plotSlice1("g",309)
-  plotSlice3("g",75)
+  slice1("flt",309)
+  slice3("flt",75)
+  plotSlice1("flt",309)
+  plotSlice3("flt",75)
 
 def slice1(name,k1):
   x = readImage(name)
   x = reshape(n2,n3,flatten(copy(1,n2,n3,k1,0,0,x)))
-  writeImage2(getF3dSlice1Name(k1),x)
+  writeImage2(getF3dSlice1Name(name,k1),x)
 
 def slice3(name,k3):
   x = readImage(name)[k3]
-  writeImage2(getF3dSlice3Name(k3),x)
+  writeImage2(getF3dSlice3Name(name,k3),x)
 
 def plotSlice1(name,k1):
   x = readImage2(getF3dSlice1Name(name,k1),n2,n3)

@@ -20,12 +20,12 @@ from edu.mines.jtk.util.ArrayMath import *
 izv = RecursiveExponentialFilter.Edges.INPUT_ZERO_VALUE
 izs = RecursiveExponentialFilter.Edges.INPUT_ZERO_SLOPE
 
-pngDir = None
+#pngDir = None
 pngDir = "./png/"
 
 def main(args):
   #goImpulseResponses()
-  goSmooth()
+  #goSmooth()
   goNormalize()
 
 def goImpulseResponses():
@@ -60,54 +60,89 @@ def goImpulseResponses():
     sp.paintToPng(300,7.0,pngDir+"smoothimp.png")
 
 def goNormalize():
-  """ 2500 samples, sampling interval = 2 ms, from Gary Ohlhoeft """
+  """ 1609 samples, sampling interval = 2 ms, from Bob Howard"""
   """ y = x-<x>, z = y/sqrt(<y y>) """
-  st,x = readSequence("SpringDashpot.txt")
+  vmin,vmax = -4.10,4.10
+  st,x = readSequence("bob1.txt")
   sigma = 100.0
   ref = RecursiveExponentialFilter(sigma)
   print "sigma =",sigma," a =",sigmaToA(sigma)
-  ref.setEdges(izs)
-  y = zerofloat(st.count)
-  ref.apply(x,y)
-  y = sub(y,x)
-  yy = mul(y,y)
-  ref.apply(yy,yy)
+  ref.setEdges(izv)
+  x = mul(0.00014/2,x)
+  yy = zerofloat(st.count)
+  xx = mul(x,x)
+  ref.apply(xx,yy)
   z = sqrt(yy)
-  v = div(y,z)
+  v = div(x,z)
   sp = SimplePlot()
   pv = sp.addPoints(st,x)
-  pv.setLineColor(Color.RED)
-  pv = sp.addPoints(st,y)
-  sp.setHLimits(-0.05,5.05)
+  sp.setHLimits(st.first,st.last)
+  sp.setVLimits(vmin/2,vmax/2)
   sp.setHLabel("Time (s)")
-  sp.setVLabel("Displacement (cm)")
-  sp.setFontSizeForSlide(1.0,0.9)
-  sp.setSize(800,500)
-  if pngDir:
-    sp.paintToPng(300,7.0,pngDir+"debias.png")
-  sp = SimplePlot()
-  pv = sp.addPoints(st,y)
-  pv = sp.addPoints(st,z)
-  pv.setLineColor(Color.RED)
-  pv.setLineWidth(3)
-  sp.setHLimits(-0.05,5.05)
-  sp.setVLimits(-0.21,0.21)
-  sp.setHLabel("Time (s)")
-  sp.setVLabel("Displacement (cm)")
+  sp.setVLabel("Amplitude")
   sp.setFontSizeForSlide(1.0,0.9)
   sp.setSize(800,500)
   if pngDir:
     sp.paintToPng(300,7.0,pngDir+"amplitude.png")
   sp = SimplePlot()
-  pv = sp.addPoints(st,v)
-  sp.setHLimits(-0.05,5.05)
-  sp.setVLimits(-3.10,3.10)
+  pv = sp.addPoints(st,xx)
+  sp.setHLimits(st.first,st.last)
+  sp.setVLimits(vmin,vmax)
   sp.setHLabel("Time (s)")
-  sp.setVLabel("Displacement (normalized)")
+  sp.setVLabel("Amplitude squared")
   sp.setFontSizeForSlide(1.0,0.9)
   sp.setSize(800,500)
   if pngDir:
-    sp.paintToPng(300,7.0,pngDir+"normalize.png")
+    sp.paintToPng(300,7.0,pngDir+"amplitudesq.png")
+  sp = SimplePlot()
+  pv = sp.addPoints(st,xx)
+  pv = sp.addPoints(st,yy)
+  pv.setLineColor(Color.RED)
+  pv.setLineWidth(3)
+  sp.setHLimits(st.first,st.last)
+  sp.setVLimits(vmin,vmax)
+  sp.setHLabel("Time (s)")
+  sp.setVLabel("Amplitude squared")
+  sp.setFontSizeForSlide(1.0,0.9)
+  sp.setSize(800,500)
+  if pngDir:
+    sp.paintToPng(300,7.0,pngDir+"amplitudesqs.png")
+  sp = SimplePlot()
+  pv = sp.addPoints(st,sqrt(xx))
+  pv = sp.addPoints(st,z)
+  pv.setLineColor(Color.RED)
+  pv.setLineWidth(3)
+  sp.setHLimits(st.first,st.last)
+  sp.setVLimits(vmin/2,vmax/2)
+  sp.setHLabel("Time (s)")
+  sp.setVLabel("Amplitude")
+  sp.setFontSizeForSlide(1.0,0.9)
+  sp.setSize(800,500)
+  if pngDir:
+    sp.paintToPng(300,7.0,pngDir+"amplitudesqsr.png")
+  sp = SimplePlot()
+  pv = sp.addPoints(st,x)
+  pv = sp.addPoints(st,z)
+  pv.setLineColor(Color.RED)
+  pv.setLineWidth(3)
+  sp.setHLimits(st.first,st.last)
+  sp.setVLimits(vmin/2,vmax/2)
+  sp.setHLabel("Time (s)")
+  sp.setVLabel("Amplitude")
+  sp.setFontSizeForSlide(1.0,0.9)
+  sp.setSize(800,500)
+  if pngDir:
+    sp.paintToPng(300,7.0,pngDir+"amplitudexrms.png")
+  sp = SimplePlot()
+  pv = sp.addPoints(st,v)
+  sp.setHLimits(st.first,st.last)
+  sp.setVLimits(vmin,vmax)
+  sp.setHLabel("Time (s)")
+  sp.setVLabel("Amplitude (normalized)")
+  sp.setFontSizeForSlide(1.0,0.9)
+  sp.setSize(800,500)
+  if pngDir:
+    sp.paintToPng(300,7.0,pngDir+"amplitudenorm.png")
 
 def goSmooth():
   """ 2500 samples, sampling interval = 2 ms, from Gary Ohlhoeft """

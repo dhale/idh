@@ -14,7 +14,7 @@ def main(args):
   #displaySlice3()
 
 def display3d():
-  x = readImage("gs8")
+  x = readImage("g")
   print "x min =",min(x)," max =",max(x)
   frame = SimpleFrame()
   ipg = frame.addImagePanels(s1,s2,s3,x)

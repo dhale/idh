@@ -34,8 +34,8 @@ coneViewParams = {
 def main(args):
   #goConeSurfing()
   #goConeSubsets()
-  #goFigures()
-  makeColorBar3dForSlide(0.0,8.00*1.1*4.0,"Fault throw (m)")
+  goFigures()
+  #makeColorBar3dForSlide(0.0,8.00*1.1*4.0,"Fault throw (m)")
 
 def goConeSurfing():
   makeColorBar3d(0.0,8.00*1.1*4.0,"Fault throw (m)")
@@ -107,13 +107,14 @@ def goConeSubsets():
   
 def goFigures():
   setup("seta")
-  for name in ["g","gs8"]:
+  #for name in ["g","gs8"]:
+  for name in ["flt"]:
     #makeSliceThruPoints(name,"c1")
-    #displaySlicesThruCones(name,"c1")
-    if not slides:
-      displayConesForPrint(name)
-  if slides:
-    displayConesForSlides()
+    displaySlicesThruCones(name,"c1")
+    #if not slides:
+    #  displayConesForPrint(name)
+  #if slides:
+  #  displayConesForSlides()
  
 def displayConesForPrint(name):
   #regional = True # for Rick's interpretation
@@ -256,16 +257,26 @@ def displaySlicesThruCones(name,points):
   x2p,x3p = getPointSet(points)
   x2s,x3s = getCurveThruPoints(x2p,x3p)
   sp = SimplePlot()
+  if name[0:2]=="fl": fk1 = neg(fk1)
   pv = sp.addPixels(s2,s3,fk1)
-  pv.setClips(-clip,clip)
+  if name[0:2]=="fl": 
+    pv.setClips(-1,0)
+  else:
+    pv.setClips(-clip,clip)
   pv = sp.addPoints(x2s,x3s)
-  pv.setLineColor(Color.WHITE)
+  if name[0:2]=="fl": 
+    pv.setLineColor(Color.BLACK)
+  else:
+    pv.setLineColor(Color.WHITE)
   pv.setLineWidth(1.0)
   pv = sp.addPoints(x2c,x3c)
   pv.setLineStyle(PointsView.Line.NONE)
   pv.setMarkStyle(PointsView.Mark.HOLLOW_CIRCLE)
   pv.setMarkSize(64.0)
-  pv.setMarkColor(Color.WHITE)
+  if name[0:2]=="fl": 
+    pv.setMarkColor(Color.BLACK)
+  else:
+    pv.setMarkColor(Color.WHITE)
   if slides:
     sp.setHLimits(s2.first,s2.last)
     sp.setVLimits(s3.first,s3.last)
