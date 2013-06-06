@@ -276,12 +276,11 @@ public class Flattener3 {
     public void apply(Vec vx, Vec vy) {
       VecArrayFloat3 v3x = (VecArrayFloat3)vx;
       VecArrayFloat3 v3y = (VecArrayFloat3)vy;
-      VecArrayFloat3 v3z = v3x.clone();
-      v3y.zero();
       float[][][] x = v3x.getArray();
       float[][][] y = v3y.getArray();
-      float[][][] z = v3z.getArray();
+      float[][][] z = copy(x);
       _s3.apply(z);
+      zero(y);
       applyLhs(_w1,_wp,_p2,_p3,z,y);
       _s3.applyTranspose(y);
     }

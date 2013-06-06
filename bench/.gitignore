@@ -1,9 +1,11 @@
+/.cache
 /.classpath
 /.project
 /.pydevproject
 /.idea
 
 build/
+*png*/
 *.swp
 *.class
 *.DS_Store

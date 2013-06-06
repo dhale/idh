@@ -7,7 +7,7 @@ from imports import *
 
 #############################################################################
 def main(args):
-  goTest()
+  goPlot()
 
 def goTest():
   e = elevation(37.2694,-107.0092) # Pagosa Springs, Colorado

@@ -7,7 +7,6 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 package dnp;
 
 import edu.mines.jtk.dsp.*;
-import edu.mines.jtk.util.*;
 import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
@@ -244,14 +243,12 @@ public class Flattener2 {
     public void apply(Vec vx, Vec vy) {
       VecArrayFloat2 v2x = (VecArrayFloat2)vx;
       VecArrayFloat2 v2y = (VecArrayFloat2)vy;
-      VecArrayFloat2 v2z = v2x.clone();
       float[][] x = v2x.getArray();
       float[][] y = v2y.getArray();
-      float[][] z = v2z.getArray();
+      float[][] z = copy(x);
       _s2.apply(z);
       zero(y);
       applyLhs(_w1,_wp,_p2,z,y);
-      int n1 = x[0].length;
       _s2.applyTranspose(y);
     }
     private Smoother2 _s2;

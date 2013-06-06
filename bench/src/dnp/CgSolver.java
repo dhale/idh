@@ -95,7 +95,6 @@ public class CgSolver {
     Vec d = r.clone();
     double bnorm = b.norm2();
     double rnorm = r.norm2();
-    double bbnorm = bnorm*bnorm;
     double rrnorm = rnorm*rnorm;
     double rnormSmall = _tiny*bnorm;
     logInit("begin: rnorm="+rnorm+" bnorm="+bnorm);
@@ -142,8 +141,6 @@ public class CgSolver {
     double rsnorm = r.dot(s); // r's = r'Mr
     double bnorm = b.norm2();
     double rnorm = r.norm2();
-    double bbnorm = bnorm*bnorm;
-    double rrnorm = rnorm*rnorm;
     double rnormSmall = _tiny*bnorm;
     logInit("begin: rnorm="+rnorm+" bnorm="+bnorm);
     int iter;
