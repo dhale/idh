@@ -9,7 +9,7 @@ Benchmark nested parallel loops with edu.mines.jtk.util.Parallel.
 @version 2011.06.04
 ****************************************************************************/
 
-import java.util.Random;
+package par;
 
 import edu.mines.jtk.util.*;
 import static edu.mines.jtk.util.ArrayMath.*;
