@@ -29,8 +29,8 @@ available at http://www.eclipse.org/legal/cpl-v10.html
   <path id="classpath">
     <fileset dir="${java.home}" includes="lib/javaws.jar"/>
     <fileset dir="${basedir}/../../jtk">
-      <include name="jar/*.jar"/>
-      <include name="build/jar/edu_mines_jtk.jar"/>
+      <include name="libs/*.jar"/>
+      <include name="build/libs/edu_mines_jtk.jar"/>
     </fileset>
   </path>
 
@@ -67,8 +67,8 @@ available at http://www.eclipse.org/legal/cpl-v10.html
     <path id="scala.build.classpath">
       <pathelement location="${build.cls}"/>
       <fileset dir="${basedir}/../../../jtk">
-        <include name="jar/*.jar"/>
-        <include name="build/jar/edu_mines_jtk.jar"/>
+        <include name="libs/*.jar"/>
+        <include name="build/libs/edu_mines_jtk.jar"/>
       </fileset>
       <pathelement location="${scala.home}/lib/scala-library.jar"/>
     </path>
