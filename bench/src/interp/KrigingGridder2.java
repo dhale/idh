@@ -40,7 +40,7 @@ import dnp.*;
  * array of standard deviations, one for each sample of data.
  * 
  * @author Dave Hale, Colorado School of Mines
- * @version 2012.09.18
+ * @version 2013.07.25
  */
 public class KrigingGridder2 implements Gridder2 {
 
@@ -215,11 +215,17 @@ public class KrigingGridder2 implements Gridder2 {
   private PolyTrend2 _trend; // polynomial trend; null, if none
   private int _order = -1; // order of poly trend; -1, if none
 
+  /**
+   * If no model covariance has been specified, this method makes a default.
+   */
   private void ensureModelCovariance() {
     if (_cm==null)
       _cm = new SmoothCovariance(1.0,1.0,1.0,2);
   }
 
+  /**
+   * If we do not yet have the array of data errors (std devs), make it.
+   */
   private void ensureDataErrors() {
     if (_sd==null || _sd.length!=_f.length)
       _sd = fillfloat((float)_sdConstant,_f.length);
@@ -227,6 +233,8 @@ public class KrigingGridder2 implements Gridder2 {
 
   /**
    * Simple kriging for a constant tensor field, which may be anisotropic.
+   * This method can be used with any valid model covariance. Other gridding
+   * methods can be used only with tensor-guided model covariances.
    */
   private float[][] gridForConstantTensors(Sampling s1, Sampling s2) {
     int n1 = s1.getCount();
@@ -419,7 +427,7 @@ public class KrigingGridder2 implements Gridder2 {
     SmoothM m = new SmoothM(x1,x2,s1,s2,_tensors,scm,sd);
     CgSolver cgs = new CgSolver(1.0e-4,100);
     CgSolver.Info info = cgs.solve(a,m,vf,vz);
-    //CgSolver.Info info = cgs.solve(a,vf,vz);
+    //CgSolver.Info info = cgs.solve(a,vf,vz); # may not converge!
     cgs = null;
     float[][] q = scm.apply(s1,s2,_tensors,x1,x2,az);
     return q;
@@ -429,6 +437,8 @@ public class KrigingGridder2 implements Gridder2 {
    * Tensor-guided kriging for the smooth model covariance.
    * Uses inverse of covariance instead of covariance. For small Cd,
    * this method converges very slowly because we have no preconditioner.
+   * Another problem is that this method requires Cd != 0 (sigmaD != 0); 
+   * must have some data error, so cannot exactly interpolate data.
    */
   private float[][] gridForVariableTensorsI(Sampling s1, Sampling s2) {
     Check.state(_cm instanceof SmoothCovariance,
@@ -455,51 +465,6 @@ public class KrigingGridder2 implements Gridder2 {
     CgSolver cgs = new CgSolver(1e-4,10000);
     CgSolver.Info info = cgs.solve(sai,vp,vq);
     return aq;
-  }
-
-  /**
-   * Applies the operator inv(Cm) + K'inv(Cd)K.
-   */
-  private static class SmoothAI implements CgSolver.A {
-
-    SmoothAI(float[] x1, float[] x2, 
-      Sampling s1, Sampling s2, Tensors2 t,
-      SmoothCovariance cm, float[] sd) 
-    {
-      int n = x1.length;
-      int n1 = s1.getCount();
-      int n2 = s2.getCount();
-      _s1 = s1;
-      _s2 = s2;
-      _t = t;
-      _cm = cm;
-      _sd = sd;
-      _k1 = new int[n];
-      _k2 = new int[n];
-      for (int i=0; i<n; ++i) {
-        _k1[i] = s1.indexOfNearest(x1[i]);
-        _k2[i] = s2.indexOfNearest(x2[i]);
-      }
-    }
-
-    public void apply(Vec x, Vec y) {
-      float[][] ax = ((VecArrayFloat2)x).getArray();
-      float[][] ay = ((VecArrayFloat2)y).getArray();
-      copy(ax,ay);
-      _cm.applyInverse(_s1,_s2,_t,ay);
-      int n = _k1.length;
-      for (int i=0; i<n; ++i) {
-        int i1 = _k1[i];
-        int i2 = _k2[i];
-        ay[i2][i1] += ax[i2][i1]/(_sd[i]*_sd[i]);
-      }
-    }
-
-    private Sampling _s1,_s2;
-    private Tensors2 _t;
-    private SmoothCovariance _cm;
-    private float[] _sd;
-    private int[] _k1,_k2;
   }
 
   /**
@@ -549,7 +514,7 @@ public class KrigingGridder2 implements Gridder2 {
   }
 
   /**
-   * Applies the preconditioner ~ inv(KCmK' + Cd).
+   * Applies the preconditioner M; approximates inverse of SmoothA above.
    */
   private static class SmoothM implements CgSolver.A {
 
@@ -602,6 +567,55 @@ public class KrigingGridder2 implements Gridder2 {
     }
 
     private float[][] _am;
+  }
+
+  /**
+   * Applies the operator inv(Cm) + K'inv(Cd)K. This operator is related
+   * to (but not equal to) the inverse of the operator SmoothA above.
+   * The main problems with this operator are that (1) Cd cannot be zero,
+   * and (2) we have no good preconditioner. It's biggest advantage is
+   * that it is fast, because inv(Cm) is sparse.
+   */
+  private static class SmoothAI implements CgSolver.A {
+
+    SmoothAI(float[] x1, float[] x2, 
+      Sampling s1, Sampling s2, Tensors2 t,
+      SmoothCovariance cm, float[] sd) 
+    {
+      int n = x1.length;
+      int n1 = s1.getCount();
+      int n2 = s2.getCount();
+      _s1 = s1;
+      _s2 = s2;
+      _t = t;
+      _cm = cm;
+      _sd = sd;
+      _k1 = new int[n];
+      _k2 = new int[n];
+      for (int i=0; i<n; ++i) {
+        _k1[i] = s1.indexOfNearest(x1[i]);
+        _k2[i] = s2.indexOfNearest(x2[i]);
+      }
+    }
+
+    public void apply(Vec x, Vec y) {
+      float[][] ax = ((VecArrayFloat2)x).getArray();
+      float[][] ay = ((VecArrayFloat2)y).getArray();
+      copy(ax,ay);
+      _cm.applyInverse(_s1,_s2,_t,ay);
+      int n = _k1.length;
+      for (int i=0; i<n; ++i) {
+        int i1 = _k1[i];
+        int i2 = _k2[i];
+        ay[i2][i1] += ax[i2][i1]/(_sd[i]*_sd[i]);
+      }
+    }
+
+    private Sampling _s1,_s2;
+    private Tensors2 _t;
+    private SmoothCovariance _cm;
+    private float[] _sd;
+    private int[] _k1,_k2;
   }
 
   private void checkSamplings(Sampling s1, Sampling s2) {

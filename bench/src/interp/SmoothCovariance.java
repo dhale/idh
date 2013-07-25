@@ -23,7 +23,7 @@ import edu.mines.jtk.mosaic.*;
  * Parameters for these filters are computed to approximate the Matern
  * covariance function.
  * @author Dave Hale, Colorado School of Mines.
- * @version 2012.09.15
+ * @version 2013.07.25
  */
 public class SmoothCovariance implements Covariance {
 

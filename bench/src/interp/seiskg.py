@@ -25,8 +25,8 @@ def goSimulate():
   #et = makeIdentityTensors(s1,s2)
   p,px,x1,x2 = simulatePorosity(s1,s2,et)
   pmin,pmax = min(p),max(p)
-  s1s = Sampling(1+s1.count/5,5*s1.delta,s1.first)
-  s2s = Sampling(1+s2.count/5,5*s2.delta,s2.first)
+  s1s = Sampling(1+s1.count/3,3*s1.delta,s1.first)
+  s2s = Sampling(1+s2.count/3,3*s2.delta,s2.first)
   ps = gridSimple(px,x1,x2,s1s,s2s)
   plot(None,None,None,s1,s2,g,cmap=gray,clab="Seismic amplitude")
   plot(None,None,None,s1,s2,p,cmap=jet,clab="Porosity")
@@ -36,26 +36,34 @@ def goSimulate():
 def goKriging():
   g,s1,s2 = readPnzImage()
   #plot(None,None,None,s1,s2,g,cmap=gray,clab="Seismic amplitude")
-  et = makeStructureTensors(s1,s2,g)
-  #et = makeIdentityTensors(s1,s2)
-  p,px,x1,x2 = simulatePorosity(s1,s2,et)
+  ets = makeStructureTensors(s1,s2,g)
+  eti = makeIdentityTensors(s1,s2)
+  p,px,x1,x2 = simulatePorosity(s1,s2,ets)
   pmin,pmax = min(p),max(p)
   plot(None,x1,x2,s1,s2,p,mv=True,cmin=pmin,cmax=pmax,cmap=jet,clab="Porosity")
-  #s1s = Sampling(1+s1.count/5,5*s1.delta,s1.first)
-  #s2s = Sampling(1+s2.count/5,5*s2.delta,s2.first)
-  s1s,s2s = s1,s2
-  ps = gridSimple(px,x1,x2,s1s,s2s)
+  #s1s = Sampling(1+s1.count/3,3*s1.delta,s1.first)
+  #s2s = Sampling(1+s2.count/3,3*s2.delta,s2.first)
+  #s1s,s2s = s1,s2
+  #ps = gridSimple(px,x1,x2,s1s,s2s)
   #plot(None,None,None,s1s,s2s,ps,cmin=pmin,cmax=pmax,cmap=tjet,clab="Porosity")
-  #et = makeIdentityTensors(s1,s2) # use wrong tensors!
-  for pa in [False,True]:
-    pk = gridKriging(px,x1,x2,s1,s2,et,pa)
-    print "pa =",pa
-    printMaxError(px,x1,x2,s1,s2,pk)
-    plot(None,None,None,s1,s2,pk,cmin=pmin,cmax=pmax,cmap=jet,clab="Porosity")
-    print "rms error =",rmsError(pk,p)
+  for useets in [True,False]:
+    for usepa in [False,True]:
+      if usepa and not useets:
+        continue
+      pa = usepa
+      if useets:
+        et = ets
+      else:
+        et = None
+      pk = gridKriging(px,x1,x2,s1,s2,et,pa)
+      print "pa =",pa
+      printMaxError(px,x1,x2,s1,s2,pk)
+      plot(None,None,None,s1,s2,pk,cmin=pmin,cmax=pmax,cmap=jet,clab="Porosity")
+      print "rms error =",rmsError(pk,p)
 
 sigmaM,shapeM,rangeM = 1.0,1.0,1.0
 sigmaD = 0.00*sigmaM
+numberOfKnownSamples = 400
 
 def simulatePorosity(s1,s2,et):
   sc = SmoothCovariance(sigmaM,shapeM,rangeM,2)
@@ -63,7 +71,7 @@ def simulatePorosity(s1,s2,et):
   p = copy(r)
   sc.applyHalf(s1,s2,et,p)
   p = add(0.25,mul(0.02,p))
-  px,x1,x2 = randomSamples(200,s1,s2,p)
+  px,x1,x2 = randomSamples(numberOfKnownSamples,s1,s2,p)
   return p,px,x1,x2
 
 def gridKriging(f,x1,x2,s1,s2,et,pa):
@@ -74,10 +82,7 @@ def gridKriging(f,x1,x2,s1,s2,et,pa):
   kg.setDataError(sigmaD)
   kg.setPolyTrend(0)
   kg.setPaciorek(pa)
-  if pa:
-    kg.setTensors(et)
-  else:
-    kg.setTensors(et)
+  kg.setTensors(et)
   return kg.grid(s1,s2)
 
 def rmsError(x,y):
