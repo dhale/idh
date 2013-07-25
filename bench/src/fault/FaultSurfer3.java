@@ -1162,6 +1162,21 @@ public class FaultSurfer3 {
   }
 
   /**
+   * Randomly permutes the specified array of quads.
+   * @param quads array of quads to be shuffled, in place.
+   */
+  public void shuffleQuads(Quad[] quads) {
+    Random r = new Random(3);
+    int n = quads.length;
+    for (int i=n-1; i>0; --i) {
+      int j = r.nextInt(i+1);
+      Quad quadi = quads[i];
+      quads[i] = quads[j];
+      quads[j] = quadi;
+    }
+  }
+
+  /**
    * Returns surfaces, collections of linked and oriented quads.
    * Assumes that the quads have already been linked to their nabors, 
    * and that each surface comprised of quads is orientable, so that 

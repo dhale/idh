@@ -89,7 +89,7 @@ def plotPnz(g,s1,s2,d=None,dscale=1,cmin=0,cmax=0,png=None):
   sp.setVInterval(2.0)
   #sp.setFontSizeForPrint(8,240)
   sp.setFontSizeForSlide(1.0,0.9)
-  sp.setSize(910,950)
+  sp.setSize(710,750)
   pv = sp.addPixels(s1,s2,g)
   pv.setColorModel(ColorMap.GRAY)
   pv.setInterpolation(PixelsView.Interpolation.LINEAR)

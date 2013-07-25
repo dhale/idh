@@ -107,6 +107,11 @@ public class KrigingGridder2 implements Gridder2 {
    */
   public void setTensors(Tensors2 tensors) {
     _tensors = tensors;
+    if (_tensors==null) {
+      _d11 = 1.0f;
+      _d12 = 0.0f;
+      _d22 = 1.0f;
+    }
   }
 
   /**
@@ -165,7 +170,6 @@ public class KrigingGridder2 implements Gridder2 {
     if (order!=-1) {
       _trend = new PolyTrend2(order,_f,_x1,_x2);
       _trend.detrend(_f,_x1,_x2);
-      //dump(_f);
     }
   }
 
@@ -265,6 +269,9 @@ public class KrigingGridder2 implements Gridder2 {
     return q;
   }
 
+  /**
+   * Returns non-euclidean distance for specified tensor T = inv(D).
+   */
   private static double distance(
     double t11, double t12, double t22,
     double x1a, double x2a, 
@@ -275,6 +282,12 @@ public class KrigingGridder2 implements Gridder2 {
     return sqrt(dx1*(t11*dx1+t12*dx2)+dx2*(t12*dx1+t22*dx2));
   }
 
+  /**
+   * Evaluates the Paciorek approximation for two points indexed by i and j.
+   * Tensor coefficients for the point i are passed as parameters to this
+   * method. These parameters are assumed to be computed once and then
+   * reused in calls to this method within some inner loop over index j.
+   */
   private static double evaluatePaciorek(
     Sampling s1, Sampling s2, Tensors2 tensors, Covariance cm,
     double d11i, double d12i, double d22i, double deti, float[] d,
@@ -298,55 +311,86 @@ public class KrigingGridder2 implements Gridder2 {
   }
 
   /**
+   * Returns kriging weights w computed using Paciorek's approximation.
+   */
+  private static float[] computePaciorekWeights(
+    Sampling s1, Sampling s2, Tensors2 tensors, Covariance cm,
+    float[] f, float[] x1, float[] x2, float[] sd)
+  {
+    int n = f.length;
+    DMatrix fm = new DMatrix(n,1);
+    DMatrix am = new DMatrix(n,n);
+    float[] d = new float[3];
+    for (int i=0; i<n; ++i) {
+      double x1i = x1[i];
+      double x2i = x2[i];
+      int i1 = s1.indexOfNearest(x1i);
+      int i2 = s2.indexOfNearest(x2i);
+      tensors.getTensor(i1,i2,d);
+      double d11i = d[0], d12i = d[1], d22i = d[2];
+      double deti = d11i*d22i-d12i*d12i;
+      for (int j=0; j<n; ++j) {
+        double x1j = x1[j];
+        double x2j = x2[j];
+        double cij = evaluatePaciorek(s1,s2,tensors,cm,
+                                      d11i,d12i,d22i,deti,d,
+                                      x1i,x2i,x1j,x2j);
+        am.set(i,j,cij);
+      }
+      am.set(i,i,am.get(i,i)+sd[i]*sd[i]);
+      fm.set(i,0,f[i]);
+    }
+    trace("Paciorek's KCmK'+Cd: cond="+am.cond());
+    DMatrix wm = am.solve(fm);
+    float[] w = new float[n];
+    for (int i=0; i<n; ++i)
+      w[i] = (float)wm.get(i,0);
+    return w;
+  }
+
+  /**
+   * Gridding with kriging weights w computed via Paciorek's approximation.
+   */
+  private static void gridWithPaciorekWeights(
+    Sampling s1, Sampling s2, Tensors2 tensors, Covariance cm,
+    float[] w, float[] x1, float[] x2, float[][] q)
+  {
+    int n = w.length;
+    int n1 = q[0].length;
+    int n2 = q.length;
+    float[] d = new float[3];
+    for (int i2=0; i2<n2; ++i2) {
+      double x2i = s2.getValue(i2);
+      for (int i1=0; i1<n1; ++i1) {
+        double x1i = s1.getValue(i1);
+        tensors.getTensor(i1,i2,d);
+        double d11i = d[0], d12i = d[1], d22i = d[2];
+        double deti = d11i*d22i-d12i*d12i;
+        double qi = 0.0f;
+        for (int j=0; j<n; ++j) {
+          double x1j = x1[j];
+          double x2j = x2[j];
+          double cij = evaluatePaciorek(s1,s2,tensors,cm,
+                                        d11i,d12i,d22i,deti,d,
+                                        x1i,x2i,x1j,x2j);
+          qi += cij*w[j];
+        }
+        q[i2][i1] = (float)qi;
+      }
+    }
+  }
+
+  /**
    * Paciorek's approximation to tensor-guided kriging.
    */
   private float[][] gridForVariableTensorsP(Sampling s1, Sampling s2) {
     int n1 = s1.getCount();
     int n2 = s2.getCount();
-    int n = _f.length;
-    DMatrix cf = new DMatrix(n,1);
-    DMatrix cm = new DMatrix(n,n);
-    float[] d = new float[3];
-    for (int i=0; i<n; ++i) {
-      double x1i = _x1[i];
-      double x2i = _x2[i];
-      int i1 = s1.indexOfNearest(x1i);
-      int i2 = s2.indexOfNearest(x2i);
-      _tensors.getTensor(i1,i2,d);
-      double d11i = d[0], d12i = d[1], d22i = d[2];
-      double deti = d11i*d22i-d12i*d12i;
-      for (int j=0; j<n; ++j) {
-        double x1j = _x1[j];
-        double x2j = _x2[j];
-        double cij = evaluatePaciorek(s1,s2,_tensors,_cm,
-                                      d11i,d12i,d22i,deti,d,
-                                      x1i,x2i,x1j,x2j);
-        cm.set(i,j,cij);
-      }
-      cm.set(i,i,cm.get(i,i)+_sd[i]*_sd[i]);
-      cf.set(i,0,_f[i]);
-    }
-    DMatrix cw = cm.solve(cf);
+    float[][] fxs = SimpleGridder2.samplesOnGrid(s1,s2,_f,_x1,_x2,_sd);
+    float[] f = fxs[0], x1 = fxs[1], x2 = fxs[2], sd = fxs[3];
+    float[] w = computePaciorekWeights(s1,s2,_tensors,_cm,f,x1,x2,sd);
     float[][] q = new float[n2][n1];
-    for (int i2=0; i2<n2; ++i2) {
-      double x2i = s2.getValue(i2);
-      for (int i1=0; i1<n1; ++i1) {
-        double x1i = s1.getValue(i1);
-        _tensors.getTensor(i1,i2,d);
-        double d11i = d[0], d12i = d[1], d22i = d[2];
-        double deti = d11i*d22i-d12i*d12i;
-        double qi = 0.0f;
-        for (int j=0; j<n; ++j) {
-          double x1j = _x1[j];
-          double x2j = _x2[j];
-          double cij = evaluatePaciorek(s1,s2,_tensors,_cm,
-                                        d11i,d12i,d22i,deti,d,
-                                        x1i,x2i,x1j,x2j);
-          qi += cij*cw.get(j,0);
-        }
-        q[i2][i1] = (float)qi;
-      }
-    }
+    gridWithPaciorekWeights(s1,s2,_tensors,_cm,w,x1,x2,q);
     return q;
   }
 
@@ -373,7 +417,7 @@ public class KrigingGridder2 implements Gridder2 {
     VecArrayFloat1 vz = new VecArrayFloat1(az);
     SmoothA a = new SmoothA(x1,x2,s1,s2,_tensors,scm,sd);
     SmoothM m = new SmoothM(x1,x2,s1,s2,_tensors,scm,sd);
-    CgSolver cgs = new CgSolver(0.01,100);
+    CgSolver cgs = new CgSolver(1.0e-4,100);
     CgSolver.Info info = cgs.solve(a,m,vf,vz);
     //CgSolver.Info info = cgs.solve(a,vf,vz);
     cgs = null;
@@ -381,6 +425,86 @@ public class KrigingGridder2 implements Gridder2 {
     return q;
   }
 
+  /**
+   * Tensor-guided kriging for the smooth model covariance.
+   * Uses inverse of covariance instead of covariance. For small Cd,
+   * this method converges very slowly because we have no preconditioner.
+   */
+  private float[][] gridForVariableTensorsI(Sampling s1, Sampling s2) {
+    Check.state(_cm instanceof SmoothCovariance,
+      "model covariance is a SmoothCovariance");
+    SmoothCovariance scm = (SmoothCovariance)_cm;
+    int n1 = s1.getCount();
+    int n2 = s2.getCount();
+    float[][] ap = new float[n2][n1];
+    float[][] aq = new float[n2][n1];
+    float[][] fxs = SimpleGridder2.samplesOnGrid(s1,s2,_f,_x1,_x2,_sd);
+    float[] f = fxs[0];
+    float[] x1 = fxs[1];
+    float[] x2 = fxs[2];
+    float[] sd = fxs[3];
+    int n = f.length;
+    for (int i=0; i<n; ++i) {
+      int i1 = s1.indexOfNearest(x1[i]);
+      int i2 = s2.indexOfNearest(x2[i]);
+      ap[i2][i1] = f[i]/(sd[i]*sd[i]);
+    }
+    VecArrayFloat2 vp = new VecArrayFloat2(ap);
+    VecArrayFloat2 vq = new VecArrayFloat2(aq);
+    SmoothAI sai = new SmoothAI(x1,x2,s1,s2,_tensors,scm,sd);
+    CgSolver cgs = new CgSolver(1e-4,10000);
+    CgSolver.Info info = cgs.solve(sai,vp,vq);
+    return aq;
+  }
+
+  /**
+   * Applies the operator inv(Cm) + K'inv(Cd)K.
+   */
+  private static class SmoothAI implements CgSolver.A {
+
+    SmoothAI(float[] x1, float[] x2, 
+      Sampling s1, Sampling s2, Tensors2 t,
+      SmoothCovariance cm, float[] sd) 
+    {
+      int n = x1.length;
+      int n1 = s1.getCount();
+      int n2 = s2.getCount();
+      _s1 = s1;
+      _s2 = s2;
+      _t = t;
+      _cm = cm;
+      _sd = sd;
+      _k1 = new int[n];
+      _k2 = new int[n];
+      for (int i=0; i<n; ++i) {
+        _k1[i] = s1.indexOfNearest(x1[i]);
+        _k2[i] = s2.indexOfNearest(x2[i]);
+      }
+    }
+
+    public void apply(Vec x, Vec y) {
+      float[][] ax = ((VecArrayFloat2)x).getArray();
+      float[][] ay = ((VecArrayFloat2)y).getArray();
+      copy(ax,ay);
+      _cm.applyInverse(_s1,_s2,_t,ay);
+      int n = _k1.length;
+      for (int i=0; i<n; ++i) {
+        int i1 = _k1[i];
+        int i2 = _k2[i];
+        ay[i2][i1] += ax[i2][i1]/(_sd[i]*_sd[i]);
+      }
+    }
+
+    private Sampling _s1,_s2;
+    private Tensors2 _t;
+    private SmoothCovariance _cm;
+    private float[] _sd;
+    private int[] _k1,_k2;
+  }
+
+  /**
+   * Applies the operator KCmK' + Cd.
+   */
   private static class SmoothA implements CgSolver.A {
 
     SmoothA(float[] x1, float[] x2, 
@@ -397,9 +521,11 @@ public class KrigingGridder2 implements Gridder2 {
         _k2[i] = s2.indexOfNearest(x2[i]);
       }
       _bx = new float[n2][n1];
+      _s1 = s1;
+      _s2 = s2;
+      _t = t;
       _cm = cm;
       _sd = sd;
-      _t = t;
     }
 
     public void apply(Vec x, Vec y) {
@@ -409,18 +535,22 @@ public class KrigingGridder2 implements Gridder2 {
       zero(_bx);
       for (int i=0; i<n; ++i)
         _bx[_k2[i]][_k1[i]] = ax[i];
-      _cm.apply(_t,_bx);
+      _cm.apply(_s1,_s2,_t,_bx);
       for (int i=0; i<n; ++i)
         ay[i] = _bx[_k2[i]][_k1[i]]+_sd[i]*_sd[i]*ax[i];
     }
 
     private int[] _k1,_k2;
     private float[][] _bx;
-    private float[] _sd;
-    private SmoothCovariance _cm;
+    private Sampling _s1,_s2;
     private Tensors2 _t;
+    private SmoothCovariance _cm;
+    private float[] _sd;
   }
 
+  /**
+   * Applies the preconditioner ~ inv(KCmK' + Cd).
+   */
   private static class SmoothM implements CgSolver.A {
 
     SmoothM(float[] x1, float[] x2, 
@@ -483,5 +613,9 @@ public class KrigingGridder2 implements Gridder2 {
     Check.state(_f!=null,"scattered samples have been set");
     Check.state(_x1!=null,"scattered samples have been set"); 
     Check.state(_x2!=null,"scattered samples have been set");
+  }
+
+  private static void trace(String s) {
+    System.out.println(s);
   }
 }

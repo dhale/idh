@@ -1157,17 +1157,20 @@ public class DynamicWarpingR {
   }
 
   private static class Cm implements LeastSquaresSolver.CovarianceOperator {
-    Cm(SmoothCovariance sc, Tensors2 t) {
+    Cm(SmoothCovariance sc, Sampling s1, Sampling s2, Tensors2 t) {
       _sc = sc;
+      _s1 = s1;
+      _s2 = s2;
       _t = t;
     }
     public Vec apply(Vec x) {
       VecArrayFloat2 vx = (VecArrayFloat2)x;
       float[][] ay = copy(vx.getArray());
-      _sc.apply(_t,ay);
+      _sc.apply(_s1,_s2,_t,ay);
       return new VecArrayFloat2(ay);
     }
     private SmoothCovariance _sc;
+    private Sampling _s1,_s2;
     private Tensors2 _t;
   }
   private static class G implements LeastSquaresSolver.LinearOperator {
@@ -1259,7 +1262,7 @@ public class DynamicWarpingR {
     sp.getPlotPanel().addTiledView(tv);
     double range = 100.0; // TODO: compute this!
     SmoothCovariance sc = new SmoothCovariance(1.0,1.0,range,2);
-    Cm cm = new Cm(sc,et);
+    Cm cm = new Cm(sc,s1,s2,et);
     G g = new G(s1,s2,k1s,k2s);
     LeastSquaresSolver lss = new LeastSquaresSolver();
     lss.setLinearOperator(g);

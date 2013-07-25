@@ -21,10 +21,10 @@ pngDir = None
 #############################################################################
 
 def main(args):
-  goShifts()
+  #goShifts()
   #goPeakF()
   #goImage()
-  #goHetMul()
+  goHetMul()
   #goAmpPhase()
 
 def goPeakF():
@@ -139,8 +139,8 @@ def goHetMul():
   shift = -0.00
   #for makeMod in [makeCosineModulator,makeBandModulator,makeBurgModulator]:
   for makeMod in [makeBurgModulator]:
-    #g = makeMod(shift,x)
-    g = x
+    g = makeMod(shift,x)
+    #g = x
     plot(g,s1,s2,0.5*clip)
     y = mul(g,x)
     plot(y,s1,s2,0.5*clip)
@@ -227,8 +227,8 @@ def goImage():
   plot(x,s1,s2,clip)
 
 def getImage():
-  return getImageF3d()
-  #return getImageTpd()
+  #return getImageF3d()
+  return getImageTpd()
 
 def getImageF3d():
   n1,n2 = 462,951
@@ -249,7 +249,7 @@ def getImageTpd():
   n1,n2 = 251,357
   d1,d2 = 0.004,0.025
   f1,f2 = 0.500,0.000
-  fileName = "/data/seis/tp/csm/oldslices/tp73.dat"
+  fileName = "/data/seis/tpd/csm/oldslices/tp73.dat"
   x = readImage(fileName,n1,n2)
   s1,s2 = Sampling(n1,d1,f1),Sampling(n2,d2,f2)
   return x,s1,s2,2.0

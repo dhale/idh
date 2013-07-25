@@ -18,17 +18,17 @@ def main(args):
   makeTensors()
   #demoVariogram()
   #demoSimple()
-  #demoBlended()
+  demoBlended()
   demoKriging()
 
 def makeTensors():
   print "makeTensors ..."
   global eti,eta,etb,etr,ets
-  eti = ConstantTensors2(s1.count,s2.count,-30,1.0,1.0)
+  #eti = ConstantTensors2(s1.count,s2.count,-30,1.0,1.0)
   #eta = ConstantTensors2(s1.count,s2.count,-30,0.1,1.0)
-  #etb = BlockTensors2(s1.count,s2.count)
+  etb = BlockTensors2(s1.count,s2.count)
   #etr = RandomTensors2(s1.count,s2.count)
-  ets = SineTensors2(s1.count,s2.count,40.0,60.0)
+  ets = SineTensors2(s1.count,s2.count,80.0,60.0)
   #plotElevation(s1,s2,ets.f)
   print "... done"
 
@@ -50,7 +50,7 @@ def demoSimple():
 
 def demoKriging():
   print "demoKriging ..."
-  sd,rm = 2.0,80.0
+  sd,rm = 0.0,40.0
   f,x1,x2 = readWolfcamp()
   f,x1,x2 = gridWolfcamp(f,x1,x2,s1,s2)
   #sd = mul(sd,randfloat(len(f)))

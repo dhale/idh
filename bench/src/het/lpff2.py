@@ -26,8 +26,8 @@ def main(args):
   goHetMul()
 
 def goHetMul():
-  x,s1,s2,clip = getImageF3d(); png = "f3d_"
-  #x,s1,s2,clip = getImageTpd(); png = "tpd_"
+  #x,s1,s2,clip = getImageF3d(); png = "f3d_"
+  x,s1,s2,clip = getImageTpd(); png = "tpd_"
   plot(x,s1,s2,clip,png=png+"input")
   doHetMul(4,x,s1,s2,clip,png=png+"lpff")
 
@@ -89,9 +89,9 @@ def goImage():
   plot(x,s1,s2,clip)
 
 def getImage():
-  return getImageF3d()
+  #return getImageF3d()
   #return getImageTpd()
-  #return getImageSyn()
+  return getImageSyn()
 
 def getImageF3d():
   n1,n2 = 462,951
@@ -112,7 +112,7 @@ def getImageTpd():
   n1,n2 = 251,357
   d1,d2 = 0.004,0.025
   f1,f2 = 0.500,0.000
-  fileName = "/data/seis/tp/csm/oldslices/tp73.dat"
+  fileName = "/data/seis/tpd/csm/oldslices/tp73.dat"
   x = readImage(fileName,n1,n2)
   s1,s2 = Sampling(n1,d1,f1),Sampling(n2,d2,f2)
   return x,s1,s2,2.0

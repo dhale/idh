@@ -17,7 +17,10 @@ dataDir = "/data/seis/pnz/" # base directory for all images
 
 def main(args):
   #goDisplay(args[1])
-  goSlice()
+  #goDisplay("f")
+  #goDisplay("gs")
+  goDisplay("ggs")
+  #goSlice()
 
 def goDisplay(what):
   f = readImage(what)

@@ -1,7 +1,5 @@
 package fault;
 
-import java.util.ArrayList;
-import edu.mines.jtk.dsp.*;
 import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
@@ -119,8 +117,6 @@ public class Util {
     for (int i3=0; i3<n3; ++i3) {
       for (int i2=0; i2<n2; ++i2) {
         for (int i1=0; i1<n1; ++i1) {
-          float fai = fa[i3][i2][i1];
-          float fbi = fb[i3][i2][i1];
           if (fa[i3][i2][i1]>=fb[i3][i2][i1]) {
             fc[i3][i2][i1] = fa[i3][i2][i1];
             pc[i3][i2][i1] = pa[i3][i2][i1];
@@ -149,9 +145,7 @@ public class Util {
     for (int i3=0; i3<n3; ++i3) {
       for (int i2=0; i2<n2; ++i2) {
         for (int i1=0; i1<n1; ++i1) {
-          float fai = fa[i3][i2][i1];
-          float fbi = fb[i3][i2][i1];
-          if (fai>fbi) {
+          if (fa[i3][i2][i1]>=fb[i3][i2][i1]) {
             fc[i3][i2][i1] = fa[i3][i2][i1];
             pc[i3][i2][i1] = pa[i3][i2][i1];
             tc[i3][i2][i1] = ta[i3][i2][i1];

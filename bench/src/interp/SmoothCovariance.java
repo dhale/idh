@@ -47,9 +47,13 @@ public class SmoothCovariance implements Covariance {
     _ndim = ndim;
     if (ndim==2) {
       init2();
+      //init2(1.0+_shape);
     }
-    _lsf = new LocalSmoothingFilter(1.0e-6,1000);
-    _lsf.setPreconditioner(true);
+    _ldk = new LocalDiffusionKernel(LocalDiffusionKernel.Stencil.D22);
+    _lsf = new LocalSmoothingFilter(1.0e-6,10000,_ldk);
+    //_lsf.setPreconditioner(true);
+    _stf = new SymmetricTridiagonalFilter(0.76,0.52,0.76,0.24);
+    //_stf = new SymmetricTridiagonalFilter(0.80,0.60,0.80,0.20);
   }
 
   /**
@@ -88,42 +92,61 @@ public class SmoothCovariance implements Covariance {
     return _li.interpolate(r);
   }
 
-  public void apply(Tensors2 tensors, float[][] q) {
+  /**
+   * Applies this covariance function via 2D tensor-guided smoothing.
+   * <em>Sampling intervals delta for s1 and s2 must be equal.</em>
+   * @param s1 sampling of 1st dimension.
+   * @param s2 sampling of 2nd dimension.
+   * @param tensors the tensor field.
+   * @param q the input/output image.
+   */
+  public void apply(Sampling s1, Sampling s2, Tensors2 tensors, float[][] q) {
+    Check.argument(s1.getDelta()==s2.getDelta(),"s1 and s2 have same delta");
     int n1 = q[0].length;
     int n2 = q.length;
     float[][] s = q;
     float[][] t = new float[n2][n1];
-    cscale(tensors,q);
-    _lsf.applySmoothS(q,s);
-    _lsf.apply(tensors,_bscl*_kscl*_kscl,s,t);
+    float dx = (float)s1.getDelta();
+    float akk = _ascl*_kscl*_kscl/dx/dx;
+    float bkk = _bscl*_kscl*_kscl/dx/dx;
+    float ckk = _cscl*_kscl*_kscl/dx/dx;
+    cscale(ckk,tensors,q);
+    _stf.apply1(q,s);
+    _stf.apply2(s,s);
+    _lsf.apply(tensors,bkk,s,t);
     for (int ifac=0; ifac<_nfac; ++ifac) {
       float[][] st = s; s = t; t = st;
-      _lsf.apply(tensors,_ascl*_kscl*_kscl,s,t);
+      _lsf.apply(tensors,akk,s,t);
     }
-    _lsf.applySmoothS(t,q);
-    cscale(tensors,q);
+    _lsf.apply(tensors,akk,s,t);
+    _stf.apply2(t,q);
+    _stf.apply1(q,q);
+    cscale(ckk,tensors,q);
   }
-  private void cscale(Tensors2 tensors, float[][] t) {
-    float[] d = new float[3];
-    int n1 = t[0].length;
-    int n2 = t.length;
-    for (int i2=0; i2<n2; ++i2) {
-      for (int i1=0; i1<n1; ++i1) {
-        tensors.getTensor(i1,i2,d);
-        float d11 = d[0], d12 = d[1], d22 = d[2];
-        float det = d11*d22-d12*d12;
-        t[i2][i1] *= _cscl*sqrt(sqrt(det));
-      }
-    }
-  }
-  public void apply1(Tensors2 tensors, float[][] q) {
-    Check.state(_shape==1.0,"shape = 1");
+
+  public void applyInverse(
+    Sampling s1, Sampling s2, Tensors2 tensors, float[][] q) 
+  {
+    Check.argument(s1.getDelta()==s2.getDelta(),"s1 and s2 have same delta");
     int n1 = q[0].length;
     int n2 = q.length;
+    float[][] s = q;
     float[][] t = new float[n2][n1];
-    cscale(tensors,q);
-    _lsf.applySmoothS(q,t);
-    _lsf.apply(tensors,_ascl*_kscl*_kscl,t,q);
+    float dx = (float)s1.getDelta();
+    float akk = _ascl*_kscl*_kscl/dx/dx;
+    float bkk = _bscl*_kscl*_kscl/dx/dx;
+    float ckk = _cscl*_kscl*_kscl/dx/dx;
+    cscaleInverse(ckk,tensors,q);
+    _stf.applyInverse1(q,t);
+    _stf.applyInverse2(t,t);
+    for (int ifac=0; ifac<_nfac; ++ifac) {
+      float[][] st = s; s = t; t = st;
+      copy(s,t); _ldk.apply(tensors,akk,s,t);
+    }
+    copy(t,s); _ldk.apply(tensors,bkk,t,s);
+    _stf.applyInverse2(s,q);
+    _stf.applyInverse1(q,q);
+    cscaleInverse(ckk,tensors,q);
   }
 
   public float[][] apply(
@@ -139,8 +162,38 @@ public class SmoothCovariance implements Covariance {
       int i2 = s2.indexOfNearest(x2[i]);
       q[i2][i1] = z[i];
     }
-    apply(tensors,q);
+    apply(s1,s2,tensors,q);
     return q;
+  }
+
+  /**
+   * Applies half of this covariance function via 2D tensor-guided smoothing.
+   * <em>This method can be used for only shape = 1.</em>
+   * <em>Sampling intervals delta for s1 and s2 must be equal.</em>
+   * If the input image contains independently and identically distributed
+   * Gaussian random numbers sampled from a standard normal distribution, then
+   * the output image will exhibit spatial correlation consistent with this
+   * covariance function.
+   * @param s1 sampling of 1st dimension.
+   * @param s2 sampling of 2nd dimension.
+   * @param tensors the tensor field.
+   * @param q the input/output image.
+   */
+  public void applyHalf(
+    Sampling s1, Sampling s2, Tensors2 tensors, float[][] q) 
+  {
+    Check.state(_shape==1.0,"shape = 1");
+    Check.argument(s1.getDelta()==s2.getDelta(),"s1 and s2 have same delta");
+    int n1 = q[0].length;
+    int n2 = q.length;
+    float[][] t = new float[n2][n1];
+    float dx = (float)s1.getDelta();
+    float akk = _ascl*_kscl*_kscl/dx/dx;
+    float ckk = _cscl*_kscl*_kscl/dx/dx;
+    cscale(ckk,tensors,q);
+    _stf.apply1(q,t);
+    _stf.apply2(t,t);
+    _lsf.apply(tensors,akk,t,q);
   }
 
   ///////////////////////////////////////////////////////////////////////////
@@ -150,20 +203,62 @@ public class SmoothCovariance implements Covariance {
   private double _sigma;
   private double _range;
   private int _ndim;
-  private int _nfac;
-  private float _ascl,_bscl,_cscl,_kscl;
+  private int _nfac; // number of smoothings using ascl
+  private float _ascl,_bscl,_cscl,_kscl; // scale factors
   private LinearInterpolator _li;
   private LocalSmoothingFilter _lsf;
+  private LocalDiffusionKernel _ldk;
+  private SymmetricTridiagonalFilter _stf;
 
+  /**
+   * Applies scaling by factors that depend on 2D tensor determinants.
+   * Is applied twice, both before and after smoothing filters, which
+   * ensures that this covariance operator is symmetric.
+   */
+  private void cscale(float ckk, Tensors2 tensors, float[][] t) {
+    float[] d = new float[3];
+    int n1 = t[0].length;
+    int n2 = t.length;
+    float rckk = sqrt(ckk);
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        tensors.getTensor(i1,i2,d);
+        float d11 = d[0], d12 = d[1], d22 = d[2];
+        float det = d11*d22-d12*d12;
+        t[i2][i1] *= rckk*sqrt(sqrt(det));
+      }
+    }
+  }
+
+  /**
+   * Applies inverse scaling by factors that depend on 2D tensor determinants.
+   */
+  private void cscaleInverse(float ckk, Tensors2 tensors, float[][] t) {
+    float[] d = new float[3];
+    int n1 = t[0].length;
+    int n2 = t.length;
+    float rckk = 1.0f/sqrt(ckk);
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        tensors.getTensor(i1,i2,d);
+        float d11 = d[0], d12 = d[1], d22 = d[2];
+        float det = 1.0f/(d11*d22-d12*d12);
+        t[i2][i1] *= rckk*sqrt(sqrt(det));
+      }
+    }
+  }
+
+  /**
+   * Initializes this covariance function for 2D.
+   */
   private void init2() {
     MaternMatch2 mm2 = new MaternMatch2(_shape);
     _nfac = mm2.n;
     _ascl = (float)mm2.a;
     _bscl = (float)mm2.b;
-    _cscl = (float)(sqrt(PI)*_sigma*_range);
+    _cscl = (float)(mm2.c*_sigma*_sigma);
     _kscl = (float)(0.5*_range/sqrt(_shape));
-    //System.out.println(
-    //  "nfac="+_nfac+" ascl="+_ascl+" bscl="+_bscl+" cscl="+_cscl);
+    trace("nfac="+_nfac+" ascl="+_ascl+" bscl="+_bscl+" cscl="+_cscl);
     double rmax =  16.0*_range; // c(r)/c(0) < 0.001, for r > rmax
     int nr = 10001;
     double dr = rmax/(nr-1);
@@ -189,12 +284,14 @@ public class SmoothCovariance implements Covariance {
     int n; // number of primary smoothings
     double a; // parameter for all primary smoothings
     double b; // parameter for one secondary smoothing
+    double c; // scale parameter to ensure that c(0) = 1
     MaternMatch2(double shape) {
       Check.argument(0.0<shape && shape<=3.0,"0 < shape <= 3");
       double e = 1.0+shape;
       n = (int)e;
       a = 1.000000;
       b = 0.000000;
+      c = 4.0*PI*shape;
 
       // If a secondary smoothing is required (so that b>0), ...
       if (e>n) {
@@ -251,6 +348,13 @@ public class SmoothCovariance implements Covariance {
           // Converged when this sum is small.
           apb = abs(a-aold)+abs(b-bold);
         }
+        if (n==1) {
+          c = 4.0*PI*(a-b)/log(a/b);
+        } else if (n==2) {
+          c = 4.0*PI*(a-b)*(a-b)/(a-b-b*log(a/b));
+        } else if (n==3) {
+          c = 8.0*PI*(a-b)*(a-b)*(a-b)/((a-3.0*b)*(a-b)+2.0*b*b*log(a/b));
+        }
       }
     }
     private static double AMIN = 1.000000;
@@ -306,114 +410,43 @@ public class SmoothCovariance implements Covariance {
   }
 
   ///////////////////////////////////////////////////////////////////////////
-  // unused
-
-  private void xinit2() {
-    MaternMatch2 mm2 = new MaternMatch2(_shape);
-    _ascl = (float)mm2.a;
-    _bscl = (float)mm2.b;
-    _cscl = (float)(sqrt(PI)*_sigma*_range);
-    _kscl = (float)(0.5*_range/sqrt(_shape));
-    _nfac = (int)(1.0+_shape);
-    double rmax =  16.0; // c(r)/c(0) < 0.001, for r > rmax
-    double kmax = 256.0; // C(k)/C(0) < 0.001, for k > kmax
-    int n = (int)(4.0*rmax*kmax); // oversample for linear interpolation
-    int nfft = FftReal.nfftSmall(n);
-    FftReal fft = new FftReal(nfft);
-    int nr = nfft/2;
-    int nk = nfft/2+1;
-    double dr = rmax/(nr-1);
-    double dk = 2.0*PI/(nfft*dr);
-    double spower = -0.5-_shape;
-    double kscale = 0.25/_shape;
-    float[] c = new float[nfft+2];
-    for (int ik=0; ik<nk; ++ik) {
-      double k = ik*dk;
-      double kks = k*k*kscale;
-      c[2*ik] = abel(_nfac,_ascl,_bscl,kks);
-    }
-    fft.complexToReal(1,c,c);
-    float[] cr = new float[nr];
-    float cs = (float)(_sigma*_sigma/c[0]);
-    for (int ir=0; ir<nr; ++ir)
-      cr[ir] = cs*c[ir];
-    _li = new LinearInterpolator();
-    _li.setExtrapolation(LinearInterpolator.Extrapolation.CONSTANT);
-    _li.setUniform(nr,dr*_range,0.0,cr);
-  }
-
-  /**
-   * Computes the Abel transform of the 2D Fourier transform C(k).
-   * The Abel transform of our C(k) is easy to compute for shape 
-   * parameters in the interval (0,3).
-   */
-  private static float abel(int n, double a, double b, double kks) {
-    if (n==1) {
-      return abel1(a,b,kks);
-    } else if (n==2) {
-      return abel2(a,b,kks);
-    } else if (n==3) {
-      return abel3(a,b,kks);
-    } else {
-      return 0.0f;
-    }
-  }
-  private static float abel1(double a, double b, double kks) {
-    Check.argument(a>b,"a>b");
-    double c = PI;
-    if (b==0.0) {
-      c /= sqrt(a*(1.0+a*kks));
-    } else {
-      double c1 = sqrt(a/(1.0+a*kks));
-      double c2 = b/sqrt(b*(1.0+b*kks));
-      c *= (c1-c2)/(a-b);
-    }
-    return (float)c;
-  }
-  private static float abel2(double a, double b, double kks) {
-    Check.argument(a>b,"a>b");
-    double c = PI;
-    if (b==0.0) {
-      c /= 2.0*sqrt(a)*pow(1.0+a*kks,1.5);
-    } else {
-      double c1 = sqrt(a)*(a-b)/pow(1.0+a*kks,1.5);
-      double c2 = 2.0*a*b/sqrt(a*(1.0+a*kks));
-      double c3 = 2.0*b*b/sqrt(b*(1.0+b*kks));
-      c *= (c1-c2+c3)/(2.0*pow(a-b,2.0));
-    }
-    return (float)c;
-  }
-  private static float abel3(double a, double b, double kks) {
-    Check.argument(a>b,"a>b");
-    double c = PI;
-    if (b==0.0) {
-      c *= 3.0/(8.0*sqrt(a)*pow(1.0+a*kks,2.5));
-    } else {
-      double c1 = 3.0*sqrt(a)*pow(a-b,2.0)/pow(1.0+a*kks,2.5);
-      double c2 = 4.0*sqrt(a)*(a-b)*b/pow(1.0+a*kks,1.5);
-      double c3 = 8.0*a*b*b/sqrt(a*(1.0+a*kks));
-      double c4 = 8.0*b*b*b/sqrt(b*(1.0+b*kks));
-      c *= (c1-c2+c3-c4)/(8.0*pow(a-b,3.0));
-    }
-    return (float)c;
-  }
-
-  ///////////////////////////////////////////////////////////////////////////
   // test
 
   public void testSpd(int n1, int n2, Tensors2 t) {
+    Sampling s1 = new Sampling(n1);
+    Sampling s2 = new Sampling(n2);
     float[][] x = sub(randfloat(n1,n2),0.5f);
     float[][] y = sub(randfloat(n1,n2),0.5f);
     float[][] ax = copy(x);
     float[][] ay = copy(y);
-    apply(t,ax);
-    apply(t,ay);
+    //apply(s1,s2,t,ax);
+    //apply(s1,s2,t,ay);
+    _lsf.applySmoothS(x,ax);
+    _lsf.applySmoothS(y,ay);
     float xay = sum(mul(x,ay));
     float yax = sum(mul(y,ax));
     float xax = sum(mul(x,ax));
     float yay = sum(mul(y,ay));
     System.out.println("xax="+xax+" yay="+yay);
     System.out.println("xay="+xay+" yax="+yax);
+  }
+
+  public static void tabulateMaternMatch2() {
+    int nshape = 30;
+    double dshape = 0.1;
+    double fshape = dshape;
+    Sampling sshape = new Sampling(nshape,dshape,fshape);
+    for (int ishape=0; ishape<nshape; ++ishape) {
+      double shape = sshape.getValue(ishape);
+      if (shape>3.0) shape = 3.0;
+      MaternMatch2 mm2 = new MaternMatch2(shape);
+      int n = mm2.n;
+      double a = mm2.a;
+      double b = mm2.b;
+      double c = mm2.c;
+      System.out.printf("%3.1f %1d %8.6f %8.6f %9.6f%n",
+        shape,mm2.n,mm2.a,mm2.b,mm2.c);
+    }
   }
 
   public static void trace(String s) {
@@ -435,8 +468,7 @@ public class SmoothCovariance implements Covariance {
   {
     SimplePlot sp = new SimplePlot(SimplePlot.Origin.LOWER_LEFT);
     Color[] colors = {
-      Color.RED,Color.GREEN,Color.BLUE,
-      Color.CYAN,Color.MAGENTA,Color.BLACK,
+      Color.LIGHT_GRAY,Color.GRAY,Color.DARK_GRAY,Color.BLACK
     };
     for (int iy=0; iy<y.length; ++iy) {
       PointsView pv = sp.addPoints(sx,y[iy]);
@@ -450,7 +482,8 @@ public class SmoothCovariance implements Covariance {
   public static void main(String[] args) {
     SwingUtilities.invokeLater(new Runnable() {
     public void run() {
-      go();
+      //go();
+      tabulateMaternMatch2();
     }});
   }
   public static void go() {
@@ -465,7 +498,7 @@ public class SmoothCovariance implements Covariance {
     double dr = (rmax-rmin)/(nr-1);
     double fr = rmin;
     Sampling sr = new Sampling(nr,dr,fr);
-    double[] shapes = {0.3,0.5,0.7,1.0,1.3,1.7,2.0,2.5,3.0};
+    double[] shapes = {0.5,0.75,1.0,1.5};
     int nshape = shapes.length;
     float[][] cm = new float[nshape][nr];
     float[][] cs = new float[nshape][nr];

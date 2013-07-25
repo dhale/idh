@@ -7,7 +7,7 @@ from f3utils import *
 
 #############################################################################
 
-slides = True
+slides = False
 pngDir = "png/"
 #pngDir = None
 
@@ -24,7 +24,8 @@ coneSurfBounds = {
 }
 coneViewParams = {
   # cone:(k1,k2,k3,az,el,sc,tx,ty,tz)
-  0:(94,32,121,-34.4,20.4,5.3,0.159,-0.058,0.196),
+  #0:(94,32,121,-34.4,20.4,5.3,0.159,-0.058,0.196),
+  0:(94,32,121,-40.5,77.6,5.3,0.111,-0.096,0.255),
   1:(91,84, 85, 41.4,19.0,3.5,0.000,-0.014,0.007),
   2:(81,88,112,-25.7,27.8,3.3,0.000, 0.000,0.000),
   3:(72,89, 54,-54.1,18.7,3.1,0.136, 0.022,0.174),
@@ -38,8 +39,10 @@ def main(args):
   #makeColorBar3dForSlide(0.0,8.00*1.1*4.0,"Fault throw (m)")
 
 def goConeSurfing():
-  makeColorBar3d(0.0,8.00*1.1*4.0,"Fault throw (m)")
-  for cone in [0,1,2,3]:
+  makeColorBar3d(0.0,8.00*1.1*4.0,"Fault throw (m)",h=800)
+  makeColorBar3d(0.0,8.00*1.1*4.0,"Fault throw (m)",h=400)
+  #for cone in [0,1,2,3]:
+  for cone in [0]:
     surfCone(cone)
 def surfCone(cone):
   scone = str(cone)
@@ -51,33 +54,25 @@ def surfCone(cone):
   fl = readImage("fl")
   fp = readImage("fp")
   ft = readImage("ft")
-  flt = readImage("flt")
-  fs = FaultSurfer3([fl,fp,ft])
-  csb = coneSurfBounds[cone]
-  if csb:
-    c1,c2,c3,hc,rc = csb
-    qf = Util.QuadInsideCone(c1,c2,c3,hc,rc)
-    fs.addQuadFilter(qf)
-  fs.setThreshold(0.7)
-  quads = fs.findQuads()
-  quads = fs.linkQuads(quads)
-  surfs = fs.findSurfs(quads)
-  surfs = fs.getSurfsWithSize(surfs,2000)
-  s = fs.findShifts(20.0,surfs,gs,p2,p3)
-  print "s: min =",min(s)," max =",max(s)
-  #t1,t2,t3 = fs.findThrows(-0.12345,surfs)
-  #plot3(g,surfs=surfs)
-  plot3(g,surfs=surfs,smax=8.0,cone=cone,png="csurf"+str(cone))
-  #plot3(g,s,-10,10,gmap=bwrFill(0.7))
-  #plot3(g,t1,-10.0,10.0,gmap=bwrFill(0.7))
-  #plot3(g,t2,-0.50,0.50,gmap=bwrFill(0.7))
-  #plot3(g,t3,-0.50,0.50,gmap=bwrFill(0.7))
-  #plot3(g,s,-5,5,gmap=bwrNotch(1.0))
-  #plot3(g,s,-5,5,gmap=bwrNotch(1.0))
-  #plot3(gs,s,-5,5,gmap=bwrNotch(1.0))
-  #plot3(gs,flt,0,1,gmap=jetRamp())
-  #plot3(gs,fl,0.5,1,gmap=jetRamp())
-  #plot3(gs)
+  for csb in [coneSurfBounds[cone]]:
+    fs = FaultSurfer3([fl,fp,ft])
+    if csb:
+      c1,c2,c3,hc,rc = csb
+      qf = Util.QuadInsideCone(c1,c2,c3,hc,rc)
+      fs.addQuadFilter(qf)
+    fs.setThreshold(0.7)
+    quads = fs.findQuads()
+    for i in range(3): # tend to get one unorientable surface, so
+      fs.shuffleQuads(quads) # shuffle to put seams away from cone
+    quads = fs.linkQuads(quads)
+    surfs = fs.findSurfs(quads)
+    surfs = fs.getSurfsWithSize(surfs,2000)
+    s = fs.findShifts(20.0,surfs,gs,p2,p3)
+    print "s: min =",min(s)," max =",max(s)
+    png = "csurf"+str(cone)
+    if not csb:
+      png += "n"
+    plot3(gs,surfs=surfs,smax=8.0,cone=cone,png=png)
 
 def goConeSubsets():
   setup("seta")
@@ -107,14 +102,13 @@ def goConeSubsets():
   
 def goFigures():
   setup("seta")
-  #for name in ["g","gs8"]:
-  for name in ["flt"]:
+  for name in ["g","gs8"]:
     #makeSliceThruPoints(name,"c1")
-    displaySlicesThruCones(name,"c1")
-    #if not slides:
-    #  displayConesForPrint(name)
-  #if slides:
-  #  displayConesForSlides()
+    #displaySlicesThruCones(name,"c1")
+    if not slides:
+      displayConesForPrint(name)
+    else:
+      displayConesForSlides()
  
 def displayConesForPrint(name):
   #regional = True # for Rick's interpretation
@@ -124,8 +118,8 @@ def displayConesForPrint(name):
   dt = 0.004
   ft = 1.040
   st = Sampling(nt,dt,ft)
-  #nd = 73  # sampling of distance d from center of cone
-  nd = 119  # sampling of distance d from center of cone
+  nd = 73  # sampling of distance d from center of cone
+  #nd = 119  # sampling of distance d from center of cone
   dd = s2.delta
   fd = -dd*(nd-1)/2
   sd = Sampling(nd,dd,fd)
@@ -140,7 +134,7 @@ def displayConesForPrint(name):
   if regional:
     ics = [0]
   else:
-    ics = [0,1,2,3]
+    ics = [0]
   for ic in ics:
     c2,c3 = c2s[ic],c3s[ic]
     h = makeConeSlices(c2,c3,st,sd,sa,g)
@@ -186,7 +180,7 @@ def displayConesForPrint(name):
       if pngDir:
         sp.paintToPng(360,wpt/72,pngDir+pngFile)
     for ia in range(na):
-      plota(ia,True)
+      #plota(ia,True)
       plota(ia,False)
  
 def displayConesForSlides():
@@ -256,6 +250,7 @@ def displaySlicesThruCones(name,points):
   x2c,x3c = getConeLocations()
   x2p,x3p = getPointSet(points)
   x2s,x3s = getCurveThruPoints(x2p,x3p)
+  # Horizontal slice 1.24 seconds (k1 = 309)
   sp = SimplePlot()
   if name[0:2]=="fl": fk1 = neg(fk1)
   pv = sp.addPixels(s2,s3,fk1)
@@ -272,21 +267,15 @@ def displaySlicesThruCones(name,points):
   pv = sp.addPoints(x2c,x3c)
   pv.setLineStyle(PointsView.Line.NONE)
   pv.setMarkStyle(PointsView.Mark.HOLLOW_CIRCLE)
-  pv.setMarkSize(64.0)
+  pv.setMarkSize(48.0)
   if name[0:2]=="fl": 
     pv.setMarkColor(Color.BLACK)
   else:
     pv.setMarkColor(Color.WHITE)
-  if slides:
-    sp.setHLimits(s2.first,s2.last)
-    sp.setVLimits(s3.first,s3.last)
-    sp.setHInterval(5.0)
-    sp.setVInterval(5.0)
-  else:
-    sp.setHLimits(0.0,9.0)
-    sp.setVLimits(0.0,15.0)
-    sp.setHInterval(2.0)
-    sp.setVInterval(2.0)
+  sp.setHLimits(s2.first,s2.last)
+  sp.setVLimits(s3.first,s3.last)
+  sp.setHInterval(5.0)
+  sp.setVInterval(5.0)
   sp.setHLabel("Inline (km)")
   sp.setVLabel("Crossline (km)")
   if slides:
@@ -295,11 +284,12 @@ def displaySlicesThruCones(name,points):
     if pngDir:
       sp.paintToPng(256,8.0,pngDir+name+points+"23.png")
   else:
-    wpt = 240.0
+    wpt = 504.0
     sp.setFontSizeForPrint(8,wpt)
-    sp.setSize(460,710)
+    sp.setSize(717,525)
     if pngDir:
       sp.paintToPng(360,wpt/72,pngDir+name+points+"23.png")
+  # Vertical slice through cone points
   sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
   pv = sp.addPixels(s1,ss,fcp)
   pv.setClips(-clip,clip)
@@ -549,7 +539,7 @@ def plot3(f,g=None,gmin=None,gmax=None,gmap=None,
   if png and pngDir:
     sf.paintToFile(pngDir+png+".png")
 
-def makeColorBar3d(cmin,cmax,clab,cint=None):
+def makeColorBar3d(cmin,cmax,clab,cint=None,h=800):
   cbar = ColorBar(clab)
   cbar.setFont(Font("Arial",Font.PLAIN,24))
   cbar.setBackground(Color.WHITE)
@@ -559,10 +549,11 @@ def makeColorBar3d(cmin,cmax,clab,cint=None):
   cmap = ColorMap(cmin,cmax,ColorMap.JET)
   cmap.addListener(cbar)
   frame = JFrame()
-  frame.setSize(140,800)
+  frame.setSize(140,h)
   frame.add(cbar,BorderLayout.EAST)
   frame.setVisible(True)
-  cbar.paintToPng(400,0.5,"cbar.png")
+  if pngDir:
+    cbar.paintToPng(400,0.5,pngDir+"cbar"+str(h)+".png")
 
 def makeColorBar3dForSlide(cmin,cmax,clab,cint=None):
   cbar = ColorBar(clab)
@@ -577,7 +568,8 @@ def makeColorBar3dForSlide(cmin,cmax,clab,cint=None):
   frame.setSize(170,700)
   frame.add(cbar,BorderLayout.EAST)
   frame.setVisible(True)
-  cbar.paintToPng(400,0.5,"cbar.png")
+  if pngDir:
+    cbar.paintToPng(400,0.5,pngDir+"cbar.png")
 
 #############################################################################
 run(main)
