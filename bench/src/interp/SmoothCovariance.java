@@ -258,7 +258,7 @@ public class SmoothCovariance implements Covariance {
     _bscl = (float)mm2.b;
     _cscl = (float)(mm2.c*_sigma*_sigma);
     _kscl = (float)(0.5*_range/sqrt(_shape));
-    trace("nfac="+_nfac+" ascl="+_ascl+" bscl="+_bscl+" cscl="+_cscl);
+    //trace("nfac="+_nfac+" ascl="+_ascl+" bscl="+_bscl+" cscl="+_cscl);
     double rmax =  16.0*_range; // c(r)/c(0) < 0.001, for r > rmax
     int nr = 10001;
     double dr = rmax/(nr-1);

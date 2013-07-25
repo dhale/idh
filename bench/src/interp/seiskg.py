@@ -9,7 +9,6 @@ n2,d2,f2 = None,None,None
 
 def main(args):
   makePnzSamplings()
-  #goBilateral()
   #goTensors()
   #goSimulate()
   goKriging()
@@ -35,35 +34,35 @@ def goSimulate():
 
 def goKriging():
   g,s1,s2 = readPnzImage()
-  #plot(None,None,None,s1,s2,g,cmap=gray,clab="Seismic amplitude")
+  plot(None,None,None,s1,s2,g,cmap=gray,clab="Seismic amplitude")
   ets = makeStructureTensors(s1,s2,g)
-  eti = makeIdentityTensors(s1,s2)
+  #eti = makeIdentityTensors(s1,s2)
   p,px,x1,x2 = simulatePorosity(s1,s2,ets)
   pmin,pmax = min(p),max(p)
   plot(None,x1,x2,s1,s2,p,mv=True,cmin=pmin,cmax=pmax,cmap=jet,clab="Porosity")
-  #s1s = Sampling(1+s1.count/3,3*s1.delta,s1.first)
-  #s2s = Sampling(1+s2.count/3,3*s2.delta,s2.first)
-  #s1s,s2s = s1,s2
-  #ps = gridSimple(px,x1,x2,s1s,s2s)
-  #plot(None,None,None,s1s,s2s,ps,cmin=pmin,cmax=pmax,cmap=tjet,clab="Porosity")
-  for useets in [True,False]:
-    for usepa in [False,True]:
-      if usepa and not useets:
-        continue
-      pa = usepa
-      if useets:
-        et = ets
+  s1s = Sampling(1+s1.count/3,3*s1.delta,s1.first)
+  s2s = Sampling(1+s2.count/3,3*s2.delta,s2.first)
+  ps = gridSimple(px,x1,x2,s1s,s2s)
+  plot(None,None,None,s1s,s2s,ps,cmin=pmin,cmax=pmax,cmap=tjet,clab="Porosity")
+  for et in [ets,None]:
+    for pa in [False,True]:
+      if et and pa:
+        print "Kriging for Paciorek approximation to model covariance"
+      elif et and not pa:
+        print "Kriging for tensor-guided model covariance"
+      elif not et and not pa:
+        print "Kriging for stationary isotropic model covariance"
       else:
-        et = None
+        continue # Paciorek approximation is useful only with tensors
       pk = gridKriging(px,x1,x2,s1,s2,et,pa)
-      print "pa =",pa
-      printMaxError(px,x1,x2,s1,s2,pk)
       plot(None,None,None,s1,s2,pk,cmin=pmin,cmax=pmax,cmap=jet,clab="Porosity")
-      print "rms error =",rmsError(pk,p)
+      printMaxErrorForKnownSamples(px,x1,x2,s1,s2,pk)
+      printRmsErrorForGriddedSamples(pk,p)
+      print
 
+numberOfKnownSamples = 256 # try also 64 and 16
 sigmaM,shapeM,rangeM = 1.0,1.0,1.0
 sigmaD = 0.00*sigmaM
-numberOfKnownSamples = 400
 
 def simulatePorosity(s1,s2,et):
   sc = SmoothCovariance(sigmaM,shapeM,rangeM,2)
@@ -85,12 +84,13 @@ def gridKriging(f,x1,x2,s1,s2,et,pa):
   kg.setTensors(et)
   return kg.grid(s1,s2)
 
-def rmsError(x,y):
+def printRmsErrorForGriddedSamples(x,y):
   n1,n2 = len(x[0]),len(x)
   z = sub(x,y)
-  return sqrt(sum(mul(z,z))/n1/n2)
+  erms = sqrt(sum(mul(z,z))/n1/n2)
+  print "rms error for all gridded samples =",erms
 
-def printMaxError(px,x1,x2,s1,s2,p):
+def printMaxErrorForKnownSamples(px,x1,x2,s1,s2,p):
   emax = -1.0
   i1max,i2max = -1,-1
   n = len(px)
@@ -102,9 +102,7 @@ def printMaxError(px,x1,x2,s1,s2,p):
       emax = e
       i1max = i1
       i2max = i2
-  print "emax =",emax
-  #print "i1max =",i1max," i2max =",i2max
-  #print "x1max =",s1.getValue(i1max)," x2max =",s2.getValue(i2max)
+  print "maximum error for all known samples =",emax
 
 seed = 885
 #seed = -1917
