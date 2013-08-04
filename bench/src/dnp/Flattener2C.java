@@ -31,18 +31,10 @@ import static edu.mines.jtk.util.ArrayMath.*;
  * used directly, this sampling of the mapping x1(u1,u2) may cause aliasing of
  * the flattened image g(u1,u2), so that f(x1,x2) cannot be recovered by
  * unflattening.
- * <p>
- * Without additional constraints, the description above of the mapping
- * function x1(u1,u2) is ambiguous. For example, one could add any constant to
- * this mapping function, and features in the transformed image g(u1,u2) would
- * still be horizontal. The mapping function x1(u1,u2) is here constrained so
- * that x1(u1,u2) = u1 for the first and last sampled values of u1. In other
- * words, features at the top or bottom of an image are not shifted by
- * flattening or unflattening.
  * @author Dave Hale, Colorado School of Mines
- * @version 2013.01.29
+ * @version 2013.08.04
  */
-public class Flattener2 {
+public class Flattener2C {
 
   /** Coordinate mappings u1(x1,x2) and x1(u1,u2). */
   public static class Mappings {
@@ -180,6 +172,22 @@ public class Flattener2 {
   public Mappings getMappingsFromSlopes(
     Sampling s1, Sampling s2, float[][] p2, float[][] el) 
   {
+    return getMappingsFromSlopes(s1,s2,p2,el,null,null);
+  }
+
+  /**
+   * Gets mappings computed from specified slopes and constraints.
+   * @param s1 sampling of 1st dimension.
+   * @param s2 sampling of 2nd dimension.
+   * @param p2 array of slopes of image features.
+   * @param el array of linearities of image features.
+   * @param k1 array of arrays of sample 1st indices for constraints.
+   * @param k2 array of arrays of sample 2nd indices for constraints.
+   */
+  public Mappings getMappingsFromSlopes(
+    Sampling s1, Sampling s2, float[][] p2, float[][] el,
+    int[][] k1, int[][] k2) 
+  {
     // Sampling parameters.
     int n1 = s1.getCount();
     int n2 = s2.getCount();
@@ -192,34 +200,37 @@ public class Flattener2 {
       p2 = mul(d2/d1,p2);
 
     // Compute shifts r(x1,x2), in samples.
-    float[][] b = new float[n2][n1]; // right-hand side
-    float[][] r = new float[n2][n1]; // shifts, in samples
+    float[][] b = new float[n2][n1]; // for right-hand side b
+    float[][] r = new float[n2][n1]; // shifts r, in samples
+    initializeShifts(k1,k2,r); // initial shifts to satisfy constraints
+    checkShifts(k1,k2,r);
     VecArrayFloat2 vb = new VecArrayFloat2(b);
     VecArrayFloat2 vr = new VecArrayFloat2(r);
-    Smoother2 smoother2 = new Smoother2(n1,n2,_sigma1,_sigma2,el);
-    A2 a2 = new A2(smoother2,_weight1,el,p2);
+    A2 a2 = new A2(_weight1,el,p2);
+    M2 m2 = new M2(_sigma1,_sigma2,el,k1,k2);
+    //testSpd("a2",n1,n2,a2);
+    //testSpd("m2",n1,n2,m2);
     CgSolver cs = new CgSolver(_small,_niter);
     makeRhs(el,p2,b);
-    smoother2.applyTranspose(b);
-    cs.solve(a2,vb,vr);
-    smoother2.apply(r);
+    cs.solve(a2,m2,vb,vr);
+    checkShifts(k1,k2,r);
     cleanShifts(r);
 
-    // Compute u1(x1,x2).
+    // Compute u1(x1,x2) from shifts r.
     float[][] u1 = r;
     for (int i2=0; i2<n2; ++i2) {
       for (int i1=0; i1<n1; ++i1) {
-        float x1i = f1+i1*d1;
-        u1[i2][i1] = x1i+r[i2][i1]*d1;
+        u1[i2][i1] = f1+(i1+r[i2][i1])*d1;
       }
     }
 
-    // Compute x1(u1,u2).
+    // Compute x1(u1,u2) using inverse linear interpolation.
     float[][] x1 = b;
     InverseInterpolator ii = new InverseInterpolator(s1,s1);
     for (int i2=0; i2<n2; ++i2) 
       ii.invert(u1[i2],x1[i2]);
-
+    printStats("u1",u1);
+    printStats("x1",x1);
     return new Mappings(s1,s2,u1,x1);
   }
 
@@ -234,8 +245,7 @@ public class Flattener2 {
 
   // Conjugate-gradient operators.
   private static class A2 implements CgSolver.A {
-    A2(Smoother2 s2, float w1, float[][] wp, float[][] p2) {
-      _s2 = s2;
+    A2(float w1, float[][] wp, float[][] p2) {
       _w1 = w1;
       _wp = wp;
       _p2 = p2;
@@ -245,46 +255,101 @@ public class Flattener2 {
       VecArrayFloat2 v2y = (VecArrayFloat2)vy;
       float[][] x = v2x.getArray();
       float[][] y = v2y.getArray();
-      float[][] z = copy(x);
-      _s2.apply(z);
-      zero(y);
-      applyLhs(_w1,_wp,_p2,z,y);
-      _s2.applyTranspose(y);
+      applyLhs(_w1,_wp,_p2,x,y);
     }
-    private Smoother2 _s2;
     private float _w1;
     private float[][] _wp;
     private float[][] _p2;
   }
 
-  // Smoother used as a preconditioner. After smoothing, enforces zero-shift
-  // boundary conditions at top and bottom.
-  private static class Smoother2 {
-    public Smoother2(
-      int n1, int n2, float sigma1, float sigma2, float[][] el) 
-    {
+  // Preconditioner; includes smoothers and (optional) constraints.
+  private static class M2 implements CgSolver.A {
+    M2(float sigma1, float sigma2, float[][] wp, int[][] k1, int[][] k2) {
       _sigma1 = sigma1;
       _sigma2 = sigma2;
-      _el = el;
+      _wp = wp;
+      if (k1!=null && k2!=null) {
+        _k1 = copy(k1);
+        _k2 = copy(k2);
+      }
     }
-    public void apply(float[][] x) {
-      smooth2(_sigma2,_el,x);
-      smooth1(_sigma1,x);
-      zero1(x);
-    }
-    public void applyTranspose(float[][] x) {
-      zero1(x);
-      smooth1(_sigma1,x);
-      smooth2(_sigma2,_el,x);
+    public void apply(Vec vx, Vec vy) {
+      VecArrayFloat2 v2x = (VecArrayFloat2)vx;
+      VecArrayFloat2 v2y = (VecArrayFloat2)vy;
+      float[][] x = v2x.getArray();
+      float[][] y = v2y.getArray();
+      copy(x,y);
+      constrain(_k1,_k2,y);
+      smooth2(_sigma2,_wp,y);
+      smooth1(2.0f*_sigma1,y);
+      smooth2(_sigma2,_wp,y);
+      constrain(_k1,_k2,y);
     }
     private float _sigma1,_sigma2;
-    private float[][] _el;
-    private void zero1(float[][] x) {
-      int n1 = x[0].length;
-      int n2 = x.length;
-      for (int i2=0; i2<n2; ++i2) {
-        x[i2][   0] = 0.0f;
-        x[i2][n1-1] = 0.0f;
+    private float[][] _wp;
+    private int[][] _k1,_k2;
+  }
+
+  // Initializes shifts r to satisfy constraints that u = i1+r is constant.
+  // Chooses the constant u to be the index i1 of the first constrained
+  // sample, so that the shift r for that first sample is zero.
+  public static void initializeShifts(int[][] k1, int[][] k2, float[][] r) {
+    zero(r);
+    if (k1!=null && k2!=null) {
+      int nc = k1.length;
+      for (int ic=0; ic<nc; ++ic) {
+        int nk = k1[ic].length;
+        int ik = 0;
+        int i1 = k1[ic][ik];
+        int i2 = k2[ic][ik];
+        for (ik=1; ik<nk; ++ik) {
+          int ip = i1;
+          float rp = r[i2][i1];
+          i1 = k1[ic][ik];
+          i2 = k2[ic][ik];
+          r[i2][i1] = rp+ip-i1;
+        }
+      }
+    }
+  }
+
+  // Asserts that shifts r satisfy constraints that u = i1+r is constant.
+  public static void checkShifts(int[][] k1, int[][] k2, float[][] r) {
+    if (k1!=null && k2!=null) {
+      int nc = k1.length;
+      for (int ic=0; ic<nc; ++ic) {
+        trace("ic="+ic);
+        int nk = k1[ic].length;
+        for (int ik=0; ik<nk; ++ik) {
+          int i1 = k1[ic][ik];
+          int i2 = k2[ic][ik];
+          trace("  i1="+i1+" i2="+i2+" r="+r[i2][i1]+" u="+(i1+r[i2][i1]));
+          //assert r[i2][i1]==rp+ip-i1:"shifts r satisfy constraints";
+        }
+      }
+    }
+  }
+
+  // Projects x into the null space of constraints. For each constraint (if
+  // any), replaces values at constrained samples with the averages of those
+  // values.
+  public static void constrain(int[][] k1, int[][] k2, float[][] x) {
+    if (k1!=null && k2!=null) {
+      int nc = k1.length;
+      for (int ic=0; ic<nc; ++ic) {
+        int nk = k1[ic].length;
+        float sum = 0.0f;
+        for (int ik=0; ik<nk; ++ik) {
+          int i1 = k1[ic][ik];
+          int i2 = k2[ic][ik];
+          sum += x[i2][i1];
+        }
+        float avg = sum/nk;
+        for (int ik=0; ik<nk; ++ik) {
+          int i1 = k1[ic][ik];
+          int i2 = k2[ic][ik];
+          x[i2][i1] = avg;
+        }
       }
     }
   }
@@ -294,7 +359,7 @@ public class Flattener2 {
     if (sigma<=0.0f)
       return;
     RecursiveExponentialFilter.Edges edges =
-      RecursiveExponentialFilter.Edges.OUTPUT_ZERO_VALUE;
+      RecursiveExponentialFilter.Edges.OUTPUT_ZERO_SLOPE;
     RecursiveExponentialFilter ref = new RecursiveExponentialFilter(sigma);
     ref.setEdges(edges);
     ref.apply1(x,x);
@@ -325,6 +390,7 @@ public class Flattener2 {
   }
 
   private static void makeRhs(float[][] wp, float[][] p2, float[][] y) {
+    zero(y);
     int n1 = y[0].length;
     int n2 = y.length;
     for (int i2=1; i2<n2; ++i2) {
@@ -348,6 +414,7 @@ public class Flattener2 {
   private static void applyLhs(
     float w1, float[][] wp, float[][] p2, float[][] x, float[][] y) 
   {
+    zero(y);
     int n1 = x[0].length;
     int n2 = x.length;
     float w1s = w1*w1;
@@ -392,14 +459,31 @@ public class Flattener2 {
     }
   }
 
-  private static void printStats(String s, int i1, float[][] a) {
-    int n2 = a.length;
-    float amin = a[0][i1];
-    float amax = a[0][i1];
-    for (int i2=1; i2<n2; ++i2) {
-      if (a[i2][i1]<amin) amin = a[i2][i1];
-      if (a[i2][i1]>amax) amax = a[i2][i1];
-    }
-    System.out.println(s+": i1="+i1+" min="+amin+" max="+amax);
+  private static void printStats(String s, float[][] a) {
+    trace(s+": min="+min(a)+" max="+max(a));
+  }
+
+  private static void trace(String s) {
+    System.out.println(s);
+  }
+  private void testSpd(String s, int n1, int n2, CgSolver.A a) {
+    // symmetric: y'Ax = x'(A'y) = x'Ay
+    // positive-semidefinite: x'Ax >= 0
+    float[][] x = sub(randfloat(n1,n2),0.5f);
+    float[][] y = sub(randfloat(n1,n2),0.5f);
+    float[][] ax = zerofloat(n1,n2);
+    float[][] ay = zerofloat(n1,n2);
+    VecArrayFloat2 vx = new VecArrayFloat2(x);
+    VecArrayFloat2 vy = new VecArrayFloat2(y);
+    VecArrayFloat2 vax = new VecArrayFloat2(ax);
+    VecArrayFloat2 vay = new VecArrayFloat2(ay);
+    a.apply(vx,vax);
+    a.apply(vy,vay);
+    double yax = vy.dot(vax);
+    double xay = vx.dot(vay);
+    double xax = vx.dot(vax);
+    double yay = vy.dot(vay);
+    System.out.println(s+": yax="+yax+" xay="+xay+" should be equal");
+    System.out.println(s+": xax="+xax+" yay="+yay+" should be positive");
   }
 }

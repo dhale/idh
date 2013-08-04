@@ -31,18 +31,10 @@ import static edu.mines.jtk.util.ArrayMath.*;
  * used directly, this sampling of the mapping x1(u1,u2) may cause aliasing of
  * the flattened image g(u1,u2), so that f(x1,x2) cannot be recovered by
  * unflattening.
- * <p>
- * Without additional constraints, the description above of the mapping
- * function x1(u1,u2) is ambiguous. For example, one could add any constant to
- * this mapping function, and features in the transformed image g(u1,u2) would
- * still be horizontal. The mapping function x1(u1,u2) is here constrained so
- * that x1(u1,u2) = u1 for the first and last sampled values of u1. In other
- * words, features at the top or bottom of an image are not shifted by
- * flattening or unflattening.
  * @author Dave Hale, Colorado School of Mines
- * @version 2013.01.29
+ * @version 2013.08.02
  */
-public class Flattener2 {
+public class Flattener2X {
 
   /** Coordinate mappings u1(x1,x2) and x1(u1,u2). */
   public static class Mappings {
@@ -136,19 +128,6 @@ public class Flattener2 {
   }
 
   /**
-   * Sets the relative weight of the PDE dr(x1,x2)/dx1 = 0.
-   * Increasing this weight will cause shifts r(x1,x2) and s(u1,u2) to vary
-   * more slowly with vertical coordinates x1 and u1, respectively. A weight
-   * of 1.0 will cause this equation to get as much weight as other PDEs that
-   * cause contours of constant u1 = u1(x1,x2) to be aligned with coherent
-   * linear image features.
-   * @param w1 the weight.
-   */
-  public void setWeight1(double w1) {
-    _weight1 = (float)w1;
-  }
-
-  /**
    * Sets half-widths for smoothings in 1st and 2nd dimensions.
    * These smoothings serve as a preconditioner; they accelerate convergence
    * of the iterative solver used to compute mappings.
@@ -180,6 +159,22 @@ public class Flattener2 {
   public Mappings getMappingsFromSlopes(
     Sampling s1, Sampling s2, float[][] p2, float[][] el) 
   {
+    return getMappingsFromSlopes(s1,s2,p2,el,null,null);
+  }
+
+  /**
+   * Gets mappings computed from specified slopes and constraints.
+   * @param s1 sampling of 1st dimension.
+   * @param s2 sampling of 2nd dimension.
+   * @param p2 array of slopes of image features.
+   * @param el array of linearities of image features.
+   * @param k1 array of arrays of sample 1st indices for constraints.
+   * @param k2 array of arrays of sample 2nd indices for constraints.
+   */
+  public Mappings getMappingsFromSlopes(
+    Sampling s1, Sampling s2, float[][] p2, float[][] el,
+    int[][] k1, int[][] k2) 
+  {
     // Sampling parameters.
     int n1 = s1.getCount();
     int n2 = s2.getCount();
@@ -191,26 +186,29 @@ public class Flattener2 {
     if (d1!=d2)
       p2 = mul(d2/d1,p2);
 
-    // Compute shifts r(x1,x2), in samples.
-    float[][] b = new float[n2][n1]; // right-hand side
-    float[][] r = new float[n2][n1]; // shifts, in samples
+    // Compute u(x1,x2), in samples.
+    float[][] b = new float[n2][n1]; // for right-hand side b
+    float[][] u = rampfloat(0.0f,1.0f,0.0f,n1,n2); // u, in samples
+    constrain(k1,k2,u); // initial u must satisfy constraints
+    checkConstraints(k1,k2,u);
     VecArrayFloat2 vb = new VecArrayFloat2(b);
-    VecArrayFloat2 vr = new VecArrayFloat2(r);
-    Smoother2 smoother2 = new Smoother2(n1,n2,_sigma1,_sigma2,el);
-    A2 a2 = new A2(smoother2,_weight1,el,p2);
+    VecArrayFloat2 vu = new VecArrayFloat2(u);
+    Smoother2 smoother2 = new Smoother2(n1,n2,_sigma1,_sigma2,el,k1,k2);
+    A2 a2 = new A2(smoother2,el,p2);
+    double anorm = 1.0/vu.norm2();
     CgSolver cs = new CgSolver(_small,_niter);
     makeRhs(el,p2,b);
     smoother2.applyTranspose(b);
-    cs.solve(a2,vb,vr);
-    smoother2.apply(r);
-    cleanShifts(r);
+    cs.solve(anorm,a2,vb,vu);
+    smoother2.apply(u);
+    checkConstraints(k1,k2,u);
+    cleanShifts(u);
 
-    // Compute u1(x1,x2).
-    float[][] u1 = r;
+    // Compute u1(x1,x2) from u in samples.
+    float[][] u1 = u;
     for (int i2=0; i2<n2; ++i2) {
       for (int i1=0; i1<n1; ++i1) {
-        float x1i = f1+i1*d1;
-        u1[i2][i1] = x1i+r[i2][i1]*d1;
+        u1[i2][i1] = f1+u[i2][i1]*d1;
       }
     }
 
@@ -219,14 +217,14 @@ public class Flattener2 {
     InverseInterpolator ii = new InverseInterpolator(s1,s1);
     for (int i2=0; i2<n2; ++i2) 
       ii.invert(u1[i2],x1[i2]);
-
+    printStats("u1",u1);
+    printStats("x1",x1);
     return new Mappings(s1,s2,u1,x1);
   }
 
   ///////////////////////////////////////////////////////////////////////////
   // private
 
-  private float _weight1 = 0.010f; // weight for dr/d1 = 0 equation
   private float _sigma1 = 6.0f; // precon smoothing extent for 1st dim
   private float _sigma2 = 6.0f; // precon smoothing extent for 2nd dim
   private float _small = 0.01f; // stop CG iterations if residuals small
@@ -234,9 +232,8 @@ public class Flattener2 {
 
   // Conjugate-gradient operators.
   private static class A2 implements CgSolver.A {
-    A2(Smoother2 s2, float w1, float[][] wp, float[][] p2) {
+    A2(Smoother2 s2, float[][] wp, float[][] p2) {
       _s2 = s2;
-      _w1 = w1;
       _wp = wp;
       _p2 = p2;
     }
@@ -247,44 +244,78 @@ public class Flattener2 {
       float[][] y = v2y.getArray();
       float[][] z = copy(x);
       _s2.apply(z);
-      zero(y);
-      applyLhs(_w1,_wp,_p2,z,y);
+      applyLhs(_wp,_p2,z,y);
       _s2.applyTranspose(y);
     }
     private Smoother2 _s2;
-    private float _w1;
     private float[][] _wp;
     private float[][] _p2;
   }
 
-  // Smoother used as a preconditioner. After smoothing, enforces zero-shift
-  // boundary conditions at top and bottom.
+  // Smoother with constraints used as a preconditioner.
   private static class Smoother2 {
     public Smoother2(
-      int n1, int n2, float sigma1, float sigma2, float[][] el) 
+      int n1, int n2, float sigma1, float sigma2, 
+      float[][] el, int[][] k1, int[][] k2) 
     {
       _sigma1 = sigma1;
       _sigma2 = sigma2;
       _el = el;
+      if (k1!=null && k2!=null) {
+        _k1 = copy(k1);
+        _k2 = copy(k2);
+      }
     }
     public void apply(float[][] x) {
       smooth2(_sigma2,_el,x);
       smooth1(_sigma1,x);
-      zero1(x);
+      constrain(_k1,_k2,x);
     }
     public void applyTranspose(float[][] x) {
-      zero1(x);
+      constrain(_k1,_k2,x);
       smooth1(_sigma1,x);
       smooth2(_sigma2,_el,x);
     }
     private float _sigma1,_sigma2;
     private float[][] _el;
-    private void zero1(float[][] x) {
-      int n1 = x[0].length;
-      int n2 = x.length;
-      for (int i2=0; i2<n2; ++i2) {
-        x[i2][   0] = 0.0f;
-        x[i2][n1-1] = 0.0f;
+    private int[][] _k1,_k2;
+  }
+
+  // Applies constraints, if not null.
+  public static void constrain(int[][] k1, int[][] k2, float[][] x) {
+    if (k1!=null && k2!=null) {
+      int nc = k1.length;
+      for (int ic=0; ic<nc; ++ic) {
+        int nk = k1[ic].length;
+        float sum = 0.0f;
+        for (int ik=0; ik<nk; ++ik) {
+          int i1 = k1[ic][ik];
+          int i2 = k2[ic][ik];
+          sum += x[i2][i1];
+        }
+        float avg = sum/nk;
+        for (int ik=0; ik<nk; ++ik) {
+          int i1 = k1[ic][ik];
+          int i2 = k2[ic][ik];
+          x[i2][i1] = avg;
+        }
+      }
+    }
+  }
+  public static void checkConstraints(int[][] k1, int[][] k2, float[][] x) {
+    if (k1!=null && k2!=null) {
+      int nc = k1.length;
+      for (int ic=0; ic<nc; ++ic) {
+        int nk = k1[ic].length;
+        int ik = 0;
+        int i1 = k1[ic][ik];
+        int i2 = k2[ic][ik];
+        float xk = x[i2][i1];
+        for (ik=1; ik<nk; ++ik) {
+          i1 = k1[ic][ik];
+          i2 = k2[ic][ik];
+          assert xk==x[i2][i1];
+        }
       }
     }
   }
@@ -294,7 +325,7 @@ public class Flattener2 {
     if (sigma<=0.0f)
       return;
     RecursiveExponentialFilter.Edges edges =
-      RecursiveExponentialFilter.Edges.OUTPUT_ZERO_VALUE;
+      RecursiveExponentialFilter.Edges.OUTPUT_ZERO_SLOPE;
     RecursiveExponentialFilter ref = new RecursiveExponentialFilter(sigma);
     ref.setEdges(edges);
     ref.apply1(x,x);
@@ -325,39 +356,21 @@ public class Flattener2 {
   }
 
   private static void makeRhs(float[][] wp, float[][] p2, float[][] y) {
-    int n1 = y[0].length;
-    int n2 = y.length;
-    for (int i2=1; i2<n2; ++i2) {
-      for (int i1=1; i1<n1; ++i1) {
-        float wpi = (wp!=null)?wp[i2][i1]:1.000f;
-        float p2i = p2[i2][i1];
-        float b12 = wpi*p2i;
-        float b22 = wpi;
-        float x2 = -wpi*p2i;
-        float y1 = b12*x2;
-        float y2 = b22*x2;
-        float ya = 0.5f*(y1+y2);
-        float yb = 0.5f*(y1-y2);
-        y[i2  ][i1  ] += ya;
-        y[i2  ][i1-1] -= yb;
-        y[i2-1][i1  ] += yb;
-        y[i2-1][i1-1] -= ya;
-      }
-    }
+    zero(y);
   }
   private static void applyLhs(
-    float w1, float[][] wp, float[][] p2, float[][] x, float[][] y) 
+    float[][] wp, float[][] p2, float[][] x, float[][] y) 
   {
+    zero(y);
     int n1 = x[0].length;
     int n2 = x.length;
-    float w1s = w1*w1;
     for (int i2=1; i2<n2; ++i2) {
       for (int i1=1; i1<n1; ++i1) {
         float wpi = (wp!=null)?wp[i2][i1]:1.000f;
         float p2i = p2[i2][i1];
         float wps = wpi*wpi;
         float p2s = p2i*p2i;
-        float d11 = wps*p2s+w1s;
+        float d11 = wps*p2s;
         float d12 = wps*p2i;
         float d22 = wps;
         float xa = 0.0f;
@@ -380,26 +393,38 @@ public class Flattener2 {
     }
   }
 
-  // Post-processing of computed shifts to ensure monotonic u1.
-  private static void cleanShifts(float[][] r) {
-    int n1 = r[0].length;
-    int n2 = r.length;
+  // Post-processing of computed u (in samples) to ensure monotonic u1.
+  private static void cleanShifts(float[][] u) {
+    int n1 = u[0].length;
+    int n2 = u.length;
     for (int i2=0; i2<n2; ++i2) {
       for (int i1=1; i1<n1; ++i1) {
-        if (r[i2][i1]<=r[i2][i1-1]-0.99f)
-          r[i2][i1] = r[i2][i1-1]-0.99f;
+        if (u[i2][i1]<=u[i2][i1-1]+0.01f)
+          u[i2][i1] = u[i2][i1-1]+0.01f;
+      }
+    }
+    printStats("u raw",u);
+    shiftAndScale(u);
+    printStats("u scl",u);
+  }
+  private static void shiftAndScale(float[][] u) {
+    int n1 = u[0].length;
+    int n2 = u.length;
+    float umin = min(u);
+    float umax = max(u);
+    float scale = (n1-1.0f)/(umax-umin);
+    float shift = -umin*scale;
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        u[i2][i1] = shift+scale*u[i2][i1];
       }
     }
   }
+  private static void printStats(String s, float[][] a) {
+    trace(s+": min="+min(a)+" max="+max(a));
+  }
 
-  private static void printStats(String s, int i1, float[][] a) {
-    int n2 = a.length;
-    float amin = a[0][i1];
-    float amax = a[0][i1];
-    for (int i2=1; i2<n2; ++i2) {
-      if (a[i2][i1]<amin) amin = a[i2][i1];
-      if (a[i2][i1]>amax) amax = a[i2][i1];
-    }
-    System.out.println(s+": i1="+i1+" min="+amin+" max="+amax);
+  private static void trace(String s) {
+    System.out.println(s);
   }
 }

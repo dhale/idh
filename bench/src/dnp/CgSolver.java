@@ -88,39 +88,7 @@ public class CgSolver {
    * @param x the solution vector.
    */
   public Info solve(A a, Vec b, Vec x) {
-    Vec q = b.clone();
-    a.apply(x,q); // q = Ax
-    Vec r = b.clone();
-    r.add(1.0,q,-1.0); // r = b-Ax
-    Vec d = r.clone();
-    double bnorm = b.norm2();
-    double rnorm = r.norm2();
-    double rrnorm = rnorm*rnorm;
-    double rnormSmall = _tiny*bnorm;
-    logInit("begin: rnorm="+rnorm+" bnorm="+bnorm);
-    int iter;
-    for (iter=0; iter<_maxi && rnorm>rnormSmall; ++iter) {
-      logIter("       iter="+iter+" rnorm="+rnorm);
-      a.apply(d,q);
-      double dq = d.dot(q);
-      double alpha = rrnorm/dq;
-      x.add(1.0,d, alpha);
-      if (iter%50==49) {
-        a.apply(x,q); // q = Ax
-        r.add(0.0,b,1.0); // r = b
-        r.add(1.0,q,-1.0); // r = b-Ax
-      } else {
-        r.add(1.0,q,-alpha); // r -= alpha*q
-      }
-      double rrnormOld = rrnorm;
-      rnorm = r.norm2();
-      rrnorm = rnorm*rnorm;
-      double beta = rrnorm/rrnormOld;
-      d.add(beta,r,1.0);
-    }
-    logDone("       iter="+iter+" rnorm="+rnorm);
-    Stop stop = (rnorm<rnormSmall)?Stop.TINY:Stop.MAXI;
-    return new Info(stop,iter,bnorm,rnorm);
+    return solve(0.0,a,b,x);
   }
 
   /**
@@ -131,6 +99,62 @@ public class CgSolver {
    * @param x the solution vector.
    */
   public Info solve(A a, A m, Vec b, Vec x) {
+    return solve(0.0,a,m,b,x);
+  }
+
+  /**
+   * Solves the system of equation Ax = b with CG iterations.
+   * @param anorm estimate for norm ||A|| of linear operator A.
+   * @param a the linear operator that represents the matrix A.
+   * @param b the right-hand-side vector.
+   * @param x the solution vector.
+   */
+  public Info solve(double anorm, A a, Vec b, Vec x) {
+    Vec q = b.clone();
+    a.apply(x,q); // q = Ax
+    Vec r = b.clone();
+    r.add(1.0,q,-1.0); // r = b-Ax
+    Vec d = r.clone();
+    double bnorm = b.norm2();
+    double rnorm = r.norm2();
+    double xnorm = x.norm2();
+    double rrnorm = rnorm*rnorm;
+    logInit(bnorm,rnorm,xnorm);
+    int iter;
+    for (iter=0; iter<_maxi && rnorm>_tiny*(anorm*xnorm+bnorm); ++iter) {
+      logIter(iter,rnorm,xnorm);
+      a.apply(d,q);
+      double dq = d.dot(q);
+      double alpha = rrnorm/dq;
+      x.add(1.0,d,alpha);
+      xnorm = x.norm2();
+      if (iter%50==49) { // if accumulated rounding error may be large, ...
+        a.apply(x,q); // q = Ax
+        r.add(0.0,b,1.0); // r = b
+        r.add(1.0,q,-1.0); // r = b-Ax
+      } else { // otherwise, use shortcut to update residual
+        r.add(1.0,q,-alpha); // r -= alpha*q
+      }
+      double rrnormOld = rrnorm;
+      rnorm = r.norm2();
+      rrnorm = rnorm*rnorm;
+      double beta = rrnorm/rrnormOld;
+      d.add(beta,r,1.0);
+    }
+    logDone(iter,rnorm,xnorm);
+    Stop stop = (iter<_maxi)?Stop.TINY:Stop.MAXI;
+    return new Info(stop,iter,bnorm,rnorm);
+  }
+
+  /**
+   * Solves the system of equation Ax = b with preconditioned CG iterations.
+   * @param anorm estimate for norm ||A|| of linear operator A.
+   * @param a the linear operator that represents the matrix A.
+   * @param m the preconditioner that approximates the inverse of A.
+   * @param b the right-hand-side vector.
+   * @param x the solution vector.
+   */
+  public Info solve(double anorm, A a, A m, Vec b, Vec x) {
     Vec q = b.clone();
     a.apply(x,q); // q = Ax
     Vec r = b.clone();
@@ -141,16 +165,23 @@ public class CgSolver {
     double rsnorm = r.dot(s); // r's = r'Mr
     double bnorm = b.norm2();
     double rnorm = r.norm2();
-    double rnormSmall = _tiny*bnorm;
-    logInit("begin: rnorm="+rnorm+" bnorm="+bnorm);
+    double xnorm = x.norm2();
+    logInit(bnorm,rnorm,xnorm);
     int iter;
-    for (iter=0; iter<_maxi && rnorm>rnormSmall; ++iter) {
-      logIter("       iter="+iter+" rnorm="+rnorm);
-      a.apply(d,q);
+    for (iter=0; iter<_maxi && rnorm>_tiny*(anorm*xnorm+bnorm); ++iter) {
+      logIter(iter,rnorm,xnorm);
+      a.apply(d,q); // q = Ad
       double dq = d.dot(q); // d'q
-      double alpha = rsnorm/dq; // r'Mr/d'q
+      double alpha = rsnorm/dq; // alpha = r'Mr/d'q
       x.add(1.0,d, alpha); // x = x+alpha*d
-      r.add(1.0,q,-alpha); // r = r-alpha*q
+      xnorm = x.norm2(); // ||x||
+      if (iter%50==49) { // if accumulated rounding error may be large, ...
+        a.apply(x,q); // q = Ax
+        r.add(0.0,b,1.0); // r = b
+        r.add(1.0,q,-1.0); // r = b-Ax
+      } else { // otherwise, use shortcut to update residual
+        r.add(1.0,q,-alpha); // r = r-alpha*q
+      }
       rnorm = r.norm2(); // ||r||
       m.apply(r,s); // s = Mr
       double rsnormOld = rsnorm;
@@ -158,27 +189,37 @@ public class CgSolver {
       double beta = rsnorm/rsnormOld;
       d.add(beta,s,1.0); // d = s+beta*d
     }
-    logDone("       iter="+iter+" rnorm="+rnorm);
-    Stop stop = (rnorm<rnormSmall)?Stop.TINY:Stop.MAXI;
+    logDone(iter,rnorm,xnorm);
+    Stop stop = (iter<_maxi)?Stop.TINY:Stop.MAXI;
     return new Info(stop,iter,bnorm,rnorm);
   }
  
   ///////////////////////////////////////////////////////////////////////////
   // private
 
-  private double _tiny; // converged when norm(r)/norm(b)<tiny
+  private double _anorm; // estimate for norm(A); default is zero
+  private double _tiny; // converged: norm(r)<tiny*(norm(A)*norm(x)+norm(b))
   private int _maxi; // upper limit on number of iterations
 
   // Logging.
   private static Logger _log = 
     Logger.getLogger(CgSolver.class.getName());
-  private static void logInit(String s) {
+  private static void logInit(double bnorm, double rnorm, double xnorm) {
+    String s = String.format(
+      "begin: bnorm=%1.8g rnorm=%1.8g xnorm=%1.8g%n",
+      bnorm,rnorm,xnorm);
     _log.fine(s);
   }
-  private static void logIter(String s) {
+  private static void logIter(int iter, double rnorm, double xnorm) {
+    String s = String.format(
+      "iter=%d rnorm=%1.8g xnorm=%1.8g%n",
+      iter,rnorm,xnorm);
     _log.finer(s);
   }
-  private static void logDone(String s) {
+  private static void logDone(int iter, double rnorm, double xnorm) {
+    String s = String.format(
+      "end: iter=%d rnorm=%1.8g xnorm=%1.8g%n",
+      iter,rnorm,xnorm);
     _log.fine(s);
   }
 }
