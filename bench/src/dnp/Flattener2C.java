@@ -172,7 +172,7 @@ public class Flattener2C {
   public Mappings getMappingsFromSlopes(
     Sampling s1, Sampling s2, float[][] p2, float[][] el) 
   {
-    return getMappingsFromSlopes(s1,s2,p2,el,null,null);
+    return getMappingsFromSlopes(s1,s2,p2,el,null);
   }
 
   /**
@@ -181,12 +181,21 @@ public class Flattener2C {
    * @param s2 sampling of 2nd dimension.
    * @param p2 array of slopes of image features.
    * @param el array of linearities of image features.
-   * @param k1 array of arrays of sample 1st indices for constraints.
-   * @param k2 array of arrays of sample 2nd indices for constraints.
+   * @param cs constraints, arrays of (x1,x2) for which u1 is constant.
+   *  Contents of the array cs are as follows:
+   *  <pre>
+   *  {{{x1_00,x1_01,x1_02,...},{x1_10,x1_11,...},...},
+   *   {{x2_00,x2_01,x2_02,...},{x2_10,x2_11,...},...}}
+   *  </pre>
+   *  Each constraint point has coordinates (x1,x2). In the array cs, the
+   *  arrays of arrays of x1 coordinates precede the arrays of arrays of x2
+   *  coordinates. Each array of x1 coordinates has a corresponding array of
+   *  x2 coordinates, and together this pair of arrays of (x1,x2) represents
+   *  one constraint. All points in a constraint will be constrained to have
+   *  the same u1; in other words, they will all lie on the same horizon.
    */
   public Mappings getMappingsFromSlopes(
-    Sampling s1, Sampling s2, float[][] p2, float[][] el,
-    int[][] k1, int[][] k2) 
+    Sampling s1, Sampling s2, float[][] p2, float[][] el, float[][][] c)
   {
     // Sampling parameters.
     int n1 = s1.getCount();
@@ -194,6 +203,26 @@ public class Flattener2C {
     float d1 = (float)s1.getDelta();
     float d2 = (float)s2.getDelta();
     float f1 = (float)s1.getFirst();
+
+    // Convert any constraints in cs to sample indices k1 and k2.
+    int[][] k1 = null;
+    int[][] k2 = null;
+    if (c!=null) {
+      float[][] c1 = c[0];
+      float[][] c2 = c[1];
+      int nc = c1.length;
+      k1 = new int[nc][];
+      k2 = new int[nc][];
+      for (int ic=0; ic<nc; ++ic) {
+        int nk = c1[ic].length;
+        k1[ic] = new int[nk];
+        k2[ic] = new int[nk];
+        for (int ik=0; ik<nk; ++ik) {
+          k1[ic][ik] = s1.indexOfNearest(c1[ic][ik]);
+          k2[ic][ik] = s2.indexOfNearest(c2[ic][ik]);
+        }
+      }
+    }
 
     // If necessary, convert units for slopes to samples per sample.
     if (d1!=d2)

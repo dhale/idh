@@ -98,8 +98,8 @@ public class FaultSemblance {
       _si.interpolate(n1,1.0,0.0,f2m,n1,xm,fm);
       _si.interpolate(n1,1.0,0.0,f2p,n1,xp,fp);
       float[] gm = fm, g0 = f2, gp = fp;
-      if (i2==0   ) gm = g0;
-      if (i2==n2-1) gp = g0;
+      if (i2m==i2) gm = g0;
+      if (i2p==i2) gp = g0;
       for (int i1=0; i1<n1; ++i1) {
         float gmi = gm[i1];
         float g0i = g0[i1];

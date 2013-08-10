@@ -222,6 +222,7 @@ public class FaultScanner2 {
     float[][] f = new float[n2][n1];
     float[][] t = new float[n2][n1];
     SincInterp si = new SincInterp();
+    si.setExtrapolation(SincInterp.Extrapolation.CONSTANT);
     RecursiveExponentialFilter ref = makeRef(_sigmaTheta);
     for (int it=0; it<nt; ++it) {
       float ti = (float)st.getValue(it);
