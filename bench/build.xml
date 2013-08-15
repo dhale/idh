@@ -30,7 +30,7 @@ available at http://www.eclipse.org/legal/cpl-v10.html
     <fileset dir="${java.home}" includes="lib/javaws.jar"/>
     <fileset dir="${basedir}/../../jtk">
       <include name="libs/*.jar"/>
-      <include name="build/libs/edu_mines_jtk.jar"/>
+      <include name="build/jar/edu_mines_jtk.jar"/>
     </fileset>
   </path>
 
