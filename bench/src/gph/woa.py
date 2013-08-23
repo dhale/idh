@@ -43,46 +43,33 @@ def goKriging():
   print "median of sd =",woa.nmed(1,10,fn,fd)
   print "median of se =",woa.nmed(1,10,fn,fe)
   livet = woa.mask(ft,fieldNull(namet))
-  livea = woa.mask(fa,fieldNull(namea))
   livem = woa.mask(fm,fieldNull(namem))
-  lives = woa.subset(Random(1),10,livem)
-  #plotField3(namet,depth,ft,live=livet)
-  plotField3(namen,depth,fn,live=livem)
-  plotField3(namem,depth,fm,live=livem)
+  livea = woa.mask(fa,fieldNull(namea))
+  lives = woa.subset(Random(1),5,livea)
   plotField3(namet,depth,ft,live=livet)
-  plotField3(namem,depth,sub(fm,ft),live=livem)
-  plotField3(namea,depth,sub(fa,ft),live=livea)
-  #plotField3(named,depth,fd,live=livem)
-  #plotField3(namee,depth,fe,live=livem)
-  #plotField3(named,depth,fd,live=lives)
-  plotField3(namem,depth,sub(fm,ft),live=lives)
-  return
-  fr = sub(fm,ft)
+  plotField3(namem,depth,fm,live=livem)
+  plotField3(namea,depth,fa,live=lives)
+  plotField3(namea,depth,fa,live=livea)
+  fr = sub(fa,ft)
   fs,lons,lats = woa.scattered(lives,fr)
-  ds,lons,lats = woa.scattered(lives,fd)
-  #ds = add(ds,???)
+  #ds,lons,lats = woa.scattered(lives,fd)
+  #ds = add(ds,0.1)
   tensors = woa.makeTensors(livea)
   sc = SmoothCovariance(1.0,1.0,5.0,2)
   nlon,nlat = slon.count,slat.count
-  sc.testSpd(nlon,nlat,tensors)
-  print "sc"
-  kg = KrigingGridder2(tensors,fs,lons,lats)
+  #sc.testSpd(nlon,nlat,tensors)
+  #print "sc"
+  #kg = KrigingGridder2(tensors,fs,lons,lats)
+  kg = KrigingGridder2(fs,lons,lats)
   kg.setModelCovariance(sc)
   #kg.setPaciorek(True)
-  kg.setDataError(ds)
+  #kg.setDataError(ds)
   #kg = BlendedGridder2(tensors,fs,lons,lats)
   print "kg"
   gr = kg.grid(slon,slat)
-  plotField3(namek,depth,gr,live=livea)
-  gm = add(gr,ft)
+  ga = add(gr,ft)
+  plotField3(namek,depth,ga,live=livea)
   print "gr"
-  #plotTrend(trend)
-  #plotField3(namem,depth,fr,live=lives)
-  #plotField3(namek,depth,gr,live=livea)
-  #plotField3(namem,depth,fm,live=lives)
-  #plotField3(named,depth,dm,live=lives)
-  #plotField3(namek,depth,gm,live=livea)
-  #plotField3(namea,depth,fa,live=livea)
 
 def goShowData():
   depth = 100
@@ -585,7 +572,7 @@ def byteFromInt(i):
 #############################################################################
 # Test (checkerboard) and background image data
 
-imageDir = "/Users/dhale/Home/git/idh/bench/src/gph/resources/"
+imageDir = "/Users/dhale/Home/git/dave/idh/bench/src/gph/resources/"
 
 def makeBoardImage(): # checkerboard image for testing
   nlon,nlat = 12,7 # note 12, not 13; need not sample both -180 and 180

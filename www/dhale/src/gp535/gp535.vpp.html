@@ -1,0 +1,272 @@
+#header( ".." "GPGN 535" "teaching" )
+
+<div id="title">
+  <div id="title-text">
+    <h1>GPGN 535 &mdash; Geophysical Computing</h1>
+    <h2>
+      An advanced course in computer programming, especially 
+      for graduate students in Geophysics at Mines.
+    </h2>
+  </div>
+</div>
+
+#content()
+
+<h3>Summary</h3>
+<p>
+Geophysicists today use some of the most powerful computers in the world.
+This is partly because geophysical data volumes are vast and growing.
+Another reason is that raw geophysical data are not easily understood,
+and typically require substantial processing, visualization and analysis 
+before we can make sense of them.
+</p>
+<p>
+This course emphasizes computational solutions most applicable to 
+geophysical problems that require multidimensional image processing, 
+interpolation and gridding of sparse data, and numerical solutions
+to partial differential equations.
+Our solutions will include aspects of multi-language programming, 
+efficient algorithms, data structures beyond simple arrays, 
+memory management, multicore parallel computing, and graphical 
+visualizations.
+</p>
+<p>
+A large part of this course is the application of these solutions
+to problems encountered by students in their own research.
+Although this course is designed for graduate students in geophysics,
+others with a strong interest in scientific computing are welcome with 
+permission of the instructor.
+</p>
+<dl class="img">
+  <dt>
+    <img src="${base}/images/EarthMulticore.png" width="180" height="185"
+     alt=""/>
+  </dt>
+  <dd>
+    <em>
+    Spatial interpolation of atmospheric CO<sub>2</sub> data provided by 
+    the National Oceanic and Atmospheric Administration, superimposed
+    on an Intel Tera-scale chip with 80 processing cores.
+    </em>
+  </dd>
+</dl>
+
+<h3>Time and place</h3>
+<p>
+  Mondays, Wednesdays, and Fridays, 9:00-9:50 am; GC 281
+</p>
+
+<h3>Text</h3>
+<p>
+No text is currently required for this course.
+</p>
+
+<h3>Grading</h3>
+<p>
+Your course grade will be based on 
+<ul>
+  <li>your programming solutions to assigned problems</li>
+  <li>your programs for your own research problems</li>
+  <li>in-class presentation of your programs</li>
+  <li>in-class reviews of solutions by others</li>
+</ul>
+
+<!-- --------------------------------------------------------------------
+Week
+08/21-08/23  0 benchmarking and portability
+08/26-08/30  1 mixed-language computing
+09/02-09/06  2 2D image processing
+09/09-09/13  3 3D image processing
+09/16-09/20  4 multicore parallel computing
+09/23-09/27  5 SEG (no classes)
+09/30-10/04  6 computer memory hierarchies
+10/07-10/11  7 image processing with FFTs
+10/16-10/18  8 code reviews (and Fall Break)
+10/21-10/25  9 code reviews
+10/28-11/01 10 finite-difference approximations
+11/04-11/08 11 distance maps
+11/11-11/15 12 interpolation of scattered data
+11/18-11/22 13 spatial data structures
+11/25       14 code reviews (and Thanksgiving holiday)
+12/02-12/04 15 code reviews (and Dead Day)
+-------------------------------------------------------------------- -->
+
+<h3 class="newpage">Schedule</h3>
+<table class="course-schedule">
+<tr>
+  <th scope="col">Week</th>
+  <th scope="col">Dates</th>
+  <th scope="col">Subjects</th>
+</tr>
+<tr>
+  <td>0</td>
+  <td>08/21-08/23</td>
+  <td>benchmarking and portability</td>
+</tr>
+<tr>
+  <td>1</td>
+  <td>08/26-08/30</td>
+  <td>mixed-language computing</td>
+</tr>
+<tr>
+  <td>2</td>
+  <td>09/02-09/06</td>
+  <td>2D image processing</td>
+</tr>
+<tr>
+  <td>3</td>
+  <td>09/09-09/13</td>
+  <td>3D image processing</td>
+</tr>
+<tr>
+  <td>4</td>
+  <td>09/16-09/20</td>
+  <td>multicore parallel computing</td>
+</tr>
+<tr>
+  <td>5</td>
+  <td>09/23-09/27</td>
+  <td>SEG (no classes)</td>
+</tr>
+<tr>
+  <td>6</td>
+  <td>09/30-10/04</td>
+  <td>computer memory hierarchies</td>
+</tr>
+<tr>
+  <td>7</td>
+  <td>10/07-10/11</td>
+  <td>image processing with FFTs</td>
+</tr>
+<tr>
+  <td>8</td>
+  <td>10/16-10/18</td>
+  <td>code reviews(and Fall Break)</td>
+</tr>
+<tr>
+  <td>9</td>
+  <td>10/21-10/25</td>
+  <td>code reviews</td>
+</tr>
+<tr>
+  <td>10</td>
+  <td>10/28-11/01</td>
+  <td>finite-difference approximations</td>
+</tr>
+<tr>
+  <td>11</td>
+  <td>11/04-11/08</td>
+  <td>distance maps</td>
+</tr>
+<tr>
+  <td>12</td>
+  <td>11/11-11/15</td>
+  <td>interpolation of scattered data</td>
+</tr>
+<tr>
+  <td>13</td>
+  <td>11/18-11/22</td>
+  <td>spatial data structures</td>
+</tr>
+<tr>
+  <td>14</td>
+  <td>11/25</td>
+  <td>code reviews (and Thanksgiving)</td>
+</tr>
+<tr>
+  <td>15</td>
+  <td>12/02-12/04</td>
+  <td>code reviews (and Dead Day)</td>
+</tr>
+</table>
+
+<!--
+<h3 class="newpage">Student absences from class, labs, or exams</h3>
+All students are advised to be familiar with CSM’s policy regarding 
+the make-up of work missed due to excused absences.  
+This policy may be found in the Bulletin.  
+If a student is ill and exhibits flu-like symptoms, they should not 
+attend class, labs, or exams.  
+For this particular flu season, the Centers for Disease Control are 
+discouraging those who are ill and without serious complications from 
+visiting a health clinic or physician thus it will be difficult for 
+students to obtain written documentation of their illness for the 
+Associate Dean of Students and for faculty. In order for an absence 
+based on illness to be excused, the student must normally communicate 
+directly with the Associate Dean of Students or his/her instructors.  
+To make this notification process easier, particularly in the case of 
+students suffering flu-like symptoms, we have created a web-based 
+certification system, and strongly encourage students to use this system 
+to automatically notify all of their instructors regarding their illness.  
+Here is a link to this 
+<a href="http://inside.mines.edu/Flu">web-based form.</a>
+-->
+
+#sidebar()
+
+<h3>Resources</h3>
+<p>
+Computers in GC 297 run Ubuntu, a GNU/Linux operating system.
+These systems include open-source software that you can freely 
+download and install on your own computers.
+Most (if not all) students will want to use their own computers,
+with their preferred operating systems and programming environments.
+</p>
+<!--
+<p>
+However, all students should download and install
+<a href="http://www.scons.org/">SCons</a>,
+a portable system for building computer programs.
+The
+<a href="http://www.scons.org/doc/production/HTML/scons-user/index.html">
+SCons User Guide</a> includes instructions for installing this software,
+even on computers for which you do not have administrative privileges.
+</p>
+-->
+<p>
+If not already installed on your computers, 
+I recommend that you download and install 
+<a href="http://www.python.org">Python 2</a>.
+For 2-D graphics and plotting with Python, I like
+<a href="http://matplotlib.sourceforge.net/">Matplotlib (pylab)</a>,
+which includes
+<a href="http://numpy.scipy.org/">NumPy</a>.
+In scientific computing today, we often use languages like
+Python to test ideas implemented in other languages, such 
+as C, C++ or Fortran.
+</p>
+<p>
+Because I write a lot of software in 
+<a href="http://www.oracle.com/javase">Java</a>, 
+in much the same way I use
+<a href="http://www.jython.org">Jython</a>, 
+which is Python for Java programmers.
+</p>
+<h3>Wisdom</h3>
+<p>
+  The three chief virtues of a programmer are Laziness, 
+  Impatience, and Hubris. &mdash; Larry Wall
+</p>
+<p>
+  Half of life is just showing up. &mdash; Woody Allen
+</p>
+
+<!--
+<h3>References</h3>
+<p>
+For some history on our choices of programming languages, read
+<a href="${base}/papers/Scales02WhatProgrammingLanguagesShouldWeTeachOurUndergraduates.pdf">
+"What programming languages should we teach our undergraduates?"
+</a>
+by John Scales and Hans Ecke.
+</p>
+<p>
+Read also the essay
+<a href="${base}/other/BillProgrammingLanguagesForGeophysicsStudents.html"> 
+Programming languages for geophysics students
+</a>
+by
+<a href="http://billharlan.com">Bill Harlan</a>.
+-->
+
+#footer()

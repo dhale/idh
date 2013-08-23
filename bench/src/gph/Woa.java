@@ -227,6 +227,11 @@ public class Woa {
       return new float[]{clips.getClipMin(),clips.getClipMax()};
     }
   }
+
+  /**
+   * Randomly selects a specified percent p of the true values in m.
+   * Sets all other values to false.
+   */
   public static boolean[][] subset(float p, boolean[][] m) {
     return subset(new Random(),p,m);
   }
@@ -310,7 +315,7 @@ public class Woa {
       //System.out.println("cos="+cosl+" auc="+auc);
       for (int ilon=0; ilon<nlon; ++ilon) {
         float loni = (float)slon.getValue(ilon);
-        float scale = m[ilat][ilon]?1.0f:0.001f;
+        float scale = m[ilat][ilon]?1.0f:0.0001f;
         //au[ilat][ilon] = 1.0f;
         //av[ilat][ilon] = 1.0f;
         au[ilat][ilon] = scale*auc;

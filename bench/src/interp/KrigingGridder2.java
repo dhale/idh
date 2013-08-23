@@ -425,7 +425,7 @@ public class KrigingGridder2 implements Gridder2 {
     VecArrayFloat1 vz = new VecArrayFloat1(az);
     SmoothA a = new SmoothA(x1,x2,s1,s2,_tensors,scm,sd);
     SmoothM m = new SmoothM(x1,x2,s1,s2,_tensors,scm,sd);
-    CgSolver cgs = new CgSolver(1.0e-4,100);
+    CgSolver cgs = new CgSolver(1.0e-2,100);
     CgSolver.Info info = cgs.solve(a,m,vf,vz);
     //CgSolver.Info info = cgs.solve(a,vf,vz); # may not converge!
     cgs = null;

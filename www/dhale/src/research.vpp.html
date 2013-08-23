@@ -13,6 +13,48 @@
 #content()
 
 <h3>
+<a name="fst"></a>
+Smooth dynamic warping
+</h3>
+<dl class="img first">
+  <dt><img src="${base}/images/SmoothDynamicWarping.png" 
+       width="200" alt=""/>
+  </dt>
+  <dd>
+    Dynamic time warping is a simple classic method for aligning two sampled
+    functions of time.
+    In applications to seismic traces, the sequence of time shifts computed
+    by this method may increase or decrease rapidly in time (and space). 
+    However, when related to integrals of subsurface parameters, these
+    variations in time shifts are often smooth.
+    A new method for smooth dynamic warping exploits this inherent
+    smoothness to increase the accuracy of time shift estimates, especially
+    where differences between seismic traces to be aligned are not limited
+    to time shifts.
+    The new method requires only a few simple modifications to the classic
+    method, and can be easily extended to multidimensional image warping
+    as well.
+    In an application to registration of PP and PS images, we used
+    smooth dynamic warping to compute times shifts that vary smoothly
+    in both time and space, and are significantly more accurate than 
+    those computed using the classic method.
+  </dd>
+  <dd>
+    <a href="http://www.mines.edu/~dhale">Hale</a>, D., &amp; S. Compton,
+    2013,
+    <cite>
+      CWP Report 764.
+    </cite>
+  </dd>
+  <dd>
+    <a
+    href="${base}/papers/Hale13SmoothDynamicWarping.pdf">
+      [Report]
+    </a>
+  </dd>
+</dl>
+
+<h3>
 Fault surfaces and fault throws from 3D seismic images
 </h3>
 <dl class="img first">
