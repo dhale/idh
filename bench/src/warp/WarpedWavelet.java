@@ -8,10 +8,12 @@ package warp;
 
 import edu.mines.jtk.dsp.*;
 import edu.mines.jtk.lapack.*;
+import edu.mines.jtk.util.Check;
+import static edu.mines.jtk.dsp.Conv.*;
 import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
- * Warping without wavelet distortion.
+ * Tests a new method for warping without wavelet distortion.
  *
  * @author Dave Hale, Colorado School of Mines
  * @version 2013.08.24
@@ -54,11 +56,63 @@ public class WarpedWavelet {
     private float[] _ay;
   }
 
+  /**
+   * Constructs a test for the specified warping.
+   * @param w the warping.
+   */
   public WarpedWavelet(Warping w) {
     _w = w;
   }
 
+  /**
+   * Applies the composite h*warp(a*x), where * denotes convolution.
+   * The sequence of operations is (1) convolution with the inverse wavelet a,
+   * (2) warping, and (3) convolution with the wavelet h.
+   * @param na number of samples in the inverse wavelet a.
+   * @param ka the sample index for a[0].
+   * @param a array of coefficients for the inverse wavelet a.
+   * @param nh number of samples in the wavelet h.
+   * @param kh the sample index for h[0].
+   * @param h array of coefficients for the wavelet h.
+   */
+  public void applyHWA(
+    int na, int ka, float[] a,
+    int nh, int kh, float[] h,
+    float[] x, float[] hwax)
+  {
+    int nx = x.length;
+    float[] ax = hwax;
+    conv(na,ka,a,nx,0,x,nx,0,ax);
+    float[] wax = new float[nx];
+    _w.apply(ax,wax);
+    conv(nh,kh,h,nx,0,wax,nx,0,hwax);
+  }
+
+  /**
+   * Estimates the wavelet h from the inverse wavelet a.
+   * @param na number of samples in the inverse wavelet a.
+   * @param ka the sample index for a[0].
+   * @param a array of coefficients for the inverse wavelet a.
+   * @param nh number of samples in the wavelet h.
+   * @param kh the sample index for h[0].
+   */
+  public float[] estimateWavelet(int na, int ka, float[] a, int nh, int kh) {
+    float[] one = {1.0f};
+    return ShapingFilter.design(nh,kh,na,ka,a,1,0,one);
+  }
+
+  /**
+   * Estimates the inverse a of the wavelet h contained in sequences x and y.
+   * Assumes that WXa ~ Ya, and that for zero lag the inverse is a0 = 1.
+   * @param na number of samples in the inverse wavelet a.
+   * @param ka the sample index for a[0]; -na &lt; ka &le; 0 is required.
+   * @param x array for sequence x to be warped.
+   * @param y array for sequence y, which will not be warped.
+   * @return array of coefficients for the inverse wavelet a.
+   */
   public float[] estimateInverse(int na, int ka, float[] x, float[] y) {
+    Check.argument(-na<ka,"-na<ka");
+    Check.argument(ka<=0,"ka<=0");
 
     // Temporary array holds shifted x[it-lag].
     int nt = x.length;
@@ -80,9 +134,9 @@ public class WarpedWavelet {
         z[ia][it] -= y[it-lag];
     }
 
-    // The matrix R and right-hand-side vector b, for Ra = b. Because
-    // a0 = a[-ka] = 1, only the na-1 coefficients of a for non-zero
-    // lag are unknown.
+    // The matrix R and right-hand-side vector b, for Ra = b. For zero lag, we
+    // have a0 = a[-ka] = 1, so that only na-1 coefficients of a are unknown;
+    // the unknown coefficients are those for non-zero lags.
     int ma = na-1;
     DMatrix r = new DMatrix(ma,ma);
     DMatrix b = new DMatrix(ma,1);

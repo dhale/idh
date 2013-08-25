@@ -66,7 +66,7 @@ def goEstimateWaveletForOneOffset():
     print "a = ",; dump(a)
     print "rms error =",rms
     nh,kh = 100,-20 # number of samples, index of 1st sample for wavelet h
-    h = ShapingFilter.design(nh,kh,na,ka,a,1,0,[1.0]) # h = inverse of a
+    h = ww.estimateWavelet(na,ka,a,nh,kh);
     plotSequence(Sampling(nh,st.delta,kh*st.delta),normalize(h),title=title)
   return
   hsax = zerofloat(nt)
