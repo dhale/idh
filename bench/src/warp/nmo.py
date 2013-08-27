@@ -4,7 +4,7 @@
 from imports import *
 
 from edu.mines.jtk.dsp.Conv import *
-from warp import WarpedWavelet,ShapingFilter
+from warp import WaveletNmo,WarpedWavelet,ShapingFilter
 
 #############################################################################
 
@@ -13,23 +13,38 @@ pngDir = None
 
 def main(args):
   #goCmpGatherWithKnownWavelet()
-  goEstimateWaveletForOneOffset()
+  #goEstimateWaveletForOneOffset()
+  goEstimateWaveletFromCmpGather()
 
-def goCmpGatherWithKnownWavelet():
-  n = 501
-  st = Sampling(501,0.004,0.0)
-  sx = Sampling(201,0.010,0.0)
-  nref,vnmo = 100,2.0
-  freq,decay = 30.0,0.1
-  p = makeCmpReflections(vnmo,nref,st,sx)
-  hp = addArWavelet(freq,decay,st,sx,p)
-  shp = applyNmo(vnmo,st,sx,hp)
-  sp = applyNmo(vnmo,st,sx,p)
-  hsp = addArWavelet(freq,decay,st,sx,sp)
-  #plotGather(st,sx,p)
-  plotGather(st,sx,hp,"CMP gather")
-  plotGather(st,sx,shp,"NMO with wavelet distortion")
-  plotGather(st,sx,hsp,"Reduced wavelet distortion")
+def goEstimateWaveletFromCmpGather():
+  """ Estimates wavelet from a CMP gather """
+  st = Sampling(501,0.004,0.0); nt,dt,ft = st.count,st.delta,st.first
+  sx = Sampling(201,0.010,0.0); nx,dx,fx = sx.count,sx.delta,sx.first
+  nref,vnmo = 100,2.0 # number of reflectors and NMO velocity
+  freq,decay = 30.0,0.1 # peak frequency and decay for wavelet
+  p = makeCmpReflections(vnmo,nref,st,sx) # cmp gather without wavelet
+  f = addArWavelet(freq,decay,st,sx,p) # cmp gather with wavelet
+  plotGather(st,sx,f,"CMP gather")
+  na,ka = 11,-5 # sampling for inverse wavelet a
+  ak = zerofloat(na) # array for the known inverse wavelet a
+  r,w = exp(-decay),2.0*PI*freq*st.delta # radius and frequency of poles
+  a1,a2 = -2.0*r*cos(w),r*r # coefficients for inverse wavelet
+  ak[0-ka] = 1.0
+  ak[1-ka] = a1
+  ak[2-ka] = a2
+  wn = WaveletNmo(st,sx,vnmo)
+  ae = wn.getInverseA(na,ka,f) # the estimated inverse wavelet
+  nh,kh = 100,-20 # sampling for wavelet h
+  for a in [ak,ae]:
+    if a is ak:
+      title = "known wavelet"
+    else:
+      title = "estimated wavelet"
+    print title
+    h = wn.getWaveletH(na,ka,a,nh,kh);
+    plotSequence(Sampling(nh,st.delta,kh*st.delta),normalize(h),title=title)
+    g = wn.applyHNA(na,ka,ak,nh,kh,h,f)
+    plotGather(st,sx,g,"NMO with "+title)
 
 def goEstimateWaveletForOneOffset():
   """ Estimates wavelet from a non-zero-offset and zero-offset trace """
@@ -76,6 +91,22 @@ def goEstimateWaveletForOneOffset():
   plotSequence(st,sx,3.0,"sx")
   plotSequence(st,hsax,3.0,"hsax")
   plotSequence(st,y,3.0,"y")
+
+def goCmpGatherWithKnownWavelet():
+  n = 501
+  st = Sampling(501,0.004,0.0)
+  sx = Sampling(201,0.010,0.0)
+  nref,vnmo = 100,2.0
+  freq,decay = 30.0,0.1
+  p = makeCmpReflections(vnmo,nref,st,sx)
+  hp = addArWavelet(freq,decay,st,sx,p)
+  shp = applyNmo(vnmo,st,sx,hp)
+  sp = applyNmo(vnmo,st,sx,p)
+  hsp = addArWavelet(freq,decay,st,sx,sp)
+  #plotGather(st,sx,p)
+  plotGather(st,sx,hp,"CMP gather")
+  plotGather(st,sx,shp,"NMO with wavelet distortion")
+  plotGather(st,sx,hsp,"Reduced wavelet distortion")
 
 def normalize(h):
   return div(h,max(h))

@@ -167,7 +167,7 @@ public class WarpedWavelet {
     float[] aa = new float[na];
     for (int ia=0,ir=0; ia<na; ++ia) {
       if (ia==-ka) {
-        aa[ia] = 1.0f; // a0 = 1
+        aa[ia] = 1.0f; // lag 0, so a0 = 1
       } else {
         aa[ia] = (float)a.get(ir,0);
         ++ir;
