@@ -14,7 +14,40 @@ pngDir = None
 def main(args):
   #goCmpGatherWithKnownWavelet()
   #goEstimateWaveletForOneOffset()
-  goEstimateWaveletFromCmpGather()
+  #goEstimateWaveletFromCmpGather()
+  goEstimateWaveletFromOzGather()
+
+def goEstimateWaveletFromOzGather():
+  """ Estimates wavelet from one of Oz Yilmaz's gathers """
+  name = "oz30"
+  if name is "oz16":
+    st = Sampling(1325,0.004,0.004); nt,dt,ft = st.count,st.delta,st.first
+    sx = Sampling(  48,0.025,0.233); nx,dx,fx = sx.count,sx.delta,sx.first
+    vnmo = 1.90 # NMO velocity
+  elif name is "oz30":
+    st = Sampling(2175,0.004,0.00400); nt,dt,ft = st.count,st.delta,st.first
+    sx = Sampling(  96,0.025,0.23075); nx,dx,fx = sx.count,sx.delta,sx.first
+    vnmo = 1.60 # NMO velocity
+  f = zerofloat(nt,nx)
+  ais = ArrayInputStream("/data/seis/oz/"+name+".F")
+  ais.readFloats(f)
+  ais.close()
+  f = tpow(3.0,st,f)
+  na,ka = 11,0 # sampling for inverse wavelet a
+  nh,kh = 201,-50 # sampling for wavelet h
+  wn = WaveletNmo(st,sx,vnmo)
+  a = wn.getInverseA(na,ka,f) # estimate inverse wavelet
+  h = wn.getWaveletH(na,ka,a,nh,kh); # estimate wavelet
+  g = wn.applyHNmoA(na,ka,a,nh,kh,h,f)
+  e = wn.applyNmo(f)
+  print "a ="; dump(a);
+  tmin,tmax,perc = 2.5,3.0,98.0
+  plotGather(st,sx,f,tmin=tmin,tmax=tmax,perc=perc,title="input gather")
+  plotGather(st,sx,e,tmin=tmin,tmax=tmax,perc=perc,title="conventional NMO")
+  plotGather(st,sx,g,tmin=tmin,tmax=tmax,perc=perc,title="improved NMO")
+  #plotSequence(Sampling(na,st.delta,ka*st.delta),normalize(a),title="inverse")
+  plotSequence(Sampling(nh,st.delta,kh*st.delta),normalize(h),
+               title="estimated wavelet")
 
 def goEstimateWaveletFromCmpGather():
   """ Estimates wavelet from a CMP gather """
@@ -43,7 +76,7 @@ def goEstimateWaveletFromCmpGather():
     print title
     h = wn.getWaveletH(na,ka,a,nh,kh);
     plotSequence(Sampling(nh,st.delta,kh*st.delta),normalize(h),title=title)
-    g = wn.applyHNA(na,ka,ak,nh,kh,h,f)
+    g = wn.applyHNmoA(na,ka,ak,nh,kh,h,f)
     plotGather(st,sx,g,"NMO with "+title)
 
 def goEstimateWaveletForOneOffset():
@@ -108,6 +141,16 @@ def goCmpGatherWithKnownWavelet():
   plotGather(st,sx,shp,"NMO with wavelet distortion")
   plotGather(st,sx,hsp,"Reduced wavelet distortion")
 
+def tpow(power,st,f):
+  """Applies t^power gain."""
+  nt,dt,ft = st.count,st.delta,st.first
+  nx = len(f)
+  tp = pow(rampfloat(ft,dt,nt),power) # sampled times raised to power
+  g = zerofloat(nt,nx)
+  for ix in range(nx):
+    mul(tp,f[ix],g[ix])
+  return g
+
 def normalize(h):
   return div(h,max(h))
 
@@ -122,6 +165,19 @@ def applyNmo1(offset,vnmo,st,p):
   nmo = WarpedWavelet.Nmo(st,offset,vnmo)
   nmo.apply(p,q)
   return q
+
+def plotGather(st,sx,p,tmin=None,tmax=None,perc=None,title=None):
+  sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
+  if title:
+    sp.setTitle(title)
+  sp.setHLabel("Offset (km)")
+  sp.setVLabel("Time (s)")
+  sp.setSize(400,750)
+  if tmin and tmax:
+    sp.setVLimits(tmin,tmax)
+  pv = sp.addPixels(st,sx,p)
+  if perc:
+    pv.setPercentiles(100-perc,perc)
 
 def plotSequence(s,x,xmax=None,title=None):
   sp = SimplePlot.asPoints(s,x)
@@ -144,12 +200,6 @@ def applyNmo(vel,st,sx,p):
     si.interpolate(nt,dt,ft,p[jx],nt,ti,q[jx])
     q[jx] = mul(q[jx],div(t0,ti))
   return q
-
-def plotGather(st,sx,p,title=None):
-  sp = SimplePlot.asPixels(st,sx,p)
-  if title:
-    sp.setTitle(title)
-  sp.setSize(400,750)
 
 def makeCmpReflections(vel,nref,st,sx):
   nt,nx = st.count,sx.count

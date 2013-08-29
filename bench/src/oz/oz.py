@@ -46,14 +46,24 @@ metaMap = {
     "source":"Dynamite",
     "st":Sampling(3000,0.002,0.002),
     "sx":Sampling(51,0.1,-2.5)},
+  "oz16":{
+    "area":"South America",
+    "source":"Airgun",
+    "st":Sampling(1325,0.004,0.004),
+    "sx":Sampling(48,0.025,0.233)},
+  "oz30":{
+    "area":"Offshore Crete",
+    "source":"Airgun",
+    "st":Sampling(2175,0.004,0.004),
+    "sx":Sampling(96,0.025,0.23075)},
 }
 
 #############################################################################
 # Data processing
 
 def main(args):
-  #for name in ["oz01"]: #metaMap:
-  for name in metaMap:
+  #for name in metaMap:
+  for name in ["oz16","oz30"]:
     process(name)
   return
 
@@ -63,9 +73,10 @@ def process(name):
   source = metaMap[name]["source"]
   title = name+": "+source
   f = read(name)
-  f = tpow(2.0,st,f)
+  f = tpow(3.0,st,f)
+  #f = nmo(1.55,st,sx,f)
+  f = nmo(1.90,st,sx,f)
   plot(name,st,sx,f,name)
-  #f = nmo(3.0,st,sx,f)
   #plot(name+": before",st,sx,f,name)
   #f = align(f)
   #plot(name+": after",st,sx,f,name)
@@ -167,6 +178,23 @@ def plot(title,st,sx,f,png=None):
   pv.setInterpolation(PixelsView.Interpolation.LINEAR)
   if png and pngDir:
     sp.paintToPng(100,6,pngDir+"/"+png+".png")
+
+def convert(name):
+  nt = metaMap[name]["st"].count
+  nx = metaMap[name]["sx"].count
+  f = zerofloat(nt,nx)
+  fileName = dataDir+name+".F" # suffix F implies floats
+  ais = ArrayInputStream(dataDir+name+".bin",ByteOrder.LITTLE_ENDIAN)
+  ais.readFloats(f)
+  ais.close()
+  for ix in range(nx/2):
+    jx = nx-1-ix
+    fix = f[ix]
+    f[ix] = f[jx]
+    f[jx] = fix
+  aos = ArrayOutputStream(fileName,ByteOrder.BIG_ENDIAN)
+  aos.writeFloats(f)
+  aos.close()
 
 #############################################################################
 # Run everything on Swing thread.

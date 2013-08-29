@@ -70,7 +70,17 @@ public class WaveletNmo {
   }
 
   /**
-   * Applies the composite h*nmo(a*x), where * denotes convolution.
+   * Applies nmo(f).
+   * @param f array[nx][nt] with input CMP gather.
+   * @return array[nx][nt] with output CMP gather.
+   * 
+   */
+  public float[][] applyNmo(float[][] f) {
+    return _nmo.apply(f);
+  }
+
+  /**
+   * Applies the composite h*nmo(a*f), where * denotes convolution.
    * The sequence of operations is (1) convolution with the inverse wavelet a,
    * (2) NMO correction, and (3) convolution with the wavelet h.
    * @param na number of samples in the inverse wavelet a.
@@ -79,8 +89,10 @@ public class WaveletNmo {
    * @param nh number of samples in the wavelet h.
    * @param kh the sample index for h[0].
    * @param h array of coefficients for the wavelet h.
+   * @param f array[nx][nt] with input CMP gather.
+   * @return array[nx][nt] with output CMP gather.
    */
-  public float[][] applyHNA(
+  public float[][] applyHNmoA(
     int na, int ka, float[] a,
     int nh, int kh, float[] h,
     float[][] f)
@@ -181,7 +193,7 @@ public class WaveletNmo {
             cij += d[ia][ix][it]*d[ja][ix][it];
           }
         }
-        c.set(ic,jc,cij);
+        c.set(ic,jc,cij*1.00);
         ++jc;
       }
       double bi = 0.0;
