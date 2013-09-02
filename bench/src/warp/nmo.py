@@ -20,34 +20,64 @@ def main(args):
 def goEstimateWaveletFromOzGather():
   """ Estimates wavelet from one of Oz Yilmaz's gathers """
   name = "oz30"
-  if name is "oz16":
+  if name is "oz01": # Vibroseis
+    st = Sampling(1275,0.004,0.004); nt,dt,ft = st.count,st.delta,st.first
+    sx = Sampling(53,0.100584,-2.615184); nx,dx,fx = sx.count,sx.delta,sx.first
+    vnmo = 3.00 # NMO velocity
+    texp,tbal = 1.00,500
+    tmin,tmax,perc = 1.5,2.5,99
+    na,ka = 21,-10 # sampling for inverse wavelet a
+    nh,kh = 51,-25 # sampling for wavelet h
+  elif name is "oz04": # Vibroseis
+    st = Sampling(1275,0.004,0.004); nt,dt,ft = st.count,st.delta,st.first
+    sx = Sampling(52,0.1,-2.55); nx,dx,fx = sx.count,sx.delta,sx.first
+    vnmo = 3.00 # NMO velocity
+    texp,tbal = 1.00,500
+    tmin,tmax,perc = 0.0,5.0,99
+    na,ka = 21,-10 # sampling for inverse wavelet a
+    nh,kh = 51,-25 # sampling for wavelet h
+  elif name is "oz16": # Airgun
     st = Sampling(1325,0.004,0.004); nt,dt,ft = st.count,st.delta,st.first
     sx = Sampling(  48,0.025,0.233); nx,dx,fx = sx.count,sx.delta,sx.first
-    vnmo = 1.90 # NMO velocity
-  elif name is "oz30":
+    vnmo = 1.95 # NMO velocity
+    texp,tbal = 1.00,100
+    tmin,tmax,perc = 0.8,2.3,98
+    na,ka = 11,0 # sampling for inverse wavelet a
+    nh,kh = 201,-50 # sampling for wavelet h
+  elif name is "oz30": # Airgun
     st = Sampling(2175,0.004,0.00400); nt,dt,ft = st.count,st.delta,st.first
     sx = Sampling(  96,0.025,0.23075); nx,dx,fx = sx.count,sx.delta,sx.first
     vnmo = 1.60 # NMO velocity
+    texp,tbal = 0.00,0
+    tmin,tmax,perc = 2.5,3.0,98
+    na,ka = 11,0 # sampling for inverse wavelet a
+    nh,kh = 201,-50 # sampling for wavelet h
   f = zerofloat(nt,nx)
   ais = ArrayInputStream("/data/seis/oz/"+name+".F")
   ais.readFloats(f)
   ais.close()
-  f = tpow(3.0,st,f)
-  na,ka = 11,0 # sampling for inverse wavelet a
-  nh,kh = 201,-50 # sampling for wavelet h
+  f = tpow(texp,st,f)
+  if tbal>0:
+    f = balance(tbal,f)
   wn = WaveletNmo(st,sx,vnmo)
   a = wn.getInverseA(na,ka,f) # estimate inverse wavelet
   h = wn.getWaveletH(na,ka,a,nh,kh); # estimate wavelet
+  nah = na+nh
+  kah = ka+kh
+  ah = zerofloat(nah)
+  conv(na,ka,a,nh,kh,h,nah,kah,ah)
   g = wn.applyHNmoA(na,ka,a,nh,kh,h,f)
   e = wn.applyNmo(f)
   print "a ="; dump(a);
-  tmin,tmax,perc = 2.5,3.0,98.0
   plotGather(st,sx,f,tmin=tmin,tmax=tmax,perc=perc,title="input gather")
   plotGather(st,sx,e,tmin=tmin,tmax=tmax,perc=perc,title="conventional NMO")
   plotGather(st,sx,g,tmin=tmin,tmax=tmax,perc=perc,title="improved NMO")
-  #plotSequence(Sampling(na,st.delta,ka*st.delta),normalize(a),title="inverse")
+  plotSequence(Sampling(na,st.delta,ka*st.delta),normalize(a),
+               title="inverse")
   plotSequence(Sampling(nh,st.delta,kh*st.delta),normalize(h),
                title="estimated wavelet")
+  plotSequence(Sampling(nah,st.delta,kah*st.delta),normalize(ah),
+               title="unit impulse")
 
 def goEstimateWaveletFromCmpGather():
   """ Estimates wavelet from a CMP gather """
@@ -150,6 +180,12 @@ def tpow(power,st,f):
   for ix in range(nx):
     mul(tp,f[ix],g[ix])
   return g
+
+def balance(sigma,f):
+  f = add(max(f)*0.00001,f)
+  ff = mul(f,f)
+  RecursiveExponentialFilter(sigma).apply1(ff,ff)
+  return div(f,sqrt(ff))
 
 def normalize(h):
   return div(h,max(h))

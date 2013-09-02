@@ -28,6 +28,7 @@ public class ShapingFilter {
     float[] cxx = new float[nh];
     float[] cxy = new float[nh];
     xcor(nx,kx,x,nx,kx,x,nh, 0,cxx);
+    //cxx[0] *= 1.0001;
     xcor(nx,kx,x,ny,ky,y,nh,kh,cxy);
     SymmetricToeplitzFMatrix stm = new SymmetricToeplitzFMatrix(cxx);
     return stm.solve(cxy);

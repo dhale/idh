@@ -150,6 +150,8 @@ public class WaveletNmo {
         for (int it=0; it<nt; ++it) {
           g[ix][it] *= _a[ix][it];
         }
+        //for (int it=nt-200; it<nt; ++it)
+        //  g[ix][it] *= 0.5f*(1.0f+cos(FLT_PI*0.005f*(it-nt+200)));
       }
       return g;
     }
@@ -193,9 +195,10 @@ public class WaveletNmo {
             cij += d[ia][ix][it]*d[ja][ix][it];
           }
         }
-        c.set(ic,jc,cij*1.00);
+        c.set(ic,jc,cij);
         ++jc;
       }
+      c.set(ic,ic,c.get(ic,ic)*1.01);
       double bi = 0.0;
       for (int ix=0; ix<nx; ++ix) {
         for (int it=0; it<nt; ++it) {

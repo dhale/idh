@@ -63,7 +63,7 @@ metaMap = {
 
 def main(args):
   #for name in metaMap:
-  for name in ["oz16","oz30"]:
+  for name in ["oz01","oz02","oz04"]:
     process(name)
   return
 
@@ -74,8 +74,9 @@ def process(name):
   title = name+": "+source
   f = read(name)
   f = tpow(3.0,st,f)
-  #f = nmo(1.55,st,sx,f)
-  f = nmo(1.90,st,sx,f)
+  #f = nmo(1.55,st,sx,f) # 30
+  #f = nmo(1.90,st,sx,f) # 16
+  f = nmo(3.00,st,sx,f)
   plot(name,st,sx,f,name)
   #plot(name+": before",st,sx,f,name)
   #f = align(f)
