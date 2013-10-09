@@ -13,7 +13,7 @@ def main(args):
   #makeBinaryWellLogs("shallow")
   #makeBinaryWellLogs("all")
   #viewWellCoordinates("deep")
-  viewReflectivity(490252305400)
+  #viewReflectivity(490252305400)
   #viewWellCurves("deep","velocity")
   #viewWellCurves("deep","density")
   #viewWellCurves("deep","gamma")
@@ -21,7 +21,7 @@ def main(args):
   #viewWellsWithSeismic("all","velocity")
   #viewWellsWithSeismic("deep","velocity")
   #viewWellsWithSeismic("all","gamma")
-  #viewWellsWithSeismic("deep","gamma")
+  viewWellsWithSeismic("deep","gamma")
   #viewElevations("deep")
   pass
 

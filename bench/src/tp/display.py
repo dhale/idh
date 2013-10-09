@@ -18,7 +18,7 @@ def displaySubset():
   addHorizonToWorld(world,"CrowMountainCRMT")
   addHorizonToWorld(world,"TensleepASand")
   addHorizonToWorld(world,"TensleepBbaseC1Dolo")
-  addLogsToWorld(world,"d","v")
+  addLogsToWorld(world,"d","v",cmin=2.5,cmax=4.5)
   makeFrame(world)
 
 def displaySlices():

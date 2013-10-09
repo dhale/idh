@@ -8,7 +8,7 @@ from imports import *
 #############################################################################
 # Internal constants
 
-_tpDir = "/data/seis/tp/"
+_tpDir = "/data/seis/tpd/"
 _csmDir = _tpDir+"csm/"
 _horizontDir = _csmDir+"horizont/"
 _horizonzDir = _csmDir+"horizonz/"

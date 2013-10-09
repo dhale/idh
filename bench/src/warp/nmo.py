@@ -15,69 +15,123 @@ def main(args):
   #goCmpGatherWithKnownWavelet()
   #goEstimateWaveletForOneOffset()
   #goEstimateWaveletFromCmpGather()
-  goEstimateWaveletFromOzGather()
+  goEstimateWaveletFromOzGather(args[1])
 
-def goEstimateWaveletFromOzGather():
+def goEstimateWaveletFromOzGather(name):
   """ Estimates wavelet from one of Oz Yilmaz's gathers """
-  name = "oz30"
-  if name is "oz01": # Vibroseis
+  print name
+  if name == "syn1": # Synthetic
+    st = Sampling(501,0.004,0.0); nt,dt,ft = st.count,st.delta,st.first
+    sx = Sampling(201,0.010,0.0); nx,dx,fx = sx.count,sx.delta,sx.first
+    nref,vnmo = 1,2.0 # number of reflectors and NMO velocity
+    #freq,decay = 30.0,0.1 # peak frequency and decay for wavelet
+    freq,decay = 20.0,0.05 # peak frequency and decay for wavelet
+    #freq,decay = 20.0,100.0 # peak frequency and decay for wavelet
+    fmin,fmax = 0.0,50.0
+    texp,tbal = 0.00,0
+    tmin,tmax,perc = 0.75,1.75,100.0
+    na,ka = 3,0 # sampling for inverse wavelet a
+    nh,kh = 301,-50 # sampling for wavelet h
+  if name == "oz01": # Vibroseis
     st = Sampling(1275,0.004,0.004); nt,dt,ft = st.count,st.delta,st.first
     sx = Sampling(53,0.100584,-2.615184); nx,dx,fx = sx.count,sx.delta,sx.first
     vnmo = 3.00 # NMO velocity
-    texp,tbal = 1.00,500
+    fmin,fmax = 5.0,80.0
+    texp,tbal = 1.00,100
     tmin,tmax,perc = 1.5,2.5,99
     na,ka = 21,-10 # sampling for inverse wavelet a
     nh,kh = 51,-25 # sampling for wavelet h
-  elif name is "oz04": # Vibroseis
+  elif name == "oz04": # Vibroseis
     st = Sampling(1275,0.004,0.004); nt,dt,ft = st.count,st.delta,st.first
     sx = Sampling(52,0.1,-2.55); nx,dx,fx = sx.count,sx.delta,sx.first
     vnmo = 3.00 # NMO velocity
-    texp,tbal = 1.00,500
+    fmin,fmax = 5.0,80.0
+    texp,tbal = 1.00,100
     tmin,tmax,perc = 0.0,5.0,99
     na,ka = 21,-10 # sampling for inverse wavelet a
     nh,kh = 51,-25 # sampling for wavelet h
-  elif name is "oz16": # Airgun
+  elif name == "oz16": # Airgun
     st = Sampling(1325,0.004,0.004); nt,dt,ft = st.count,st.delta,st.first
     sx = Sampling(  48,0.025,0.233); nx,dx,fx = sx.count,sx.delta,sx.first
     vnmo = 1.95 # NMO velocity
+    fmin,fmax = 5.0,50.0
     texp,tbal = 1.00,100
     tmin,tmax,perc = 0.8,2.3,98
     na,ka = 11,0 # sampling for inverse wavelet a
     nh,kh = 201,-50 # sampling for wavelet h
-  elif name is "oz30": # Airgun
+  elif name == "oz30": # Airgun
     st = Sampling(2175,0.004,0.00400); nt,dt,ft = st.count,st.delta,st.first
     sx = Sampling(  96,0.025,0.23075); nx,dx,fx = sx.count,sx.delta,sx.first
-    vnmo = 1.60 # NMO velocity
-    texp,tbal = 0.00,0
+    vnmo = 1.55 # NMO velocity
+    fmin,fmax = 5.0,50.0
+    texp,tbal = 0.00,100
     tmin,tmax,perc = 2.5,3.0,98
+    #tmin,tmax,perc = 1.2,4.2,99.5
     na,ka = 11,0 # sampling for inverse wavelet a
     nh,kh = 201,-50 # sampling for wavelet h
   f = zerofloat(nt,nx)
-  ais = ArrayInputStream("/data/seis/oz/"+name+".F")
-  ais.readFloats(f)
-  ais.close()
+  if name[0:3]=="syn":
+    p = makeCmpReflections(vnmo,nref,st,sx) # cmp gather without wavelet
+    f = addArWavelet(freq,decay,st,sx,p) # cmp gather with wavelet
+  else:
+    ais = ArrayInputStream("/data/seis/oz/"+name+".F")
+    ais.readFloats(f)
+    ais.close()
   f = tpow(texp,st,f)
   if tbal>0:
     f = balance(tbal,f)
   wn = WaveletNmo(st,sx,vnmo)
-  a = wn.getInverseA(na,ka,f) # estimate inverse wavelet
-  h = wn.getWaveletH(na,ka,a,nh,kh); # estimate wavelet
-  nah = na+nh
-  kah = ka+kh
-  ah = zerofloat(nah)
-  conv(na,ka,a,nh,kh,h,nah,kah,ah)
-  g = wn.applyHNmoA(na,ka,a,nh,kh,h,f)
+  wn.setFrequencyRange(fmin,fmax)
   e = wn.applyNmo(f)
-  print "a ="; dump(a);
   plotGather(st,sx,f,tmin=tmin,tmax=tmax,perc=perc,title="input gather")
   plotGather(st,sx,e,tmin=tmin,tmax=tmax,perc=perc,title="conventional NMO")
-  plotGather(st,sx,g,tmin=tmin,tmax=tmax,perc=perc,title="improved NMO")
-  plotSequence(Sampling(na,st.delta,ka*st.delta),normalize(a),
-               title="inverse")
-  plotSequence(Sampling(nh,st.delta,kh*st.delta),normalize(h),
-               title="estimated wavelet")
-  plotSequence(Sampling(nah,st.delta,kah*st.delta),normalize(ah),
-               title="unit impulse")
+  ad = wn.getSpikingDeconA(na,ka,f) # estimate inverse wavelet
+  ai = wn.getInverseA(na,ka,f) # estimate inverse wavelet
+  ta = 0
+  for a in [ad,ai]:
+    ta += 1
+    h = wn.getWaveletH(na,ka,a,nh,kh); # estimate wavelet
+    #zero(h); h[-kh] = 1.0
+    nah = na+nh
+    kah = ka+kh
+    ah = zerofloat(nah)
+    conv(na,ka,a,nh,kh,h,nah,kah,ah)
+    g = wn.applyHNmoA(na,ka,a,nh,kh,h,f)
+    #g = wn.applyBNmoA(na,ka,a,f)
+    e = stackError(g)
+    erms = rms(e)
+    print str(ta)+": erms =",erms," a ="; dump(a);
+    plotGather(st,sx,g,tmin=tmin,tmax=tmax,perc=perc,
+      title=str(ta)+": improved NMO")
+    #plotGather(st,sx,e,tmin=tmin,tmax=tmax,perc=perc,
+    #  title=str(ta)+": stack error")
+    plotSequence(Sampling(nh,st.delta,kh*st.delta),normalize(h),
+                 title=str(ta)+": estimated wavelet")
+    #plotSequence(Sampling(na,st.delta,ka*st.delta),normalize(a),
+    #             title="inverse wavelet")
+    #plotSequence(Sampling(nah,st.delta,kah*st.delta),normalize(ah),
+    #             title="unit impulse")
+  """
+  d = wn.getDifferenceGathers(na,ka,f)
+  for ia in range(na):
+    plotGather(st,sx,d[ia],
+               tmin=tmin,tmax=tmax,perc=perc,title="lag="+str(ka+ia))
+  """
+
+def stackError(g):
+  nt,nx = len(g[0]),len(g)
+  s = copy(g[0])
+  for ix in range(1,nx):
+    s = add(s,g[ix])
+  s = div(s,nx)
+  g = copy(g)
+  for ix in range(nx):
+    g[ix] = sub(g[ix],s)
+  return g
+
+def rms(g):
+  nt,nx = len(g[0]),len(g)
+  return sqrt(sum(mul(g,g))/nt/nx)
 
 def goEstimateWaveletFromCmpGather():
   """ Estimates wavelet from a CMP gather """
@@ -209,7 +263,7 @@ def plotGather(st,sx,p,tmin=None,tmax=None,perc=None,title=None):
   sp.setHLabel("Offset (km)")
   sp.setVLabel("Time (s)")
   sp.setSize(400,750)
-  if tmin and tmax:
+  if tmin!=None and tmax!=None:
     sp.setVLimits(tmin,tmax)
   pv = sp.addPixels(st,sx,p)
   if perc:
@@ -217,8 +271,10 @@ def plotGather(st,sx,p,tmin=None,tmax=None,perc=None,title=None):
 
 def plotSequence(s,x,xmax=None,title=None):
   sp = SimplePlot.asPoints(s,x)
-  if xmax:
-    sp.setVLimits(-xmax,xmax)
+  if xmax==None:
+    xmax = max(abs(max(x)),abs(min(x)))
+    xmax *= 1.05
+  sp.setVLimits(-xmax,xmax)
   if title:
     sp.setTitle(title)
 
@@ -242,8 +298,10 @@ def makeCmpReflections(vel,nref,st,sx):
   dt,dx = st.delta,sx.delta
   ft,fx = st.first,sx.first
   p = zerofloat(nt,nx)
-  ts = add(ft,mul((nt-1)*dt,randfloat(nref)))
-  rs = sub(mul(2.0,randfloat(nref)),1.0)
+  #ts = add(ft,mul((nt-1)*dt,randfloat(nref)))
+  ts = rampfloat(nt*dt/(nref+1),nt*dt/(nref+1),nref)
+  #rs = sub(mul(2.0,randfloat(nref)),1.0)
+  rs = fillfloat(1.0,nref)
   si = SincInterp.fromErrorAndFrequency(0.01,0.45)
   for jx in range(nx):
     xj = sx.getValue(jx)
@@ -259,7 +317,7 @@ def addArWavelet(fpeak,decay,st,sx,p):
   r = exp(-decay)
   w = 2.0*PI*fpeak*st.delta
   a1,a2 = -2.0*r*cos(w),r*r
-  #print "a1 =",a1," a2 =",a2
+  print "a1 =",a1," a2 =",a2
   poles = [Cdouble.polar(r,w),Cdouble.polar(r,-w)]
   zeros = []
   gain = 1.0

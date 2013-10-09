@@ -1,5 +1,5 @@
 #############################################################################
-# Fault displacements from 2D images
+# Testing with Rick's rock peel.
 
 import sys
 from java.awt import *
@@ -29,17 +29,46 @@ smoother = FaultScanner2.Smoother.SHEAR
 #smoother = FaultScanner2.Smoother.FFT
 
 def main(args):
+  fakeImage()
   #goSlopes()
   #goAlign()
   #goSemblance()
   #goScan()
-  goThin()
+  #goThin()
   #goShifts()
 
+def fakeImage():
+  n1,d1,f1 = 1878,0.001,0.000
+  n2,d2,f2 = 2576,0.001,0.000
+  s1 = Sampling(n1,d1,f1)
+  s2 = Sampling(n2,d2,f2)
+  fileName = "/data/seis/fake/peel.dat"
+  f = readImage(n1,n2,fileName)
+  f = pow(f,1)
+  nf,sigma = 2,5.0
+  rgf = RecursiveGaussianFilter(sigma)
+  g = copy(f)
+  g1 = zerofloat(n1,n2)
+  g2 = zerofloat(n1,n2)
+  for i in range(2):
+    rgf.apply20(g,g1)
+    rgf.apply02(g,g2)
+    g = mul(1000.0,neg(add(g1,g2)))
+  nb = int(nf*2*sigma)
+  n1 -= 2*nb
+  n2 -= 2*nb
+  f1 += nb*d1
+  f2 += nb*d2
+  f = copy(n1,n2,nb,nb,f)
+  g = copy(n1,n2,nb,nb,g)
+  s1 = Sampling(n1,d1,f1)
+  s2 = Sampling(n2,d2,f2)
+  plot2(s1,s2,f,title="peel")
+  plot2(s1,s2,g,title="seis")
+  return s1,s2,g
+
 def getImage():
-  #return imageSyn()
-  #return imageF3d()
-  return imageTpd()
+  return fakeImage()
 
 def goShifts():
   s1,s2,g = getImage()
@@ -196,7 +225,7 @@ def imageTpd():
   f1,f2 = 0.0,0.0
   d1,d2 = 1.0,1.0
   n1,n2 = 251,357
-  fileName = "/data/seis/tpd/csm/oldslices/tp73.dat"
+  fileName = "/data/seis/tp/csm/oldslices/tp73.dat"
   x = readImage(n1,n2,fileName)
   s1,s2 = Sampling(n1,d1,f1),Sampling(n2,d2,f2)
   return s1,s2,x
@@ -270,11 +299,12 @@ def plot2(s1,s2,f,g=None,gmin=None,gmax=None,
   if title:
     panel.setTitle(title)
   panel.setColorBarWidthMinimum(180)
-  #pv = panel.addPixels(s1,s2,f)
-  pv = panel.addPixels(f)
+  pv = panel.addPixels(s1,s2,f)
+  #pv = panel.addPixels(f)
   pv.setInterpolation(PixelsView.Interpolation.NEAREST)
   pv.setColorModel(ColorMap.GRAY)
-  #pv.setClips(-4.5,4.5)
+  #pv.setClips(-4.0,4.0)
+  pv.setPercentiles(1,99)
   if g:
     alpha = 0.5
     #pv = panel.addPixels(s1,s2,g)
