@@ -11,12 +11,13 @@ global n1,n2,n3
 
 #############################################################################
 def main(args):
+  goSch()
   #goPnz()
   #goGbc()
   #goMbs()
   #goNorne()
   #goSino()
-  goF3d()
+  #goF3d()
 
 def goGbc():
   """
@@ -394,6 +395,70 @@ def goPnz():
     plotXY(si)
   if writeImage:
     scale = 0.00001
+    si.writeFloats(datfile,scale,i1min,i1max,i2min,i2max,i3min,i3max)
+  si.close()
+  if showImage:
+    x = readImage(datfile,n1,n2,n3)
+    show3d(x,clip=1.0)
+
+def goSch():
+  """
+  ***************************************************************************
+  ****** beginning of SEG-Y file info ******
+  file name = /data/seis/sch/sgy/pack_0.sgy
+  byte order = BIG_ENDIAN
+  number of bytes = 2143537580
+  number of traces = 343295
+  format = 1 (4-byte IBM floating point)
+  units for spatial coordinates: m (will be converted to km)
+  indices and coordinates from trace headers:
+    i2min =  1000, i2max =  1622 (inline indices)
+    i3min =  1000, i3max =  1646 (crossline indices)
+    xmin =  251.044000, xmax =  256.212000 (x coordinates, in km)
+    ymin =  518.203000, ymax =  523.179000 (y coordinates, in km)
+  grid sampling:
+    n1 =  1501 (number of samples per trace)
+    n2 =   623 (number of traces in inline direction)
+    n3 =   647 (number of traces in crossline direction)
+    d1 = 0.002000 (time sampling interval, in s)
+    d2 = 0.008000 (inline sampling interval, in km)
+    d3 = 0.008000 (crossline sampling interval, in km)
+  grid corner points:
+    i2min =  1000, i3min =  1000, x =  251.044000, y =  518.203000
+    i2max =  1622, i3min =  1000, x =  251.044000, y =  523.179000
+    i2min =  1000, i3max =  1646, x =  256.212000, y =  518.203000
+    i2max =  1622, i3max =  1646, x =  256.212000, y =  523.179000
+  grid azimuth:  0.00 degrees
+  ****** end of SEG-Y file info ******
+  NOTE:
+  The file pack_0.sgy is larger than the file pack_1.sgy, and both
+  have missing traces. Subset of pack_0.sgy with no missing traces:
+  i1min,i1max,i2min,i2max,i3min,i3max = 0,1500,1000,1550,1220,1646
+  ***************************************************************************
+  """
+  firstLook = False # fast, does not read all trace headers
+  secondLook = False # slow, must read all trace headers
+  writeImage = False # reads all traces, writes an image
+  showImage = True # displays the image
+  basedir = "/data/seis/sch/"
+  sgyfile = basedir+"sgy/pack_0.sgy"
+  datfile = basedir+"dat/sch0.dat"
+  #sgyfile = basedir+"sgy/pack_1.sgy"
+  #datfile = basedir+"dat/sch1.dat"
+  i1min,i1max,i2min,i2max,i3min,i3max = 0,1500,1000,1550,1220,1646
+  n1,n2,n3 = 1+i1max-i1min,1+i2max-i2min,1+i3max-i3min
+  si = SegyImage(sgyfile)
+  if firstLook:
+    si.printSummaryInfo();
+    si.printBinaryHeader()
+    si.printTraceHeader(0)
+    si.printTraceHeader(1)
+  if secondLook:
+    si.printAllInfo()
+    plot23(si)
+    plotXY(si)
+  if writeImage:
+    scale = 0.0001
     si.writeFloats(datfile,scale,i1min,i1max,i2min,i2max,i3min,i3max)
   si.close()
   if showImage:

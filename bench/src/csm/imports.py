@@ -21,3 +21,4 @@ from edu.mines.jtk.util import *
 from edu.mines.jtk.util.ArrayMath import *
 
 from segy import *
+from csm import *
