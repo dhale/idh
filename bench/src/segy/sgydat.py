@@ -431,21 +431,22 @@ def goSch():
   grid azimuth:  0.00 degrees
   ****** end of SEG-Y file info ******
   NOTE:
+  Most interesting faults appear to die out after i1max = 900.
   The file pack_0.sgy is larger than the file pack_1.sgy, and both
   have missing traces. Subset of pack_0.sgy with no missing traces:
-  i1min,i1max,i2min,i2max,i3min,i3max = 0,1500,1000,1550,1220,1646
+  i1min,i1max,i2min,i2max,i3min,i3max = 0,900,1000,1550,1220,1646
   ***************************************************************************
   """
   firstLook = False # fast, does not read all trace headers
   secondLook = False # slow, must read all trace headers
-  writeImage = False # reads all traces, writes an image
+  writeImage = True # reads all traces, writes an image
   showImage = True # displays the image
   basedir = "/data/seis/sch/"
   sgyfile = basedir+"sgy/pack_0.sgy"
   datfile = basedir+"dat/sch0.dat"
   #sgyfile = basedir+"sgy/pack_1.sgy"
   #datfile = basedir+"dat/sch1.dat"
-  i1min,i1max,i2min,i2max,i3min,i3max = 0,1500,1000,1550,1220,1646
+  i1min,i1max,i2min,i2max,i3min,i3max = 0,900,1000,1550,1220,1646
   n1,n2,n3 = 1+i1max-i1min,1+i2max-i2min,1+i3max-i3min
   si = SegyImage(sgyfile)
   if firstLook:

@@ -16,64 +16,67 @@ import static edu.mines.jtk.util.ArrayMath.*;
  * Estimates a wavelet via NMO correction of a CMP gather.
  *
  * @author Dave Hale, Colorado School of Mines
- * @version 2013.08.27
+ * @version 2013.12.18
  */
 public class WaveletNmo {
 
   /**
-   * Constructs a wavelet estimator for specified sampling and NMO velocity.
-   * @param st sampling of time.
-   * @param sx sampling of offset.
-   * @param smax maximum NMO stretch.
-   * @param vnmo NMO velocity.
+   * Constructs a wavelet estimator for specified NMO.
+   * @param nmo the NMO correction.
    */
-  public WaveletNmo(Sampling st, Sampling sx, double smax, double vnmo) {
-    this(st,sx,smax,fillfloat((float)vnmo,st.getCount()));
+  public WaveletNmo(NormalMoveout nmo) {
+    _nmo = nmo;
   }
 
   /**
-   * Constructs a wavelet estimator for specified sampling and NMO velocities.
-   * @param st sampling of time.
-   * @param sx sampling of offset.
-   * @param smax maximum NMO stretch.
-   * @param vnmo array[nt] of NMO velocities.
+   * Sets the min-max range of times used to estimate wavelet.
+   * @param itmin minimum time, in samples.
+   * @param itmax maximum time, in samples.
    */
-  public WaveletNmo(Sampling st, Sampling sx, double smax, float[] vnmo) {
-    _st = st;
-    _sx = sx;
-    _nmo = new Nmo(st,sx,smax,vnmo);
+  public void setTimeRange(int itmin, int itmax) {
+    _itmin = itmin;
+    _itmax = itmax;
   }
 
   /**
-   * Sets the min-max range of frequencies for wavelet.
-   * @param fmin minimum frequency.
-   * @param fmax maximum frequency.
+   * Sets the min-max range of frequencies in wavelet.
+   * @param fmin minimum frequency, in cycles/sample.
+   * @param fmax maximum frequency, in cycles/sample.
    */
   public void setFrequencyRange(double fmin, double fmax) {
-    double dt = _st.getDelta();
-    _bpf = new BandPassFilter(fmin*dt,fmax*dt,0.05*dt,0.01);
+    _bpf = new BandPassFilter(fmin,fmax,0.05,0.01);
   }
 
   /**
-   * Sets the stability factor by which to scale zero-lag correlation.
+   * Sets the stability factor by which to scale zero-lag of correlations.
+   * A factor slightly greater than one may stabilize estimates of
+   * inverse wavelets A.
    * @param sfac stability factor.
    */
   public void setStabilityFactor(double sfac) {
     _sfac = sfac;
   }
 
-  public float getVariancePef(int na, int ka, float[] a, float[][] f) {
+  public float getVariancePef(
+    int na, int ka, float[] a, float[][] f) 
+  {
     float[][] g = applyFilter(na,ka,a,f);
     return pow(rms(g),2.0f);
   }
-  public float getVariance(int na, int ka, float[] a, float[][] f) {
-    float[][] g = applyBNmoA(na,ka,a,f);
-    float[][] r = stackAndReplicate(_nmo,g);
+  public float getVarianceNmo(
+    int na, int ka, float[] a, 
+    Sampling st, Sampling sx, float[] vnmo, float[][] f) 
+  {
+    float[][] g = applyBNmoA(na,ka,a,st,sx,vnmo,f);
+    float[][] r = _nmo.stackAndReplicate(g);
     return pow(rms(sub(g,r)),2.0f);
   }
-  public float getNormalizedVariance(int na, int ka, float[] a, float[][] f) {
-    float[][] g = applyBNmoA(na,ka,a,f);
-    float[][] r = stackAndReplicate(_nmo,g);
+  public float getNormalizedVarianceNmo(
+    int na, int ka, float[] a, 
+    Sampling st, Sampling sx, float[] vnmo, float[][] f) 
+  {
+    float[][] g = applyBNmoA(na,ka,a,st,sx,vnmo,f);
+    float[][] r = _nmo.stackAndReplicate(g);
     return pow(rms(sub(g,r))/rms(g),2.0f);
   }
 
@@ -92,8 +95,12 @@ public class WaveletNmo {
     float[][][] d = new float[na][nx][nt];
     for (int ia=0; ia<na; ++ia) {
       d[ia] = delay(ka+ia,f);
-      //for (int ix=0; ix<nx; ++ix)
-      //  _bpf.apply(d[ia][ix],d[ia][ix]);
+      /* band-pass filter causes unstable estimates of wavelet
+      if (_bpf!=null) {
+        for (int ix=0; ix<nx; ++ix)
+          _bpf.apply(d[ia][ix],d[ia][ix]);
+      }
+      */
     }
 
     // The matrix C and right-hand-side vector b, for Ca = b. For zero lag, we
@@ -115,8 +122,8 @@ public class WaveletNmo {
       b.set(ic,0,bi);
       ++ic;
     }
-    //System.out.println("c=\n"+c);
-    //System.out.println("b=\n"+b);
+    System.out.println("c=\n"+c);
+    System.out.println("b=\n"+b);
 
     // Solve for inverse filter a using Cholesky decomposition of C.
     DMatrixChd chd = new DMatrixChd(c);
@@ -137,17 +144,23 @@ public class WaveletNmo {
    * Returns inverse wavelet a estimated via NMO correction of CMP gather.
    * @param na number of samples in the inverse wavelet a.
    * @param ka the sample index for a[0].
+   * @param st time sampling.
+   * @param sx offset sampling.
+   * @param vnmo array[nt] of NMO velocities.
    * @param f array[nx][nt] for CMP gather.
    * @return array of coefficients for the inverse wavelet a.
    */
-  public float[] getInverseA(int na, int ka, float[][] f) {
+  public float[] getInverseANmo(
+    int na, int ka, 
+    Sampling st, Sampling sx, float[] vnmo, float[][] f) 
+  {
     int nt = f[0].length;
     int nx = f.length;
     Check.argument(-na<ka,"-na<ka");
     Check.argument(ka<=0,"ka<=0");
 
     // Differences d for all lags of inverse wavelet a.
-    float[][][] d = computeDifferences(na,ka,_nmo,_bpf,_st,_sx,f);
+    float[][][] d = computeDifferences(na,ka,_nmo,_bpf,st,sx,vnmo,f);
 
     // The matrix C and right-hand-side vector b, for Ca = b. For zero lag, we
     // have a0 = a[-ka] = 1, so that only na-1 coefficients of a are unknown;
@@ -207,23 +220,34 @@ public class WaveletNmo {
 
   /**
    * Applies nmo(f).
+   * @param st time sampling.
+   * @param sx offset sampling.
+   * @param vnmo array[nt] of NMO velocities.
    * @param f array[nx][nt] with input CMP gather.
    * @return array[nx][nt] with output CMP gather.
    * 
    */
-  public float[][] applyNmo(float[][] f) {
-    return _nmo.apply(f);
+  public float[][] applyNmo(
+    Sampling st, Sampling sx, float[] vnmo, float[][] f) 
+  {
+    return _nmo.apply(st,sx,vnmo,f);
   }
 
   /**
    * Returns differences between NMO-corrected gathers and stacks.
    * @param na number of samples in the inverse wavelet a.
    * @param ka the sample index for a[0].
+   * @param st time sampling.
+   * @param sx offset sampling.
+   * @param vnmo array[nt] of NMO velocities.
    * @param f array[nx][nt] with input CMP gather.
    * @return array[na][nx][nt] of difference gathers.
    */
-  public float[][][] getDifferenceGathers(int na,int ka, float[][] f) {
-    float[][][] d = computeDifferences(na,ka,_nmo,_bpf,_st,_sx,f);
+  public float[][][] getDifferenceGathers(
+    int na, int ka, 
+    Sampling st, Sampling sx, float[] vnmo, float[][] f) 
+  {
+    float[][][] d = computeDifferences(na,ka,_nmo,_bpf,st,sx,vnmo,f);
     for (int ia=0,lag=ka; ia<na; ++ia,++lag)
       d[ia] = delay(-lag,d[ia]);
     //for (int ia=1; ia<na; ++ia)
@@ -241,26 +265,32 @@ public class WaveletNmo {
    * @param nh number of samples in the wavelet h.
    * @param kh the sample index for h[0].
    * @param h array of coefficients for the wavelet h.
+   * @param st time sampling.
+   * @param sx offset sampling.
+   * @param vnmo array[nt] of NMO velocities.
    * @param f array[nx][nt] with input CMP gather.
    * @return array[nx][nt] with output CMP gather.
    */
   public float[][] applyHNmoA(
     int na, int ka, float[] a,
     int nh, int kh, float[] h,
-    float[][] f)
+    Sampling st, Sampling sx, float[] vnmo, float[][] f) 
   {
     int nt = f[0].length;
     int nx = f.length;
     float[][] af = applyFilter(na,ka,a,f);
-    float[][] saf = _nmo.apply(af);
+    float[][] saf = _nmo.apply(st,sx,vnmo,af);
     return applyFilter(nh,kh,h,saf);
   }
 
-  public float[][] applyBNmoA(int na, int ka, float[] a, float[][] f) {
+  public float[][] applyBNmoA(
+    int na, int ka, float[] a, 
+    Sampling st, Sampling sx, float[] vnmo, float[][] f) 
+  {
     int nt = f[0].length;
     int nx = f.length;
     float[][] af = applyFilter(na,ka,a,f);
-    float[][] saf = _nmo.apply(af);
+    float[][] saf = _nmo.apply(st,sx,vnmo,af);
     float[][] g = saf;
     if (_bpf!=null) {
       for (int ix=0; ix<nx; ++ix)
@@ -274,66 +304,10 @@ public class WaveletNmo {
 
   private Sampling _st;
   private Sampling _sx;
-  private Nmo _nmo;
+  private NormalMoveout _nmo;
   private BandPassFilter _bpf;
   private double _sfac = 1.0;
-
-  private static class Nmo {
-    public Nmo(Sampling st, Sampling sx, double smax, double vnmo) {
-      this(st,sx,smax,fillfloat((float)vnmo,st.getCount()));
-    }
-    public Nmo(Sampling st, Sampling sx, double smax, float[] vnmo) {
-      int nt = st.getCount();
-      double dt = st.getDelta();
-      double ft = st.getFirst();
-      int nx = sx.getCount();
-      float amin = 1.0f/(float)smax;
-      _st = st;
-      _sx = sx;
-      _si = SincInterp.fromErrorAndFrequency(0.01,0.45);
-      System.out.println("si: max length = "+_si.getMaximumLength());
-      _t = new float[nx][nt];
-      _a = new float[nx][nt];
-      for (int ix=0; ix<nx; ++ix) {
-        double x = sx.getValue(ix);
-        for (int it=0; it<nt; ++it) {
-          double ti = ft+it*dt;
-          _t[ix][it] = (float)sqrt(ti*ti+(x*x)/(vnmo[it]*vnmo[it]));
-        }
-        float odt = 1.0f/(float)dt;
-        _a[ix][0] = (_t[ix][1]-_t[ix][0])*odt;
-        for (int it=1; it<nt; ++it) {
-          _a[ix][it] = (_t[ix][it]-_t[ix][it-1])*odt;
-          if (_a[ix][it]<amin)
-            _a[ix][it] = 0.0f;
-        }
-      }
-    }
-    public float[][] apply(float[][] f) {
-      int nt = _st.getCount();
-      double dt = _st.getDelta();
-      double ft = _st.getFirst();
-      int nx = _sx.getCount();
-      float[][] g = new float[nx][nt];
-      for (int ix=0; ix<nx; ++ix) {
-        _si.interpolate(nt,dt,ft,f[ix],nt,_t[ix],g[ix]);
-        for (int it=0; it<nt; ++it) {
-          g[ix][it] *= _a[ix][it];
-        }
-      }
-      return g;
-    }
-    public float[][] getTimes() {
-      return copy(_t);
-    }
-    public float[][] getAmplitudes() {
-      return copy(_a);
-    }
-    private Sampling _st,_sx;
-    private SincInterp _si;
-    private float[][] _t;
-    private float[][] _a;
-  }
+  private int _itmin,_itmax;
 
   /**
    * For each lag of the inverse wavelet, computes differences between
@@ -341,32 +315,31 @@ public class WaveletNmo {
    * gathers.
    */
   private static float[][][] computeDifferences(
-    int na, int ka, Nmo nmo, BandPassFilter bpf,
-    Sampling st, Sampling sx, float[][] f)
+    int na, int ka, NormalMoveout nmo, BandPassFilter bpf,
+    Sampling st, Sampling sx, float[] vnmo, float[][] f)
   {
-    final float smax = 3.0f;
-    final float wmin = 1.0f/smax;
     int nt = f[0].length;
     int nx = f.length;
-    float[][] w = nmo.getAmplitudes();
-    for (int ix=0; ix<nx; ++ix) {
-      for (int it=0; it<nt; ++it) {
-        w[ix][it] = 1.0f/max(wmin,w[ix][it])-1.0f;
-        //w[ix][it] = 1.0f;
-      }
-    }
+    float[][][] ta = nmo.timesAndAmplitudes(st,sx,vnmo,f);
+    float[][] t = ta[0];
+    float[][] a = ta[1];
     float[][][] d = new float[na][nx][nt];
     for (int ia=0,lag=ka; ia<na; ++ia,++lag) {
       float[][] df = delay(lag,f);
-      float[][] dg = nmo.apply(df);
+      float[][] dg = nmo.apply(st,t,a,df);
       if (bpf!=null) {
-        for (int ix=0; ix<nx; ++ix)
+        for (int ix=0; ix<nx; ++ix) {
           bpf.apply(dg[ix],dg[ix]);
+          for (int it=0; it<nt; ++it) {
+            if (a[ix][it]==0.0f)
+              dg[ix][it] = 0.0f;
+          }
+        }
       }
-      float[][] rdg = stackAndReplicate(nmo,dg);
+      float[][] rdg = nmo.stackAndReplicate(dg);
       for (int ix=0; ix<nx; ++ix) {
         for (int it=0; it<nt; ++it) {
-          d[ia][ix][it] = w[ix][it]*(dg[ix][it]-rdg[ix][it]);
+          d[ia][ix][it] = dg[ix][it]-rdg[ix][it];
         }
       }
     }
@@ -393,88 +366,8 @@ public class WaveletNmo {
     return g;
   }
 
-  /**
-   * Returns true if array contains non-zero samples.
-   */
-  private static boolean nonZero(float[] f) {
-    int n = f.length;
-    boolean nonzero = false;
-    for (int i=0; i<n && !nonzero; ++i) {
-      if (f[i]!=0.0f)
-        nonzero = true;
-    }
-    return nonzero;
-  }
-
-  /**
-   * Returns the number of non-zero traces in gather.
-   */
-  private static int countNonZero(float[][] f) {
-    int nt = f[0].length;
-    int nx = f.length;
-    int nnz = 0;
-    for (int ix=0; ix<nx; ++ix) {
-      if (nonZero(f[ix]))
-        ++nnz;
-    }
-    return nnz;
-  }
-
-  /**
-   * Stacks the input CMP gather f, and then replicates the stack into a
-   * returned CMP gather g. If any traces in f contain only zeros, the
-   * corresponding traces in g will contain only zeros.
-   */
-  private static float[][] stackAndReplicate(Nmo nmo, float[][] f) {
-    int nt = f[0].length;
-    int nx = f.length;
-    float[] s = new float[nt];
-    for (int ix=0; ix<nx; ++ix)
-      add(f[ix],s,s);
-    float[] ss = getStackScaling(nmo,f);
-    boolean[][] nz = getNonZeroMask(nmo,f);
-    float[][] g = new float[nx][nt];
-    for (int ix=0; ix<nx; ++ix) {
-      mul(ss,s,g[ix]);
-      for (int it=0; it<nt; ++it) {
-        if (!nz[ix][it])
-          g[ix][it] = 0.0f;
-      }
-    }
-    return g;
-  }
-  private static float[] getStackScaling(Nmo nmo, float[][] f) {
-    int nt = f[0].length;
-    int nx = f.length;
-    boolean[][] mask = getNonZeroMask(nmo,f);
-    float[] s = new float[nt];
-    for (int ix=0; ix<nx; ++ix) {
-      for (int it=0; it<nt; ++it) {
-        if (mask[ix][it])
-          s[it] += 1.0f;
-      }
-    }
-    for (int it=0; it<nt; ++it)
-      s[it] = 1.0f/max(s[it],1.0f);
-    return s;
-  }
-  private static boolean[][] getNonZeroMask(Nmo nmo, float[][] f) {
-    int nt = f[0].length;
-    int nx = f.length;
-    float[][] a = nmo.getAmplitudes();
-    boolean[][] mask = new boolean[nx][nt];
-    for (int ix=0; ix<nx; ++ix) {
-      boolean nz = nonZero(f[ix]);
-      if (nz) {
-        for (int it=0; it<nt; ++it) {
-          mask[ix][it] = a[ix][it]>0.0f;
-        }
-      }
-    }
-    return mask;
-  }
-
-  private static float[][] applyFilter(int nh, int kh, float[] h, float[][] f)
+  private static float[][] applyFilter(
+    int nh, int kh, float[] h, float[][] f)
   {
     int nt = f[0].length;
     int nx = f.length;
@@ -490,21 +383,43 @@ public class WaveletNmo {
     int nx = f.length;
     for (int ix=0; ix<nx; ++ix)
       conv(nh,kh,h,nt,0,f[ix],nt,0,g[ix]);
+    preserveLeadingZeros(f,g);
   }
 
-  private static double dot(float[][] f, float[][] g) {
+  private static void preserveLeadingZeros(float[][] f, float[][] g) {
+    int nx = f.length;
+    for (int ix=0; ix<nx; ++ix)
+      preserveLeadingZeros(f[ix],g[ix]);
+  }
+
+  private static void preserveLeadingZeros(float[] f, float[] g) {
+    int nt = f.length;
+    int nz = countLeadingZeros(f);
+    for (int it=0; it<nz; ++it)
+      g[it] = 0.0f;
+  }
+
+  private static int countLeadingZeros(float[] f) {
+    int n = f.length;
+    int nz = 0;
+    for (int i=0; i<n && f[i]==0.0f; ++i)
+      ++nz;
+    return nz;
+  }
+
+  private double dot(float[][] f, float[][] g) {
     int nt = f[0].length;
     int nx = f.length;
     double sum = 0.0;
     for (int ix=0; ix<nx; ++ix) 
-      for (int it=0; it<nt; ++it) 
+      for (int it=_itmin; it<=_itmax; ++it) 
         sum += f[ix][it]*g[ix][it];
     return sum;
   }
 
-  private static float rms(float[][] f) {
+  private float rms(float[][] f) {
     int nt = f[0].length;
-    int nxnz = countNonZero(f);
-    return (float)(sqrt(dot(f,f)/nxnz/nt));
+    int nx = f.length;
+    return (float)(sqrt(dot(f,f)/nx/nt));
   }
 }
