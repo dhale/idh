@@ -12,8 +12,8 @@ from warp import NormalMoveout,WaveletNmo
 pngDir = None
 
 def main(args):
-  #goNmoVigGather()
-  goEstimateWaveletFromVigGather()
+  goNmoVigGather()
+  #goEstimateWaveletFromVigGather()
 
 def goNmoVigGather():
   """ Applies NMO correction to Viking Graben gather """

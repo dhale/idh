@@ -61,7 +61,7 @@ def goEstimateWaveletFromGather(name):
     if zp:
       na,ka = 5,-2
       nh,kh = 251,-125
-      decay *= 5.0
+      decay *= 4.0
     else:
       na,ka = 11,0
       nh,kh = 151,-25
