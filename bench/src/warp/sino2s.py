@@ -46,14 +46,14 @@ nt,nx = 2001,721
 ni,nl = 501,351
 st,sx = Sampling(nt),Sampling(nx)
 si,sl = Sampling(ni),Sampling(nl)
-pngDir = "./png/sinos/"
-#pngDir = None
+#pngDir = "./png/sinos/"
+pngDir = None
 
 def main(args):
-  goImages()
-  goErrors()
-  #goShifts1()
-  #goShifts2()
+  #goImages()
+  #goErrors()
+  goShifts1()
+  goShifts2()
 
 def vpvs(u):
   n1,n2 = len(u[0]),len(u)
