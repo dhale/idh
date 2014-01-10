@@ -702,6 +702,7 @@ public class WellLogWarping {
   private float _epow = 1.0f;
   private float _enull = -FLT_MIN;
   private float _vnull = -999.2500f;
+  private static final float SUM_SCL = 0.001f;
 
   /**
    * Arrays of pairs of depth sample indices (is,js) with weights ws. These
@@ -822,10 +823,12 @@ public class WellLogWarping {
         int jk = js[k];
         float wk = ws[k];
         float scl = wk*wk;
+        float sum = 0.0f; // is this the best value?
         float dif = jk-ik;
+        sum *= scl*SUM_SCL;
         dif *= scl;
-        yi[ik] += dif;
-        yj[jk] -= dif;
+        yi[ik] += sum+dif;
+        yj[jk] += sum-dif;
       }
     }
   }
@@ -854,7 +857,7 @@ public class WellLogWarping {
         float scl = wk*wk;
         float sum = xi[ik]+xj[jk];
         float dif = xi[ik]-xj[jk];
-        sum *= scl*0.01f;
+        sum *= scl*SUM_SCL;
         dif *= scl;
         yi[ik] += sum+dif;
         yj[jk] += sum-dif;
