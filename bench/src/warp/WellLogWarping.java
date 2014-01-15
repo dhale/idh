@@ -6,6 +6,10 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package warp;
 
+/*
+TODO: in preconditioner M, subtract horizontal average of shifts s
+*/
+
 import java.util.Random;
 
 import edu.mines.jtk.dsp.RecursiveExponentialFilter;
@@ -447,7 +451,7 @@ public class WellLogWarping {
 
     // Use CG to solve least-squares equations for shifts s.
     float sigma = 10.0f;
-    float small = 0.001f;
+    float small = 0.005f;
     int niter = 1000;
     float[][] r = new float[nl][nk]; // for right-hand side
     float[][] s = new float[nl][nk]; // for the shifts
@@ -458,7 +462,8 @@ public class WellLogWarping {
     VecArrayFloat2 vr = new VecArrayFloat2(r);
     VecArrayFloat2 vs = new VecArrayFloat2(s);
     cs.solve(a,m,vr,vs);
-    m.test(s);
+    //cs.solve(a,vr,vs);
+    //m.test(s);
     invertShifts(s);
     return s;
   }
@@ -473,11 +478,33 @@ public class WellLogWarping {
     int nk = f[0].length;
     int nl = f.length;
     float[][] g = fillfloat(_vnull,nk,nl);
+
+    // For all logs, ...
     for (int il=0; il<nl; ++il) {
+
+      // For all depths, ...
       for (int ik=0; ik<nk; ++ik) {
-        int jk = (int)(ik-s[il][ik]+0.5f);
-        if (0<=jk && jk<nk && f[il][jk]!=_vnull)
+
+        // Depth (in samples) at which to interpolate log.
+        float zk = ik-s[il][ik];
+
+        // Nearest-neighbor interpolation.
+        int jk = (int)(zk+0.5f);
+        if (0<=jk && jk<nk && f[il][jk]!=_vnull) {
           g[il][ik] = f[il][jk];
+        }
+        /* 
+        // Linear interpolation. Smears outliers!
+        int jk = (int)zk;
+        if (0<=jk && jk<nk && f[il][jk]!=_vnull) {
+          if (jk<nk-1 && f[il][jk+1]!=_vnull) {
+            float dk = zk-jk;
+            g[il][ik] = (1.0f-dk)*f[il][jk]+dk*f[il][jk+1];
+          } else {
+            g[il][ik] = f[il][jk];
+          }
+        }
+        */
       }
     }
     return g;
@@ -736,6 +763,50 @@ public class WellLogWarping {
       applyLhs(_ps,x,y);
     }
     private Pairs[] _ps;
+  }
+  private static class Ml implements CgSolver.A {
+    Ml(double sigma, int nk, int nl) {
+      _ref = new RecursiveExponentialFilter(sigma);
+      _ref.setEdges(RecursiveExponentialFilter.Edges.OUTPUT_ZERO_SLOPE);
+      _s = new float[nk];
+    }
+    public void apply(Vec vx, Vec vy) {
+      float[][] x = ((VecArrayFloat2)vx).getArray();
+      float[][] y = ((VecArrayFloat2)vy).getArray();
+      copy(x,y);
+      subtractMeanOverLogs(y);
+      _ref.apply1(y,y);
+      subtractMeanOverLogs(y);
+    }
+    private void subtractMeanOverLogs(float[][] x) {
+      int nk = x[0].length;
+      int nl = x.length;
+      zero(_s);
+      for (int il=0; il<nl; ++il) {
+        for (int ik=0; ik<nk; ++ik) {
+          _s[ik] += x[il][ik];
+        }
+      }
+      float scale = 1.0f/nl;
+      for (int il=0; il<nl; ++il) {
+        for (int ik=0; ik<nk; ++ik) {
+          x[il][ik] -= _s[ik]*scale;
+        }
+      }
+    }
+    public void test(float[][] x) {
+      int nk = x[0].length;
+      int nl = x.length;
+      zero(_s);
+      for (int il=0; il<nl; ++il) {
+        for (int ik=0; ik<nk; ++ik) {
+          _s[ik] += x[il][ik];
+        }
+      }
+      trace("M.test: sum="); dump(_s);
+    }
+    private RecursiveExponentialFilter _ref;
+    float[] _s; // used to efficiently compute sum over logs
   }
   private static class M implements CgSolver.A {
     M(double sigma, int nk, int nl) {

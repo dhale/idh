@@ -37,7 +37,8 @@ def main(args):
 
 def goShifts():
   sz,fs = resample(logs,curve)
-  fs = [fs[0],fs[4],fs[9],fs[14],fs[17],fs[20]] # deepest 6 velocity logs
+  #fs = [fs[0],fs[4],fs[9],fs[14],fs[17],fs[20]] # deepest 6 velocity logs
+  fs = [fs[0],fs[4],fs[9],fs[11],fs[14],fs[17],fs[20]]
   #fs = [fs[ 1],fs[ 2],fs[ 3],fs[ 4],fs[ 7],
   #      fs[11],fs[21],fs[22],fs[33],fs[35],
   #      fs[43],fs[48],fs[50],fs[56],fs[66],
@@ -56,6 +57,7 @@ def goShifts():
     fclips = (2.0,2.8)
   fs = wlw.replaceNulls(fs,freplace)
   gs = wlw.replaceNulls(gs,freplace)
+  """
   sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
   sp.setSize(650,550)
   sp.setVLabel("Depth (km)")
@@ -63,9 +65,10 @@ def goShifts():
   sp.addColorBar("Shifts (m)")
   sp.plotPanel.setColorBarWidthMinimum(90)
   pv = sp.addPixels(sz,Sampling(nl),s)
-  #pv.setClips(-250,250)
+  pv.setClips(-250,250)
   pv.setInterpolation(PixelsView.Interpolation.NEAREST)
   pv.setColorModel(cjet)
+  """
   sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
   sp.setSize(650,550)
   sp.setVLabel("Depth (km)")
@@ -78,7 +81,7 @@ def goShifts():
   pv.setClips(fclips[0],fclips[1])
   sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
   sp.setSize(650,550)
-  sp.setVLabel("Depth (km)")
+  sp.setVLabel("Relative geologic time")
   sp.setHLabel("Log index")
   sp.addColorBar("Velocity (km/s)")
   sp.plotPanel.setColorBarWidthMinimum(90)
