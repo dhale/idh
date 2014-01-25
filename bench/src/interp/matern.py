@@ -7,8 +7,8 @@ from shared import *
 pngDir = None
 
 def main(args):
-  #goFigures()
-  goCompare()
+  goFigures()
+  #goCompare()
 
 def goCompare():
   n1,n2 = 201,201

@@ -52,19 +52,25 @@ pngDir = None
 def main(args):
   #goImages()
   #goErrors()
-  goShifts1()
-  goShifts2()
+  #goShifts1()
+  #goShifts2()
+  goWrite()
 
-def vpvs(u):
-  n1,n2 = len(u[0]),len(u)
-  h = [1,-1]
-  v = copy(u)
-  for i2 in range(n2):
-    Conv.conv(2,0,h,n1,0,u[i2],n1,0,v[i2])
-    add(1.0,mul(2.0,v[i2]),v[i2])
-    v[i2][0] = v[i2][1]
-  print "v: min =",min(v)," max =",max(v)
-  return v
+def goWrite():
+  f,g = getSinoImages()
+  f = copy(ni,nx,f)
+  g = copy(ni+nl,nx,g)
+  h = copy(f)
+  sf = Sampling(ni)
+  sg = Sampling(ni+nl)
+  dw = DynamicWarpingR(sl.first,sl.last,si,sx)
+  dw.setStrainLimits(0.0,2.0,-0.1,0.1)
+  dw.setSmoothness(50,20)
+  u = dw.findShifts(sf,f,sg,g)
+  h = dw.applyShifts(sg,g,u)
+  writeImage("pp.dat",f)
+  writeImage("pswarped.dat",h)
+  writeImage("shifts.dat",u)
 
 def goShifts2():
   f,g = getSinoImages()
@@ -167,6 +173,17 @@ def goImages():
   plotImage(g,pp=False,zoom=True,png="psz")
 
 #############################################################################
+
+def vpvs(u):
+  n1,n2 = len(u[0]),len(u)
+  h = [1,-1]
+  v = copy(u)
+  for i2 in range(n2):
+    Conv.conv(2,0,h,n1,0,u[i2],n1,0,v[i2])
+    add(1.0,mul(2.0,v[i2]),v[i2])
+    v[i2][0] = v[i2][1]
+  print "v: min =",min(v)," max =",max(v)
+  return v
 
 def rms2(x):
   n1,n2 = len(x[0]),len(x)
@@ -304,6 +321,12 @@ def readImage(fileName,n1,n2):
   ais.readFloats(x)
   ais.close()
   return x
+
+def writeImage(fileName,x):
+  dataDir = "/data/seis/sino/"
+  aos = ArrayOutputStream(dataDir+fileName)
+  aos.writeFloats(x)
+  aos.close()
 
 #############################################################################
 # Do everything on Swing thread.

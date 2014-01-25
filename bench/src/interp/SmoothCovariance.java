@@ -482,8 +482,8 @@ public class SmoothCovariance implements Covariance {
   public static void main(String[] args) {
     SwingUtilities.invokeLater(new Runnable() {
     public void run() {
-      //go();
-      tabulateMaternMatch2();
+      go();
+      //tabulateMaternMatch2();
     }});
   }
   public static void go() {

@@ -9,14 +9,17 @@ n2,d2,f2 = None,None,None
 
 def main(args):
   makePnzSamplings()
-  #goTensors()
+  goTensors()
   #goSimulate()
-  goKriging()
+  #goKriging()
 
 def goTensors():
   g,s1,s2 = readPnzImage()
   et = makeStructureTensors(s1,s2,g)
-  plot(None,None,None,s1,s2,g,et=et)
+  plot(None,None,None,s1,s2,g,cmap=gray,
+       clab="Seismic amplitude",png="seis")
+  plot(None,None,None,s1,s2,g,et=et,
+       clab="Seismic amplitude",png="tens")
 
 def goSimulate():
   g,s1,s2 = readPnzImage()
@@ -34,28 +37,35 @@ def goSimulate():
 
 def goKriging():
   g,s1,s2 = readPnzImage()
-  plot(None,None,None,s1,s2,g,cmap=gray,clab="Seismic amplitude")
+  plot(None,None,None,s1,s2,g,cmap=gray,
+       clab="Seismic amplitude",png="seis")
   ets = makeStructureTensors(s1,s2,g)
   #eti = makeIdentityTensors(s1,s2)
   p,px,x1,x2 = simulatePorosity(s1,s2,ets)
   pmin,pmax = min(p),max(p)
-  plot(None,x1,x2,s1,s2,p,mv=True,cmin=pmin,cmax=pmax,cmap=jet,clab="Porosity")
+  plot(None,None,None,s1,s2,p,cmin=pmin,cmax=pmax,cmap=jet,
+       clab="Porosity",png="model")
   s1s = Sampling(1+s1.count/3,3*s1.delta,s1.first)
   s2s = Sampling(1+s2.count/3,3*s2.delta,s2.first)
   ps = gridSimple(px,x1,x2,s1s,s2s)
-  plot(None,None,None,s1s,s2s,ps,cmin=pmin,cmax=pmax,cmap=tjet,clab="Porosity")
+  plot(None,None,None,s1s,s2s,ps,cmin=pmin,cmax=pmax,cmap=tjet,
+       clab="Porosity",png="data")
   for et in [ets,None]:
     for pa in [False,True]:
       if et and pa:
+        png = "modelp"
         print "Kriging for Paciorek approximation to model covariance"
       elif et and not pa:
         print "Kriging for tensor-guided model covariance"
+        png = "models"
       elif not et and not pa:
         print "Kriging for stationary isotropic model covariance"
+        png = "modeli"
       else:
         continue # Paciorek approximation is useful only with tensors
       pk = gridKriging(px,x1,x2,s1,s2,et,pa)
-      plot(None,None,None,s1,s2,pk,cmin=pmin,cmax=pmax,cmap=jet,clab="Porosity")
+      plot(None,None,None,s1,s2,pk,cmin=pmin,cmax=pmax,cmap=jet,
+           clab="Porosity",png=png)
       printMaxErrorForKnownSamples(px,x1,x2,s1,s2,pk)
       printRmsErrorForGriddedSamples(pk,p)
       print
@@ -205,21 +215,27 @@ def applyBilateralFilter(sigmaS,sigmaR,f):
 #############################################################################
 # Plotting
 
-pngDir = None # directory to use for png files
-#pngDir = "../../png/interp" # directory to use for png files
+#pngDir = None # directory to use for png files
+pngDir = "./png/" # directory to use for png files
+slides = False
 
 def plot(f,x1,x2,s1,s2,g,png=None,
          cmin=0,cmax=0,cmap=None,clab=None,mv=True,et=None):
   sp = SimplePlot(SimplePlot.Origin.LOWER_LEFT)
-  sp.setSize(1000,810)
-  sp.setFontSizeForSlide(1.0,0.9)
+  if slides:
+    sp.setSize(1000,810)
+    sp.setFontSizeForSlide(1.0,0.9)
+    sp.plotPanel.setColorBarWidthMinimum(200)
+  else:
+    sp.setSize(640,530)
+    sp.setFontSizeForPrint(8,240)
+    sp.plotPanel.setColorBarWidthMinimum(90)
   sp.setHLabel("Inline (km)")
   sp.setVLabel("Crossline (km)")
   sp.setLimits(s1.first,s2.first,s1.last,s2.last)
   if not clab:
     clab = "Amplitude"
   sp.addColorBar(clab)
-  sp.plotPanel.setColorBarWidthMinimum(200)
   #sp.plotPanel.setVInterval(100)
   pv = sp.addPixels(s1,s2,g)
   if cmin==cmax:
@@ -237,7 +253,7 @@ def plot(f,x1,x2,s1,s2,g,png=None,
   if et:
     tv = TensorsView(s1,s2,et)
     tv.setLineColor(Color.YELLOW)
-    tv.setLineWidth(2.0)
+    tv.setLineWidth(1.5)
     tv.setScale(2.0)
     sp.add(tv)
   if png and pngDir: sp.paintToPng(360,3.33,pngDir+png+".png")

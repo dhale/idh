@@ -25,32 +25,51 @@ pmin,pmax = -0.5,0.5
 
 
 def main(args):
-  slopesLsf()
-  slopesPwd()
+  #slopesLsf()
+  #slopesPwd()
+  compare()
+
+def compare():
+  sigma1,sigma2 = 6,1
+  eps1,eps2 = 0.5*sigma1,0.5*sigma2
+  f = readImage(ffile)
+  pwd = PlaneWaveDestructor(-4.0,4.0)
+  pwd.setSmoothness(eps1,eps2)
+  pa = pwd.findSlopes(f)
+  ga = pwd.applyFilter(pa,f)
+  lsf = LocalSlopeFinder(sigma1,sigma2,4.0)
+  pb = zerofloat(n1,n2)
+  lsf.findSlopes(f,pb,None)
+  gb = pwd.applyFilter(pb,f)
+  plot(pa,cmin=pmin,cmax=pmax,cmap=jet,title="slopes: pwd")
+  plot(pb,cmin=pmin,cmax=pmax,cmap=jet,title="slopes: lsf")
+  plot(ga,cmin=emin,cmax=emax,title="output image: pwd")
+  plot(gb,cmin=emin,cmax=emax,title="output image: lsf")
+  plot(f,cmin=fmin,cmax=fmax,title="input image")
 
 def slopesPwd():
   f = readImage(ffile)
   pwd = PlaneWaveDestructor(-4.0,4.0)
-  pwd.setSmoothness(8,2)
-  pwd.setLateralBias(0.0)
-  pwd.setOuterIterations(5)
+  pwd.setSmoothness(1.5,0.5)
+  pwd.setLateralBias(0.0) # 0.0 is the default
+  pwd.setOuterIterations(5) # 5 is the default
   p = pwd.findSlopes(f)
   g = pwd.applyFilter(p,f)
   plot(f,cmin=fmin,cmax=fmax,title="input image")
-  #plot(g,cmin=emin,cmax=emax,title="output image")
+  plot(g,cmin=emin,cmax=emax,title="output image")
   plot(p,cmin=pmin,cmax=pmax,cmap=jet,title="slopes: pwd")
 
 def slopesLsf():
   f = readImage(ffile)
-  sigma1 = 4.0
-  sigma2 = 2.0
+  sigma1 = 3.0
+  sigma2 = 1.0
   p2 = zerofloat(n1,n2)
   el = zerofloat(n1,n2)
   lsf = LocalSlopeFinder(sigma1,sigma2,4.0)
   lsf.findSlopes(f,p2,el)
   #plot(f,cmin=fmin,cmax=fmax,title="input image")
   plot(p2,cmin=pmin,cmax=pmax,cmap=jet,title="slopes: lsf")
-  plot(el,cmap=jet,title="linearities: lsf")
+  #plot(el,cmap=jet,title="linearities: lsf")
 
 #############################################################################
 # graphics
