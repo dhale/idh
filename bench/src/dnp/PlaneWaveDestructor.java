@@ -25,6 +25,17 @@ import static edu.mines.jtk.util.ArrayMath.*;
  * variations in slopes. The balance between these two goals is controlled by
  * smoothness parameters that may be specified for each image dimension.
  * <p>
+ * As described by Fomel (2002), the requirement that slopes vary smoothly,
+ * and the fact that the output of a plane-wave destruction filter is a
+ * non-linear function of those slopes, leads to the use of an iterative
+ * conjugate-gradient method for estimating slopes. One difference between
+ * this implementation and that described by Fomel is that this class uses the
+ * smoothness parameters to control directly the smoothness of the final
+ * estimated slopes p, whereas Fomel describes using smoothness parameters to
+ * control the smoothness of incremental updates dp in the iterative method
+ * used to estimate slopes. In practice, I find that repeatedly accumulating
+ * smooth updates dp need not yield final slopes p that are smooth.
+ * <p>
  * Fomel's (2002) description of PWD uses either backward or forward
  * finite-difference approximations to lateral derivatives, which means that
  * slope estimates are obtained at locations halfway between image columns.
@@ -139,6 +150,12 @@ public class PlaneWaveDestructor {
   public void updateSlopes(float[][] f, float[][] p) {
     int n1 = f[0].length;
     int n2 = f.length;
+
+    // Normalize input so that the local rms is one, so that the smoothness of
+    // slope updates will be independent of the local amplitudes of image
+    // features. Without this normalization, slopes in low-amplitude parts of
+    // an image would tend to be smoother than in high-amplitude parts.
+    f = divideByRms(16.0,16.0,f);
 
     // Preconditioner for conjugate-gradient iterations.
     M2 m2 = new M2(_eps1,_eps2);
@@ -315,10 +332,37 @@ public class PlaneWaveDestructor {
       _rgf.apply0X(f,e);
       e = applyFilter(p,e);
       float[][] y = new float[n2][n1];
-      for (int i2=0; i2<n2; ++i2) {
-        for (int i1=0; i1<n1; ++i1) {
-          y[i2][i1] -= _a[i2][i1]*e[i2][i1];
+      for (int i2=1; i2<n2; ++i2) { // for most image samples, ...
+        for (int i1=1; i1<n1; ++i1) {
+          float ai = _a[i2][i1];
+          float p0 = p[i2][i1];
+          float p1 = p[i2][i1-1];
+          float p2 = p[i2-1][i1];
+          float y0 = e[i2][i1];                 // gather from inputs
+          float y1 = _e1*(p0-p1);
+          float y2 = _e2*(p0-p2);
+          y[i2][i1] -= ai*y0+_e1*y1+_e2*y2; // scatter to outputs
+          y[i2][i1-1] += _e1*y1;
+          y[i2-1][i1] += _e2*y2;
         }
+      }
+      for (int i1=0,i2=1; i2<n2; ++i2) { // special case: i1 = 0
+        float ai = _a[i2][i1];
+        float p0 = p[i2][i1];
+        float p2 = p[i2-1][i1];
+        float y0 = e[i2][i1];
+        float y2 = _e2*(p0-p2);
+        y[i2][i1] -= ai*y0+_e2*y2;
+        y[i2-1][i1] += _e2*y2;
+      }
+      for (int i1=1,i2=0; i1<n1; ++i1) { // special case: i2 = 0
+        float ai = _a[i2][i1];
+        float p0 = p[i2][i1];
+        float p1 = p[i2][i1-1];
+        float y0 = e[i2][i1];
+        float y1 = _e1*(p0-p1);
+        y[i2][i1] -= ai*y0+_e1*y1;
+        y[i2][i1-1] += _e1*y1;
       }
       return new VecArrayFloat2(y);
     }
@@ -360,5 +404,24 @@ public class PlaneWaveDestructor {
       }
     }
     return gnorm;
+  }
+
+  private float[][] divideByRms(double sigma1, double sigma2, float[][] f) {
+    int n1 = f[0].length;
+    int n2 = f.length;
+    float[][] g = mul(f,f);
+    RecursiveExponentialFilter ref = 
+      new RecursiveExponentialFilter(16.0,16.0);
+    ref.apply(g,g);
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        if (g[i2][i1]>0.0f) {
+          g[i2][i1] = f[i2][i1]/sqrt(g[i2][i1]);
+        } else {
+          g[i2][i1] = 0.0f;
+        }
+      }
+    }
+    return g;
   }
 }
