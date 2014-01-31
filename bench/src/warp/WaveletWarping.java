@@ -331,16 +331,28 @@ public class WaveletWarping {
     return d;
   }
 
+  private double dot(float[] x, float[] y) {
+    int nt = x.length;
+    int itlo = (_itmin<_itmax)?_itmin:0;
+    int ithi = (_itmin<_itmax)?_itmax:nt-1;
+    double sum = 0.0;
+    for (int it=itlo; it<=ithi; ++it) 
+      sum += x[it]*y[it];
+    return sum;
+  }
+
   /**
    * Returns the largest squeezing r(t) = u'(t) not greater than rmax.
    * If less than or equal to one, then no squeezing is implied by u(t).
    */
-  private static float squeezing(float rmax, float[] u) {
+  private float squeezing(float rmax, float[] u) {
     int nt = u.length;
-    float r = u[1]-u[0];
-    for (int it=1; it<nt; ++it) {
+    int itlo = max(1,_itmin);
+    int ithi = min(_itmax,nt-1);
+    float r = 0.0f;
+    for (int it=itlo; it<=ithi; ++it) {
       float du = u[it]-u[it-1];
-      if (du>r)
+      if (r<du)
         r = du;
     }
     return min(r,rmax);
@@ -350,7 +362,7 @@ public class WaveletWarping {
    * If necessary, applies an anti-alias filter to the sequence x(t).
    * An anti-alias filter is necessary if the warping includes squeezing.
    */
-  private static float[] aaf(float rmax, float[] u, float[] x) {
+  private float[] aaf(float rmax, float[] u, float[] x) {
     int nt = u.length;
     float r = squeezing(RMAX,u);
     if (r>1.0) {
@@ -407,16 +419,6 @@ public class WaveletWarping {
   {
     int nt = f.length;
     conv(nh,kh,h,nt,0,f,nt,0,g);
-  }
-
-  private double dot(float[] x, float[] y) {
-    int nt = x.length;
-    int itlo = (_itmin<_itmax)?_itmin:0;
-    int ithi = (_itmin<_itmax)?_itmax:nt-1;
-    double sum = 0.0;
-    for (int it=itlo; it<=ithi; ++it) 
-      sum += x[it]*y[it];
-    return sum;
   }
 
   private float rms(float[] x) {
