@@ -9,9 +9,9 @@ n2,d2,f2 = None,None,None
 
 def main(args):
   makePnzSamplings()
-  goTensors()
+  #goTensors()
   #goSimulate()
-  #goKriging()
+  goKriging()
 
 def goTensors():
   g,s1,s2 = readPnzImage()
@@ -64,8 +64,10 @@ def goKriging():
       else:
         continue # Paciorek approximation is useful only with tensors
       pk = gridKriging(px,x1,x2,s1,s2,et,pa)
-      plot(None,None,None,s1,s2,pk,cmin=pmin,cmax=pmax,cmap=jet,
-           clab="Porosity",png=png)
+      #plot(None,None,None,s1,s2,pk,cmin=pmin,cmax=pmax,cmap=jet,
+      #     clab="Porosity",png=png)
+      plot(None,None,None,s1,s2,sub(pk,p),cmin=-0.07,cmax=0.07,cmap=jet,
+           clab="Porosity error",png="e"+png)
       printMaxErrorForKnownSamples(px,x1,x2,s1,s2,pk)
       printRmsErrorForGriddedSamples(pk,p)
       print
@@ -215,8 +217,8 @@ def applyBilateralFilter(sigmaS,sigmaR,f):
 #############################################################################
 # Plotting
 
-#pngDir = None # directory to use for png files
-pngDir = "./png/" # directory to use for png files
+pngDir = None # directory to use for png files
+#pngDir = "./png/" # directory to use for png files
 slides = False
 
 def plot(f,x1,x2,s1,s2,g,png=None,
