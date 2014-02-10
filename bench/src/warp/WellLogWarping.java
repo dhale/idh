@@ -465,6 +465,7 @@ public class WellLogWarping {
     //cs.solve(a,vr,vs);
     //m.test(s);
     invertShifts(s);
+    m.subtractMeanOverLogs(s);
     return s;
   }
 
@@ -729,7 +730,7 @@ public class WellLogWarping {
   private float _epow = 1.0f;
   private float _enull = -FLT_MIN;
   private float _vnull = -999.2500f;
-  private static final float SUM_SCL = 0.001f;
+  private static final float SUM_SCL = 0.000f;
 
   /**
    * Arrays of pairs of depth sample indices (is,js) with weights ws. These
@@ -764,8 +765,8 @@ public class WellLogWarping {
     }
     private Pairs[] _ps;
   }
-  private static class Ml implements CgSolver.A {
-    Ml(double sigma, int nk, int nl) {
+  private static class M implements CgSolver.A {
+    M(double sigma, int nk, int nl) {
       _ref = new RecursiveExponentialFilter(sigma);
       _ref.setEdges(RecursiveExponentialFilter.Edges.OUTPUT_ZERO_SLOPE);
       _s = new float[nk];
@@ -778,7 +779,7 @@ public class WellLogWarping {
       _ref.apply1(y,y);
       subtractMeanOverLogs(y);
     }
-    private void subtractMeanOverLogs(float[][] x) {
+    public void subtractMeanOverLogs(float[][] x) {
       int nk = x[0].length;
       int nl = x.length;
       zero(_s);
@@ -808,8 +809,8 @@ public class WellLogWarping {
     private RecursiveExponentialFilter _ref;
     float[] _s; // used to efficiently compute sum over logs
   }
-  private static class M implements CgSolver.A {
-    M(double sigma, int nk, int nl) {
+  private static class Mold implements CgSolver.A {
+    Mold(double sigma, int nk, int nl) {
       _ref = new RecursiveExponentialFilter(sigma);
       _ref.setEdges(RecursiveExponentialFilter.Edges.OUTPUT_ZERO_SLOPE);
       _e0 = new float[nk];
