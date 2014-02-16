@@ -1,5 +1,6 @@
 #############################################################################
-# Dynamic warping for 2D images
+# Smooth dynamic warping. This script was used in research and to generate
+# figures for the CWP report by Hale and Compton on smooth dynamic warping.
 """
 two noisy images
 pp ps (no zoom)
@@ -68,7 +69,9 @@ def goWrite():
   dw.setSmoothness(50,20)
   u = dw.findShifts(sf,f,sg,g)
   h = dw.applyShifts(sg,g,u)
+  print "max Tps =",max(add(rampfloat(0.0,1.0,0.0,ni,nx),u))
   writeImage("pp.dat",f)
+  writeImage("ps.dat",g)
   writeImage("pswarped.dat",h)
   writeImage("shifts.dat",u)
 

@@ -37,7 +37,7 @@ def main(args):
 
 def goShifts():
   sz,fs = resample(logs,curve)
-  #fs = [fs[0],fs[4],fs[9],fs[14],fs[17],fs[20]] # deepest 6 velocity logs
+  fs = [fs[0],fs[4],fs[9],fs[14],fs[17],fs[20]] # deepest 6 velocity logs
   #fs = [fs[0],fs[4],fs[9],fs[11],fs[14],fs[17],fs[20]]
   #fs = [fs[ 1],fs[ 2],fs[ 3],fs[ 4],fs[ 7],
   #      fs[11],fs[21],fs[22],fs[33],fs[35],

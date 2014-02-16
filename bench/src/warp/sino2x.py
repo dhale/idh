@@ -1,5 +1,7 @@
 #############################################################################
-# Dynamic warping for 2D images
+# Dynamic warping of the sino PP and PS images. This script was used in
+# research that predated the development of smooth dynamic warping, and
+# is kept only for reference.
 
 from imports import *
 from warp import DynamicWarpingX as DynamicWarping

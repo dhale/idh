@@ -1,5 +1,7 @@
 #############################################################################
-# Dynamic warping for 2D images
+# Dynamic warping of the sino PP and PS images. This script was used in
+# initial research of smooth dynamic warping, but is kept here only for
+# reference. It was superceded by sino2s.py.
 
 from imports import *
 from warp import DynamicWarpingR
