@@ -31,7 +31,7 @@ def goSimpleTest():
   st = Sampling(nt,dt,ft)
   for mp in [True,False]: # True, for minimum-phase; False for other
     hk = getWavelet(freq,decay,nh,kh,mp) # known wavelet
-    for r in [0.5]: # 0.5 for stretch; 2.0 for squeeze
+    for r in [0.5,2.0]: # 0.5 for stretch; 2.0 for squeeze
       aw = zerofloat(na); aw[-ka] = 1.0
       hw = zerofloat(nh); hw[-kh] = 1.0
       p,q = makeImpulses(r,nt,ni)
@@ -48,7 +48,7 @@ def goSimpleTest():
       ak = ww.getWaveletH(nh,kh,hk,na,ka) # known inverse wavelet
       #dump(ak)
       for iter in range(2):
-        bpf.apply(hw,hw)
+        if bpf: bpf.apply(hw,hw)
         aw = ww.getInverseA(na,ka,nh,kh,hw,u,f,g) # estimated inverse
         hw = ww.getWaveletH(na,ka,aw,nh,kh) # estimated wavelet
         #dump(aw)
