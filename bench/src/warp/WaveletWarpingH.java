@@ -172,16 +172,25 @@ public class WaveletWarpingH {
     return stm.solve(ca1);
   }
   public float[] getWaveletH(
-    float sfac, int na, int ka, float[] a, int nh, int kh)
+    int nh, int kh, int na, int ka, float[] a,
+    float[] u, float[] f, float[] g)
   {
-    float[] one = {1.0f};
-    float[] ca1 = new float[nh];
-    float[] caa = new float[nh];
-    xcor(na,ka,a,1,0,one,nh,kh,ca1);
-    xcor(na,ka,a,na,ka,a,nh, 0,caa);
-    caa[0] *= sfac;
-    SymmetricToeplitzFMatrix stm = new SymmetricToeplitzFMatrix(caa);
-    return stm.solve(ca1);
+    // Sequence q = SLAg.
+    float[] ag = applyA(na,ka,a,g);
+    float[] lag = applyL(u,ag);
+    float[] q = applyS(u,lag);
+    int nt = q.length;
+
+    // Autocorrelation Q'Q and crosscorrelation Q'f.
+    float[] cqf = new float[nh];
+    float[] cqq = new float[nh];
+    xcor(nt,0,q,nt,0,f,nh,kh,cqf); // fix for itmin:itmax
+    xcor(nt,0,q,nt,0,q,nh, 0,cqq); // fix for itmin:itmax
+
+    // Solve for wavelet h.
+    cqq[0] *= _sfac*1.01f;
+    SymmetricToeplitzFMatrix stm = new SymmetricToeplitzFMatrix(cqq);
+    return stm.solve(cqf);
   }
   public float[] getWaveletH2(
     int nh, int kh, int na, int ka, float[] a,

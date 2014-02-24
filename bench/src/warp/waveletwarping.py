@@ -12,7 +12,48 @@ from warp import WaveletWarping
 pngDir = None
 
 def main(args):
-  goSimpleTest()
+  #goSimpleTest()
+  goSino()
+
+def goSino():
+  na,ka = 81,-20 # sampling for inverse wavelet A
+  nh,kh = 181,-90 # sampling for wavelet H
+  nt,dt,ft = 501,0.004,0.000 # used for plotting only
+  nx,dx,fx = 721,0.015,0.000
+  f,g,u = getSinoImages()
+  st = Sampling(nt,dt,ft)
+  sx = Sampling(nx,dx,fx)
+  tmin,tmax = 88,363
+  fmin,fmax = 0.0,0.5
+  sfac = 1.000
+  ww = WaveletWarping()
+  ww.setFrequencyRange(fmin,fmax)
+  ww.setTimeRange(tmin,tmax)
+  ww.setStabilityFactor(sfac)
+  aw = ww.getInverseA(na,ka,u,f,g) # estimated inverse wavelet
+  hw = ww.getWaveletH(na,ka,aw,nh,kh) # estimated wavelet
+  nhw = normalize(hw)
+  af = ww.applyA(na,ka,aw,f)
+  ag = ww.applyA(na,ka,aw,g)
+  slag = ww.applyS(u,ww.applyL(u,ag))
+  slg = ww.applyS(u,ww.applyL(u,g))
+  cmin,cmax = -0.5,0.5
+  #plotImage(st,sx,haslg,fmin=cmin,fmax=cmax,zoom=True)
+  #plotImage(st,sx,hslag,fmin=cmin,fmax=cmax,zoom=True)
+  plotImage(st,sx,f,fmin=cmin,fmax=cmax,zoom=True)
+  plotImage(st,sx,slg,fmin=cmin,fmax=cmax,zoom=True)
+  plotImage(st,sx,af,fmin=cmin,fmax=cmax,zoom=True)
+  plotImage(st,sx,slag,fmin=cmin,fmax=cmax,zoom=True)
+  f0 = ww.rms(f)
+  f1 = ww.rms(af)
+  g0 = ww.rms(slg)
+  g1 = ww.rms(slag)
+  e0 = ww.rms(sub(f,slg))
+  e1 = ww.rms(sub(af,slag))
+  print "f0 =",f0," f1 =",f1
+  print "g0 =",g0," g1 =",g1
+  print "e0 =",e0," e1 =",e1
+  #plotWavelets(Sampling(nh,dt,kh*dt),[nhw])
 
 def goSimpleTest():
   nt,ni = 481,2 # number of time samples; number of impulses
@@ -62,6 +103,30 @@ def goSimpleTest():
       #plotSequences(st,[baf,bslag],labels=["BAf","BSLAg"],title=title)
       plotSequences(st,[f,hslag],labels=["f","HSLAg"],title=title)
       plotWavelets(Sampling(nh,dt,kh*dt),[nhw,nhk],title=title)
+
+def getSinoImages():
+  dataDir = "/data/seis/sino/warp/"
+  n1f,n1g,d1,f1 = 501,852,0.004,0.0
+  n2,d2,f2 =  721,0.0150,0.000
+  f = readImage(dataDir+"pp.dat",n1f,n2)
+  g = readImage(dataDir+"ps.dat",n1g,n2)
+  u = readImage(dataDir+"shifts.dat",n1f,n2)
+  u = add(u,rampfloat(0.0,1.0,0.0,n1f,n2))
+  gain(100,f)
+  gain(100,g)
+  return f,g,u
+
+def readImage(fileName,n1,n2):
+  x = zerofloat(n1,n2)
+  ais = ArrayInputStream(fileName)
+  ais.readFloats(x)
+  ais.close()
+  return x
+
+def gain(hw,f):
+  g = mul(f,f)
+  RecursiveExponentialFilter(hw).apply1(g,g)
+  div(f,sqrt(g),f)
 
 def normalize(h):
   return div(h,max(max(h),-min(h)))
@@ -160,6 +225,28 @@ def plotWavelets(st,hs,hmax=None,title=None):
   sp.setHLabel("Time (s)")
   if title:
     sp.setTitle(title)
+
+def plotImage(st,sx,f,fmin=None,fmax=None,pp=True,zoom=False,png=None):
+  wpt = 252 # width (in points) of plot
+  sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
+  pv = sp.addPixels(st,sx,f)
+  if fmax:
+    if fmin:
+      pv.setClips(fmin,fmax)
+    else:
+      pv.setClips(-fmax,fmax)
+  sp.setFontSizeForPrint(8,wpt)
+  sp.setHLabel("Distance (km)")
+  sp.setVLabel("PP time (s)")
+  if zoom:
+    if pp:
+      sp.setVLimits(0.352,1.452)
+      #sp.setLimits(290,90,410,305)
+    else:
+      sp.setLimits(290,290,410,560)
+  sp.setSize(430,490)
+  if pngDir and png:
+    sp.paintToPng(720,wpt/72.0,pngDir+png+".png")
 
 #############################################################################
 # Do everything on Swing thread.

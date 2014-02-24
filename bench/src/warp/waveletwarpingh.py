@@ -41,15 +41,16 @@ def goSimpleTest():
       bpf = None
       if r<=1.0:
         u = add((1.0-r)*(nt-1),u)
-        bpf = BandPassFilter(0,0.5*r,0.05,0.01)
+        bpf = BandPassFilter(0,0.5*r,0.10*r,0.01)
       ww = WaveletWarpingH()
       ww.setTimeRange(tmin,tmax)
       ww.setStabilityFactor(sfac)
       ak = ww.getWaveletH(nh,kh,hk,na,ka) # known inverse wavelet
       #dump(ak)
-      for iter in range(2):
-        if bpf: bpf.apply(hw,hw)
+      for iter in range(5):
+        #if bpf: bpf.apply(hw,hw)
         aw = ww.getInverseA(na,ka,nh,kh,hw,u,f,g) # estimated inverse
+        #hw = ww.getWaveletH(nh,kh,na,ka,aw,u,f,g) # estimated wavelet
         hw = ww.getWaveletH(na,ka,aw,nh,kh) # estimated wavelet
         #dump(aw)
       sg = ww.applyS(u,g)
