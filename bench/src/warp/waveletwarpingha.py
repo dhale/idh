@@ -2,8 +2,8 @@
 # Demo wavelet estimation from warping.
 # This version minimizes || f - HSLAg ||, using iterative alternating
 # updates to H and A, where HA need not equal the identity operator I.
-# (1) find a such that f ~ HSLGa
-# (2) find h such that f ~ SLAg * h (shaping filter)
+# (1) find h such that f ~ SLAg * h (where h is a shaping filter)
+# (2) find a such that f ~ HSLGa (solving non-Toeplitz system)
 
 from imports import *
 
@@ -12,49 +12,50 @@ from warp import WaveletWarpingHA
 
 #############################################################################
 
-#pngDir = "./png"
-pngDir = None
+pngDir = "./png/sinow/"
+#pngDir = None
 
 def main(args):
   #goSimpleTest()
   goSino()
 
 def goSino():
-  na,ka = 11,-5 # sampling for inverse wavelet A
-  nh,kh = 101,-50 # sampling for wavelet H
+  na,ka = 81,-40 # sampling for inverse A of wavelet in PS image
+  nh,kh = 81,-40 # sampling for wavelet H in PP image
   nt,dt,ft = 501,0.004,0.000 # used for plotting only
   nx,dx,fx = 721,0.015,0.000
-  f,g,u = getSinoImages()
+  sa = Sampling(na,dt,ka*dt)
+  sh = Sampling(nh,dt,kh*dt)
   st = Sampling(nt,dt,ft)
   sx = Sampling(nx,dx,fx)
-  tmin,tmax = 88,363
-  fmin,fmax = 0.0,0.5
-  sfac,wha = 1.000,0.10
-  aw = zerofloat(na); aw[-ka] = 1.0
-  hw = zerofloat(nh); hw[-kh] = 1.0
+  tmin,tmax = 100,400 # PP time window
+  sfac = 1.000 # stabilization factor
+  wha = 0.000 # weight for HA = I terms
+  f,g,u = getSinoImages() # PP image, PS image, and warping u(t,x)
   ww = WaveletWarpingHA()
   ww.setTimeRange(tmin,tmax)
   ww.setStabilityFactor(sfac)
-  ww.setWeightHA(wha)
-  for iter in range(20):
-    aw = ww.getInverseA(na,ka,nh,kh,hw,u,f,g) # estimated inverse
-    hw = ww.getWaveletH(nh,kh,na,ka,aw,u,f,g) # estimated wavelet
-  hf = ww.getWaveletH(na,ka,aw,nh,kh)
-  nhf = normalize(hf)
-  nhw = normalize(hw)
-  slg = ww.applyS(u,ww.applyL(u,g))
-  hslag = ww.applyHSLA(na,ka,aw,nh,kh,hw,u,g)
-  gain(100,f)
-  gain(100,slg)
-  gain(100,hslag)
-  cmin,cmax = -2.0,2.0
-  plotImage(st,sx,f,fmin=cmin,fmax=cmax,zoom=True)
-  plotImage(st,sx,slg,fmin=cmin,fmax=cmax,zoom=True)
-  plotImage(st,sx,hslag,fmin=cmin,fmax=cmax,zoom=True)
-  e0 = ww.rms(sub(f,slg))
-  e1 = ww.rms(sub(f,hslag))
-  print "e0 =",e0," e1 =",e1
-  plotWavelets(Sampling(nh,dt,kh*dt),[nhw,nhf])
+  slg = ww.applyS(u,ww.applyL(u,g)) # PS warping without wavelets
+  plotImage(st,sx,f,zoom=True,png="pp")
+  plotImage(st,sx,slg,zoom=True,png="psw1")
+  e1 = ww.rms(sub(f,slg))
+  for niter in [0,9]:
+    for wha in [0]:
+      print "niter =",niter," wha =",wha
+      suffix = str(niter)+str(int(wha))
+      ww.setWeightHA(wha)
+      ag = zerofloat(na); ag[-ka] = 1.0 # initial inverse a in g
+      hf = ww.getWaveletH(nh,kh,na,ka,ag,u,f,g) # wavelet h in f
+      for jiter in range(niter):
+        ag = ww.getInverseA(na,ka,nh,kh,hf,u,f,g) # inverse a in g
+        hf = ww.getWaveletH(nh,kh,na,ka,ag,u,f,g) # wavelet h in f
+      hg = ww.getWaveletH(na,ka,ag,nh,kh) # wavelet in g
+      hslag = ww.applyHSLA(na,ka,ag,nh,kh,hf,u,g) # PS warping with wavelets
+      #hslag = mul(hslag,ww.rms(f)/ww.rms(hslag))
+      ew = ww.rms(sub(f,hslag))
+      print "  e1 =",e1," ew =",ew
+      plotImage(st,sx,hslag,zoom=True,png="psww"+suffix)
+      plotWaveletsPpPs(sh,hf,hg,png="wavelets"+suffix)
 
 def goSimpleTest():
   nt,ni = 481,2 # number of time samples; number of impulses
@@ -84,7 +85,7 @@ def goSimpleTest():
       ww.setWeightHA(wha)
       ak = ww.getWaveletH(nh,kh,hk,na,ka) # known inverse wavelet
       #dump(ak)
-      for iter in range(100):
+      for iter in range(500):
         aw = ww.getInverseA(na,ka,nh,kh,hw,u,f,g) # estimated inverse
         hw = ww.getWaveletH(nh,kh,na,ka,aw,u,f,g) # estimated wavelet
         #dump(aw)
@@ -94,8 +95,8 @@ def goSimpleTest():
       lag = ww.applyL(u,ag) # lowpass, if squeezing
       slag = ww.applyS(u,lag)
       hslag = ww.applyH(nh,kh,hw,slag)
-      nhw = normalize(hw)
-      nhk = normalize(hk)
+      normalizeMax(hw)
+      normalizeMax(hk)
       title = "r = "+str(r)
       #plotSequences(st,[f,g],labels=["f","g"],title=title)
       #plotSequences(st,[f,sg],labels=["f","Sg"],title=title)
@@ -113,6 +114,7 @@ def getSinoImages():
   u = add(u,rampfloat(0.0,1.0,0.0,n1f,n2))
   gain(100,f)
   gain(100,g)
+
   return f,g,u
 
 def readImage(fileName,n1,n2):
@@ -127,11 +129,13 @@ def gain(hw,f):
   RecursiveExponentialFilter(hw).apply1(g,g)
   div(f,sqrt(g),f)
 
-def normalize(h):
-  #return div(h,max(max(h),-min(h)))
-  return div(h,rms(h));
-def rms(h):
-  return sqrt(sum(mul(h,h))/len(h))
+def normalizeMax(f):
+  return mul(1.0/max(abs(f)),f,f)
+
+def normalizeRms(f):
+  mul(1.0/rms(f),f,f)
+def rms(f):
+  return sqrt(sum(mul(f,f))/len(f)/len(f[0]))
 
 def makeImpulses(r,nt,ni):
   p = zerofloat(nt)
@@ -212,12 +216,15 @@ def plotSequences(st,xs,labels=None,title=None):
 def plotWavelets(st,hs,hmax=None,title=None):
   sp = SimplePlot()
   ls = [PointsView.Line.SOLID,PointsView.Line.DASH,PointsView.Line.DOT]
+  cs = [Color.BLACK,Color.GRAY,Color.LIGHT_GRAY]
   nh = len(hs)
   hsmax = 0
   for ih in range(nh):
     if hs[ih]:
-      pv = sp.addPoints(st,hs[ih])
-      pv.setLineStyle(ls[ih])
+      #pv = sp.addPoints(st,hs[ih])
+      #pv.setLineStyle(ls[ih])
+      sv = sp.addSequence(st,hs[ih])
+      sv.setColor(cs[ih])
       #pv.setLineWidth(2)
       hsmax = max(hsmax,abs(max(hs[ih])),abs(min(hs[ih])))
   if hmax==None:
@@ -228,27 +235,38 @@ def plotWavelets(st,hs,hmax=None,title=None):
   if title:
     sp.setTitle(title)
 
-def plotImage(st,sx,f,fmin=None,fmax=None,pp=True,zoom=False,png=None):
-  wpt = 252 # width (in points) of plot
+def plotImage(st,sx,f,zoom=False,png=None):
+  wpt = 240
   sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
-  pv = sp.addPixels(st,sx,f)
-  if fmax:
-    if fmin:
-      pv.setClips(fmin,fmax)
-    else:
-      pv.setClips(-fmax,fmax)
   sp.setFontSizeForPrint(8,wpt)
+  sp.setSize(350,450)
+  pv = sp.addPixels(st,sx,f)
+  pv.setClips(-2.0,2.0)
+  if zoom:
+    sp.setVLimits(0.400,1.600) # zoom consistent with tmin,tmax = 100,400
   sp.setHLabel("Distance (km)")
   sp.setVLabel("PP time (s)")
-  if zoom:
-    if pp:
-      sp.setVLimits(0.352,1.452)
-      #sp.setLimits(290,90,410,305)
-    else:
-      sp.setLimits(290,290,410,560)
-  sp.setSize(430,490)
   if pngDir and png:
-    sp.paintToPng(720,wpt/72.0,pngDir+png+".png")
+    sp.paintToPng(360,wpt/72.0,pngDir+png+".png")
+
+def plotWaveletsPpPs(st,h1,h2,png=None):
+  wpt = 240
+  pp = PlotPanel(2,1)
+  h1 = mul(h1,1.0/max(abs(h1)))
+  h2 = mul(h2,1.0/max(abs(h2)))
+  sv1 = pp.addSequence(0,0,st,h1)
+  sv2 = pp.addSequence(1,0,st,h2)
+  pp.setVLimits(0,-0.65,1.05)
+  pp.setVLimits(1,-0.65,1.05)
+  pp.setVLabel(0,"PP wavelet")
+  pp.setVLabel(1,"PS wavelet")
+  pp.setHLabel("Time (s)")
+  pf = PlotFrame(pp)
+  pf.setSize(350,450)
+  pf.setFontSizeForPrint(8,wpt)
+  pf.setVisible(True)
+  if pngDir and png:
+    pf.paintToPng(720,wpt/72.0,pngDir+png+".png")
 
 #############################################################################
 # Do everything on Swing thread.

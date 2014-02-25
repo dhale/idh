@@ -120,12 +120,13 @@ public class WaveletWarpingHA {
     DMatrixChd chd = new DMatrixChd(c);
     DMatrix a = chd.solve(b);
     float[] aa = new float[na];
-    float asum = 0.0f;
+    float amax = 0.0f;
     for (int ia=0; ia<na; ++ia) {
       aa[ia] = (float)a.get(ia,0);
-      asum += aa[ia]*aa[ia];
+      amax = max(amax,abs(aa[ia]));
     }
-    return mul(sqrt(na/asum),aa);
+    return aa;
+    //return mul(aa,1.0f/amax);
   }
   public float[] getInverseA(
     int na, int ka, int nh, int kh, float[] h, 
@@ -171,16 +172,17 @@ public class WaveletWarpingHA {
     //System.out.println("b=\n"+b);
 
     // Solve for inverse filter a using Cholesky decomposition of C.
-    // Normalize a such that rms(a) = 1.
+    // Normalize a such that max(abs(a)) = 1.
     DMatrixChd chd = new DMatrixChd(c);
     DMatrix a = chd.solve(b);
     float[] aa = new float[na];
-    float asum = 0.0f;
+    float amax = 0.0f;
     for (int ia=0; ia<na; ++ia) {
       aa[ia] = (float)a.get(ia,0);
-      asum += aa[ia]*aa[ia];
+      amax = max(amax,abs(aa[ia]));
     }
-    return mul(sqrt(na/asum),aa);
+    return aa;
+    //return mul(aa,1.0f/amax);
   }
 
   /**
@@ -444,7 +446,6 @@ public class WaveletWarpingHA {
     float r = 0.0f;
     for (int i=0; i<n; ++i)
       r = max(r,squeezing(rmax,u[i]));
-    r = 2.0f;
     return r;
   }
 
@@ -552,5 +553,9 @@ public class WaveletWarpingHA {
   }
   public float rms(float[][] x) {
     return (float)sqrt(dot(x,x)/x.length/x[0].length);
+  }
+
+  private static void trace(String s) {
+    System.out.println(s);
   }
 }
