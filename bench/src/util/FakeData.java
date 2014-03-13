@@ -8,6 +8,8 @@ package util;
 
 import java.util.Random;
 
+import javax.swing.*;
+
 import edu.mines.jtk.awt.*;
 import edu.mines.jtk.dsp.*;
 import edu.mines.jtk.mosaic.*;
@@ -26,7 +28,14 @@ public class FakeData {
    * method name. For example, type "seismic3d2010A" corresponds to
    * the method seismic3d2010A().
    */
-  public static void main(String[] args) {
+  public static void main(final String[] args) {
+    SwingUtilities.invokeLater(new Runnable(){
+      public void run() {
+        go(args);
+      }
+    });
+  }
+  private static void go(String[] args) {
     if (args.length==0 || args[0].equals("seismic3d2010A")) {
       float[][][] f = seismic3d2010A();
       SimpleFrame frame = new SimpleFrame();
@@ -53,6 +62,17 @@ public class FakeData {
         }
         sp.addColorBar();
         sp.setSize(1220,600);
+      }
+    } else if (args[0].equals("seismicAndSlopes2d2014A")) {
+      float[][][] fs = seismicAndSlopes2d2014A();
+      for (float[][] f:fs) {
+        SimplePlot sp = new SimplePlot(SimplePlot.Origin.UPPER_LEFT);
+        PixelsView pv = sp.addPixels(f);
+        pv.setInterpolation(PixelsView.Interpolation.NEAREST);
+        pv.setClips(-3.0f,3.0f);
+        sp.addColorBar();
+        sp.setSize(710,640);
+        sp.getPlotPanel().setColorBarWidthMinimum(50);
       }
     } else {
       System.out.println("unrecognized type of fake data");
@@ -224,8 +244,56 @@ public class FakeData {
     return f;
   }
 
+  /**
+   * Returns a fake noisy 2D seismic image with noise-free slopes.
+   * The fake seismic image contains sinusoidal folding, horizontal and
+   * dipping layers, two unconformities, and two intersecting faults with
+   * throws that increase linearly with depth. The rms of noise added to
+   * the fake seismic image is 0.1.
+   */
+  public static float[][][] seismicAndSlopes2d2014A() {
+    return seismicAndSlopes2d2014A(0.1f);
+  }
+
+  /**
+   * Returns a fake 2D seismic image with slopes.
+   * The fake seismic image contains sinusoidal folding, horizontal and
+   * dipping layers, two unconformities, and two intersecting faults with
+   * throws that increase linearly with depth. While the image may have
+   * a specified amount of additive noise, the slopes are noise-free.
+   * @param noise rms of noise added to seismic image, relative to rms signal.
+   */
+  public static float[][][] seismicAndSlopes2d2014A(double noise) {
+    int n1 = 501;
+    int n2 = 501;
+    float[][][] p = makeReflectivityWithNormals(n1,n2);
+    float[][][] q = makeReflectivityWithNormals(n1,n2);
+    float[][][] r = makeReflectivityWithNormals(n1,n2);
+    Linear1 throw1 = new Linear1(0.0f,0.10f);
+    Linear1 throw2 = new Linear1(0.0f,0.10f);
+    LinearFault2 fault1 = new LinearFault2(n2*0.2f,15.0f,throw1);
+    LinearFault2 fault2 = new LinearFault2(n2*0.4f,-15.0f,throw2);
+    Sinusoidal2 fold = new Sinusoidal2(0.0f,0.05f,1.0e-4f,2.0e-4f);
+    VerticalShear2 shear = new VerticalShear2(new Linear1(0.0f,0.05f));
+    p = apply(fold,p);
+    p = combine(n1/3,q,p);
+    p = apply(shear,p);
+    p = combine(n1/6,r,p);
+    p = apply(fault1,p);
+    p = apply(fault2,p);
+    p = addWavelet(0.1,p);
+    p[0] = addNoise((float)noise,p[0]);
+    p[1] = neg(div(p[2],p[1]));
+    return new float[][][]{p[0],p[1]};
+  }
+
   ///////////////////////////////////////////////////////////////////////////
   // private
+
+  private static SincInterp _si = new SincInterp();
+  static {
+    _si.setExtrapolation(SincInterp.Extrapolation.CONSTANT);
+  }
 
   /**
    * Adds both rotation and shear to the specified image.
@@ -691,7 +759,7 @@ public class FakeData {
     Random r = new Random(31415);
     nrms *= max(abs(f));
     float[][] g = mul(2.0f,sub(randfloat(r,n1,n2),0.5f));
-    RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(1.0);
+    RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(2.0);
     rgf.apply10(g,g); // 1st derivative enhances high-frequencies
     float frms = sqrt(sum(mul(f,f))/n1/n2);
     float grms = sqrt(sum(mul(g,g))/n1/n2);
@@ -712,5 +780,279 @@ public class FakeData {
     float grms = sqrt(sum(mul(g,g))/n1/n2/n3);
     g = mul(g,nrms*frms/grms);
     return add(f,g);
+  }
+
+  /**
+   * A 1D coordinate mapping, with derivative.
+   */
+  private interface F1 {
+    /** Returns the value f(x). */
+    public float f(float x);
+    /** Returns the derivative df/dx(x). */
+    public float df(float x);
+  }
+
+  /**
+   * A 2D coordinate mapping, with derivatives (Jacobian).
+   */
+  private interface F2 {
+    /** Returns the value f1(x1,x2). */
+    public float f1(float x1, float x2);
+    /** Returns the value f2(x1,x2). */
+    public float f2(float x1, float x2);
+    /** Returns the partial derivative df1/dx1(x1,x2). */
+    public float df11(float x1, float x2);
+    /** Returns the partial derivative df1/dx2(x1,x2). */
+    public float df12(float x1, float x2);
+    /** Returns the partial derivative df2/dx1(x1,x2). */
+    public float df21(float x1, float x2);
+    /** Returns the partial derivative df2/dx2(x1,x2). */
+    public float df22(float x1, float x2);
+  }
+
+  /**
+   * Applies a 2D coordinate transform to an image.
+   * @param f coordinate transform f(x).
+   * @param p input image p(x).
+   * @return transformed image q(x) = p(f(x)).
+   */
+  private static float[][] apply(F2 f, float[][] p) {
+    int n1 = p[0].length;
+    int n2 = p.length;
+    float[][] q = new float[n2][n1];
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        float f1 = f.f1(i1,i2);
+        float f2 = f.f2(i1,i2);
+        q[i2][i1] = _si.interpolate(n2,1.0,0.0,n1,1.0,0.0,p,f1,f2);
+      }
+    }
+    return q;
+  }
+  /**
+   * Applies a 2D coordinate transform to an image and normal vectors.
+   * The input array {p0,p1,p2} contains the input image p0 and 1st and 2nd
+   * components of normal vectors, p1 and p2. The returned array {q0,q1,q2}
+   * contains the corresponding transformed image and normal vectors. All
+   * normal vectors are unit vectors.
+   * @param f coordinate transform f(x).
+   * @param p input image p(x) and normal vectors.
+   * @return transformed image q(x) = p(f(x) and normal vectors.
+   */
+  private static float[][][] apply(F2 f, float[][][] p) {
+    int n1 = p[0][0].length;
+    int n2 = p[0].length;
+    float[][] q0 = apply(f,p[0]);
+    float[][] q1 = apply(f,p[1]);
+    float[][] q2 = apply(f,p[2]);
+    for (int i2=0; i2<n2; ++i2) {
+      float x2 = i2;
+      for (int i1=0; i1<n1; ++i1) {
+        float x1 = i1;
+        float q1i = f.df11(x1,x2)*q1[i2][i1]+f.df21(x1,x2)*q2[i2][i1];
+        float q2i = f.df12(x1,x2)*q1[i2][i1]+f.df22(x1,x2)*q2[i2][i1];
+        float qsi = 1.0f/sqrt(q1i*q1i+q2i*q2i);
+        q1[i2][i1] = q1i*qsi;
+        q2[i2][i1] = q2i*qsi;
+      }
+    }
+    return new float[][][]{q0,q1,q2};
+  }
+
+  /**
+   * A linear 1D coordinate mapping f(x) = a+b*x.
+   */
+  private static class Linear1 implements F1 {
+
+    /**
+     * Constructs a linear 1D coordinate mapping.
+     * @param a the intercept.
+     * @param b the slope.
+     */
+    public Linear1(float a, float b) {
+      _a = a;
+      _b = b;
+    }
+    public float f(float x) {
+      return _a+_b*x;
+    }
+    public float df(float x) {
+      return _b;
+    }
+    private float _a; // intercept
+    private float _b; // slope
+  }
+
+  /**
+   * A linear fault in a 2D image.
+   */
+  private static class LinearFault2 implements F2 {
+
+    /**
+     * Constructs a linear fault.
+     * @param ftrace coordinate x2 of the fault where x1 = 0.
+     * @param ftheta fault dip, measured in degrees from vertical.
+     * @param fthrow fault throw, a function of coordinate x1.
+     */
+    public LinearFault2(float ftrace, float ftheta, F1 fthrow) {
+      float rtheta = toRadians(ftheta);
+      float ctheta = cos(rtheta);
+      float stheta = sin(rtheta);
+      _a0 = ftrace*ctheta;
+      _a1 = stheta;
+      _a2 = -ctheta;
+      _d1 = fthrow;
+      if (_a1/_a2>0.0f) {
+        _a0 = -_a0;
+        _a1 = -_a1;
+        _a2 = -_a2;
+      }
+    }
+    public float f1(float x1, float x2) {
+      float f = x1;
+      if (faulted(x1,x2))
+        f -= _d1.f(x1);
+      return f;
+    }
+    public float f2(float x1, float x2) {
+      float f = x2;
+      if (_a0+_a1*x1+_a2*x2<=0.0f)
+        f += _d1.f(x1)*_a1/_a2;
+      return f;
+    }
+    public float df11(float x1, float x2) {
+      float d = 1.0f;
+      if (faulted(x1,x2))
+        d -= _d1.df(x1);
+      return d;
+    }
+    public float df12(float x1, float x2) {
+      return 0.0f;
+    }
+    public float df21(float x1, float x2) {
+      float d = 0.0f;
+      if (faulted(x1,x2))
+        d += _d1.df(x1)*_a1/_a2;
+      return d;
+    }
+    public float df22(float x1, float x2) {
+      return 1.0f;
+    }
+    private float _a0,_a1,_a2;
+    private F1 _d1;
+    private boolean faulted(float x1, float x2) {
+      return _a0+_a1*x1+_a2*x2<=0.0f;
+    }
+  }
+
+  /**
+   * Vertical shear of a 2D image.
+   */
+  private static class VerticalShear2 implements F2 {
+    public VerticalShear2(Linear1 s1) {
+      _s1 = s1;
+    }
+    public float f1(float x1, float x2) {
+      return x1-_s1.f(x2);
+    }
+    public float f2(float x1, float x2) {
+      return x2;
+    }
+    public float df11(float x1, float x2) {
+      return 1.0f;
+    }
+    public float df12(float x1, float x2) {
+      return -_s1.df(x2);
+    }
+    public float df21(float x1, float x2) {
+      return 0.0f;
+    }
+    public float df22(float x1, float x2) {
+      return 1.0f;
+    }
+    private Linear1 _s1;
+  }
+
+  /**
+   * Sinusoidal folding in a 2D image.
+   */
+  private static class Sinusoidal2 implements F2 {
+    public Sinusoidal2(float a1, float b1, float a2, float b2) {
+      _a1 = a1;
+      _b1 = b1;
+      _a2 = a2;
+      _b2 = b2;
+    }
+    public float f1(float x1, float x2) {
+      return x1-(_a1+_b1*x1)*sin((_a2+_b2*x2)*x2);
+    }
+    public float f2(float x1, float x2) {
+      return x2;
+    }
+    public float df11(float x1, float x2) {
+      return 1.0f-_b1*sin((_a2+_b2*x2)*x2);
+    }
+    public float df12(float x1, float x2) {
+      return -(_a1+_b1*x1)*(_a2+2.0f*_b2*x2)*cos((_a2+_b2*x2)*x2);
+    }
+    public float df21(float x1, float x2) {
+      return 0.0f;
+    }
+    public float df22(float x1, float x2) {
+      return 1.0f;
+    }
+    private float _a1,_b1,_a2,_b2;
+  }
+
+  private static float[][][] makeReflectivityWithNormals(int n1, int n2) {
+    Random random = new Random(31);
+    float[] r = pow(mul(2.0f,sub(randfloat(random,n1),0.5f)),5.0f);
+    float[][][] p = new float[3][n2][n1];
+    for (int i2=0; i2<n2; ++i2)
+      copy(r,p[0][i2]);
+    p[1] = fillfloat(1.0f,n1,n2);
+    p[2] = fillfloat(0.0f,n1,n2);
+    return p;
+  }
+
+  private static float[][][] combine(
+    float depth, float[][][] pa, float[][][] pb) 
+  {
+    int n1 = pa[0][0].length;
+    int n2 = pa[0].length;
+    int nc = pa.length;
+    float[][][] pc = new float[nc][n2][n1];
+    for (int ic=0; ic<nc; ++ic) {
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          pc[ic][i2][i1] = (i1<depth)?pa[ic][i2][i1]:pb[ic][i2][i1];
+        }
+      }
+    }
+    return pc;
+  }
+
+  private static float[][][] addWavelet(double fpeak, float[][][] p) {
+    double sigma = max(1.0,1.0/(2.0*PI*fpeak));
+    int n1 = p[0][0].length;
+    int n2 = p[0].length;
+    float[][] p0 = p[0];
+    float[][] p1 = p[1];
+    float[][] p2 = p[2];
+    float[][] q = copy(p0);
+    float[][] q1 = new float[n2][n1];
+    float[][] q2 = new float[n2][n1];
+    RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(sigma);
+    for (int id=0; id<2; ++id) { // 2nd directional derivative of Gaussian
+      rgf.apply10(q,q1);
+      rgf.apply01(q,q2);
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          q[i2][i1] = p1[i2][i1]*q1[i2][i1]+p2[i2][i1]*q2[i2][i1];
+        }
+      }
+    }
+    q = mul(q,-1.0f/sqrt(sum(mul(q,q))/n1/n2));
+    return new float[][][]{q,p1,p2};
   }
 }
