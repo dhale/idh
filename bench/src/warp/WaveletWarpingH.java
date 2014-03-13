@@ -109,34 +109,35 @@ public class WaveletWarpingH {
     }
     return aa;
   }
-  public float[] getInverseA2(
+  public float[] getInverseA(
     int na, int ka, int nh, int kh, float[] h, 
-    float[] u, float[] f, float[] g)
+    float[][] u, float[][] f, float[][] g)
   {
     int nt = u.length;
     Check.argument(-na<ka,"-na<ka");
     Check.argument(ka<=0,"ka<=0");
 
-    // Matrix Q = HSLG.
-    float[][] q = new float[na][];
-    for (int ia=0,lag=ka; ia<na; ++ia,++lag) {
-      float[] dg = delay(lag,g);
-      float[] ldg = applyL(u,dg);
-      float[] sldg = applyS(u,ldg);
-      q[ia] = applyH(nh,kh,h,sldg);
-    }
+    // Differences d for all lags of inverse wavelet a.
+    float[][][] d = computeDifferences(na,ka,nh,kh,h,u,f,g);
 
-    // The matrix C and right-hand-side vector b, for Ca = b.
-    DMatrix c = new DMatrix(na,na);
-    DMatrix b = new DMatrix(na,1);
-    for (int ia=0; ia<na; ++ia) {
-      for (int ja=0; ja<na; ++ja) {
-        double cij = dot(q[ia],q[ja]);
-        c.set(ia,ja,cij);
+    // The matrix C and right-hand-side vector b, for Ca = b. For zero lag, we
+    // have a0 = a[-ka] = 1, so that only na-1 coefficients of a are unknown;
+    // the unknown coefficients are those corresponding to non-zero lags.
+    int ma = na-1;
+    DMatrix c = new DMatrix(ma,ma);
+    DMatrix b = new DMatrix(ma,1);
+    for (int ia=0,ic=0; ia<na; ++ia) {
+      if (ia==-ka) continue; // skip lag zero, because a0 = 1
+      for (int ja=0,jc=0; ja<na; ++ja) {
+        if (ja==-ka) continue; // skip lag zero, because a0 = 1
+        double cij = dot(d[ia],d[ja]);
+        c.set(ic,jc,cij);
+        ++jc;
       }
-      c.set(ia,ia,c.get(ia,ia)*_sfac);
-      double bi = dot(q[ia],f);
-      b.set(ia,0,bi);
+      c.set(ic,ic,c.get(ic,ic)*_sfac);
+      double bi = -dot(d[ia],d[-ka]);
+      b.set(ic,0,bi);
+      ++ic;
     }
     //System.out.println("c=\n"+c);
     //System.out.println("b=\n"+b);
@@ -145,12 +146,15 @@ public class WaveletWarpingH {
     DMatrixChd chd = new DMatrixChd(c);
     DMatrix a = chd.solve(b);
     float[] aa = new float[na];
-    float asum = 0.0f;
-    for (int ia=0; ia<na; ++ia) {
-      aa[ia] = (float)a.get(ia,0);
-      asum += aa[ia]*aa[ia];
+    for (int ia=0,ic=0; ia<na; ++ia) {
+      if (ia==-ka) {
+        aa[ia] = 1.0f; // lag 0, so a0 = 1
+      } else {
+        aa[ia] = (float)a.get(ic,0);
+        ++ic;
+      }
     }
-    return mul(sqrt(na/asum),aa);
+    return aa;
   }
 
   /**
@@ -171,43 +175,6 @@ public class WaveletWarpingH {
     SymmetricToeplitzFMatrix stm = new SymmetricToeplitzFMatrix(caa);
     return stm.solve(ca1);
   }
-  public float[] getWaveletH(
-    int nh, int kh, int na, int ka, float[] a,
-    float[] u, float[] f, float[] g)
-  {
-    // Sequence q = SLAg.
-    float[] ag = applyA(na,ka,a,g);
-    float[] lag = applyL(u,ag);
-    float[] q = applyS(u,lag);
-    int nt = q.length;
-
-    // Autocorrelation Q'Q and crosscorrelation Q'f.
-    float[] cqf = new float[nh];
-    float[] cqq = new float[nh];
-    xcor(nt,0,q,nt,0,f,nh,kh,cqf); // fix for itmin:itmax
-    xcor(nt,0,q,nt,0,q,nh, 0,cqq); // fix for itmin:itmax
-
-    // Solve for wavelet h.
-    cqq[0] *= _sfac*1.01f;
-    SymmetricToeplitzFMatrix stm = new SymmetricToeplitzFMatrix(cqq);
-    return stm.solve(cqf);
-  }
-  public float[] getWaveletH2(
-    int nh, int kh, int na, int ka, float[] a,
-    float[] u, float[] f, float[] g)
-  {
-    int nt = u.length;
-    float[] ga = applyA(na,ka,a,g);
-    float[] lga = applyL(u,ga);
-    float[] q = applyS(u,lga);
-    float[] cqf = new float[nh];
-    float[] cqq = new float[nh];
-    xcor(nt,0,q,nt,0,f,nh,kh,cqf);
-    xcor(nt,0,q,nt,0,q,nh, 0,cqq);
-    cqq[0] *= _sfac;
-    SymmetricToeplitzFMatrix stm = new SymmetricToeplitzFMatrix(cqq);
-    return stm.solve(cqf);
-  }
 
   /**
    * Applies the specified inverse wavelet A.
@@ -218,6 +185,9 @@ public class WaveletWarpingH {
    * @return array with filtered output sequence.
    */
   public float[] applyA(int na, int ka, float[] a, float[] f) {
+    return convolve(na,ka,a,f);
+  }
+  public float[][] applyA(int na, int ka, float[] a, float[][] f) {
     return convolve(na,ka,a,f);
   }
 
@@ -232,6 +202,9 @@ public class WaveletWarpingH {
   public float[] applyH(int nh, int kh, float[] h, float[] f) {
     return convolve(nh,kh,h,f);
   }
+  public float[][] applyH(int nh, int kh, float[] h, float[][] f) {
+    return convolve(nh,kh,h,f);
+  }
 
   /**
    * Applies the low-pass anti-alias filter L.
@@ -244,6 +217,9 @@ public class WaveletWarpingH {
   public float[] applyL(float[] u, float[] f) {
     return aaf(RMAX,u,f);
   }
+  public float[][] applyL(float[][] u, float[][] f) {
+    return aaf(RMAX,u,f);
+  }
 
   /**
    * Applies the warping operator S.
@@ -253,6 +229,9 @@ public class WaveletWarpingH {
    * @return array with warped output sequence.
    */
   public float[] applyS(float[] u, float[] f) {
+    return warp(u,f);
+  }
+  public float[][] applyS(float[][] u, float[][] f) {
     return warp(u,f);
   }
 
@@ -281,6 +260,18 @@ public class WaveletWarpingH {
     float[] laf = applyL(u,af);
     float[] saf = applyS(u,laf);
     float[] hsaf = applyH(nh,kh,h,saf);
+    return hsaf;
+  }
+  public float[][] applyHSLA(
+    int na, int ka, float[] a,
+    int nh, int kh, float[] h,
+    float[][] u, float[][] f) 
+  {
+    int nt = f.length;
+    float[][] af = applyA(na,ka,a,f);
+    float[][] laf = applyL(u,af);
+    float[][] saf = applyS(u,laf);
+    float[][] hsaf = applyH(nh,kh,h,saf);
     return hsaf;
   }
 
@@ -314,6 +305,22 @@ public class WaveletWarpingH {
     }
     return d;
   }
+  private float[][][] computeDifferences(
+    int na, int ka, int nh, int kh, float[] h,
+    float[][] u, float[][] f, float[][] g)
+  {
+    g = applyL(u,g);
+    int nt = u.length;
+    float[][][] d = new float[na][][];
+    for (int ia=0,lag=ka; ia<na; ++ia,++lag) {
+      float[][] df = delay(lag,f);
+      float[][] dg = delay(lag,g);
+      float[][] sdg = applyS(u,dg);
+      float[][] di = sub(sdg,df);
+      d[ia] = applyH(nh,kh,h,di);
+    }
+    return d;
+  }
 
   private double dot(float[] x, float[] y) {
     int nt = x.length;
@@ -322,6 +329,13 @@ public class WaveletWarpingH {
     double sum = 0.0;
     for (int it=itlo; it<=ithi; ++it) 
       sum += x[it]*y[it];
+    return sum;
+  }
+  private double dot(float[][] x, float[][] y) {
+    int n = x.length;
+    double sum = 0.0;
+    for (int i=0; i<n; ++i) 
+      sum += dot(x[i],y[i]);
     return sum;
   }
 
@@ -341,6 +355,13 @@ public class WaveletWarpingH {
     }
     return min(r,rmax);
   }
+  private float squeezing(float rmax, float[][] u) {
+    int n = u.length;
+    float r = 0.0f;
+    for (int i=0; i<n; ++i)
+      r = max(r,squeezing(rmax,u[i]));
+    return r;
+  }
 
   /**
    * If necessary, applies an anti-alias filter to the sequence x(t).
@@ -353,6 +374,20 @@ public class WaveletWarpingH {
       float[] y = new float[nt];
       BandPassFilter aaf = new BandPassFilter(0.0,0.5/r,0.10/r,0.01);
       aaf.apply(x,y);
+      return y;
+    } else {
+      return copy(x);
+    }
+  }
+  private float[][] aaf(float rmax, float[][] u, float[][] x) {
+    float r = squeezing(RMAX,u);
+    if (r>1.0) {
+      int nx = x.length;
+      int nt = x[0].length;
+      float[][] y = new float[nx][nt];
+      BandPassFilter aaf = new BandPassFilter(0.0,0.5/r,0.10/r,0.01);
+      for (int ix=0; ix<nx; ++ix)
+        aaf.apply(x[ix],y[ix]);
       return y;
     } else {
       return copy(x);
@@ -375,6 +410,13 @@ public class WaveletWarpingH {
       y[it] = 0.0f;
     return y;
   }
+  private static float[][] delay(int lag, float[][] x) {
+    int n = x.length;
+    float[][] y = new float[n][];
+    for (int i=0; i<n; ++i)
+      y[i] = delay(lag,x[i]);
+    return y;
+  }
 
   /**
    * Returns y(t) = x(u(t)).
@@ -382,10 +424,17 @@ public class WaveletWarpingH {
   private static float[] warp(float[] u, float[] x) {
     int nt = u.length;
     float[] y = new float[nt];
-    _si.interpolate(nt,1.0,0.0,x,nt,u,y);
+    _si.interpolate(x.length,1.0,0.0,x,nt,u,y);
     y[0] *= u[1]-u[0];
     for (int it=1; it<nt; ++it)
       y[it] *= u[it]-u[it-1];
+    return y;
+  }
+  private static float[][] warp(float[][] u, float[][] x) {
+    int n = u.length;
+    float[][] y = new float[n][];
+    for (int i=0; i<n; ++i)
+      y[i] = warp(u[i],x[i]);
     return y;
   }
 
@@ -404,9 +453,19 @@ public class WaveletWarpingH {
     int nt = f.length;
     conv(nh,kh,h,nt,0,f,nt,0,g);
   }
+  private static float[][] convolve(int nh, int kh, float[] h, float[][] x) {
+    int n = x.length;
+    int nt = x[0].length;
+    float[][] y = new float[n][nt];
+    for (int i=0; i<n; ++i)
+      convolve(nh,kh,h,x[i],y[i]);
+    return y;
+  }
 
-  private float rms(float[] x) {
-    int nt = x.length;
-    return (float)sqrt(dot(x,x)/nt);
+  public float rms(float[] x) {
+    return (float)sqrt(dot(x,x)/x.length);
+  }
+  public float rms(float[][] x) {
+    return (float)sqrt(dot(x,x)/x.length/x[0].length);
   }
 }

@@ -17,7 +17,43 @@ from warp import WaveletWarpingH
 pngDir = None
 
 def main(args):
-  goSimpleTest()
+  #goSimpleTest()
+  goSino()
+
+def goSino():
+  na,ka = 21,-10 # sampling for inverse A of wavelet in PS image
+  nh,kh = 21,-10 # sampling for wavelet H in PP image
+  nt,dt,ft = 501,0.004,0.000 # used for plotting only
+  nx,dx,fx = 721,0.015,0.000
+  sa = Sampling(na,dt,ka*dt)
+  sh = Sampling(nh,dt,kh*dt)
+  st = Sampling(nt,dt,ft)
+  sx = Sampling(nx,dx,fx)
+  tmin,tmax = 100,400 # PP time window
+  sfac = 1.000 # stabilization factor
+  f,g,u = getSinoImages() # PP image, PS image, and warping u(t,x)
+  ww = WaveletWarpingH()
+  ww.setTimeRange(tmin,tmax)
+  ww.setStabilityFactor(sfac)
+  slg = ww.applyS(u,ww.applyL(u,g)) # PS warping without wavelets
+  plotImage(st,sx,f,zoom=True,png="pp")
+  plotImage(st,sx,slg,zoom=True,png="psw1")
+  e1 = ww.rms(sub(f,slg))
+  for niter in [0]:
+    print "niter =",niter
+    suffix = str(niter)
+    hf = zerofloat(nh); hf[-kh] = 1.0 # initial wavelet h in f
+    ag = ww.getInverseA(na,ka,nh,kh,hf,u,f,g) # inverse a in g
+    for jiter in range(niter):
+      hf = ww.getWaveletH(na,ka,ag,nh,kh) # wavelet h in f
+      ag = ww.getInverseA(na,ka,nh,kh,hf,u,f,g) # inverse a in g
+    hg = ww.getWaveletH(na,ka,ag,nh,kh) # wavelet in g
+    hslag = ww.applyHSLA(na,ka,ag,nh,kh,hf,u,g) # PS warping with wavelets
+    hslag = mul(hslag,ww.rms(f)/ww.rms(hslag))
+    ew = ww.rms(sub(f,hslag))
+    print "  e1 =",e1," ew =",ew
+    plotImage(st,sx,hslag,zoom=True,png="psww"+suffix)
+    plotWaveletsPpPs(sh,hf,hg,png="wavelets"+suffix)
 
 def goSimpleTest():
   nt,ni = 481,2 # number of time samples; number of impulses
@@ -48,15 +84,14 @@ def goSimpleTest():
       ak = ww.getWaveletH(nh,kh,hk,na,ka) # known inverse wavelet
       #dump(ak)
       for iter in range(5):
-        #if bpf: bpf.apply(hw,hw)
+        if bpf: bpf.apply(hw,hw)
         aw = ww.getInverseA(na,ka,nh,kh,hw,u,f,g) # estimated inverse
-        #hw = ww.getWaveletH(nh,kh,na,ka,aw,u,f,g) # estimated wavelet
         hw = ww.getWaveletH(na,ka,aw,nh,kh) # estimated wavelet
         #dump(aw)
       sg = ww.applyS(u,g)
       hslag = ww.applyHSLA(na,ka,aw,nh,kh,hw,u,g)
-      nhw = normalize(hw)
-      nhk = normalize(hk)
+      nhw = normalizeMax(hw)
+      nhk = normalizeMax(hk)
       title = "r = "+str(r)
       #plotSequences(st,[f,g],labels=["f","g"],title=title)
       #plotSequences(st,[f,sg],labels=["f","Sg"],title=title)
@@ -69,6 +104,38 @@ def normalize(h):
   return div(h,rms(h));
 def rms(h):
   return sqrt(sum(mul(h,h))/len(h))
+
+def getSinoImages():
+  dataDir = "/data/seis/sino/warp/"
+  n1f,n1g,d1,f1 = 501,852,0.004,0.0
+  n2,d2,f2 =  721,0.0150,0.000
+  f = readImage(dataDir+"pp.dat",n1f,n2)
+  g = readImage(dataDir+"ps.dat",n1g,n2)
+  u = readImage(dataDir+"shifts.dat",n1f,n2)
+  u = add(u,rampfloat(0.0,1.0,0.0,n1f,n2))
+  gain(100,f)
+  gain(100,g)
+  return f,g,u
+
+def readImage(fileName,n1,n2):
+  x = zerofloat(n1,n2)
+  ais = ArrayInputStream(fileName)
+  ais.readFloats(x)
+  ais.close()
+  return x
+
+def gain(hw,f):
+  g = mul(f,f)
+  RecursiveExponentialFilter(hw).apply1(g,g)
+  div(f,sqrt(g),f)
+
+def normalizeMax(f):
+  return mul(1.0/max(abs(f)),f,f)
+
+def normalizeRms(f):
+  mul(1.0/rms(f),f,f)
+def rms(f):
+  return sqrt(sum(mul(f,f))/len(f)/len(f[0]))
 
 def makeImpulses(r,nt,ni):
   p = zerofloat(nt)
@@ -164,6 +231,39 @@ def plotWavelets(st,hs,hmax=None,title=None):
   sp.setHLabel("Time (s)")
   if title:
     sp.setTitle(title)
+
+def plotImage(st,sx,f,zoom=False,png=None):
+  wpt = 240
+  sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
+  sp.setFontSizeForPrint(8,wpt)
+  sp.setSize(350,450)
+  pv = sp.addPixels(st,sx,f)
+  pv.setClips(-2.0,2.0)
+  if zoom:
+    sp.setVLimits(0.400,1.600) # zoom consistent with tmin,tmax = 100,400
+  sp.setHLabel("Distance (km)")
+  sp.setVLabel("PP time (s)")
+  if pngDir and png:
+    sp.paintToPng(360,wpt/72.0,pngDir+png+".png")
+
+def plotWaveletsPpPs(st,h1,h2,png=None):
+  wpt = 240
+  pp = PlotPanel(2,1)
+  h1 = mul(h1,1.0/max(abs(h1)))
+  h2 = mul(h2,1.0/max(abs(h2)))
+  sv1 = pp.addSequence(0,0,st,h1)
+  sv2 = pp.addSequence(1,0,st,h2)
+  pp.setVLimits(0,-0.65,1.05)
+  pp.setVLimits(1,-0.65,1.05)
+  pp.setVLabel(0,"PP wavelet")
+  pp.setVLabel(1,"PS wavelet")
+  pp.setHLabel("Time (s)")
+  pf = PlotFrame(pp)
+  pf.setSize(350,450)
+  pf.setFontSizeForPrint(8,wpt)
+  pf.setVisible(True)
+  if pngDir and png:
+    pf.paintToPng(720,wpt/72.0,pngDir+png+".png")
 
 #############################################################################
 # Do everything on Swing thread.

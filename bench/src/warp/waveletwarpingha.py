@@ -12,16 +12,16 @@ from warp import WaveletWarpingHA
 
 #############################################################################
 
-pngDir = "./png/sinow/"
-#pngDir = None
+#pngDir = "./png/sinow/"
+pngDir = None
 
 def main(args):
   #goSimpleTest()
   goSino()
 
 def goSino():
-  na,ka = 81,-40 # sampling for inverse A of wavelet in PS image
-  nh,kh = 81,-40 # sampling for wavelet H in PP image
+  na,ka = 41,-20 # sampling for inverse A of wavelet in PS image
+  nh,kh = 41,-20 # sampling for wavelet H in PP image
   nt,dt,ft = 501,0.004,0.000 # used for plotting only
   nx,dx,fx = 721,0.015,0.000
   sa = Sampling(na,dt,ka*dt)
@@ -31,31 +31,42 @@ def goSino():
   tmin,tmax = 100,400 # PP time window
   sfac = 1.000 # stabilization factor
   wha = 0.000 # weight for HA = I terms
+  ha = True # True to find h, then a, then h, ...; False, for a, h, a, ...
+  niter = 0
   f,g,u = getSinoImages() # PP image, PS image, and warping u(t,x)
   ww = WaveletWarpingHA()
   ww.setTimeRange(tmin,tmax)
   ww.setStabilityFactor(sfac)
+  ww.setWeightHA(0.0)
   slg = ww.applyS(u,ww.applyL(u,g)) # PS warping without wavelets
-  plotImage(st,sx,f,zoom=True,png="pp")
-  plotImage(st,sx,slg,zoom=True,png="psw1")
   e1 = ww.rms(sub(f,slg))
-  for niter in [0,9]:
-    for wha in [0]:
-      print "niter =",niter," wha =",wha
-      suffix = str(niter)+str(int(wha))
-      ww.setWeightHA(wha)
+  for ha in [True,False]:
+    suffix = ""
+    if ha:
       ag = zerofloat(na); ag[-ka] = 1.0 # initial inverse a in g
       hf = ww.getWaveletH(nh,kh,na,ka,ag,u,f,g) # wavelet h in f
       for jiter in range(niter):
         ag = ww.getInverseA(na,ka,nh,kh,hf,u,f,g) # inverse a in g
         hf = ww.getWaveletH(nh,kh,na,ka,ag,u,f,g) # wavelet h in f
-      hg = ww.getWaveletH(na,ka,ag,nh,kh) # wavelet in g
-      hslag = ww.applyHSLA(na,ka,ag,nh,kh,hf,u,g) # PS warping with wavelets
-      #hslag = mul(hslag,ww.rms(f)/ww.rms(hslag))
-      ew = ww.rms(sub(f,hslag))
-      print "  e1 =",e1," ew =",ew
-      plotImage(st,sx,hslag,zoom=True,png="psww"+suffix)
-      plotWaveletsPpPs(sh,hf,hg,png="wavelets"+suffix)
+    else:
+      hf = zerofloat(nh); hf[-kh] = 1.0 # initial wavelet h in f
+      ag = ww.getWaveletH(na,ka,nh,kh,hf,u,f,g) # inverse a in g
+      for jiter in range(niter):
+        hf = ww.getWaveletH(nh,kh,na,ka,ag,u,f,g) # wavelet h in f
+        ag = ww.getInverseA(na,ka,nh,kh,hf,u,f,g) # inverse a in g
+    hg = ww.getWaveletH(na,ka,ag,nh,kh) # wavelet in g
+    hslag = ww.applyHSLA(na,ka,ag,nh,kh,hf,u,g) # PS warping with wavelets
+    ew = ww.rms(sub(f,hslag))
+    print "  e1 =",e1," ew =",ew
+    rhslag = ww.rms(hslag); hslag = mul(hslag,1.0/rhslag)
+    print "rhslag =",rhslag
+    plotImage(st,sx,hslag,zoom=True,png="psww"+suffix)
+    plotWaveletsPpPs(sh,hf,hg,png="wavelets"+suffix)
+  rf = ww.rms(f); f = mul(f,1.0/rf)
+  rslg = ww.rms(slg); slg = mul(slg,1.0/rslg)
+  print "rf =",rf," rslg =",rslg
+  plotImage(st,sx,f,zoom=True,png="pp")
+  plotImage(st,sx,slg,zoom=True,png="psw1")
 
 def goSimpleTest():
   nt,ni = 481,2 # number of time samples; number of impulses
@@ -114,7 +125,6 @@ def getSinoImages():
   u = add(u,rampfloat(0.0,1.0,0.0,n1f,n2))
   gain(100,f)
   gain(100,g)
-
   return f,g,u
 
 def readImage(fileName,n1,n2):

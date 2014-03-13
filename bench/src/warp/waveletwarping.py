@@ -12,8 +12,8 @@ from warp import WaveletWarping
 pngDir = None
 
 def main(args):
-  #goSimpleTest()
-  goSino()
+  goSimpleTest()
+  #goSino()
 
 def goSino():
   na,ka = 81,-20 # sampling for inverse wavelet A
@@ -64,9 +64,9 @@ def goSimpleTest():
   tmin,tmax = 0,nt-1
   sfac = 1.000
   st = Sampling(nt,dt,ft)
-  for mp in [True,False]: # True, for minimum-phase; False for other
+  for mp in [False]: # True, for minimum-phase; False for other
     hk = getWavelet(freq,decay,nh,kh,mp) # known wavelet
-    for r in [0.5,2.0]: # for stretch and squeeze, ...
+    for r in [2.0]: # for stretch and squeeze, ...
       fmin,fmax = 0.0,min(0.5,0.5*r) # bandpass (lowpass), if stretching
       p,q = makeImpulses(r,nt,ni)
       f = addWavelet(freq,decay,p,mp)
@@ -95,11 +95,11 @@ def goSimpleTest():
       nhk = normalize(hk)
       title = "r = "+str(r)
       #plotSequences(st,[f,g],labels=["f","g"],title=title)
-      #plotSequences(st,[f,sg],labels=["f","Sg"],title=title)
+      plotSequences(st,[f,sg],labels=["f","Sg"],title=title)
       #plotSequences(st,[f,g],labels=["f","g"],title=title)
       #plotSequences(st,[af,ag],labels=["Af","Ag"],title=title)
       #plotSequences(st,[af,lag],labels=["Af","LAg"],title=title)
-      #plotSequences(st,[af,slag],labels=["Af","SLAg"],title=title)
+      plotSequences(st,[af,slag],labels=["Af","SLAg"],title=title)
       #plotSequences(st,[baf,bslag],labels=["BAf","BSLAg"],title=title)
       plotSequences(st,[f,hslag],labels=["f","HSLAg"],title=title)
       plotWavelets(Sampling(nh,dt,kh*dt),[nhw,nhk],title=title)

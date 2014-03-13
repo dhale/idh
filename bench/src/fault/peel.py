@@ -44,13 +44,14 @@ def fakeImage():
   s2 = Sampling(n2,d2,f2)
   fileName = "/data/seis/fake/peel.dat"
   f = readImage(n1,n2,fileName)
-  f = pow(f,1)
-  nf,sigma = 2,5.0
+  plot2(s1,s2,f,title="peel")
+  f = mul(sgn(f),pow(abs(f),2))
+  nf,sigma = 2,4.0
   rgf = RecursiveGaussianFilter(sigma)
   g = copy(f)
   g1 = zerofloat(n1,n2)
   g2 = zerofloat(n1,n2)
-  for i in range(2):
+  for i in range(nf):
     rgf.apply20(g,g1)
     rgf.apply02(g,g2)
     g = mul(1000.0,neg(add(g1,g2)))
@@ -63,7 +64,6 @@ def fakeImage():
   g = copy(n1,n2,nb,nb,g)
   s1 = Sampling(n1,d1,f1)
   s2 = Sampling(n2,d2,f2)
-  plot2(s1,s2,f,title="peel")
   plot2(s1,s2,g,title="seis")
   return s1,s2,g
 
