@@ -246,13 +246,14 @@ public class FakeData {
 
   /**
    * Returns a fake noisy 2D seismic image with noise-free slopes.
-   * The fake seismic image contains sinusoidal folding, horizontal and
-   * dipping layers, two unconformities, and two intersecting faults with
-   * throws that increase linearly with depth. The rms of noise added to
-   * the fake seismic image is 0.1.
+   * The image and slopes are designed to be used to test methods for
+   * estimating slopes of locally linear features apparent in 2D seismic
+   * images. The image contains sinusoidal folding, horizontal and dipping
+   * layers, two unconformities, and two intersecting faults with throws that
+   * increase linearly with depth. The rms noise-to-signal ratio is 0.5.
    */
   public static float[][][] seismicAndSlopes2d2014A() {
-    return seismicAndSlopes2d2014A(0.1f);
+    return seismicAndSlopes2d2014A(0.5f);
   }
 
   /**
@@ -261,7 +262,7 @@ public class FakeData {
    * dipping layers, two unconformities, and two intersecting faults with
    * throws that increase linearly with depth. While the image may have
    * a specified amount of additive noise, the slopes are noise-free.
-   * @param noise rms of noise added to seismic image, relative to rms signal.
+   * @param noise rms of noise (relative to signal) added to the image.
    */
   public static float[][][] seismicAndSlopes2d2014A(double noise) {
     int n1 = 501;
@@ -757,7 +758,7 @@ public class FakeData {
     int n1 = f[0].length;
     int n2 = f.length;
     Random r = new Random(31415);
-    nrms *= max(abs(f));
+    //nrms *= max(abs(f));
     float[][] g = mul(2.0f,sub(randfloat(r,n1,n2),0.5f));
     RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(2.0);
     rgf.apply10(g,g); // 1st derivative enhances high-frequencies
