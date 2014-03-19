@@ -24,24 +24,24 @@ def readAndPlotSegd():
   nshot = len(segdList)-3 # ignore first 3 shots
   #s3 = Sampling(nshot,1,1003) # first shotpoint is 1003
   #print segdList
-  i3 = 40
-  for segdFile in segdList[i3:i3+1]:
+  i3 = 20 # 40
+  for segdFile in segdList[i3:i3+10]:
     print segdFile
     sl,sp,rpf,rpl,f = readSegd(segdFile)
     sl,sp = int(sl),int(sp)
     print "sl =",sl," sp =",sp," rpf =",rpf," rpl =",rpl
     s2 = Sampling(len(f),0.010,(rpf-sp)*0.010)
     gain2(f)
-    g = ppf2(f)
-    gb = ppf2(f,True)
+#    g = ppf2(f)
+#    gb = ppf2(f,True)
     #gain2(g)
     #gain2(gb)
     plot(s1,s2,f,title="Shot "+str(sp)+": raw")
-    plot(s1,s2,g,title="Shot "+str(sp)+": ppf")
-    plot(s1,s2,gb,title="Shot "+str(sp)+": ppfb")
-    plotAmp(s1,s2,f,title="Shot "+str(sp)+": raw")
-    plotAmp(s1,s2,g,title="Shot "+str(sp)+": ppf")
-    plotAmp(s1,s2,gb,title="Shot "+str(sp)+": ppfb")
+#    plot(s1,s2,g,title="Shot "+str(sp)+": ppf")
+#    plot(s1,s2,gb,title="Shot "+str(sp)+": ppfb")
+#    plotAmp(s1,s2,f,title="Shot "+str(sp)+": raw")
+#    plotAmp(s1,s2,g,title="Shot "+str(sp)+": ppf")
+#    plotAmp(s1,s2,gb,title="Shot "+str(sp)+": ppfb")
 
 def ppf2(f,b=False):
   n1,n2 = len(f[0]),len(f)
@@ -227,17 +227,19 @@ def displayLine10(vib):
   ip.setPercentiles(2,98)
 
 def bin3(b,k):
-  """ Returns binary integer from bytes k,k+1,k+2 in b."""
+  """ Returns integer value encoded in three bytes b[k:k+2]. """
   b0 = b[k  ]
   b1 = b[k+1]
-  b2 = b[k+2] 
+  b2 = b[k+2]
   if b0<0: b0 += 256
   if b1<0: b1 += 256
   if b2<0: b2 += 256
-  return (b0<<16)|(b1<<8)|(b2)
+  return b0*65536+b1*256+b2
 
 def bin5(b,k):
-  """ Returns binary integer from bytes k,k+1,...,k+4 in b."""
+  """ 
+  Returns fixed-point value [0-99999.99] encoded in five bytes b[k:k+4]. 
+  """
   b0 = b[k  ]
   b1 = b[k+1]
   b2 = b[k+2] 
