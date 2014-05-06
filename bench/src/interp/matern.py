@@ -3,11 +3,14 @@
 
 from shared import *
 
-#pngDir = "./png/"
-pngDir = None
+pngDir = "./png/"
+#pngDir = None
+slides = True
+#slides = False
 
 def main(args):
-  goFigures()
+  goSlides()
+  #goFigures()
   #goCompare()
 
 def goCompare():
@@ -38,7 +41,8 @@ def goCompare():
   SimplePlot.asPoints(s1,ps)
   SimplePlot.asPoints(s1,pa)
 
-def goFigures():
+def goSlides():
+  global slides; slides = True
   ndim = 2
   sigma = 1.0
   scale = 1.0
@@ -70,27 +74,78 @@ def goFigures():
       suffix = "r"
     plotCovariances(sr,cm,"cm"+suffix)
     plotCovariances(sr,cs,"cs"+suffix)
-  
+
+def goFigures():
+  global slides; slides = False
+  ndim = 2
+  sigma = 1.0
+  scale = 1.0
+  rmin,rmax = 0.0,4.0*scale
+  nr = 1001
+  dr = (rmax-rmin)/(nr-1)
+  fr = rmin
+  sr = Sampling(nr,dr,fr)
+  shapes = [0.5,0.75,1.0,1.5]
+  nshape = len(shapes)
+  cm = zerofloat(nr,nshape)
+  cs = zerofloat(nr,nshape)
+  for scaled in [False,True]:
+    for ishape in range(nshape):
+      shape = shapes[ishape]
+      if scaled:
+        mc = MaternCovariance(sigma,shape,scale)
+        sc = SmoothCovariance(sigma,shape,scale,ndim)
+      else:
+        mc = MaternCovariance(sigma,shape,scale*2*sqrt(shape))
+        sc = SmoothCovariance(sigma,shape,scale*2*sqrt(shape),ndim)
+      for ir in range(nr):
+        r = sr.getValue(ir)
+        cm[ishape][ir] = mc.evaluate(r)
+        cs[ishape][ir] = sc.evaluate(r)
+    if scaled:
+      suffix = "s"
+    else:
+      suffix = "r"
+    plotCovariances(sr,cm,"cm"+suffix)
+    plotCovariances(sr,cs,"cs"+suffix)
+
 def plotCovariances(sx,ys,png=None):
-  sp = SimplePlot(SimplePlot.Origin.LOWER_LEFT)
-  styles = [PointsView.Line.DASH_DOT,
-            PointsView.Line.DASH,
-            PointsView.Line.SOLID,
-            PointsView.Line.DOT]
-  colors = [Color.LIGHT_GRAY,Color.GRAY,Color.DARK_GRAY,Color.BLACK]
-  for iy in range(len(ys)): 
-    pv = sp.addPoints(sx,ys[iy])
-    pv.setLineWidth(2)
-    #pv.setLineColor(colors[iy%len(colors)])
-    pv.setLineStyle(styles[iy%len(styles)])
-    sp.setHLabel("distance")
-    sp.setVLabel("covariance")
+  if slides:
+    styles = [PointsView.Line.SOLID,
+              PointsView.Line.SOLID,
+              PointsView.Line.SOLID,
+              PointsView.Line.SOLID]
+    colors = [Color.RED,Color.BLUE,Color.BLACK,Color.MAGENTA]
+  else:
+    styles = [PointsView.Line.DASH_DOT,
+              PointsView.Line.DASH,
+              PointsView.Line.SOLID,
+              PointsView.Line.DOT]
+    colors = [Color.LIGHT_GRAY,Color.GRAY,Color.DARK_GRAY,Color.BLACK]
+  for what in [[0,1,2,3],[0]]:
+    sp = SimplePlot(SimplePlot.Origin.LOWER_LEFT)
+    for iy in what:
+      pv = sp.addPoints(sx,ys[iy])
+      pv.setLineColor(colors[iy%len(colors)])
+      pv.setLineStyle(styles[iy%len(styles)])
+      pv.setLineWidth(2)
+    sp.setHLabel("Distance")
+    sp.setVLabel("Covariance")
     sp.setHLimits(0.0,4.0);
     sp.setVLimits(0.0,1.03);
-    sp.setFontSizeForPrint(8,240.0)
-    sp.setSize(790,500);
-  if pngDir and png:
-    sp.paintToPng(720,240.0/72.0,pngDir+png+".png")
+    if slides:
+      sp.setFontSizeForSlide(1.0,0.9,16.0/9.0);
+      sp.setSize(790,500);
+    else:
+      sp.setFontSizeForPrint(8,240.0)
+      sp.setSize(790,500);
+    if pngDir and png:
+      if len(what)==1:
+        png += "1"
+      if slides:
+        sp.paintToPng(300,16,pngDir+png+".png")
+      else:
+        sp.paintToPng(720,240.0/72.0,pngDir+png+".png")
 
 def makeIdentityTensors(s1,s2):
   n1,n2 = s1.count,s2.count;

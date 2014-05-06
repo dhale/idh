@@ -119,8 +119,8 @@ public class SmoothCovariance implements Covariance {
       _lsf.apply(tensors,akk,s,t);
     }
     _lsf.apply(tensors,akk,s,t);
-    _stf.apply2(t,q);
-    _stf.apply1(q,q);
+    _stf.apply2(t,t);
+    _stf.apply1(t,q);
     cscale(ckk,tensors,q);
   }
 

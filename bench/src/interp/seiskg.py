@@ -11,7 +11,42 @@ def main(args):
   makePnzSamplings()
   #goTensors()
   #goSimulate()
-  goKriging()
+  goCovariance()
+  #goBlended()
+  #goKriging()
+
+def goCovariance():
+  g,s1,s2 = readPnzImage()
+  et = makeStructureTensors(s1,s2,g)
+  #et = makeIdentityTensors(s1,s2)
+  r = makeRandomImage()
+  p = copy(r)
+  sigmaM,shapeM,rangeM = 0.1,1.0,0.5
+  sc = SmoothCovariance(sigmaM,shapeM,rangeM,2)
+  sc.apply(s1,s2,et,p)
+  #q = copy(p)
+  #sc.applyInverse(s1,s2,et,q)
+  plot(None,None,None,s1,s2,r,cmap=jet,clab=" ",png="rand")
+  plot(None,None,None,s1,s2,p,cmap=jet,clab=" ",png="scap")
+  #plot(None,None,None,s1,s2,q,cmap=jet,clab=" ",png="scai")
+
+"""
+def goSteps():
+  g,s1,s2 = readPnzImage()
+  plot(None,None,None,s1,s2,g,cmap=gray,
+       clab="Seismic amplitude",png="seis")
+  ets = makeStructureTensors(s1,s2,g)
+  p,px,x1,x2 = simulatePorosity(s1,s2,ets)
+  pmin,pmax = min(p),max(p)
+  plot(None,None,None,s1,s2,p,cmin=pmin,cmax=pmax,cmap=jet,
+       clab="Porosity",png="model")
+  s1s = Sampling(1+s1.count/3,3*s1.delta,s1.first)
+  s2s = Sampling(1+s2.count/3,3*s2.delta,s2.first)
+  ps = gridSimple(px,x1,x2,s1s,s2s)
+  plot(None,None,None,s1s,s2s,ps,cmin=pmin,cmax=pmax,cmap=tjet,
+       clab="Porosity",png="data")
+  cm = SmoothCovariance(sigmaM,shapeM,rangeM,2)
+"""
 
 def goTensors():
   g,s1,s2 = readPnzImage()
@@ -64,13 +99,35 @@ def goKriging():
       else:
         continue # Paciorek approximation is useful only with tensors
       pk = gridKriging(px,x1,x2,s1,s2,et,pa)
-      #plot(None,None,None,s1,s2,pk,cmin=pmin,cmax=pmax,cmap=jet,
-      #     clab="Porosity",png=png)
+      plot(None,None,None,s1,s2,pk,cmin=pmin,cmax=pmax,cmap=jet,
+           clab="Porosity",png=png)
       plot(None,None,None,s1,s2,sub(pk,p),cmin=-0.07,cmax=0.07,cmap=jet,
            clab="Porosity error",png="e"+png)
       printMaxErrorForKnownSamples(px,x1,x2,s1,s2,pk)
       printRmsErrorForGriddedSamples(pk,p)
       print
+
+def goBlended():
+  g,s1,s2 = readPnzImage()
+  plot(None,None,None,s1,s2,g,cmap=gray,
+       clab="Seismic amplitude",png="seis")
+  ets = makeStructureTensors(s1,s2,g)
+  p,px,x1,x2 = simulatePorosity(s1,s2,ets)
+  pmin,pmax = min(p),max(p)
+  plot(None,None,None,s1,s2,p,cmin=pmin,cmax=pmax,cmap=jet,
+       clab="Porosity",png="model")
+  s1s = Sampling(1+s1.count/3,3*s1.delta,s1.first)
+  s2s = Sampling(1+s2.count/3,3*s2.delta,s2.first)
+  ps = gridSimple(px,x1,x2,s1s,s2s)
+  plot(None,None,None,s1s,s2s,ps,cmin=pmin,cmax=pmax,cmap=tjet,
+       clab="Porosity",png="data")
+  pb = gridBlended(px,x1,x2,s1,s2,smooth=0.5,et=ets)
+  plot(None,None,None,s1,s2,pb,cmin=pmin,cmax=pmax,cmap=jet,
+       clab="Porosity",png="modelb")
+  plot(None,None,None,s1,s2,sub(pb,p),cmin=-0.07,cmax=0.07,cmap=jet,
+       clab="Porosity error",png="emodelb")
+  printMaxErrorForKnownSamples(px,x1,x2,s1,s2,pb)
+  printRmsErrorForGriddedSamples(pb,p)
 
 numberOfKnownSamples = 256 # try also 64 and 16
 sigmaM,shapeM,rangeM = 1.0,1.0,1.0
@@ -117,6 +174,7 @@ def printMaxErrorForKnownSamples(px,x1,x2,s1,s2,p):
   print "maximum error for all known samples =",emax
 
 seed = 885
+#seed = 3
 #seed = -1917
 #seed = 2046
 #r = Random()
@@ -217,16 +275,16 @@ def applyBilateralFilter(sigmaS,sigmaR,f):
 #############################################################################
 # Plotting
 
-pngDir = None # directory to use for png files
-#pngDir = "./png/" # directory to use for png files
-slides = False
+#pngDir = None # directory to use for png files
+pngDir = "./png/" # directory to use for png files
+slides = True
 
 def plot(f,x1,x2,s1,s2,g,png=None,
          cmin=0,cmax=0,cmap=None,clab=None,mv=True,et=None):
   sp = SimplePlot(SimplePlot.Origin.LOWER_LEFT)
   if slides:
-    sp.setSize(1000,810)
-    sp.setFontSizeForSlide(1.0,0.9)
+    sp.setSize(1035,810)
+    sp.setFontSizeForSlide(1.0,0.9,16.0/9.0)
     sp.plotPanel.setColorBarWidthMinimum(200)
   else:
     sp.setSize(640,530)
