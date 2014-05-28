@@ -29,10 +29,10 @@ def main(args):
   #goDisplay("g")
   #goSlopes()
   #goSemblance()
-  #goScan()
+  goScan()
   #goThin()
   #goSmooth()
-  goSurfing()
+  #goSurfing()
   #goDisplay("gs")
   #goDisplay("gs")
   #goDisplay("gflt")
@@ -146,11 +146,12 @@ def goThin():
   #plot3(g,ft,cmin=-30,cmax=30)
 
 def goScan():
+  print "goScan ..."
   sn = readImage(snfile)
   sd = readImage(sdfile)
   sigmaPhi,sigmaTheta = 4,20
   minPhi,maxPhi = -90,90
-  minTheta,maxTheta = -20,20
+  minTheta,maxTheta = -25,25
   #minPhi,maxPhi = 40,40
   #minTheta,maxTheta = -10,-10
   fsc = FaultScanner3(sigmaPhi,sigmaTheta,[sn,sd])
@@ -170,28 +171,31 @@ def goScan():
     plot3(g,fp,minPhi,maxPhi)
   if minTheta<maxTheta:
     plot3(g,ft,minTheta,maxTheta)
+  print "done"
 
 def goSemblance():
+  print "goSemblance"
   g = readImage(gfile)
-  print "applying log gain ..."
-  g = slog(g)
+  #print "applying log gain ..."
+  #g = slog(g)
   print "reading slopes ..."
   p2 = readImage(p2file)
   p3 = readImage(p3file)
-  print "computing semblance num/den"
+  print "computing semblance num/den ..."
   fse = FaultSemblance()
   g = fse.taper(10,g)
   sn,sd = fse.semblanceNumDen(p2,p3,g)
-  print "writing semblance num/den"
+  print "writing semblance num/den ..."
   writeImage(snfile,sn)
   writeImage(sdfile,sd)
+  print "done"
 
 def goSlopes():
   g = readImage(gfile)
   #g = slog(g)
   #plot3(g)
-  sigma1,sigma2,pmax = 16.0,4.0,5.0
-  lsf = LocalSlopeFinder(sigma1,pmax) # should have included sigma2
+  sigma1,sigma2,pmax = 16.0,1.0,5.0
+  lsf = LocalSlopeFinder(sigma1,sigma2,pmax)
   p2 = zerofloat(n1,n2,n3)
   p3 = zerofloat(n1,n2,n3)
   ep = zerofloat(n1,n2,n3)
