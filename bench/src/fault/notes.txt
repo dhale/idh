@@ -1,5 +1,50 @@
-Subsets
-Subset s1
+---
+TODO
+Canning & Schoonebeek
+fault scanning
+fault surfing
+  read/write fault surfaces (quad meshes)
+  research surface processing
+fault throws
+unfaulting
+  Simon
+unfolding
+  Simon
+  Xinming
+horizon volumes
+  interactive
+    add/remove constraints
+    horizon surface slider
+  Xinming
+
+---
+Components
+  FaultScanner
+    input seismic image
+    output fault images (likelihood, phi, theta)
+  FaultSurfaces
+    a quad mesh
+  FaultSurfer
+    input fault images
+    output fault surfaces 
+  FaultThrower
+    input seismic image (after local smoothing filter)
+    input fault images
+    input fault surfaces
+    output fault throws
+  Unfaulter 
+    input fault throws
+    input image to be unfaulted
+    output unfaulted image
+  Unfolder
+    input unfolding vectors
+    input image to be unfolded
+    output unfolded image
+  HorizonSurfer
+    input unfaulted image
+    output horizon volumes
+    output flattened (unfaulted and unfolded) image
+    convert between horizon volumes <-> RGT volumes
 
 ---
 Sign conventions for fault strike, dip, and throw
