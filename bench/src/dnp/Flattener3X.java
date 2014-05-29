@@ -208,7 +208,7 @@ public class Flattener3X {
     CgSolver cs = new CgSolver(_small,_niter);
     makeRhs(ep,p2,p3,b);
     smoother3.applyTranspose(b);
-    cs.solve(anorm,a3,vb,vu);
+    cs.solve(null,anorm,a3,vb,vu);
     smoother3.apply(u);
     cleanShifts(u);
 

@@ -128,6 +128,13 @@ public class Flattener2C {
   }
 
   /**
+   * Can stop iterative updates to mappings.
+   */
+  public interface Stopper {
+    public boolean stop();
+  }
+
+  /**
    * Sets the relative weight of the PDE dr(x1,x2)/dx1 = 0.
    * Increasing this weight will cause shifts r(x1,x2) and s(u1,u2) to vary
    * more slowly with vertical coordinates x1 and u1, respectively. A weight
@@ -176,6 +183,110 @@ public class Flattener2C {
   }
 
   /**
+   * Iteratively updates mappings using specified slopes and constraints.
+   * @param s1 sampling of 1st dimension.
+   * @param s2 sampling of 2nd dimension.
+   * @param p2 array of slopes of image features.
+   * @param el array of linearities of image features.
+   * @param cs constraints, arrays of (x1,x2) for which u1 is constant.
+   *  Contents of the array cs are as follows:
+   *  <pre>
+   *  {{{x1_00,x1_01,x1_02,...},{x1_10,x1_11,...},...},
+   *   {{x2_00,x2_01,x2_02,...},{x2_10,x2_11,...},...}}
+   *  </pre>
+   *  Each constraint point has coordinates (x1,x2). In the array cs, the
+   *  arrays of arrays of x1 coordinates precede the arrays of arrays of x2
+   *  coordinates. Each array of x1 coordinates has a corresponding array of
+   *  x2 coordinates, and together this pair of arrays of (x1,x2) represents
+   *  one constraint. All points in a constraint will be constrained to have
+   *  the same u1; in other words, they will all lie on the same horizon.
+   * @param mappings if not null, the mappings before updating.
+   *                 These mappings will not be modified, but.
+   * @param stopper if not null, can stop the update between iterations.
+   * @return the updated mappings.
+   */
+  public Mappings updateMappingsFromSlopes(
+    Sampling s1, Sampling s2, float[][] p2, float[][] el,
+    float[][][] cs, Mappings mappings, Stopper stopper)
+  {
+    // Sampling parameters.
+    int n1 = s1.getCount();
+    int n2 = s2.getCount();
+    float d1 = (float)s1.getDelta();
+    float d2 = (float)s2.getDelta();
+    float f1 = (float)s1.getFirst();
+
+    // Convert any constraints in cs to sample indices k1 and k2.
+    int[][] k1 = null;
+    int[][] k2 = null;
+    if (cs!=null) {
+      float[][] c1 = cs[0];
+      float[][] c2 = cs[1];
+      int nc = c1.length;
+      k1 = new int[nc][];
+      k2 = new int[nc][];
+      for (int ic=0; ic<nc; ++ic) {
+        int nk = c1[ic].length;
+        k1[ic] = new int[nk];
+        k2[ic] = new int[nk];
+        for (int ik=0; ik<nk; ++ik) {
+          k1[ic][ik] = s1.indexOfNearest(c1[ic][ik]);
+          k2[ic][ik] = s2.indexOfNearest(c2[ic][ik]);
+        }
+      }
+    }
+
+    // If necessary, convert units for slopes to samples per sample.
+    if (d1!=d2)
+      p2 = mul(d2/d1,p2);
+
+    // Compute shifts r(x1,x2), in samples.
+    float[][] b = new float[n2][n1]; // for right-hand side b
+    float[][] r = new float[n2][n1]; // for shifts r
+    if (mappings!=null)
+      r = mappings.getShiftsR();
+    initializeShifts(k1,k2,r); // initial shifts to satisfy constraints
+    //checkShifts(k1,k2,r);
+    VecArrayFloat2 vb = new VecArrayFloat2(b);
+    VecArrayFloat2 vr = new VecArrayFloat2(r);
+    A2 a2 = new A2(_weight1,el,p2);
+    M2 m2 = new M2(_sigma1,_sigma2,el,k1,k2);
+    //testSpd("a2",n1,n2,a2);
+    //testSpd("m2",n1,n2,m2);
+    CgSolver cgs = new CgSolver(_small,_niter);
+    CgSolver.Stopper cgss = null;
+    if (stopper!=null) {
+      final Stopper sf = stopper;
+      cgss = new CgSolver.Stopper() {
+        public boolean stop(CgSolver.Info info) {
+          return sf.stop();
+        }
+      };
+    }
+    makeRhs(el,p2,b);
+    cgs.solve(cgss,a2,m2,vb,vr);
+    //checkShifts(k1,k2,r);
+    cleanShifts(r);
+
+    // Compute u1(x1,x2) from shifts r.
+    float[][] u1 = r;
+    for (int i2=0; i2<n2; ++i2) {
+      for (int i1=0; i1<n1; ++i1) {
+        u1[i2][i1] = f1+(i1+r[i2][i1])*d1;
+      }
+    }
+
+    // Compute x1(u1,u2) using inverse linear interpolation.
+    float[][] x1 = b;
+    InverseInterpolator ii = new InverseInterpolator(s1,s1);
+    for (int i2=0; i2<n2; ++i2)
+      ii.invert(u1[i2],x1[i2]);
+    printStats("u1",u1);
+    printStats("x1",x1);
+    return new Mappings(s1,s2,u1,x1);
+  }
+
+  /**
    * Gets mappings computed from specified slopes and constraints.
    * @param s1 sampling of 1st dimension.
    * @param s2 sampling of 2nd dimension.
@@ -195,8 +306,10 @@ public class Flattener2C {
    *  the same u1; in other words, they will all lie on the same horizon.
    */
   public Mappings getMappingsFromSlopes(
-    Sampling s1, Sampling s2, float[][] p2, float[][] el, float[][][] c)
+    Sampling s1, Sampling s2, float[][] p2, float[][] el, float[][][] cs)
   {
+    return updateMappingsFromSlopes(s1,s2,p2,el,cs,null,null);
+    /*
     // Sampling parameters.
     int n1 = s1.getCount();
     int n2 = s2.getCount();
@@ -207,9 +320,9 @@ public class Flattener2C {
     // Convert any constraints in cs to sample indices k1 and k2.
     int[][] k1 = null;
     int[][] k2 = null;
-    if (c!=null) {
-      float[][] c1 = c[0];
-      float[][] c2 = c[1];
+    if (cs!=null) {
+      float[][] c1 = cs[0];
+      float[][] c2 = cs[1];
       int nc = c1.length;
       k1 = new int[nc][];
       k2 = new int[nc][];
@@ -239,9 +352,9 @@ public class Flattener2C {
     M2 m2 = new M2(_sigma1,_sigma2,el,k1,k2);
     //testSpd("a2",n1,n2,a2);
     //testSpd("m2",n1,n2,m2);
-    CgSolver cs = new CgSolver(_small,_niter);
+    CgSolver cgs = new CgSolver(_small,_niter);
     makeRhs(el,p2,b);
-    cs.solve(a2,m2,vb,vr);
+    cgs.solve(a2,m2,vb,vr);
     checkShifts(k1,k2,r);
     cleanShifts(r);
 
@@ -261,6 +374,7 @@ public class Flattener2C {
     printStats("u1",u1);
     printStats("x1",x1);
     return new Mappings(s1,s2,u1,x1);
+    */
   }
 
   ///////////////////////////////////////////////////////////////////////////
@@ -320,23 +434,22 @@ public class Flattener2C {
   }
 
   // Initializes shifts r to satisfy constraints that u = i1+r is constant.
-  // Chooses the constant u to be the index i1 of the first constrained
-  // sample, so that the shift r for that first sample is zero.
   public static void initializeShifts(int[][] k1, int[][] k2, float[][] r) {
-    zero(r);
     if (k1!=null && k2!=null) {
       int nc = k1.length;
       for (int ic=0; ic<nc; ++ic) {
         int nk = k1[ic].length;
-        int ik = 0;
-        int i1 = k1[ic][ik];
-        int i2 = k2[ic][ik];
-        for (ik=1; ik<nk; ++ik) {
-          int ip = i1;
-          float rp = r[i2][i1];
-          i1 = k1[ic][ik];
-          i2 = k2[ic][ik];
-          r[i2][i1] = rp+ip-i1;
+        if (nk>0) {
+          int ik = 0;
+          int i1 = k1[ic][ik];
+          int i2 = k2[ic][ik];
+          for (ik=1; ik<nk; ++ik) {
+            int ip = i1;
+            float rp = r[i2][i1];
+            i1 = k1[ic][ik];
+            i2 = k2[ic][ik];
+            r[i2][i1] = rp+ip-i1;
+          }
         }
       }
     }

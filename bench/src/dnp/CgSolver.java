@@ -9,14 +9,14 @@ package dnp;
 import java.util.logging.Logger;
 
 /**
- * Conjugate-gradient solver for Ax = b, where A is a square matrix.
+ * Iterative conjugate-gradient solver for Ax = b, where A is a square matrix.
  * @author Dave Hale, Colorado School of Mines
  * @version 2009.09.15
  */
 public class CgSolver {
 
   /**
-   * Iterations stop when one of these conditions is met.
+   * The solver stops when one of these conditions is met.
    */
   public enum Stop {
     /**
@@ -27,7 +27,11 @@ public class CgSolver {
     /**
      * The maximum number of iterations was performed.
      */
-    MAXI
+    MAXI,
+    /**
+     * The user stopped the solver.
+     */
+    USER
   }
 
   /**
@@ -72,6 +76,20 @@ public class CgSolver {
   }
 
   /**
+   * Determines if a user wants to stop this solver.
+   */
+  public interface Stopper {
+
+    /**
+     * Returns true, to stop this solver; false, otherwise.
+     * This method is called before each conjugate-gradient iteration.
+     * @param info information about the current state of this solver.
+     * @return true, to stop this solver; false, to continue.
+     */
+    public boolean stop(Info info);
+  }
+
+  /**
    * Constructs a solver with specified parameters.
    * @param tiny threshold for ratio of residuals ||r||/||b||
    * @param maxi maximum number of iterations to perform.
@@ -88,7 +106,7 @@ public class CgSolver {
    * @param x the solution vector.
    */
   public Info solve(A a, Vec b, Vec x) {
-    return solve(0.0,a,b,x);
+    return solve(null,0.0,a,b,x);
   }
 
   /**
@@ -99,17 +117,41 @@ public class CgSolver {
    * @param x the solution vector.
    */
   public Info solve(A a, A m, Vec b, Vec x) {
-    return solve(0.0,a,m,b,x);
+    return solve(null,0.0,a,m,b,x);
   }
 
   /**
    * Solves the system of equation Ax = b with CG iterations.
+   * @param stopper if not null, can stop iterations.
+   * @param a the linear operator that represents the matrix A.
+   * @param b the right-hand-side vector.
+   * @param x the solution vector.
+   */
+  public Info solve(Stopper stopper, A a, Vec b, Vec x) {
+    return solve(stopper,0.0,a,b,x);
+  }
+
+  /**
+   * Solves the system of equation Ax = b with preconditioned CG iterations.
+   * @param stopper if not null, can stop iterations.
+   * @param a the linear operator that represents the matrix A.
+   * @param m the preconditioner that approximates the inverse of A.
+   * @param b the right-hand-side vector.
+   * @param x the solution vector.
+   */
+  public Info solve(Stopper stopper, A a, A m, Vec b, Vec x) {
+    return solve(stopper,0.0,a,m,b,x);
+  }
+
+  /**
+   * Solves the system of equation Ax = b with CG iterations.
+   * @param stopper if not null, can stop iterations.
    * @param anorm estimate for norm ||A|| of linear operator A.
    * @param a the linear operator that represents the matrix A.
    * @param b the right-hand-side vector.
    * @param x the solution vector.
    */
-  public Info solve(double anorm, A a, Vec b, Vec x) {
+  public Info solve(Stopper stopper, double anorm, A a, Vec b, Vec x) {
     Vec q = b.clone();
     a.apply(x,q); // q = Ax
     Vec r = b.clone();
@@ -119,15 +161,21 @@ public class CgSolver {
     double rnorm = r.norm2();
     double xnorm = x.norm2();
     double rrnorm = rnorm*rnorm;
-    logInit(bnorm,rnorm,xnorm);
+    logInit(bnorm,rnorm);
+    Info info = null;
     int iter;
-    for (iter=0; iter<_maxi && rnorm>_tiny*(anorm*xnorm+bnorm); ++iter) {
-      logIter(iter,rnorm,xnorm);
+    for (iter=0;
+         iter<_maxi
+           && rnorm>_tiny*(anorm*xnorm+bnorm)
+           && (info=userStop(stopper,iter,bnorm,rnorm))==null;
+         ++iter) {
+      logIter(iter,rnorm);
       a.apply(d,q);
       double dq = d.dot(q);
       double alpha = rrnorm/dq;
       x.add(1.0,d,alpha);
-      xnorm = x.norm2();
+      if (anorm>0.0)
+        xnorm = x.norm2();
       if (iter%50==49) { // if accumulated rounding error may be large, ...
         a.apply(x,q); // q = Ax
         r.add(0.0,b,1.0); // r = b
@@ -141,20 +189,24 @@ public class CgSolver {
       double beta = rrnorm/rrnormOld;
       d.add(beta,r,1.0);
     }
-    logDone(iter,rnorm,xnorm);
-    Stop stop = (iter<_maxi)?Stop.TINY:Stop.MAXI;
-    return new Info(stop,iter,bnorm,rnorm);
+    logDone(iter, rnorm);
+    if (info==null) {
+      Stop stop = (iter<_maxi) ? Stop.TINY : Stop.MAXI;
+      info = new Info(stop,iter,bnorm,rnorm);
+    }
+    return info;
   }
 
   /**
    * Solves the system of equation Ax = b with preconditioned CG iterations.
+   * @param stopper if not null, can stop iterations.
    * @param anorm estimate for norm ||A|| of linear operator A.
    * @param a the linear operator that represents the matrix A.
    * @param m the preconditioner that approximates the inverse of A.
    * @param b the right-hand-side vector.
    * @param x the solution vector.
    */
-  public Info solve(double anorm, A a, A m, Vec b, Vec x) {
+  public Info solve(Stopper stopper, double anorm, A a, A m, Vec b, Vec x) {
     Vec q = b.clone();
     a.apply(x,q); // q = Ax
     Vec r = b.clone();
@@ -166,11 +218,16 @@ public class CgSolver {
     double bnorm = b.norm2();
     double rnorm = r.norm2();
     double xnorm = x.norm2();
-    logInit(bnorm,rnorm,xnorm);
+    logInit(bnorm,rnorm);
     int iter;
-    for (iter=0; iter<_maxi && rnorm>_tiny*(anorm*xnorm+bnorm); ++iter) {
-      logIter(iter,rnorm,xnorm);
-      a.apply(d,q); // q = Ad
+    Info info = null;
+    for (iter=0;
+         iter<_maxi
+           && rnorm>_tiny*(anorm*xnorm+bnorm)
+           && (info=userStop(stopper,iter,bnorm,rnorm))==null;
+         ++iter) {
+      logIter(iter,rnorm);
+      a.apply(d, q); // q = Ad
       double dq = d.dot(q); // d'q
       double alpha = rsnorm/dq; // alpha = r'Mr/d'q
       x.add(1.0,d, alpha); // x = x+alpha*d
@@ -189,37 +246,46 @@ public class CgSolver {
       double beta = rsnorm/rsnormOld;
       d.add(beta,s,1.0); // d = s+beta*d
     }
-    logDone(iter,rnorm,xnorm);
-    Stop stop = (iter<_maxi)?Stop.TINY:Stop.MAXI;
-    return new Info(stop,iter,bnorm,rnorm);
+    logDone(iter,rnorm);
+    if (info==null) {
+      Stop stop = (iter<_maxi) ? Stop.TINY : Stop.MAXI;
+      info = new Info(stop, iter, bnorm, rnorm);
+    }
+    return info;
   }
  
   ///////////////////////////////////////////////////////////////////////////
   // private
 
-  private double _anorm; // estimate for norm(A); default is zero
   private double _tiny; // converged: norm(r)<tiny*(norm(A)*norm(x)+norm(b))
   private int _maxi; // upper limit on number of iterations
+
+  // Returns non-null info if user stops CG iterations.
+  private Info userStop(
+    Stopper stopper, int iter, double bnorm, double rnorm)
+  {
+    Info info = null;
+    if (stopper!=null) {
+      info = new Info(Stop.USER,iter,bnorm,rnorm);
+      if (!stopper.stop(info))
+        info = null;
+    }
+    return info;
+  }
 
   // Logging.
   private static Logger _log = 
     Logger.getLogger(CgSolver.class.getName());
-  private static void logInit(double bnorm, double rnorm, double xnorm) {
-    String s = String.format(
-      "begin: bnorm=%1.8g rnorm=%1.8g xnorm=%1.8g%n",
-      bnorm,rnorm,xnorm);
+  private static void logInit(double bnorm, double rnorm) {
+    String s = String.format("begin: bnorm=%1.8g rnorm=%1.8g%n",bnorm,rnorm);
     _log.fine(s);
   }
-  private static void logIter(int iter, double rnorm, double xnorm) {
-    String s = String.format(
-      "iter=%d rnorm=%1.8g xnorm=%1.8g%n",
-      iter,rnorm,xnorm);
+  private static void logIter(int iter, double rnorm) {
+    String s = String.format("iter=%d rnorm=%1.8g%n",iter,rnorm);
     _log.finer(s);
   }
-  private static void logDone(int iter, double rnorm, double xnorm) {
-    String s = String.format(
-      "end: iter=%d rnorm=%1.8g xnorm=%1.8g%n",
-      iter,rnorm,xnorm);
+  private static void logDone(int iter, double rnorm) {
+    String s = String.format("end: iter=%d rnorm=%1.8g%n",iter,rnorm);
     _log.fine(s);
   }
 }

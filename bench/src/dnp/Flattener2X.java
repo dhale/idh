@@ -199,7 +199,7 @@ public class Flattener2X {
     CgSolver cs = new CgSolver(_small,_niter);
     makeRhs(el,p2,b);
     smoother2.applyTranspose(b);
-    cs.solve(anorm,a2,vb,vu);
+    cs.solve(null,anorm,a2,vb,vu);
     smoother2.apply(u);
     checkConstraints(k1,k2,u);
     cleanShifts(u);

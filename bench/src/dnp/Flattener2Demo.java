@@ -12,46 +12,38 @@ import edu.mines.jtk.mosaic.*;
 
 import static edu.mines.jtk.util.ArrayMath.*;
 
+import fault.*;
+
 /**
  * Interactive demo of flattening with constraints.
  */
 public class Flattener2Demo {
 
+  private Flattener2C.Mappings _mappings; // mapping for time/depth <-> RGT
+  private ConstraintSet[] _css = { // 6 empty sets of constraint points
+    new ConstraintSet("R",Color.RED,KeyEvent.VK_R),
+    new ConstraintSet("G",Color.GREEN,KeyEvent.VK_G),
+    new ConstraintSet("B",Color.BLUE,KeyEvent.VK_B),
+    new ConstraintSet("C",Color.CYAN,KeyEvent.VK_C),
+    new ConstraintSet("M",Color.MAGENTA,KeyEvent.VK_M),
+    new ConstraintSet("Y",Color.YELLOW,KeyEvent.VK_Y),
+  };
+  private ConstraintSet _csa = null; // currently active constraint set
+  private Tile _cssTile; // tile in which constraint sets are plotted
+  private Flattener2C _flattener; // for updating mappings with constraints
+  private MappingsUpdater _mappingsUpdater; // runs in Swing worker thread
+  private ContoursView _contoursView; // contours used for horizons
+  private Sampling _s1,_s2; // samplings for image
+  private float[][] _p2,_el; // slopes and linearities
+
+  ///////////////////////////////////////////////////////////////////////////
+
   /**
-   * Runs the program.
-   * @param args arguments (ignored).
+   * Constraint points are pairs of coordinates (x1,x2).
    */
-  public static void main(String[] args) {
-    SwingUtilities.invokeLater(new Runnable() {
-      public void run() {
-        new Flattener2Demo();
-      }
-    });
-  }
-
-  private Flattener2Demo() {
-    int n1 = 251;
-    int n2 = 357;
-    Sampling s1 = new Sampling(n1,1.0,0.0);
-    Sampling s2 = new Sampling(n2,1.0,0.0);
-    String fileName = "/data/seis/tpd/csm/oldslices/tp73.dat";
-    float[][] f = new float[n2][n1];
-    try {
-      ArrayInputStream ais = new ArrayInputStream(fileName);
-      ais.readFloats(f);
-      ais.close();
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
-    float[][] g = copy(f);
-    float[][] t = rampfloat(0.0f,1.0f,0.0f,n1,n2);
-    new Plot(s1,s2,f,g,t);
-  }
-
-  // Control points are pairs of coordinates (x1,x2).
-  private static class ControlPoint {
+  private static class ConstraintPoint {
     double x1,x2;
-    ControlPoint(double x1, double x2) {
+    ConstraintPoint(double x1, double x2) {
       this.x1 = x1;
       this.x2 = x2;
     }
@@ -60,47 +52,53 @@ public class Flattener2Demo {
       double d2 = this.x2-x2;
       return sqrt(d1*d1+d2*d2);
     }
-    double distanceTo(ControlPoint cp) {
+    double distanceTo(ConstraintPoint cp) {
       return distanceTo(cp.x1,cp.x2);
     }
     public boolean equals(Object o) {
-      ControlPoint that = (ControlPoint)o;
+      ConstraintPoint that = (ConstraintPoint)o;
       return this.x1==that.x1 && this.x2==that.x2;
     }
     public String toString() {
       return "("+x1+","+x2+")";
     }
   }
-  // A named and colored list of control points with a view.
-  private static class ControlSet {
+
+  /**
+   * A named and colored list of constraint points with a view.
+   */
+  private class ConstraintSet {
     String name;
     Color color;
     int key;
-    ArrayList<ControlPoint> cps;
+    ArrayList<ConstraintPoint> cps;
     PointsView pv;
-    ControlSet(String name, Color color, int key) {
+    ConstraintSet(String name, Color color, int key) {
       this.name = name;
       this.color = color;
       this.key = key;
-      this.cps = new ArrayList<ControlPoint>();
+      this.cps = new ArrayList<ConstraintPoint>();
     }
-    void add(ControlPoint cp) {
+    void add(ConstraintPoint cp) {
       if (!cps.contains(cp)) {
         cps.add(cp);
         updatePointsView();
+        updateMappings();
       }
     }
-    void remove(ControlPoint cp) {
+    void remove(ConstraintPoint cp) {
       if (cps.contains(cp)) {
         cps.remove(cp);
         updatePointsView();
+        updateMappings();
       }
     }
-    void move(ControlPoint cpOld, ControlPoint cpNew) {
+    void move(ConstraintPoint cpOld, ConstraintPoint cpNew) {
       if (cps.contains(cpOld)) {
         cps.remove(cpOld);
         cps.add(cpNew);
         updatePointsView();
+        updateMappings();
       }
     }
     PointsView updatePointsView() {
@@ -108,7 +106,7 @@ public class Flattener2Demo {
       float[] x1 = new float[ncp];
       float[] x2 = new float[ncp];
       for (int icp=0; icp<ncp; ++icp) {
-        ControlPoint cp = cps.get(icp);
+        ConstraintPoint cp = cps.get(icp);
         x1[icp] = (float)cp.x1;
         x2[icp] = (float)cp.x2;
       }
@@ -125,25 +123,73 @@ public class Flattener2Demo {
       return pv;
     }
   }
-  // Six predefined control sets, initially empty.
-  private ControlSet[] _css = {
-    new ControlSet("R",Color.RED,KeyEvent.VK_R),
-    new ControlSet("G",Color.GREEN,KeyEvent.VK_G),
-    new ControlSet("B",Color.BLUE,KeyEvent.VK_B),
-    new ControlSet("C",Color.CYAN,KeyEvent.VK_C),
-    new ControlSet("M",Color.MAGENTA,KeyEvent.VK_M),
-    new ControlSet("Y",Color.YELLOW,KeyEvent.VK_Y),
-  };
-  Tile _cssTile; // tile in which control sets are plotted
-  // Currently active control set, if not null.
-  private ControlSet _csa = null;
 
-  private ControlPoint findNearestControlPoint(ControlPoint cp) {
-    ControlPoint pmin = null;
+  private float[][][] getConstraints() {
+    int ncs = _css.length;
+    float[][][] cs = new float[2][ncs][];
+    for (int ics=0; ics<ncs; ++ics) {
+      ArrayList<ConstraintPoint> cps = _css[ics].cps;
+      int ncp = cps.size();
+      float[] x1 = cs[0][ics] = new float[ncp];
+      float[] x2 = cs[1][ics] = new float[ncp];
+      for (int icp=0; icp<ncp; ++icp) {
+        ConstraintPoint cp = cps.get(icp);
+        x1[icp] = (float)cp.x1;
+        x2[icp] = (float)cp.x2;
+      }
+    }
+    return cs;
+  }
+
+  private void updateMappings() {
+    if (_mappingsUpdater!=null) {
+      trace("updateMappings: cancelling");
+      _mappingsUpdater.cancel(false);
+    }
+    _mappingsUpdater = new MappingsUpdater();
+    _mappingsUpdater.execute();
+  }
+
+  /**
+   * Iteratively updates mappings in a Swing worker thread. Stops updating
+   * when cancelled, say, because constraints have changed. A new mappings
+   * updater must be constructed for every update, typically after any of
+   * the parameters used to compute mappings have been modified.
+   */
+  private class MappingsUpdater
+    extends SwingWorker<Flattener2C.Mappings,Void>
+  {
+    public Flattener2C.Mappings doInBackground() { // in Swing worker thread
+      trace("MappingsUpdater.doInBackground");
+      Flattener2C.Stopper stopper = new Flattener2C.Stopper() {
+        public boolean stop() {
+          return isCancelled();
+        }
+      };
+      float[][][] cs = getConstraints();
+      _mappings = _flattener.updateMappingsFromSlopes(
+        _s1,_s2,_p2,_el,cs,_mappings,stopper);
+      trace("returning mappings="+_mappings);
+      return _mappings;
+    }
+    public void done() { // in Swing event dispatch thread
+      try {
+        _mappings = get();
+      } catch (Exception e) {
+        //throw new RuntimeException(e);
+      }
+      trace("MappingsUpdater.done: _mappings="+_mappings);
+      if (_mappings!=null)
+        _contoursView.set(_mappings.u1);
+    }
+  }
+
+  private ConstraintPoint findNearestConstraintPoint(ConstraintPoint cp) {
+    ConstraintPoint pmin = null;
     double dmin = 0.0;
-    for (ControlPoint p: _csa.cps) {
+    for (ConstraintPoint p : _csa.cps) {
       double d = cp.distanceTo(p);
-      if (pmin==null || d<dmin) {
+      if (pmin == null || d < dmin) {
         pmin = p;
         dmin = d;
       }
@@ -151,30 +197,20 @@ public class Flattener2Demo {
     return pmin;
   }
 
-  ///////////////////////////////////////////////////////////////////////////
-
-  // Location and size of plot.
-  private static final int PLOT_X = 50;
-  private static final int PLOT_Y = 50;
-  private static final int PLOT_WIDTH = 950;
-  private static final int PLOT_HEIGHT = 650;
-
   // One plot for everything.
   private class Plot {
 
-    private Plot(Sampling s1, Sampling s2,
-                 float[][] f, float[][] g, float[][] t)
+    private Plot(Sampling s1, Sampling s2, float[][] f, float[][] t)
     {
-      PlotPanel pp = new PlotPanel(1,2,PlotPanel.Orientation.X1DOWN_X2RIGHT);
+      PlotPanel pp = new PlotPanel(1,1,PlotPanel.Orientation.X1DOWN_X2RIGHT);
       pp.setHLabel(0,"Inline (samples)");
-      pp.setHLabel(1,"Inline (samples)");
       pp.setVLabel("Time (samples)");
       pp.addPixels(0,0,s1,s2,f);
-      pp.addPixels(0,1,s1,s2,g);
-      ContoursView cv = pp.addContours(0,0,s1,s2,t);
-      cv.setColorModel(ColorMap.JET);
-      pp.addColorBar(cv,"Relative geologic time");
-      for (ControlSet cs:_css) {
+      _contoursView = pp.addContours(0,0,s1,s2,t);
+      _contoursView.setContours(40);
+      _contoursView.setLineColor(Color.YELLOW);
+      //pp.addColorBar(_contoursView,"Relative geologic time");
+      for (ConstraintSet cs:_css) {
         pp.addTiledView(0,0,cs.updatePointsView());
       }
       _cssTile = _css[0].pv.getTile();
@@ -184,12 +220,12 @@ public class Flattener2Demo {
       TileZoomMode tzm = pf.getTileZoomMode();
       tzm.setActive(true);
 
-      // Add modes for editing control sets.
+      // Add modes for editing constraint sets.
       ModeManager modeManager = pf.getModeManager();
       int ncpm = _css.length;
-      ControlPointMode[] cpms = new ControlPointMode[ncpm];
+      ConstraintPointMode[] cpms = new ConstraintPointMode[ncpm];
       for (int icpm=0; icpm<ncpm; ++icpm)
-        cpms[icpm] = new ControlPointMode(modeManager,_css[icpm]);
+        cpms[icpm] = new ConstraintPointMode(modeManager,_css[icpm]);
 
       // The menu bar includes a mode menu for selecting a mode.
       JMenu fileMenu = new JMenu("File");
@@ -214,9 +250,9 @@ public class Flattener2Demo {
       pf.add(toolBar, BorderLayout.WEST);
 
       // Make the plot frame visible.
-      pf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-      pf.setLocation(PLOT_X,PLOT_Y);
-      pf.setSize(PLOT_WIDTH,PLOT_HEIGHT);
+      pf.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+      pf.setLocation(50,50);
+      pf.setSize(700,800);
       pf.setFontSizeForSlide(1.0,1.0);
       pf.setVisible(true);
     }
@@ -224,10 +260,12 @@ public class Flattener2Demo {
 
   ///////////////////////////////////////////////////////////////////////////
 
-  // A mode for adding, removing, or moving control points.
-  private class ControlPointMode extends Mode {
+  /**
+   * A mode for adding, removing, or moving constraint points.
+   */
+  private class ConstraintPointMode extends Mode {
 
-    public ControlPointMode(ModeManager modeManager, ControlSet cs) {
+    public ConstraintPointMode(ModeManager modeManager, ConstraintSet cs) {
       super(modeManager);
       _cs = cs;
       setName(cs.name);
@@ -242,19 +280,19 @@ public class Flattener2Demo {
         Tile tile = (Tile)component;
         if (tile==_cssTile) {
           if (active) {
-            _csa = _cs; // make our control set the active one
+            _csa = _cs; // make our constraint set the active one
             component.addMouseListener(_ml);
           } else {
-            if (_csa==_cs) // if our control set is the active one,
-              _csa = null; // then no control set will be active
+            if (_csa==_cs) // if our constraint set is the active one,
+              _csa = null; // then no constraint set will be active
             component.removeMouseListener(_ml);
           }
         }
       }
     }
 
-    private ControlSet _cs; // control set for this mode
-    private ControlPoint _cpEdit; // if editing, last point
+    private ConstraintSet _cs; // constraint set for this mode
+    private ConstraintPoint _cpEdit; // if editing, last point
     private boolean _editing; // true, if currently editing
     private Tile _tile; // tile in which editing began
 
@@ -290,7 +328,7 @@ public class Flattener2Demo {
     };
 
     // Converts an point (x,y) in pixels to a complex number z.
-    private ControlPoint pointToControlPoint(int x, int y) {
+    private ConstraintPoint pointToConstraintPoint(int x, int y) {
       Transcaler ts = _tile.getTranscaler();
       Projector hp = _tile.getHorizontalProjector();
       Projector vp = _tile.getVerticalProjector();
@@ -298,11 +336,11 @@ public class Flattener2Demo {
       double yu = ts.y(y);
       double xv = hp.v(xu);
       double yv = vp.v(yu);
-      return new ControlPoint(yv,xv);
+      return new ConstraintPoint(yv,xv);
     }
 
-    // Converts control point p to a point (x,y) in pixels.
-    private Point controlPointToPoint(ControlPoint cp) {
+    // Converts constraint point p to a point (x,y) in pixels.
+    private Point constraintPointToPoint(ConstraintPoint cp) {
       Transcaler ts = _tile.getTranscaler();
       Projector hp = _tile.getHorizontalProjector();
       Projector vp = _tile.getVerticalProjector();
@@ -314,41 +352,41 @@ public class Flattener2Demo {
     }
 
     // Determines whether a specified point (x,y) is within a small
-    // fixed number of pixels to the specified control point cp.
-    private boolean closeEnough(int x, int y, ControlPoint cp) {
-      Point p = controlPointToPoint(cp);
+    // fixed number of pixels to the specified constraint point cp.
+    private boolean closeEnough(int x, int y, ConstraintPoint cp) {
+      Point p = constraintPointToPoint(cp);
       return abs(p.x-x)<12 && abs(p.y-y)<12;
     }
 
-    // Adds a control point at mouse coordinates (x,y).
+    // Adds a constraint point at mouse coordinates (x,y).
     private void add(MouseEvent e) {
       _tile = (Tile)e.getSource();
       int x = e.getX();
       int y = e.getY();
-      ControlPoint cp = pointToControlPoint(x,y);
+      ConstraintPoint cp = pointToConstraintPoint(x,y);
       _cs.add(cp);
     }
 
-    // Removes a control point, if mouse (x,y) is close enough to one.
+    // Removes a constraint point, if mouse (x,y) is close enough to one.
     private void remove(MouseEvent e) {
       _tile = (Tile)e.getSource();
       int x = e.getX();
       int y = e.getY();
-      ControlPoint cp = pointToControlPoint(x,y);
-      ControlPoint cq = findNearestControlPoint(cp);
+      ConstraintPoint cp = pointToConstraintPoint(x,y);
+      ConstraintPoint cq = findNearestConstraintPoint(cp);
       if (cq!=null && closeEnough(x,y,cq))
         _cs.remove(cq);
     }
 
-    // Begins editing of an existing control point, if close enough.
+    // Begins editing of an existing constraint point, if close enough.
     // Returns true, if close enough so that we have begun editing;
     // false, otherwise.
     private boolean beginEdit(MouseEvent e) {
       _tile = (Tile)e.getSource();
       int x = e.getX();
       int y = e.getY();
-      ControlPoint cp = pointToControlPoint(x,y);
-      ControlPoint cq = findNearestControlPoint(cp);
+      ConstraintPoint cp = pointToConstraintPoint(x,y);
+      ConstraintPoint cq = findNearestConstraintPoint(cp);
       if (cq!=null && closeEnough(x,y,cq)) {
         _cs.move(cq,cp);
         _cpEdit = cp;
@@ -357,22 +395,25 @@ public class Flattener2Demo {
       return false;
     }
 
-    // Called while a pole or zero is being dragged during edited.
+    // Called while a constraint point is being dragged during editing.
     private void duringEdit(MouseEvent e) {
       int x = e.getX();
       int y = e.getY();
-      ControlPoint cp = pointToControlPoint(x,y);
+      ConstraintPoint cp = pointToConstraintPoint(x,y);
       _cs.move(_cpEdit,cp);
       _cpEdit = cp;
     }
 
-    // Called when done editing a pole or zero.
+    // Called when done editing a constraint point.
     private void endEdit(MouseEvent e) {
       duringEdit(e);
       _editing = false;
     }
   }
 
+  /**
+   * Handles program exit.
+   */
   private class ExitAction extends AbstractAction {
     private ExitAction() {
       super("Exit");
@@ -384,5 +425,61 @@ public class Flattener2Demo {
 
   private static void trace(String s) {
     System.out.println(s);
+  }
+
+  private static float[][] findFaults(float[][] f) {
+    FaultSemblance fse = new FaultSemblance();
+    float[][] p2 = fse.slopes(f);
+    float[][][] snd = fse.semblanceNumDen(p2,f);
+    FaultScanner2 fsc = new FaultScanner2(20,snd,FaultScanner2.Smoother.SHEAR);
+    float[][][] flft = fsc.scan(-20,20);
+    return flft[0];
+  }
+
+  ///////////////////////////////////////////////////////////////////////////
+
+  private Flattener2Demo() {
+    int n1 = 251;
+    int n2 = 357;
+    double d1 = 1.0;
+    double d2 = 1.0;
+    _s1 = new Sampling(n1,d1,0.0);
+    _s2 = new Sampling(n2,d2,0.0);
+    String fileName = "/data/seis/tpd/csm/oldslices/tp73.dat";
+    float[][] f = new float[n2][n1];
+    try {
+      ArrayInputStream ais = new ArrayInputStream(fileName);
+      ais.readFloats(f);
+      ais.close();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+    double sigma = 8.0; // good for Teapot Dome image tp73
+    double pmax = 10.0;
+    _p2 = new float[n2][n1];
+    _el = new float[n2][n1];
+    LocalSlopeFinder lsf = new LocalSlopeFinder(sigma,pmax);
+    lsf.findSlopes(f,_p2,_el);
+    _p2 = mul((float)(d1/d2),_p2);
+    _el = findFaults(f);
+    _el = pow(sub(1.0f,_el),8);
+    _flattener = new Flattener2C();
+    _flattener.setWeight1(0.02);
+    _flattener.setIterations(0.01,1000);
+    _flattener.setSmoothings(4.0,8.0);
+    //updateMappings();
+    float[][][] cs = getConstraints();
+    trace("number of constraint sets = "+cs[0].length);
+    _mappings = _flattener.updateMappingsFromSlopes(
+      _s1,_s2,_p2,_el,cs,null,null);
+    new Plot(_s1,_s2,f,_mappings.u1);
+  }
+
+  public static void main(String[] args) {
+    SwingUtilities.invokeLater(new Runnable() {
+      public void run() {
+        new Flattener2Demo();
+      }
+    });
   }
 }
