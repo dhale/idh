@@ -439,7 +439,7 @@ def goSch():
   """
   firstLook = False # fast, does not read all trace headers
   secondLook = False # slow, must read all trace headers
-  writeImage = True # reads all traces, writes an image
+  writeImage = False # reads all traces, writes an image
   showImage = True # displays the image
   basedir = "/data/seis/sch/"
   sgyfile = basedir+"sgy/pack_0.sgy"
