@@ -10,6 +10,11 @@ s1,s2,s3 = Sampling(n1,d1,f1),Sampling(n2,d2,f2),Sampling(n3,d3,f3)
 dataDir = "/data/dhale/can/"
 clip = 1.0
 
+def main(args):
+  #subset1(True)
+  #subset1b(True)
+  subset1c(True)
+
 def subset1(make):
   """
   s1 = 3.2 GB volume with interesting faults
@@ -47,27 +52,52 @@ def subset1b(make):
   if make:
     x = zerofloat(n1)
     y = zerofloat(m1)
-    #for what in ["g","gs","p2","p3","fl","fp","ft","flt","fpt","ftt"]:
-    for what in ["g"]:
+    for what in ["g","gs","p2","p3","fl","fp","ft","flt","fpt","ftt"]:
       ais = ArrayInputStream(dataDir+"s1/"+what+".dat")
       aos = ArrayOutputStream(dataDir+"s1b/"+what+".dat")
-      for i3 in n3:
-        for i2 in n2:
+      for i3 in range(n3):
+        for i2 in range(n2):
           ais.readFloats(x)
           copy(m1,j1,x,0,y)
           aos.writeFloats(y)
-    ais.close()
-    aos.close()
+      ais.close()
+      aos.close()
   n1,n2,n3 = m1,m2,m3
   d1,d2,d3 = d1,d2,d3
   f1,f2,f3 = f1+j1*d1,f2+j2*d2,f3+j3*d3
   s1,s2,s3 = Sampling(n1,d1,f1),Sampling(n2,d2,f2),Sampling(n3,d3,f3)
-  x = readImage("s1b/g")
-  showOne(x,clip=clip)
 
-def main(args):
-  #subset1(True)
-  subset1b(True)
+def subset1c(make):
+  """
+  s1c = small part of subset s1b, below chaotic faulting
+  used for surface extraction and throw estimation
+  make this subset after scanning and thinning
+  """
+  subset1b(False)
+  global n1,n2,n3,d1,d2,d3,f1,f2,f3,s1,s2,s3
+  j1,j2,j3 =   0,350,230 # first samples in subset
+  m1,m2,m3 = 301,301,301 # numbers of samples in subset
+  if make:
+    x = zerofloat(n1)
+    y = zerofloat(m1)
+    for what in ["g","gs","p2","p3","fl","fp","ft","flt","fpt","ftt"]:
+      ais = ArrayInputStream(dataDir+"s1b/"+what+".dat")
+      aos = ArrayOutputStream(dataDir+"s1c/"+what+".dat")
+      ais.skipBytes(4*n1*n2*j3)
+      for i3 in range(j3,j3+m3):
+        ais.skipBytes(4*n1*j2)
+        for i2 in range(j2,j2+m2):
+          ais.readFloats(x)
+          copy(m1,j1,x,0,y)
+          aos.writeFloats(y)
+        ais.skipBytes(4*n1*(n2-j2-m2))
+      ais.skipBytes(4*n1*n2*(n3-j3-m3))
+      ais.close()
+      aos.close()
+  n1,n2,n3 = m1,m2,m3
+  d1,d2,d3 = d1,d2,d3
+  f1,f2,f3 = f1+j1*d1,f2+j2*d2,f3+j3*d3
+  s1,s2,s3 = Sampling(n1,d1,f1),Sampling(n2,d2,f2),Sampling(n3,d3,f3)
 
 #############################################################################
 

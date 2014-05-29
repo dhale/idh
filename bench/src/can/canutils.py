@@ -24,11 +24,25 @@ def setupForSubset(name):
   global seismicDir
   global s1,s2,s3
   if name=="s1":
-    """ subset good for faults """
+    """ subset good for fault processing """
     seismicDir = _datdir+"s1/"
     n1,n2,n3 = 501,1601,1001
     d1,d2,d3 = 1.0,1.0,1.0
-    f1,f2,f3 = 0.0,0.0,0.0
+    f1,f2,f3 = 450.0,0.0,0.0
+    s1,s2,s3 = Sampling(n1,d1,f1),Sampling(n2,d2,f2),Sampling(n3,d3,f3)
+  elif name=="s1b":
+    """ subset good for fault surfaces """
+    seismicDir = _datdir+"s1b/"
+    n1,n2,n3 = 301,1601,1001
+    d1,d2,d3 = 1.0,1.0,1.0
+    f1,f2,f3 = 650.0,0.0,0.0
+    s1,s2,s3 = Sampling(n1,d1,f1),Sampling(n2,d2,f2),Sampling(n3,d3,f3)
+  elif name=="s1c":
+    """ smaller subset good for fault surfaces """
+    seismicDir = _datdir+"s1c/"
+    n1,n2,n3 = 301,301,301
+    d1,d2,d3 = 1.0,1.0,1.0
+    f1,f2,f3 = 650.0,350.0,230.0
     s1,s2,s3 = Sampling(n1,d1,f1),Sampling(n2,d2,f2),Sampling(n3,d3,f3)
   else:
     print "unrecognized subset:",name
