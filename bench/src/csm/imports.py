@@ -9,6 +9,7 @@ from java.lang import *
 from java.nio import *
 from java.util import *
 from javax.swing import *
+from javax.swing.event import *
 
 from edu.mines.jtk.awt import *
 from edu.mines.jtk.dsp import *
