@@ -403,7 +403,7 @@ public class Warp2 {
       return u;
     }
     public float[][] warp(float[][] f) {
-      SincInterp si = new SincInterp();
+      SincInterpolator si = new SincInterpolator();
       float[][] g = new float[_n2][_n1];
       for (int i2=0; i2<_n2; ++i2) {
         double y2 = i2;
@@ -417,7 +417,7 @@ public class Warp2 {
       return g;
     }
     public float[][] unwarp(float[][] g) {
-      SincInterp si = new SincInterp();
+      SincInterpolator si = new SincInterpolator();
       float[][] f = new float[_n2][_n1];
       for (int i2=0; i2<_n2; ++i2) {
         double x2 = i2;

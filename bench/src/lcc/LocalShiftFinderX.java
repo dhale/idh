@@ -102,8 +102,8 @@ public class LocalShiftFinderX {
       LocalCorrelationFilter.Type.SIMPLE,
       LocalCorrelationFilter.Window.GAUSSIAN,
       sigma1,sigma2,sigma3);
-    _si = new SincInterp();
-    _si.setExtrapolation(SincInterp.Extrapolation.CONSTANT);
+    _si = new SincInterpolator();
+    _si.setExtrapolation(SincInterpolator.Extrapolation.CONSTANT);
     _lsf = new LocalSmoothingFilter();
   }
 
@@ -660,7 +660,7 @@ public class LocalShiftFinderX {
 
   private float _sigma1,_sigma2,_sigma3;
   private LocalCorrelationFilter _lcfSimple;
-  private SincInterp _si;
+  private SincInterpolator _si;
   private boolean _smoothShifts = false;
   private boolean _interpolateDisplacements = true;
   private LocalSmoothingFilter _lsf;

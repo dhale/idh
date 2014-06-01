@@ -75,7 +75,7 @@ public class SynSeis {
     float[] f = sm.makeSeismograms(ntpad,dt,fref)[0];
     System.out.println("... done");
     float[] g = new float[nt];
-    SincInterp si = new SincInterp();
+    SincInterpolator si = new SincInterpolator();
     si.interpolate(ntpad,dt,0.0,f,nt,dt,ft,g);
     g = taperEnds(fpeak,st,g);
     return g;

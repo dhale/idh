@@ -509,7 +509,7 @@ def subtract():
   writeFloats3("r13.dat",r);
 
 def correct1():
-  si = SincInterp()
+  si = SincInterpolator()
   f = readFloats3("sw04a.dat")
   u = readFloats3("u1.dat")
   g = zerofloat(n1,n2,n3)
@@ -525,7 +525,7 @@ def correct1():
   writeFloats3("r1x.dat",r);
 
 def correct3():
-  si = SincInterp()
+  si = SincInterpolator()
   f = readFloats3("sw04a.dat")
   u = readFloats3("u3.dat")
   g = zerofloat(n1,n2,n3)

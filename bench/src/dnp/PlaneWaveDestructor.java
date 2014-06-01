@@ -248,7 +248,7 @@ public class PlaneWaveDestructor {
   private float _eps2 = 1.0f;
   private int _nouter = 5;
   private int _ninner = 20;
-  private SincInterp _si = new SincInterp();
+  private SincInterpolator _si = new SincInterpolator();
   private RecursiveGaussianFilter _rgf = new RecursiveGaussianFilter(1.0);
 
   /**

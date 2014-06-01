@@ -453,7 +453,7 @@ public class FaultScanner3 {
 
   // Shear horizontally such that q(i1,i2) = p(i1,i2+s*i1).
   private static float[][] shear(
-    SincInterp si, double s, float[][] p) 
+    SincInterpolator si, double s, float[][] p)
   {
     int n1 = p[0].length;
     int n2p = p.length;
@@ -475,7 +475,7 @@ public class FaultScanner3 {
 
   // Unshear horizontally such that p(i1,i2) = q(i1,i2-s*i1).
   private static float[][] unshear(
-    SincInterp si, double s, float[][] q) 
+    SincInterpolator si, double s, float[][] q)
   {
     int n1 = q[0].length;
     int n2q = q.length;
@@ -527,8 +527,8 @@ public class FaultScanner3 {
     final float[][][] sd = snd[1];
     final float[][][] f = ft[0];
     final float[][][] t = ft[1];
-    final SincInterp si = new SincInterp();
-    si.setExtrapolation(SincInterp.Extrapolation.CONSTANT);
+    final SincInterpolator si = new SincInterpolator();
+    si.setExtrapolation(SincInterpolator.Extrapolation.CONSTANT);
     loop(n2,new LoopInt() {
     public void compute(int i2) {
       float[][] sn2 = extractSlice2(i2,sn);
@@ -804,7 +804,7 @@ public class FaultScanner3 {
     private static float[][] _siTable; // sinc interpolation coefficients
     private static int HALF_LSINC; // half length of sinc interpolator
     static {
-      SincInterp si = new SincInterp();
+      SincInterpolator si = new SincInterpolator();
       _siTable = si.getTable();
       HALF_LSINC = _siTable[0].length/2;
     }

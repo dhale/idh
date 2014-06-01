@@ -32,8 +32,8 @@ public class FaultSemblance {
    * Constructs a fault semblance computer.
    */
   public FaultSemblance() {
-    _si = new SincInterp();
-    _si.setExtrapolation(SincInterp.Extrapolation.CONSTANT);
+    _si = new SincInterpolator();
+    _si.setExtrapolation(SincInterpolator.Extrapolation.CONSTANT);
   }
 
   /**
@@ -131,8 +131,8 @@ public class FaultSemblance {
     final int n3 = f.length;
     final float[][][] sn = new float[n3][n2][n1];
     final float[][][] sd = new float[n3][n2][n1];
-    final SincInterp si = new SincInterp();
-    si.setExtrapolation(SincInterp.Extrapolation.CONSTANT);
+    final SincInterpolator si = new SincInterpolator();
+    si.setExtrapolation(SincInterpolator.Extrapolation.CONSTANT);
     loop(n3,new LoopInt() {
     public void compute(int i3) {
       float[] xmm = new float[n1];
@@ -434,5 +434,5 @@ public class FaultSemblance {
   private static float SIGMA1 = 8.0f;
   private static float SLOPE_MAX = 5.0f;
 
-  private SincInterp _si;
+  private SincInterpolator _si;
 }

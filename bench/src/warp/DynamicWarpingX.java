@@ -102,7 +102,7 @@ public class DynamicWarpingX {
     _lmin = shiftMin;
     _lmax = shiftMax;
     _nl = 1+_lmax-_lmin;
-    _si = new SincInterp();
+    _si = new SincInterpolator();
     _li = new LinearInterpolator();
     _extrap = ErrorExtrapolation.NEAREST;
   }
@@ -361,7 +361,7 @@ public class DynamicWarpingX {
   public float sumErrorsInterpolated(float[][] e, float[] u) {
     int nl = e[0].length;
     int n1 = e.length;
-    _si.setExtrapolation(SincInterp.Extrapolation.CONSTANT);
+    _si.setExtrapolation(SincInterpolator.Extrapolation.CONSTANT);
     float esum = 0.0f;
     for (int i1=0; i1<n1; ++i1) {
       float ei = _si.interpolate(nl,1.0,_lmin,e[i1],u[i1]);
@@ -389,7 +389,7 @@ public class DynamicWarpingX {
     int nr = 1+2*(int)(_bstrain1/dstrainMax);
     float dr = 2.0f/_bstrain1/(nr-1);
     float fr = -1.0f/_bstrain1;
-    _si.setExtrapolation(SincInterp.Extrapolation.CONSTANT);
+    _si.setExtrapolation(SincInterpolator.Extrapolation.CONSTANT);
     float s0i = u[0];
     float e0i = _si.interpolate(nl,1.0,_lmin,e[0],s0i);
     System.out.println("nr="+nr+" dr="+dr+" fr="+fr);
@@ -1298,7 +1298,7 @@ public class DynamicWarpingX {
   private RecursiveExponentialFilter _ref1; // for smoothing shifts
   private RecursiveExponentialFilter _ref2; // for smoothing shifts
   private RecursiveExponentialFilter _ref3; // for smoothing shifts
-  private SincInterp _si; // for warping with non-integer shifts
+  private SincInterpolator _si; // for warping with non-integer shifts
   private LinearInterpolator _li; // for interpolating alignment errors
   private int _owl2 = 50; // window size in 2nd dimension for 3D images
   private int _owl3 = 50; // window size in 3rd dimension for 3D images

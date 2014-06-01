@@ -291,9 +291,9 @@ public class FakeData {
   ///////////////////////////////////////////////////////////////////////////
   // private
 
-  private static SincInterp _si = new SincInterp();
+  private static SincInterpolator _si = new SincInterpolator();
   static {
-    _si.setExtrapolation(SincInterp.Extrapolation.CONSTANT);
+    _si.setExtrapolation(SincInterpolator.Extrapolation.CONSTANT);
   }
 
   /**
@@ -391,8 +391,8 @@ public class FakeData {
     int n2 = f.length;
     float[][] s1 = s[0];
     float[][] s2 = s[1];
-    SincInterp si = new SincInterp();
-    si.setExtrapolation(SincInterp.Extrapolation.CONSTANT);
+    SincInterpolator si = new SincInterpolator();
+    si.setExtrapolation(SincInterpolator.Extrapolation.CONSTANT);
     float[][] g = new float[n2][n1];
     for (int i2=0; i2<n2; ++i2) {
       double x2 = i2;
@@ -414,8 +414,8 @@ public class FakeData {
     int n2 = g.length;
     float[][] r1 = r[0];
     float[][] r2 = r[1];
-    SincInterp si = new SincInterp();
-    si.setExtrapolation(SincInterp.Extrapolation.CONSTANT);
+    SincInterpolator si = new SincInterpolator();
+    si.setExtrapolation(SincInterpolator.Extrapolation.CONSTANT);
     float[][] f = new float[n2][n1];
     for (int i2=0; i2<n2; ++i2) {
       double u2 = i2;
@@ -541,7 +541,7 @@ public class FakeData {
     s1 = limitShifts(smax,fmax,s1);
     s2 = limitShifts(smax,fmax,s2);
     float[][] g = new float[n2][n1];
-    SincInterp si = new SincInterp();
+    SincInterpolator si = new SincInterpolator();
     for (int i2=0; i2<n2; ++i2) {
       float fs = s1[i2];
       float ds = 1.0f+(s2[i2]-fs)/n1;;
@@ -576,7 +576,7 @@ public class FakeData {
     s1 = limitShifts(smax,fmax,s1);
     s2 = limitShifts(smax,fmax,s2);
     float[][][] g = new float[n3][n2][n1];
-    SincInterp si = new SincInterp();
+    SincInterpolator si = new SincInterpolator();
     for (int i3=0; i3<n3; ++i3) {
       for (int i2=0; i2<n2; ++i2) {
         float fs = s1[i3][i2];
@@ -617,7 +617,7 @@ public class FakeData {
     float c2 = -n2;
     float d2 = n2/2-c2;
     float rs = d2*d2;
-    SincInterp si = new SincInterp();
+    SincInterpolator si = new SincInterpolator();
     for (int i2=0; i2<n2; ++i2) {
       d2 = i2-c2;
       float ds = d2*d2-rs;
@@ -653,7 +653,7 @@ public class FakeData {
     float d2 = n2/2-c2;
     float d3 = n3/2-c3;
     float rs = d2*d2+d3*d3;
-    SincInterp si = new SincInterp();
+    SincInterpolator si = new SincInterpolator();
     for (int i3=0; i3<n3; ++i3) {
       d3 = i3-c3;
       for (int i2=0; i2<n2; ++i2) {

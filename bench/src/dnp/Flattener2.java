@@ -127,7 +127,7 @@ public class Flattener2 {
       int n2 = s2.getCount();
       double d1 = s1.getDelta();
       double f1 = s1.getFirst();
-      SincInterp si = new SincInterp();
+      SincInterpolator si = new SincInterpolator();
       float[][] g = new float[n2][n1];
       for (int i2=0; i2<n2; ++i2)
         si.interpolate(n1,d1,f1,f[i2],n1,ux[i2],g[i2]);

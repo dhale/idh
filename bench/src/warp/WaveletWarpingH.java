@@ -279,8 +279,8 @@ public class WaveletWarpingH {
   // private
 
   private static final float RMAX = 10.0f; // limits anti-alias filter
-  private static final SincInterp _si = 
-    SincInterp.fromErrorAndFrequency(0.01,0.40);
+  private static final SincInterpolator _si =
+    SincInterpolator.fromErrorAndFrequency(0.01,0.40);
 
   private double _sfac = 1.0;
   private int _itmin = -1;

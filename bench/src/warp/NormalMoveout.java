@@ -198,7 +198,8 @@ public class NormalMoveout {
   ///////////////////////////////////////////////////////////////////////////
   // private
 
-  private SincInterp _si = SincInterp.fromErrorAndFrequency(0.01,0.40);
+  private SincInterpolator
+    _si = SincInterpolator.fromErrorAndFrequency(0.01,0.40);
   private float _smax = 0.1f*Float.MAX_VALUE;
 
   private static int countLeadingZeros(float[] f) {

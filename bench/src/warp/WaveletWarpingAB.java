@@ -8,7 +8,7 @@ package warp;
 
 import edu.mines.jtk.dsp.*;
 import edu.mines.jtk.lapack.*;
-import edu.mines.jtk.util.Check;
+
 import static edu.mines.jtk.dsp.Conv.*;
 import static edu.mines.jtk.util.ArrayMath.*;
 
@@ -200,8 +200,8 @@ public class WaveletWarpingAB {
   // private
 
   private static final float RMAX = 10.0f; // limits anti-alias filter
-  private static final SincInterp _si = 
-    SincInterp.fromErrorAndFrequency(0.01,0.40);
+  private static final SincInterpolator _si =
+    SincInterpolator.fromErrorAndFrequency(0.01,0.40);
   private static final WarpingFilter _wf = new WarpingFilter();
 
   private double _sfac = 1.0;

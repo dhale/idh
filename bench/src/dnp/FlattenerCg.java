@@ -92,7 +92,7 @@ public class FlattenerCg {
   public float[][] applyShifts(float[][] f, float[][] s) {
     int n1 = f[0].length;
     int n2 = f.length;
-    SincInterp si = new SincInterp();
+    SincInterpolator si = new SincInterpolator();
     float[] r = rampfloat(0.0f,1.0f,n1);
     float[] t = zerofloat(n1);
     float[][] g = zerofloat(n1,n2);
@@ -107,7 +107,7 @@ public class FlattenerCg {
     int n1 = f[0][0].length;
     int n2 = f[0].length;
     int n3 = f.length;
-    SincInterp si = new SincInterp();
+    SincInterpolator si = new SincInterpolator();
     float[] r = rampfloat(0.0f,1.0f,n1);
     float[] t = zerofloat(n1);
     float[][][] g = zerofloat(n1,n2,n3);

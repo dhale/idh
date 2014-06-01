@@ -401,7 +401,7 @@ public class PsWarping {
   private double _r1min,_r2min,_r3min;
   private double _r1max,_r2max,_r3max;
   private int _k1min,_k2min,_k3min;
-  private SincInterp _si;
+  private SincInterpolator _si;
   private float _epow = 2.0f;
 
   private static CubicInterpolator makeCubicInterpolator(

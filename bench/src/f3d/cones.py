@@ -353,7 +353,7 @@ def getImageAlongCurve(name,x2s,x3s):
   f = readImage(name)
   ns = len(x2s)
   g = zerofloat(n1,ns)
-  si = SincInterp()
+  si = SincInterpolator()
   for js in range(ns):
     x2j = x2s[js]
     x3j = x3s[js]
@@ -413,7 +413,7 @@ def makeConeSlices(c2,c3,st,sd,sa,g):
   # survey azimuth is 88.4 degrees
   ps = toRadians(88.4)
   # interpolate slices
-  si = SincInterp()
+  si = SincInterpolator()
   for ja in range(na):
     aj = sa.getValue(ja)
     pj = toRadians(aj)

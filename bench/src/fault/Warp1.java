@@ -1,6 +1,7 @@
 package fault;
 
-import edu.mines.jtk.dsp.SincInterp;
+import edu.mines.jtk.dsp.SincInterpolator;
+
 import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
@@ -88,7 +89,7 @@ public abstract class Warp1 {
   }
 
   public float[] warp(float[] f) {
-    SincInterp si = new SincInterp();
+    SincInterpolator si = new SincInterpolator();
     float[] g = new float[_n];
     for (int i=0; i<_n; ++i) {
       double y = i;
@@ -99,7 +100,7 @@ public abstract class Warp1 {
   }
 
   public float[] unwarp(float[] g) {
-    SincInterp si = new SincInterp();
+    SincInterpolator si = new SincInterpolator();
     float[] f = new float[_n];
     for (int i=0; i<_n; ++i) {
       double x = i;

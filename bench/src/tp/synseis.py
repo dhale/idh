@@ -81,7 +81,7 @@ def goTie(wellId):
   st,r = invertShifts(ss,u)
   nt,dt,ft = st.count,st.delta,st.first
   s = sub(rampfloat(ft,dt,nt),r)
-  si = SincInterp()
+  si = SincInterpolator()
   h = zerofloat(nt)
   si.interpolate(ns,ds,fs,f,nt,s,h)
   sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
@@ -141,7 +141,7 @@ def findShifts(sf,f,i2,i3,ga):
       e = add(e,dw.computeErrors(sf,f,s1,g))
   u = dw.findShifts(e)
   esum = 0.0
-  si = SincInterp()
+  si = SincInterpolator()
   for jf in range(sf.count):
     esum += si.interpolate(ss,e[jf],u[jf])
   plot = True

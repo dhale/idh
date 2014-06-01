@@ -1,6 +1,7 @@
 package lcc;
 
-import edu.mines.jtk.dsp.SincInterp;
+import edu.mines.jtk.dsp.SincInterpolator;
+
 import static edu.mines.jtk.util.MathPlus.*;
 
 /**
@@ -266,7 +267,7 @@ public abstract class Displacement3 {
   }
 
   public float[][][] warp(float[][][] f) {
-    SincInterp si = new SincInterp();
+    SincInterpolator si = new SincInterpolator();
     float[][][] g = new float[_n3][_n2][_n1];
     for (int i3=0; i3<_n3; ++i3) {
       double y3 = i3;
@@ -286,7 +287,7 @@ public abstract class Displacement3 {
   }
 
   public float[][][] unwarp(float[][][] g) {
-    SincInterp si = new SincInterp();
+    SincInterpolator si = new SincInterpolator();
     float[][][] f = new float[_n3][_n2][_n1];
     for (int i3=0; i3<_n3; ++i3) {
       double x3 = i3;

@@ -194,7 +194,7 @@ def gain(hw,f):
 def stretch(c,f):
   """ stretch (supersample) by specified factor c time sampling of image f """
   n1,n2,n3 = len(f[0][0]),len(f[0]),len(f)
-  si = SincInterp()
+  si = SincInterpolator()
   g = zerofloat(n1)
   for i3 in range(n3):
     for i2 in range(n2):

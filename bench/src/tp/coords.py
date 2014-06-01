@@ -124,7 +124,7 @@ def makeSeismicSlice(i1):
   n3m = 1+int((e3m-f3m)/d3m+0.5)
   s2m,s3m = Sampling(n2m,d2m,f2m),Sampling(n3m,d3m,f3m)
   y23 = zerofloat(n2m,n3m)
-  si = SincInterp()
+  si = SincInterpolator()
   e2d,e3d = f2d+(n2d-1)*d2d,f3d+(n3d-1)*d3d
   for i3 in range(n3m):
     x3m = f3m+i3*d3m

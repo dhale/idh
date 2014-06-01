@@ -10,9 +10,6 @@ import java.util.ArrayList;
 import edu.mines.jtk.dsp.*;
 import static edu.mines.jtk.util.ArrayMath.*;
 
-import java.awt.*;
-import edu.mines.jtk.mosaic.*;
-
 /**
  * Computes 2D fault likelihoods by scanning over fault dip angles.
  * Fault likelihoods are in the range [0,1], where 0 and 1 denote 
@@ -221,8 +218,8 @@ public class FaultScanner2 {
     float[][] sd = _snd[1];
     float[][] f = new float[n2][n1];
     float[][] t = new float[n2][n1];
-    SincInterp si = new SincInterp();
-    si.setExtrapolation(SincInterp.Extrapolation.CONSTANT);
+    SincInterpolator si = new SincInterpolator();
+    si.setExtrapolation(SincInterpolator.Extrapolation.CONSTANT);
     RecursiveExponentialFilter ref = makeRef(_sigmaTheta);
     for (int it=0; it<nt; ++it) {
       float ti = (float)st.getValue(it);
@@ -266,7 +263,7 @@ public class FaultScanner2 {
 
   // Shear horizontally such that q(i1,i2) = p(i1,i2+s*i1).
   private static float[][] shear(
-    SincInterp si, double s, float[][] p) 
+    SincInterpolator si, double s, float[][] p)
   {
     int n1 = p[0].length;
     int n2p = p.length;
@@ -288,7 +285,7 @@ public class FaultScanner2 {
 
   // Unshear horizontally such that p(i1,i2) = q(i1,i2-s*i1).
   private static float[][] unshear(
-    SincInterp si, double s, float[][] q) 
+    SincInterpolator si, double s, float[][] q)
   {
     int n1 = q[0].length;
     int n2q = q.length;

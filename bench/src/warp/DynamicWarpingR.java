@@ -15,9 +15,7 @@ import dnp.*;
 import interp.*;
 
 // FOR DEVELOPMENT ONLY
-import edu.mines.jtk.awt.*;
 import edu.mines.jtk.mosaic.*;
-import edu.mines.jtk.sgl.*;
 
 /**
  * Dynamic warping to find shifts between two sequences or images.
@@ -108,8 +106,8 @@ public class DynamicWarpingR {
     _k1min = 10;
     _k2min = 10;
     _k3min = 10;
-    _si = new SincInterp();
-    _si.setExtrapolation(SincInterp.Extrapolation.CONSTANT);
+    _si = new SincInterpolator();
+    _si.setExtrapolation(SincInterpolator.Extrapolation.CONSTANT);
   }
 
   /**
@@ -439,7 +437,7 @@ public class DynamicWarpingR {
   private double _r1min,_r2min,_r3min;
   private double _r1max,_r2max,_r3max;
   private int _k1min,_k2min,_k3min;
-  private SincInterp _si;
+  private SincInterpolator _si;
   private float _epow = 2.0f;
 
   private static CubicInterpolator makeInterpolator1(

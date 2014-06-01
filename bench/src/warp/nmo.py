@@ -215,7 +215,7 @@ def makeCmpReflections(vel,nref,st,sx,random=False,thinBeds=False):
       ts[iref+1] = ts[iref]+5.0*dt
       rs[iref] = rsc[iref/2]
       rs[iref+1] = -rs[iref]
-  si = SincInterp.fromErrorAndFrequency(0.01,0.45)
+  si = SincInterpolator.fromErrorAndFrequency(0.01,0.45)
   for jx in range(nx):
     xj = sx.getValue(jx)
     cj = (xj*xj)/(vel*vel)

@@ -398,7 +398,7 @@ public class Warp3 {
       return u;
     }
     public float[][][] warp(float[][][] f) {
-      SincInterp si = new SincInterp();
+      SincInterpolator si = new SincInterpolator();
       float[][][] g = new float[_n3][_n2][_n1];
       for (int i3=0; i3<_n3; ++i3) {
         double y3 = i3;
@@ -417,7 +417,7 @@ public class Warp3 {
       return g;
     }
     public float[][][] unwarp(float[][][] g) {
-      SincInterp si = new SincInterp();
+      SincInterpolator si = new SincInterpolator();
       float[][][] f = new float[_n3][_n2][_n1];
       for (int i3=0; i3<_n3; ++i3) {
         double x3 = i3;

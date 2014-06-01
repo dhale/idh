@@ -69,7 +69,7 @@ def resample():
   y23 = zerofloat(n2c,n3c) # 23 slice of output array
   sx = SimpleFloat3(x)
   sy = SimpleFloat3(y)
-  si = SincInterp()
+  si = SincInterpolator()
   ais = ArrayInputStream(doeFile)
   ais.readFloats(x)
   ais.close()

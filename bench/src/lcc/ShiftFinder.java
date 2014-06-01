@@ -7,7 +7,7 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 package lcc;
 
 import edu.mines.jtk.dsp.RecursiveGaussianFilter;
-import edu.mines.jtk.dsp.SincInterp;
+import edu.mines.jtk.dsp.SincInterpolator;
 import edu.mines.jtk.util.Check;
 import static edu.mines.jtk.util.ArrayMath.*;
 
@@ -85,8 +85,8 @@ public class ShiftFinder {
       LocalCorrelationFilter.Type.SIMPLE,
       LocalCorrelationFilter.Window.GAUSSIAN,
       sigma1,sigma2,sigma3);
-    _si = new SincInterp();
-    _si.setExtrapolation(SincInterp.Extrapolation.CONSTANT);
+    _si = new SincInterpolator();
+    _si.setExtrapolation(SincInterpolator.Extrapolation.CONSTANT);
   }
 
   /**
@@ -624,7 +624,7 @@ public class ShiftFinder {
   // private
 
   private LocalCorrelationFilter _lcfSimple;
-  private SincInterp _si;
+  private SincInterpolator _si;
   private boolean _interpolateDisplacements = true;
 
   private void findShifts(

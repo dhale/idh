@@ -279,7 +279,7 @@ public class Velan {
     double fx = sx.getFirst();
     float[] t = new float[nt];
     float[][] q = new float[nx][nt];
-    SincInterp si = new SincInterp();
+    SincInterpolator si = new SincInterpolator();
     for (int ix=0; ix<nx; ++ix) {
       double x = sx.getValue(ix);
       double xxg = (x*x)/(vnmo*vnmo);
@@ -303,7 +303,7 @@ public class Velan {
     double fx = sx.getFirst();
     float[] t = new float[nt];
     float[][] q = new float[nx][nt];
-    SincInterp si = new SincInterp();
+    SincInterpolator si = new SincInterpolator();
     for (int ix=0; ix<nx; ++ix) {
       double x = sx.getValue(ix);
       for (int it=0; it<nt; ++it) {

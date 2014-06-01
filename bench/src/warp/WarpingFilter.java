@@ -105,8 +105,8 @@ public class WarpingFilter {
   ///////////////////////////////////////////////////////////////////////////
   // private
 
-  private static final SincInterp _si = 
-    SincInterp.fromErrorAndFrequency(0.01,0.40);
+  private static final SincInterpolator _si =
+    SincInterpolator.fromErrorAndFrequency(0.01,0.40);
 
   private float _oversamplingLimit = 10.0f;
   private boolean _amplitudeScaling = true;

@@ -188,7 +188,7 @@ def logupq(r0,r1,nt,ni):
   ts = rampfloat(tmax/(ni+1),tmax/(ni+1),ni)
   p = zerofloat(nt)
   q = zerofloat(nt)
-  si = SincInterp.fromErrorAndFrequency(0.01,0.45)
+  si = SincInterpolator.fromErrorAndFrequency(0.01,0.45)
   rj = -1.0
   for ji in range(ni):
     tj = ts[ji]
@@ -208,7 +208,7 @@ def expupq(r0,r1,nt,ni):
   ts = rampfloat(tmax/(ni+1),tmax/(ni+1),ni)
   p = zerofloat(nt)
   q = zerofloat(nt)
-  si = SincInterp.fromErrorAndFrequency(0.01,0.45)
+  si = SincInterpolator.fromErrorAndFrequency(0.01,0.45)
   rj = -1.0
   for ji in range(ni):
     tj = ts[ji]
@@ -227,7 +227,7 @@ def nmoupq(r0,r1,nt,ni):
   ts = rampfloat(tmax/(ni+1),tmax/(ni+1),ni)
   p = zerofloat(nt)
   q = zerofloat(nt)
-  si = SincInterp.fromErrorAndFrequency(0.01,0.45)
+  si = SincInterpolator.fromErrorAndFrequency(0.01,0.45)
   rj = -1.0
   for ji in range(ni):
     tj = ts[ji]
@@ -247,7 +247,7 @@ def makeImpulses(r,nt,ni):
     ts = rampfloat(tmax/(ni+1),tmax/(ni+1),ni)
   else:
     ts = rampfloat(tmax/(ni+1)/r,tmax/(ni+1)/r,ni)
-  si = SincInterp.fromErrorAndFrequency(0.01,0.45)
+  si = SincInterpolator.fromErrorAndFrequency(0.01,0.45)
   rj = -1.0
   for ji in range(ni):
     tj = ts[ji]

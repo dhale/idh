@@ -375,7 +375,7 @@ def makeConeSlices(i2,i3,nd,na,g):
   fd = -dd*(nd-1)/2
   sd = Sampling(nd,dd,fd)
   # interpolate slices
-  si = SincInterp()
+  si = SincInterpolator()
   for ja in range(na):
     aj = sa.getValue(ja)
     pj = toRadians(aj)

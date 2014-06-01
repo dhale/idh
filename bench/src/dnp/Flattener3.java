@@ -142,7 +142,7 @@ public class Flattener3 {
       final int n3 = s3.getCount();
       final double d1 = s1.getDelta();
       final double f1 = s1.getFirst();
-      final SincInterp si = new SincInterp();
+      final SincInterpolator si = new SincInterpolator();
       final float[][][] g = new float[n3][n2][n1];
       Parallel.loop(n3,new Parallel.LoopInt() {
       public void compute(int i3) {

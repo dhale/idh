@@ -206,7 +206,7 @@ def getImageAlongCurve(name,x2s,x3s):
   f = readImage(name)
   ns = len(x2s)
   g = zerofloat(n1,ns)
-  si = SincInterp()
+  si = SincInterpolator()
   for js in range(ns):
     x2j = x2s[js]
     x3j = x3s[js]

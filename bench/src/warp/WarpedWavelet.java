@@ -33,7 +33,7 @@ public class WarpedWavelet {
       double dt = st.getDelta();
       double ft = st.getFirst();
       _st = st;
-      _si = SincInterp.fromErrorAndFrequency(0.01,0.45);
+      _si = SincInterpolator.fromErrorAndFrequency(0.01,0.45);
       _ty = new float[nt];
       _ay = new float[nt];
       for (int it=0; it<nt; ++it) {
@@ -51,7 +51,7 @@ public class WarpedWavelet {
         y[it] *= _ay[it];
     }
     private Sampling _st;
-    private SincInterp _si;
+    private SincInterpolator _si;
     private float[] _ty;
     private float[] _ay;
   }

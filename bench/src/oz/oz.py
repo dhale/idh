@@ -116,7 +116,7 @@ def nmo(v,st,sx,f):
   nx = len(f)
   t = rampfloat(ft,dt,nt) # sampled times
   tt = mul(t,t) # sampled times squared
-  si = SincInterp() # high-fidelity sinc interpolation
+  si = SincInterpolator() # high-fidelity sinc interpolation
   g = zerofloat(nt,nx) # the output gather
   for ix in range(nx): # loop over all traces in gather
     x = sx.getValue(ix) # source-receiver offset x

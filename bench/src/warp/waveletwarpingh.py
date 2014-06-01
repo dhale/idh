@@ -145,7 +145,7 @@ def makeImpulses(r,nt,ni):
     ts = rampfloat(tmax/(ni+1),tmax/(ni+1),ni)
   else:
     ts = rampfloat(tmax/(ni+1)/r,tmax/(ni+1)/r,ni)
-  si = SincInterp.fromErrorAndFrequency(0.01,0.45)
+  si = SincInterpolator.fromErrorAndFrequency(0.01,0.45)
   rj = -1.0
   for ji in range(ni):
     tj = ts[ji]

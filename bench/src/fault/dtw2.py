@@ -175,7 +175,7 @@ def normalize(x):
 
 def align(u,f,g):
   n1,n2 = len(u[0]),len(u)
-  si = SincInterp()
+  si = SincInterpolator()
   h = copy(g)
   r = rampfloat(0.0,1.0,n1)
   for i2 in range(n2):
