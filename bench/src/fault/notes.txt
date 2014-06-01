@@ -17,34 +17,92 @@ horizon volumes
     horizon surface slider
   Xinming
 
+
+---
+Nomenclature
+
+x   seismic image coordinates
+w   unfaulted coordinates
+u   unfaulted and unfolded coordinates
+
+gx  seismic image g(x)
+gw  seismic image unfaulted
+gu  seismic image unfaulted and unfolded
+gs  seismic image smoothed
+gsw seismic image smoothed, unfaulted
+gsu seismic image smoothed, unfaulted and unfolded
+
+p2  reflector slopes dx1/dx2
+p3  reflector slopes dx1/dx3
+ep  planarity
+sn  semblance numerator
+sd  semblance denominator
+
+fl  fault likelihood
+fp  fault azimuth (phi)
+ft  fault dip (theta)
+flt fault likelihood thinned
+fpt fault azimuth thinned
+ftt fault dip thinned
+fs1 fault slip (1st component)
+fs2 fault slip (2nd component)
+fs3 fault slip (3rd component)
+
+sw unfaulting shifts (3 components, function of w)
+ru unfolding shifts (3 components, function of u)
+su composite shifts (3 components, function of u)
+
+xw(w) = w-sw(w) (unfaulting)
+wu(u) = u-ru(u) (unfolding)
+xu(u) = u-su(u) (composite)
+
+gw(w) = g(xw(w))
+      = g(w-sw(w))
+gu(u) = gw(wu(u))
+      = gw(u-ru(u))
+gu(u) = g(xu(u))
+      = g(u-su(u))
+      = g(u-ru(u)-sw(u-ru(u)))
+
+su(u) = ru(u)+sw(wu(u))
+        ru(u)+sw(u-ru(u))
+
+xu(u) = u-su(u)
+      = u-rw(u-rw(u))
+      = u-ru(u)-rw(sw(u))
+
 ---
 Components
   FaultScanner
     input seismic image
-    output fault images (likelihood, phi, theta)
+    output fault images (likelihood, azimuth, dip)
   FaultSurfaces
-    a quad mesh
+    are serializable (can read/write)
+    is a collection of fault surfaces
+      each surface is quad mesh
   FaultSurfer
     input fault images
     output fault surfaces 
-  FaultThrower
+  FaultSlipper
     input seismic image (after local smoothing filter)
     input fault images
     input fault surfaces
-    output fault throws
-  Unfaulter 
-    input fault throws
+    output fault slips
+  Unfaulter
+    input fault slips
     input image to be unfaulted
     output unfaulted image
   Unfolder
-    input unfolding vectors
+    input unfolding vectors (or scalars)
     input image to be unfolded
     output unfolded image
   HorizonSurfer
     input unfaulted image
-    output horizon volumes
+    output unfolding vectors (or scalars)
     output flattened (unfaulted and unfolded) image
     convert between horizon volumes <-> RGT volumes
+    methods
+      Simon's unfolding
 
 ---
 Sign conventions for fault strike, dip, and throw
@@ -52,7 +110,7 @@ Sign conventions for fault strike, dip, and throw
 strike in (-90,90], dip in [-45,45]
 dip ambiguous for strike = 90 degrees
 dip has +- discontinuity
-as strike goes from -89 to 89 degrees
+  as strike goes from -89 to 89 degrees
 
 strike in [0:360), dip in [0:45)
 strike ambiguous for dip = 0 degrees
