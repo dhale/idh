@@ -13,7 +13,8 @@ clip = 1.0
 def main(args):
   #subset1(True)
   #subset1b(True)
-  subset1c(True)
+  #subset1c(True)
+  pass
 
 def subset1(make):
   """

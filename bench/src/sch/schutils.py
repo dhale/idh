@@ -8,8 +8,8 @@ from imports import *
 #############################################################################
 # Internal constants
 
-#_datdir = "/data/dhale/sch/dat/"
-_datdir = "/data/seis/sch/dat/"
+_datdir = "/data/dhale/sch/dat/"
+#_datdir = "/data/seis/sch/dat/"
 
 #############################################################################
 # Setup
@@ -25,8 +25,18 @@ def setupForSubset(name):
   global s1,s2,s3
   if name=="s1":
     """ subset good for fault processing """
+    print "setupForSubset: s1"
     seismicDir = _datdir+"s1/"
     n1,n2,n3 = 901,551,427
+    d1,d2,d3 = 1.0,1.0,1.0 
+    #d1,d2,d3 = 0.002,0.008,0.008 # (s,km,km)
+    f1,f2,f3 = 0.0,0.0,0.0 # = 0.000,0.000,0.000
+    s1,s2,s3 = Sampling(n1,d1,f1),Sampling(n2,d2,f2),Sampling(n3,d3,f3)
+  elif name=="s2":
+    """ another subset good for fault processing """
+    print "setupForSubset: s2"
+    seismicDir = _datdir+"s2/"
+    n1,n2,n3 = 901,376,547
     d1,d2,d3 = 1.0,1.0,1.0 
     #d1,d2,d3 = 0.002,0.008,0.008 # (s,km,km)
     f1,f2,f3 = 0.0,0.0,0.0 # = 0.000,0.000,0.000
@@ -144,7 +154,7 @@ def makeFrame(world):
   d1,d2,d3 = s1.delta,s2.delta,s3.delta
   f1,f2,f3 = s1.first,s2.first,s3.first
   l1,l2,l3 = s1.last,s2.last,s3.last
-  frame = SimpleFrame(world)
+  frame = SimpleFrame(world,AxesOrientation.XRIGHT_YIN_ZDOWN)
   view = frame.getOrbitView()
   zscale = 0.75*max(n2*d2,n3*d3)/(n1*d1)
   view.setAxesScale(1.0,1.0,zscale)

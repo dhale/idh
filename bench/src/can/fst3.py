@@ -3,7 +3,7 @@ Fault processing
 """
 
 from canutils import *
-setupForSubset("s1")
+setupForSubset("s1c")
 s1,s2,s3 = getSamplings()
 n1,n2,n3 = s1.count,s2.count,s3.count
 
@@ -29,12 +29,11 @@ def main(args):
   #goDisplay("g")
   #goSlopes()
   #goSemblance()
-  goScan()
+  #goScan()
   #goThin()
   #goSmooth()
   #goSurfing()
-  #goDisplay("gs")
-  #goDisplay("gs")
+  goDisplay("gs")
   #goDisplay("gflt")
   #goDisplay("gfrs")
   #goDisplay("gft1")

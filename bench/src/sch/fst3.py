@@ -3,11 +3,11 @@ Fault processing
 """
 
 from schutils import *
-setupForSubset("s1")
+setupForSubset("s2")
 s1,s2,s3 = getSamplings()
 n1,n2,n3 = s1.count,s2.count,s3.count
 
-gfile = "g" # input image
+gfile = "g" # input image (maybe after bilateral filtering)
 gsfile = "gs" # image after lsf with fault likelihoods
 p2file = "p2" # inline slopes
 p3file = "p3" # crossline slopes
@@ -26,15 +26,15 @@ ft2file = "ft2" # 2nd component of fault throws
 ft3file = "ft3" # 3rd component of fault throws
 
 def main(args):
-  goDisplay("g")
+  #goDisplay("g")
   #goSlopes()
   #goSemblance()
   #goScan()
   #goThin()
   #goSmooth()
   #goSurfing()
-  #goDisplay("gs")
-  #goDisplay("gs")
+  #goDisplay("g")
+  goDisplay("gs")
   #goDisplay("gflt")
   #goDisplay("gfrs")
   #goDisplay("gft1")
@@ -42,19 +42,21 @@ def main(args):
 def goDisplay(what):
   def show2(g1,g2):
     world = World()
-    addImageToWorld(world,g1).setClips(-1,1)
-    addImageToWorld(world,g2).setClips(-1,1)
+    addImageToWorld(world,g1).setClips(-0.5,0.5)
+    addImageToWorld(world,g2).setClips(-0.5,0.5)
     makeFrame(world).setSize(1200,900)
   if what=="g":
     g = readImage("g")
     plot3(g)
   elif what=="gs":
-    g = readImage("g")
     gs = readImage("gs")
+    #plot3(gs)
+    g = readImage("g0")
     show2(g,gs)
   elif what=="gflt":
-    g = readImage("g")
+    g = readImage("g0")
     fl = readImage("flt")
+    fl = pow(fl,0.5) # for display only?
     plot3(g,fl,cmin=0.0,cmax=1.0,cmap=jetRamp(1.0))
   elif what=="gfrs":
     g = readImage("g")
@@ -149,7 +151,8 @@ def goScan():
   print "goScan ..."
   sn = readImage(snfile)
   sd = readImage(sdfile)
-  sigmaPhi,sigmaTheta = 4,20
+  sigmaPhi,sigmaTheta = 8,40 # sampling intervals are relatively small
+  #sigmaPhi,sigmaTheta = 4,20
   minPhi,maxPhi = -90,90
   minTheta,maxTheta = -25,25
   #minPhi,maxPhi = 40,40
@@ -194,7 +197,7 @@ def goSlopes():
   g = readImage(gfile)
   #g = slog(g)
   #plot3(g)
-  sigma1,sigma2,pmax = 16.0,1.0,5.0
+  sigma1,sigma2,pmax = 16.0,2.0,5.0
   lsf = LocalSlopeFinder(sigma1,sigma2,pmax)
   p2 = zerofloat(n1,n2,n3)
   p3 = zerofloat(n1,n2,n3)
@@ -251,14 +254,14 @@ def plot3(f,g=None,cmin=None,cmax=None,cmap=None,h=None,
   n1 = len(f[0][0])
   n2 = len(f[0])
   n3 = len(f)
-  sf = SimpleFrame()
+  sf = SimpleFrame(AxesOrientation.XRIGHT_YIN_ZDOWN)
   sf.setBackground(Color.WHITE)
   if g==None:
     ipg = sf.addImagePanels(s1,s2,s3,f)
-    ipg.setClips(-1.0,1.0)
+    ipg.setClips(-0.5,0.5)
   else:
     ipg = ImagePanelGroup2(s1,s2,s3,f,g)
-    ipg.setClips1(-1.0,1.0)
+    ipg.setClips1(-0.5,0.5)
     if cmap==None:
       cmap = jetFill(0.8)
     ipg.setColorModel2(cmap)
