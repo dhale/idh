@@ -4,7 +4,7 @@ apply plugin: 'java'
 defaultTasks 'compileJava'//,'compileScala'
 
 description = "Dave's research"
-sourceCompatibility = 1.8
+sourceCompatibility = 1.7
 
 sourceSets {
   main {
