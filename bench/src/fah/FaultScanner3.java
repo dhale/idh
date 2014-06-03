@@ -858,7 +858,7 @@ public class FaultScanner3 {
   }
 
   private static void benchmarkSmoothers() {
-    int n1 = 256, n2 = 256, n3 = 256; 
+    int n1 = 251, n2 = 251, n3 = 251; 
     float[][][] sn = randfloat(n1,n2,n3);
     float[][][] sd = add(0.1f,sn);
     float[][][][] snd = {sn,sd};
@@ -871,7 +871,7 @@ public class FaultScanner3 {
       System.out.println("smoother="+smoother);
       FaultScanner3 fsc = new FaultScanner3(4,20,snd,smoother);
       sw.restart();
-      float[][][][] fpt = fsc.scan(70,90,-8,8);
+      float[][][][] fpt = fsc.scan(40,60,-8,8);
       sw.stop();
       float[][][] f = fpt[0];
       System.out.println("  time="+sw.time()+" f min="+min(f)+" max="+max(f));

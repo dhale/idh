@@ -273,7 +273,8 @@ public class FaultPlaneSmoother {
           float vk = v1*k1+vk23;
           float wk = w1*k1+wk23;
           float s = sigmaus*uk*uk+sigmavs*vk*vk+sigmaws*wk*wk;
-          float hi = (s<10.0f) ? exp(-0.5f*s)*hscale : 0.0f;
+          //float hi = (s<10.0f) ? exp(-0.5f*s)*hscale : 0.0f;
+          float hi = (s<10.0f) ? hscale : 0.0f;
           g32[i1r] *= hi;
           g32[i1i] *= hi;
         }
