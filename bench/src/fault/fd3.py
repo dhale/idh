@@ -26,8 +26,8 @@ from fault import *
 #############################################################################
 
 def main(args):
-  goSA()
-  #goS1()
+  #goSA()
+  goS1()
   #goS1A()
   #goS1B()
 def goSA():
@@ -43,7 +43,7 @@ def goSA():
 def goS1():
   samplingS1()
   #goSurfingFake()
-  #goBenchmarkSmoothers()
+  goBenchmarkSmoothers()
   #goSlopes()
   #goAlign()
   #goSemblance()
@@ -52,7 +52,7 @@ def goS1():
   #goSmooth()
   #goSurfing()
   #goPartsAB()
-  goSliceC()
+  #goSliceC()
 def goS1A():
   samplingS1A()
   goSurfing()
@@ -244,7 +244,7 @@ def goBenchmarkSmoothers():
     fsc = FaultScanner3(4,20,[sn,sd],smoother)
     print "  scanning ..."
     sw.restart()
-    f,p,t = fsc.scan(90,90,-8,8)
+    f,p,t = fsc.scan(70,90,-8,8)
     sw.stop()
     print "  time =",sw.time(),", f min =",min(f)," max =",max(f)
     plot3(g,f,0,1)

@@ -54,15 +54,15 @@ su composite shifts (3 components, function of u)
 
 xw(w) = w-sw(w) (unfaulting)
 wu(u) = u-ru(u) (unfolding)
-xu(u) = u-su(u) (composite)
+xu(u) = u-su(u) (composite unfaulting and unfolding)
 
-gw(w) = g(xw(w))
-      = g(w-sw(w))
+gw(w) = gx(xw(w))
+      = gx(w-sw(w))
 gu(u) = gw(wu(u))
       = gw(u-ru(u))
-gu(u) = g(xu(u))
-      = g(u-su(u))
-      = g(u-ru(u)-sw(u-ru(u)))
+      = gx(xu(u))
+      = gx(u-su(u))
+      = gx(u-ru(u)-sw(u-ru(u)))
 
 su(u) = ru(u)+sw(wu(u))
         ru(u)+sw(u-ru(u))
@@ -79,7 +79,7 @@ Components
   FaultSurfaces
     are serializable (can read/write)
     is a collection of fault surfaces
-      each surface is quad mesh
+      each surface is a quad mesh
   FaultSurfer
     input fault images
     output fault surfaces 
