@@ -1,0 +1,176 @@
+---
+TODO
+Canning & Schoonebeek
+fault scanning
+fault surfing
+  read/write fault surfaces (quad meshes)
+  research surface processing
+fault throws
+unfaulting
+  Simon
+unfolding
+  Simon
+  Xinming
+horizon volumes
+  interactive
+    add/remove constraints
+    horizon surface slider
+  Xinming
+
+
+---
+Nomenclature
+
+x   seismic image coordinates
+w   unfaulted coordinates
+u   unfaulted and unfolded coordinates
+
+gx  seismic image g(x)
+gw  seismic image unfaulted
+gu  seismic image unfaulted and unfolded
+gs  seismic image smoothed
+gsw seismic image smoothed, unfaulted
+gsu seismic image smoothed, unfaulted and unfolded
+
+p2  reflector slopes dx1/dx2
+p3  reflector slopes dx1/dx3
+ep  planarity
+sn  semblance numerator
+sd  semblance denominator
+
+fl  fault likelihood
+fp  fault azimuth (phi)
+ft  fault dip (theta)
+flt fault likelihood thinned
+fpt fault azimuth thinned
+ftt fault dip thinned
+fs1 fault slip (1st component)
+fs2 fault slip (2nd component)
+fs3 fault slip (3rd component)
+
+sw unfaulting shifts (3 components, function of w)
+ru unfolding shifts (3 components, function of u)
+su composite shifts (3 components, function of u)
+
+xw(w) = w-sw(w) (unfaulting)
+wu(u) = u-ru(u) (unfolding)
+xu(u) = u-su(u) (composite unfaulting and unfolding)
+
+gw(w) = gx(xw(w))
+      = gx(w-sw(w))
+gu(u) = gw(wu(u))
+      = gw(u-ru(u))
+      = gx(xu(u))
+      = gx(u-su(u))
+      = gx(u-ru(u)-sw(u-ru(u)))
+
+su(u) = ru(u)+sw(wu(u))
+        ru(u)+sw(u-ru(u))
+
+xu(u) = u-su(u)
+      = u-rw(u-rw(u))
+      = u-ru(u)-rw(sw(u))
+
+---
+Components
+  FaultScanner
+    input seismic image
+    output fault images (likelihood, azimuth, dip)
+  FaultSurfaces
+    are serializable (can read/write)
+    is a collection of fault surfaces
+      each surface is a quad mesh
+  FaultSurfer
+    input fault images
+    output fault surfaces 
+  FaultSlipper
+    input seismic image (after local smoothing filter)
+    input fault images
+    input fault surfaces
+    output fault slips
+  Unfaulter
+    input fault slips
+    input image to be unfaulted
+    output unfaulted image
+  Unfolder
+    input unfolding vectors (or scalars)
+    input image to be unfolded
+    output unfolded image
+  HorizonSurfer
+    input unfaulted image
+    output unfolding vectors (or scalars)
+    output flattened (unfaulted and unfolded) image
+    convert between horizon volumes <-> RGT volumes
+    methods
+      Simon's unfolding
+
+---
+Sign conventions for fault strike, dip, and throw
+
+strike in (-90,90], dip in [-45,45]
+dip ambiguous for strike = 90 degrees
+dip has +- discontinuity
+  as strike goes from -89 to 89 degrees
+
+strike in [0:360), dip in [0:45)
+strike ambiguous for dip = 0 degrees
+strike has 180 degree discontinuity
+as dip goes through vertical
+
+---
+3D fault displacements
+
+do not try to make fault surfaces for warping
+instead build fault trees for warping with TSDP
+each node in the tree has 
+  one or two vertical nabors
+  one or two horizontal nabors
+  node nabors depend on fault likelihoods, strikes and dips
+    strike and dip define local above, below, left and right
+  nabors must be symmetric
+    each node is a nabor of its nabors
+tree leaves are nodes with only one nabor
+
+before warping, ...
+must compute for each node an array of errors for different shifts
+  shifts are measured in vertical samples along fault dips
+  errors are differences between image values squared
+    for image values on opposite sides of fault
+  when computing errors for one node
+    must collect two sequences alongside (not on) fault
+      need samples on opposite two sides of fault
+        two sides determined locally by fault strike and dip
+      when gathering samples along the fault
+        use only samples above and below the node
+        but include samples that may not be node nabors
+          require only consistency with fault dip and strike
+          if no consistent sample, then set large error for that shift
+            extrapolate using dip and strike of nearest consistent sample
+
+---
+
+DTW (1D): 
+  model: f(i) ~ g(i+u(i))
+  minimize sum of errors (abs, squared, ...)
+  subject to constraints:
+    umin <= u(i) <= umax
+    |u(i)-u(i-1)| <= b
+    
+  e = |f - g|^2
+  d = accumulate e left to right
+  u = backtrack d right to left
+
+accumulate <=> smooth
+  dlr = accumulate e left to right
+  drl = accumulate e right to left
+  es = dlr+drl-e (subtract e, so we do not count e twice)
+  do DTW using es instead of e
+    ds = accumulate es left to right
+    u = backtrack ds right to left
+  
+DIW (2D):
+  model: f(i1,i2) ~ g(i1+u(i1,i2),i2) <- shift only i1
+  subject to constraints:
+    umin <= u(i1,i2) <= umax
+    |u(i1,i2)-u(i1-1,i2)| <= b1
+    |u(i1,i2)-u(i1,i2-1)| <= b2

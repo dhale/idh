@@ -40,7 +40,7 @@ import edu.mines.jtk.sgl.*;
  * <p>
  * Let ct = cos(theta), st = sin(theta), cp = cos(phi), sp = sin(phi),
  * where both angles theta and phi are in the range [-90,90] degrees. 
- * The three orthonormal vectors (u,v,w) after the two rotations are 
+ * After the two rotations, the three orthonormal vectors (u,v,w) are 
  * u = { ct,-st*sp, st*cp}, 
  * v = {  0,    cp,    sp},
  * w = {-st,-ct*sp, ct*cp}.
