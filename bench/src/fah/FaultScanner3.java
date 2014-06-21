@@ -43,7 +43,7 @@ public class FaultScanner3 {
   }
 
   /**
-   * Returns slopes of features in a specified image.
+   * Returns slopes and planarities of features in a specified image.
    * Image features are assumed to be locally planar, with slopes that may
    * vary throughout the image. Smoothing parameters control the extents of
    * Gaussian windows within which slope is estimated for each image sample.
@@ -55,7 +55,7 @@ public class FaultScanner3 {
    * @param sigma3 half-width for smoothing in 3rd dimension.
    * @param slopeMax upper bound on computed slopes.
    * @param f input image for which to compute slopes.
-   * @return array {p2,p3} of slopes.
+   * @return array {p2,p3,ep} of slopes and planarities.
    */
   public static float[][][][] slopes(
       double sigma1, double sigma2, double sigma3, 
@@ -72,8 +72,9 @@ public class FaultScanner3 {
     final float[][][] u1 = new float[n3][n2][n1];
     final float[][][] u2 = new float[n3][n2][n1];
     final float[][][] u3 = new float[n3][n2][n1];
+    final float[][][] ep = new float[n3][n2][n1];
     LocalOrientFilter lof = new LocalOrientFilter(sigma1,sigma2,sigma3);
-    lof.applyForNormal(f,u1,u2,u3);
+    lof.applyForNormalPlanar(f,u1,u2,u3,ep);
 
     // Slopes from normal vectors.
     final float[][][] p2 = u2;
@@ -99,7 +100,62 @@ public class FaultScanner3 {
         }
       }
     }});
-    return new float[][][][]{p2,p3};
+    return new float[][][][]{p2,p3,ep};
+  }
+
+  /**
+   * Returns an image with specified samples taper to zero at edges.
+   * Tapering enables simple zero-value boundary conditions to be
+   * used in fault scanning without artifacts caused by abrupt 
+   * truncations of strong image features near edges.
+   * @param m1 width of the tapered samples near edges in 1st dimension.
+   * @param m2 width of the tapered samples near edges in 2nd dimension.
+   * @param m3 width of the tapered samples near edges in 3rd dimension.
+   * @param f input image.
+   * @return the tapered image.
+   */
+  public static float[][][] taper(int m1, int m2, int m3, float[][][] f) {
+    int n1 = f[0][0].length;
+    int n2 = f[0].length;
+    int n3 = f.length;
+    float[][][] g = copy(f);
+    float[] t1 = new float[m1];
+    float[] t2 = new float[m2];
+    float[] t3 = new float[m3];
+    for (int i1=0; i1<m1; ++i1)
+      t1[i1] = (float)(0.54+0.46*cos(PI*(m1-i1)/m1));
+    for (int i2=0; i2<m2; ++i2)
+      t2[i2] = (float)(0.54+0.46*cos(PI*(m2-i2)/m2));
+    for (int i3=0; i3<m3; ++i3)
+      t3[i3] = (float)(0.54+0.46*cos(PI*(m3-i3)/m3));
+    for (int i3=0; i3<n3; ++i3) {
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0,j1=n1-1; i1<m1; ++i1,--j1) {
+          float ti = t1[i1];
+          g[i3][i2][i1] *= ti;
+          g[i3][i2][j1] *= ti;
+        }
+      }
+    }
+    for (int i3=0; i3<n3; ++i3) {
+      for (int i2=0,j2=n2-1; i2<m2; ++i2,--j2) {
+        float ti = t2[i2];
+        for (int i1=0; i1<n1; ++i1) {
+          g[i3][i2][i1] *= ti;
+          g[i3][j2][i1] *= ti;
+        }
+      }
+    }
+    for (int i3=0,j3=n3-1; i3<m3; ++i3,--j3) {
+      float ti = t3[i3];
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          g[i3][i2][i1] *= ti;
+          g[j3][i2][i1] *= ti;
+        }
+      }
+    }
+    return g;
   }
 
   /**
@@ -138,6 +194,58 @@ public class FaultScanner3 {
     return scan(phiSampling,thetaSampling,snd);
   }
 
+  public static float[][][] fd(float[][][][] flpt) {
+    int n1 = n1(flpt);
+    int n2 = n2(flpt);
+    int n3 = n3(flpt);
+    float[][][] f = flpt[0];
+    float[][][] p = flpt[1];
+    float[][][] t = flpt[2];
+    RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(1.0);
+    float[][][] g1 = new float[n3][n2][n1];
+    float[][][] g2 = new float[n3][n2][n1];
+    float[][][] g3 = new float[n3][n2][n1];
+    rgf.apply100(f,g1);
+    rgf.apply010(f,g2);
+    rgf.apply001(f,g3);
+    float[][][] d = g1;
+    for (int i3=0; i3<n3; ++i3) {
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          float pi = toRadians(p[i3][i2][i1]);
+          float ti = toRadians(t[i3][i2][i1]);
+          float cp = cos(pi); 
+          float sp = sin(pi);
+          float ct = cos(ti);
+          float st = sin(ti);
+          float u1 = -st;
+          float u2 = -sp*ct;
+          float u3 =  cp*ct;
+          d[i3][i2][i1] = 
+              u1*g1[i3][i2][i1]+
+              u2*g2[i3][i2][i1]+
+              u3*g3[i3][i2][i1];
+        }
+      }
+    }
+    return d;
+  }
+  public static float[][][] tfd(float[][][] fd) {
+    int n1 = fd[0][0].length;
+    int n2 = fd[0].length;
+    int n3 = fd.length;
+    float[][][] t = new float[n3][n2][n1];
+    for (int i3=0; i3<n3; ++i3) {
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          float fdi = fd[i3][i2][i1];
+          t[i3][i2][i1] = exp(-fdi*fdi);
+        }
+      }
+    }
+    return t;
+  }
+
   /**
    * Thins fault images by highlighting ridges of fault likelihood.
    * Sets to zero samples in all fault images (likelihood, strike, and dip)
@@ -152,6 +260,88 @@ public class FaultScanner3 {
     float[][][] f = flpt[0];
     float[][][] p = flpt[1];
     float[][][] t = flpt[2];
+    RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(1.0);
+    float[][][] g1 = new float[n3][n2][n1];
+    float[][][] g2 = new float[n3][n2][n1];
+    float[][][] g3 = new float[n3][n2][n1];
+    rgf.apply100(f,g1);
+    rgf.apply010(f,g2);
+    rgf.apply001(f,g3);
+    float[][][] d = new float[n3][n2][n1];
+    for (int i3=0; i3<n3; ++i3) {
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          float pi = toRadians(p[i3][i2][i1]);
+          float ti = toRadians(t[i3][i2][i1]);
+          float cp = cos(pi); 
+          float sp = sin(pi);
+          float ct = cos(ti);
+          float st = sin(ti);
+          float u1 = -st;
+          float u2 = -sp*ct;
+          float u3 =  cp*ct;
+          d[i3][i2][i1] = 
+              u1*g1[i3][i2][i1]+
+              u2*g2[i3][i2][i1]+
+              u3*g3[i3][i2][i1];
+        }
+      }
+    }
+    float[][][] ff = g1;
+    float[][][] pp = g2;
+    float[][][] tt = g3;
+    for (int i3=0; i3<n3; ++i3) {
+      int m3 = max(i3-1,0);
+      for (int i2=0; i2<n2; ++i2) {
+        int m2 = max(i2-1,0);
+        for (int i1=0; i1<n1; ++i1) {
+          int m1 = max(i1-1,0);
+          float di = d[i3][i2][i1];
+          float d1 = d[i3][i2][m1];
+          float d2 = d[i3][m2][i1];
+          float d3 = d[m3][i2][i1];
+          ff[i3][i2][i1] = 0.0f;
+          pp[i3][i2][i1] = 0.0f;
+          tt[i3][i2][i1] = 0.0f;
+          if (di*d1<0.0f) {
+            ff[i3][i2][i1] = f[i3][i2][i1];
+            ff[i3][i2][m1] = f[i3][i2][m1];
+            pp[i3][i2][i1] = p[i3][i2][i1];
+            pp[i3][i2][m1] = p[i3][i2][m1];
+            tt[i3][i2][i1] = t[i3][i2][i1];
+            tt[i3][i2][m1] = t[i3][i2][m1];
+          }
+          if (di*d2<0.0f) {
+            ff[i3][i2][i1] = f[i3][i2][i1];
+            ff[i3][m2][i1] = f[i3][m2][i1];
+            pp[i3][i2][i1] = p[i3][i2][i1];
+            pp[i3][m2][i1] = p[i3][m2][i1];
+            tt[i3][i2][i1] = t[i3][i2][i1];
+            tt[i3][m2][i1] = t[i3][m2][i1];
+          }
+          if (di*d3<0.0f) {
+            ff[i3][i2][i1] = f[i3][i2][i1];
+            ff[m3][i2][i1] = f[m3][i2][i1];
+            pp[i3][i2][i1] = p[i3][i2][i1];
+            pp[m3][i2][i1] = p[m3][i2][i1];
+            tt[i3][i2][i1] = t[i3][i2][i1];
+            tt[m3][i2][i1] = t[m3][i2][i1];
+          }
+        }
+      }
+    }
+    return new float[][][][]{ff,pp,tt};
+  }
+  public static float[][][][] thinX(float[][][][] flpt) {
+    int n1 = n1(flpt);
+    int n2 = n2(flpt);
+    int n3 = n3(flpt);
+    float[][][] f = flpt[0];
+    float[][][] p = flpt[1];
+    float[][][] t = flpt[2];
+    RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(1.0);
+    rgf.applyXX0(f,f);
+    rgf.applyX0X(f,f);
     float[][][] ff = new float[n3][n2][n1];
     float[][][] pp = new float[n3][n2][n1];
     float[][][] tt = new float[n3][n2][n1];

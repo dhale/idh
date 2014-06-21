@@ -97,16 +97,17 @@ public class FakeData {
     int n1 = 101;
     int n2 = 102;
     int n3 = 103;
-    int m1 = n1+20;
+    int m1 = n1+50;
 
     // Folding
     Random r = new Random(31);
     int ng = 31;
     float[] g2 = mul(n2-1,randfloat(r,ng));
     float[] g3 = mul(n3-1,randfloat(r,ng));
-    float[] sg = clip(0.0f,10.0f,mul(0.5f*(max(n2,n3)-1),randfloat(r,ng)));
-    float[] hg = mul(mul(-0.5f,sg),randfloat(r,ng));
-    T1 s1 = new Linear1(0.0f,2.5f/n1);
+    float[] sg = clip(4.0f,8.0f,mul(0.5f*(max(n2,n3)-1),randfloat(r,ng)));
+    float[] hg = mul(neg(sg),randfloat(r,ng));
+
+    T1 s1 = new Linear1(0.0f,2.0f/n1);
     T2 s2 = new Gaussians2(g2,g3,sg,hg);
     VerticalShear3 shear = new VerticalShear3(s1,s2);
 
@@ -136,13 +137,14 @@ public class FakeData {
       p = apply(faultc,p);
     }
     if (wavelet)
-      p = addWavelet(0.1,p);
+      p = addWavelet(0.15,p);
+    p[0] = mul(1.0f/rms(p[0]),p[0]);
     p[0] = addNoise(noise,p[0]);
     p[2] = neg(div(p[2],p[1]));
     p[3] = neg(div(p[3],p[1]));
     p[0] = copy(n1,n2,n3,p[0]);
-    p[1] = copy(n1,n2,n3,p[1]);
     p[2] = copy(n1,n2,n3,p[2]);
+    p[3] = copy(n1,n2,n3,p[3]);
     return new float[][][][]{p[0],p[2],p[3]};
   }
 
@@ -664,8 +666,8 @@ public class FakeData {
       C2 c2 = _s2.f(x2,x3);
       D2 d2 = _s2.df(x2,x3);
       float d11 = 1.0f-d1*c2.c1;
-      float d12 = -c1*d2.d11*c1;
-      float d13 = -c1*d2.d12*c1;
+      float d12 = -c1*d2.d11;
+      float d13 = -c1*d2.d12;
       return new D3( d11,  d12,  d13,
                     0.0f, 1.0f, 0.0f,
                     0.0f, 0.0f, 1.0f);

@@ -3,6 +3,7 @@ TODO
 Canning & Schoonebeek
 fault scanning
 fault surfing
+  first use what I have now!
   read/write fault surfaces (quad meshes)
   research surface processing
 fault throws
@@ -16,7 +17,25 @@ horizon volumes
     add/remove constraints
     horizon surface slider
   Xinming
-
+fake data
+  include channels
+  show how it is generated 
+    but keep the channels secret
+  show models & images for different
+    structural sequences (DNA)
+      OOOOOOOOOOAAAAAAAAAA
+      AAAAAAAAAAOOOOOOOOOO
+      OAOAOAOAOAOAOAOAOAOA
+    noise levels
+fault quad images!
+  colored by fl (same as thinning?)
+  colored by fp (fault phi, hue cmap)?
+    not great with current fake data
+  use RGBA for
+    red   if edge-1 intersection
+    green if edge-2 intersection
+    blue  if edge-3 intersection
+    alpha = fl
 
 ---
 Nomenclature
