@@ -194,7 +194,7 @@ public class FaultScanner3 {
     return scan(phiSampling,thetaSampling,snd);
   }
 
-  public static float[][][] fd(float[][][][] flpt) {
+  public static float[][][] fd(int order, float[][][][] flpt) {
     int n1 = n1(flpt);
     int n2 = n2(flpt);
     int n3 = n3(flpt);
@@ -205,9 +205,15 @@ public class FaultScanner3 {
     float[][][] g1 = new float[n3][n2][n1];
     float[][][] g2 = new float[n3][n2][n1];
     float[][][] g3 = new float[n3][n2][n1];
-    rgf.apply100(f,g1);
-    rgf.apply010(f,g2);
-    rgf.apply001(f,g3);
+    if (order==1) {
+      rgf.apply100(f,g1);
+      rgf.apply010(f,g2);
+      rgf.apply001(f,g3);
+    } else if (order==2) {
+      rgf.apply200(f,g1);
+      rgf.apply020(f,g2);
+      rgf.apply002(f,g3);
+    }
     float[][][] d = g1;
     for (int i3=0; i3<n3; ++i3) {
       for (int i2=0; i2<n2; ++i2) {
@@ -230,21 +236,6 @@ public class FaultScanner3 {
     }
     return d;
   }
-  public static float[][][] tfd(float[][][] fd) {
-    int n1 = fd[0][0].length;
-    int n2 = fd[0].length;
-    int n3 = fd.length;
-    float[][][] t = new float[n3][n2][n1];
-    for (int i3=0; i3<n3; ++i3) {
-      for (int i2=0; i2<n2; ++i2) {
-        for (int i1=0; i1<n1; ++i1) {
-          float fdi = fd[i3][i2][i1];
-          t[i3][i2][i1] = exp(-fdi*fdi);
-        }
-      }
-    }
-    return t;
-  }
 
   /**
    * Thins fault images by highlighting ridges of fault likelihood.
@@ -253,7 +244,7 @@ public class FaultScanner3 {
    * @param flpt array {fl,fp,ft} of fault likelihoods, strikes, and dips.
    * @return array {fl,fp,ft} of fault likelihoods, strikes, and dips.
    */
-  public static float[][][][] thin(float[][][][] flpt) {
+  public static float[][][][] thin(boolean thinnest, float[][][][] flpt) {
     int n1 = n1(flpt);
     int n2 = n2(flpt);
     int n3 = n3(flpt);
@@ -280,16 +271,24 @@ public class FaultScanner3 {
           float u1 = -st;
           float u2 = -sp*ct;
           float u3 =  cp*ct;
+          if (u1>0.0f) { // ensure fault normal vector points upward
+            u1 = -u1;
+            u2 = -u2;
+            u3 = -u3;
+          }
           d[i3][i2][i1] = 
               u1*g1[i3][i2][i1]+
               u2*g2[i3][i2][i1]+
               u3*g3[i3][i2][i1];
+          g1[i3][i2][i1] = 0.0f;
+          g2[i3][i2][i1] = 0.0f;
+          g3[i3][i2][i1] = 0.0f;
         }
       }
     }
-    float[][][] ff = g1;
-    float[][][] pp = g2;
-    float[][][] tt = g3;
+    float[][][] ff = g1; // already zeroed
+    float[][][] pp = g2; // in the loop
+    float[][][] tt = g3; // above
     for (int i3=0; i3<n3; ++i3) {
       int m3 = max(i3-1,0);
       for (int i2=0; i2<n2; ++i2) {
@@ -300,39 +299,57 @@ public class FaultScanner3 {
           float d1 = d[i3][i2][m1];
           float d2 = d[i3][m2][i1];
           float d3 = d[m3][i2][i1];
-          ff[i3][i2][i1] = 0.0f;
-          pp[i3][i2][i1] = 0.0f;
-          tt[i3][i2][i1] = 0.0f;
           if (di*d1<0.0f) {
-            ff[i3][i2][i1] = f[i3][i2][i1];
-            ff[i3][i2][m1] = f[i3][i2][m1];
-            pp[i3][i2][i1] = p[i3][i2][i1];
-            pp[i3][i2][m1] = p[i3][i2][m1];
-            tt[i3][i2][i1] = t[i3][i2][i1];
-            tt[i3][i2][m1] = t[i3][i2][m1];
+            boolean ibig = f[i3][i2][i1]>=f[i3][i2][m1];
+            int j1 = ibig?i1:m1; // index of bigger fl
+            int k1 = ibig?m1:i1; // index of smaller fl
+            if (f[i3][i2][j1]>ff[i3][i2][j1]) {
+              ff[i3][i2][j1] = f[i3][i2][j1];
+              pp[i3][i2][j1] = p[i3][i2][j1];
+              tt[i3][i2][j1] = t[i3][i2][j1];
+            }
+            if (!thinnest && f[i3][i2][k1]>ff[i3][i2][k1]) {
+              ff[i3][i2][k1] = f[i3][i2][k1];
+              pp[i3][i2][k1] = p[i3][i2][k1];
+              tt[i3][i2][k1] = t[i3][i2][k1];
+            }
           }
           if (di*d2<0.0f) {
-            ff[i3][i2][i1] = f[i3][i2][i1];
-            ff[i3][m2][i1] = f[i3][m2][i1];
-            pp[i3][i2][i1] = p[i3][i2][i1];
-            pp[i3][m2][i1] = p[i3][m2][i1];
-            tt[i3][i2][i1] = t[i3][i2][i1];
-            tt[i3][m2][i1] = t[i3][m2][i1];
+            boolean ibig = f[i3][i2][i1]>=f[i3][m2][i1];
+            int j2 = ibig?i2:m2;
+            int k2 = ibig?m2:i2;
+            if (f[i3][j2][i1]>ff[i3][j2][i1]) {
+              ff[i3][j2][i1] = f[i3][j2][i1];
+              pp[i3][j2][i1] = p[i3][j2][i1];
+              tt[i3][i2][i1] = t[i3][j2][i1];
+            }
+            if (!thinnest && f[i3][k2][i1]>ff[i3][k2][i1]) {
+              ff[i3][k2][i1] = f[i3][k2][i1];
+              pp[i3][k2][i1] = p[i3][k2][i1];
+              tt[i3][k2][i1] = t[i3][k2][i1];
+            }
           }
           if (di*d3<0.0f) {
-            ff[i3][i2][i1] = f[i3][i2][i1];
-            ff[m3][i2][i1] = f[m3][i2][i1];
-            pp[i3][i2][i1] = p[i3][i2][i1];
-            pp[m3][i2][i1] = p[m3][i2][i1];
-            tt[i3][i2][i1] = t[i3][i2][i1];
-            tt[m3][i2][i1] = t[m3][i2][i1];
+            boolean ibig = f[i3][i2][i1]>=f[m3][i2][i1];
+            int j3 = ibig?i3:m3;
+            int k3 = ibig?m3:i3;
+            if (f[j3][i2][i1]>ff[j3][i2][i1]) {
+              ff[j3][i2][i1] = f[j3][i2][i1];
+              pp[j3][i2][i1] = p[j3][i2][i1];
+              tt[j3][i2][i1] = t[j3][i2][i1];
+            }
+            if (!thinnest && f[k3][i2][i1]>ff[k3][i2][i1]) {
+              ff[k3][i2][i1] = f[k3][i2][i1];
+              pp[k3][i2][i1] = p[k3][i2][i1];
+              tt[k3][i2][i1] = t[k3][i2][i1];
+            }
           }
         }
       }
     }
     return new float[][][][]{ff,pp,tt};
   }
-  public static float[][][][] thinX(float[][][][] flpt) {
+  public static float[][][][] thin(float[][][][] flpt) {
     int n1 = n1(flpt);
     int n2 = n2(flpt);
     int n3 = n3(flpt);

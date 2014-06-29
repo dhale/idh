@@ -12,6 +12,7 @@ import javax.swing.*;
 
 import edu.mines.jtk.awt.*;
 import edu.mines.jtk.dsp.*;
+import edu.mines.jtk.interp.*;
 import edu.mines.jtk.mosaic.*;
 import edu.mines.jtk.sgl.*;
 import edu.mines.jtk.util.*;
@@ -46,15 +47,17 @@ public class FakeData {
       //pv.setInterpolation(PixelsView.Interpolation.LINEAR);
       sp.setSize(700,700);
     } else if (args[0].equals("seismicAndSlopes3d2014A")) {
-      boolean[] foldings = {true};
-      boolean[] faultings = {true};
+      String[] sequences = {"OA"};
+      int[] nfaults = {3};
+      boolean[] conjugates = {false};
       boolean[] impedances = {false};
       boolean[] wavelets = {true};
-      double[] noises = {0.25};
-      int n = foldings.length;
+      double[] noises = {0.5};
+      int n = sequences.length;
       for (int i=0; i<n; ++i) {
         float[][][][] f = seismicAndSlopes3d2014A(
-            foldings[i],faultings[i],impedances[i],wavelets[i],noises[i]);
+            sequences[i],nfaults[i],conjugates[i],
+            impedances[i],wavelets[i],noises[i]);
         trace(" f min="+min(f[0])+" max="+max(f[0]));
         trace("p2 min="+min(f[1])+" max="+max(f[1]));
         trace("p3 min="+min(f[2])+" max="+max(f[2]));
@@ -84,67 +87,106 @@ public class FakeData {
    * @param noise rms of noise (relative to signal) added to the image.
    */
   public static float[][][][] seismicAndSlopes3d2014A(double noise) {
-    return seismicAndSlopes3d2014A(true,true,false,true,noise);
+    return seismicAndSlopes3d2014A("OA",3,false,false,true,noise);
   }
 
   /**
    * Returns a fake 3D seismic image with slopes.
+   * @param sequence string of 'O' and 'A' for fOlding and fAulting.
+   * @param impedance true, for impedance instead of reflectivity.
+   * @param wavelet true, for wavelet; false, for no wavelet.
    * @param noise rms of noise (relative to signal) added to the image.
    */
   public static float[][][][] seismicAndSlopes3d2014A(
-      boolean folding, boolean faulting, 
+      String sequence, int nfault, boolean conjugate,
       boolean impedance, boolean wavelet, double noise) {
     int n1 = 101;
     int n2 = 102;
     int n3 = 103;
     int m1 = n1+50;
 
-    // Folding
+    // Number of episodes in deformation sequence of folding and faulting.
+    int ns = sequence.length();
+    int no = 0;
+    int na = 0;
+    for (int js=0; js<ns; ++js) {
+      if (sequence.charAt(js)=='O') {
+        ++no;
+      } else if (sequence.charAt(js)=='A') {
+        ++na;
+      }
+    }
+
+    // Scale factors for folding and faulting.
+    float so = 1.0f/no;
+    float sa = 1.0f/na;
+
+    // Folding transforms
     Random r = new Random(31);
     int ng = 31;
     float[] g2 = mul(n2-1,randfloat(r,ng));
     float[] g3 = mul(n3-1,randfloat(r,ng));
     float[] sg = clip(4.0f,8.0f,mul(0.5f*(max(n2,n3)-1),randfloat(r,ng)));
     float[] hg = mul(neg(sg),randfloat(r,ng));
-
-    T1 s1 = new Linear1(0.0f,2.0f/n1);
+    T1 s1 = new Linear1(0.0f,so*2.0f/n1);
     T2 s2 = new Gaussians2(g2,g3,sg,hg);
     VerticalShear3 shear = new VerticalShear3(s1,s2);
 
-    // Faulting
+    // Faulting transforms
+    /*
     float r1a = 0.0f*n1, r2a = 0.5f*n2, r3a = 0.3f*n3;
     float r1b = 0.0f*n1, r2b = 0.3f*n2, r3b = 0.1f*n3;
     float r1c = 0.3f*n1, r2c = 0.5f*n2, r3c = 0.7f*n3;
-    float phia =  10.0f, thetaa =  15.0f;
+    float phia =  10.0f, thetaa =  15.0f; if (conjugate) thetaa = -10.0f;
     float phib =  10.0f, thetab =  15.0f;
     float phic =  10.0f, thetac = -15.0f;
-    float[] c1 = {0.0f}, c2 = {0.0f}, sc = {20.0f}, hc = {5.0f};
-    T2 throwa = new Linear2(0.0f,0.1f,0.0f,0.0f,0.0f,0.0f);
-    T2 throwb = new Linear2(0.0f,0.1f,0.0f,0.0f,0.0f,0.0f);
+    */
+    float r1a = 0.0f*n1, r2a = 0.3f*n2, r3a = 0.5f*n3;
+    float r1b = 0.0f*n1, r2b = 0.1f*n2, r3b = 0.3f*n3;
+    float r1c = 0.3f*n1, r2c = 0.7f*n2, r3c = 0.5f*n3;
+    float phia = -89.0f, thetaa =  15.0f; if (conjugate) thetaa = -10.0f;
+    float phib = -89.0f, thetab =  15.0f;
+    float phic = -89.0f, thetac = -15.0f;
+    float[] c1 = {0.0f}, c2 = {0.0f}, sc = {20.0f}, hc = {sa*5.0f};
+    T2 throwa = new Linear2(0.0f,sa*0.1f,0.0f,0.0f,0.0f,0.0f);
+    T2 throwb = new Linear2(0.0f,sa*0.1f,0.0f,0.0f,0.0f,0.0f);
     T2 throwc = new Gaussians2(c1,c2,sc,hc);
     PlanarFault3 faulta = new PlanarFault3(r1a,r2a,r3a,phia,thetaa,throwa);
     PlanarFault3 faultb = new PlanarFault3(r1b,r2b,r3b,phib,thetab,throwb);
     PlanarFault3 faultc = new PlanarFault3(r1c,r2c,r3c,phic,thetac,throwc);
 
+    // Reflectivity or impedance.
     float[][][][] p = makeReflectivityWithNormals(m1,n2,n3);
+    p = addChannels(p);
     if (impedance)
       p = impedanceFromReflectivity(p);
-    if (folding)
-      p = apply(shear,p);
-    if (faulting) {
-      p = apply(faulta,p);
-      p = apply(faultb,p);
-      p = apply(faultc,p);
+
+    // Apply the deformation sequence.
+    for (int js=0; js<ns; ++js) {
+      if (sequence.charAt(js)=='O') {
+        p = apply(shear,p);
+      } else if (sequence.charAt(js)=='A') {
+        if (nfault>0) p = apply(faulta,p);
+        if (nfault>1) p = apply(faultb,p);
+        if (nfault>2) p = apply(faultc,p);
+      }
     }
+
+    // Wavelet and noise.
     if (wavelet)
       p = addWavelet(0.15,p);
     p[0] = mul(1.0f/rms(p[0]),p[0]);
     p[0] = addNoise(noise,p[0]);
+
+    // Slopes.
     p[2] = neg(div(p[2],p[1]));
     p[3] = neg(div(p[3],p[1]));
+
+    // Trim the image.
     p[0] = copy(n1,n2,n3,p[0]);
     p[2] = copy(n1,n2,n3,p[2]);
     p[3] = copy(n1,n2,n3,p[3]);
+
     return new float[][][][]{p[0],p[2],p[3]};
   }
 
@@ -781,6 +823,32 @@ public class FakeData {
       }
     }
     return new float[][][][]{z,r[1],r[2],r[3]};
+  }
+
+  private static float[][][][] addChannels(float[][][][] r) {
+    int n1 = r[0][0][0].length;
+    int n2 = r[0][0].length;
+    int n3 = r[0].length;
+    float[][][] s = copy(r[0]);
+    int k1 = 75;
+    float[] c2 = {0.4f*n2,0.6f*n2,0.5f*n2,0.7f*n2};
+    float[] c3 = {0.1f*n3,0.5f*n3,0.7f*n3,0.9f*n3};
+    CubicInterpolator.Method method = CubicInterpolator.Method.SPLINE;
+    CubicInterpolator ci = new CubicInterpolator(method,c3,c2);
+    for (int i3=0; i3<n3; ++i3) {
+      float x2 = ci.interpolate(i3);
+      int j2 = (int)(x2+0.5);
+      for (int i2=j2-5; i2<j2+5; ++i2) {
+        if (0<i2 && i2<n2) {
+          float d2 = i2-j2;
+          float a = 0.1f*exp(-0.125f*d2*d2);
+          s[i3][i2][k1-1] -= 0.5f*a;
+          s[i3][i2][k1  ] += 1.0f*a;
+          s[i3][i2][k1+1] -= 0.5f*a;
+        }
+      }
+    }
+    return new float[][][][]{s,r[1],r[2],r[3]};
   }
 
   private static float[][][] combine(

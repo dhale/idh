@@ -32,26 +32,33 @@ def main(args):
   #goFakeData()
   #goSlopes()
   #goScan()
-  goThin()
+  #goThin()
   #goSmooth()
+  goQuads()
   #goSurfing()
   #goDisplay("gx")
 
 def goFakeData():
-  folding = True
-  faulting = True
+  sequence = 'OA'
+  #sequence = 'OOOOOAAAAA'
+  #sequence = 'OAOAOAOAOA'
+  nfault = 3
+  conjugate = False
   impedance = False
   wavelet = True
   noise = 0.0
   gx,p2,p3 = FakeData.seismicAndSlopes3d2014A(
-      folding,faulting,impedance,wavelet,noise)
+      sequence,nfault,conjugate,impedance,wavelet,noise)
   writeImage(gxfile,gx)
   writeImage(p2kfile,p2)
   writeImage(p3kfile,p3)
   print "gx min =",min(gx)," max =",max(gx)
   print "p2 min =",min(p2)," max =",max(p2)
   print "p3 min =",min(p3)," max =",max(p3)
-  #plot3(gx)
+  gmin,gmax,gmap = -3.0,3.0,ColorMap.GRAY
+  if impedance:
+    gmin,gmax,gmap = 0.0,1.4,ColorMap.JET
+  plot3(gx,cmin=gmin,cmax=gmax,cmap=gmap)
   #plot3(gx,p2,cmap=bwrNotch(1.0))
   #plot3(gx,p3,cmap=bwrNotch(1.0))
 
@@ -97,8 +104,8 @@ def goScan():
   writeImage(flfile,fl)
   writeImage(fpfile,fp)
   writeImage(ftfile,ft)
-  plot3(gx)
-  plot3(gx,fl,cmin=0,cmax=1,cmap=jetRamp(1.0))
+  #plot3(gx)
+  #plot3(gx,fl,cmin=0.4,cmax=1,cmap=jetRamp(1.0))
 
 def goThin():
   print "goThin ..."
@@ -106,22 +113,20 @@ def goThin():
   fl = readImage(flfile)
   fp = readImage(fpfile)
   ft = readImage(ftfile)
-  plot3(gx,fl,cmin=0.0,cmax=1.0,cmap=jetRamp(1.0))
-  fd = FaultScanner3.fd([fl,fp,ft])
-  fd = abs(fd)
-  plot3(gx,fd,cmap=jetRamp(1.0))
-  #plot3(gx,fd,cmin=-0.1,cmax=0.1,cmap=bwrFill(0.3))
-  return
-  fl,fp,ft = FaultScanner3.thin([fl,fp,ft])
-  writeImage(fltfile,fl)
-  writeImage(fptfile,fp)
-  writeImage(fttfile,ft)
-  plot3(gx,fl,cmin=0.0,cmax=1.0,cmap=jetRamp(1.0))
-  #plot3(gx,fp,cmin=-90,cmax=90,cmap=jetRamp(1.0))
+  flt,fpt,ftt = FaultScanner3.thin(False,[fl,fp,ft])
+  #flt,fpt,ftt = FaultScanner3.thin([fl,fp,ft])
+  writeImage(fltfile,flt)
+  writeImage(fptfile,fpt)
+  writeImage(fttfile,ftt)
+  plot3(gx)
+  plot3(gx,fl,cmin=0.25,cmax=1.0,cmap=jetRamp(1.0))
+  plot3(gx,flt,cmin=0.25,cmax=1.0,cmap=jetRamp(1.0))
+  plot3(gx,ftt,cmin=-15,cmax=15,cmap=bwrNotch(0.5))
+  plot3(gx,abs(ftt),cmap=jetRamp(1.0))
 
 def goSmooth():
   print "goSmooth ..."
-  flstop = 0.2
+  flstop = 0.25
   fsigma = 16.0
   gx = readImage(gxfile)
   fl = readImage(fltfile)
@@ -129,12 +134,50 @@ def goSmooth():
   p3 = readImage(p3file)
   gsx = FaultScanner3.smooth(flstop,fsigma,p2,p3,fl,gx)
   writeImage(gsxfile,gsx)
-  plot3(gx)
+  #plot3(gx)
   plot3(gsx)
-  p2 = readImage(p2kfile)
-  p3 = readImage(p3kfile)
-  gsx = FaultScanner3.smooth(flstop,fsigma,p2,p3,fl,gx)
-  plot3(gsx)
+
+def goQuads():
+  gx = readImage(gxfile)
+  fl = readImage(flfile)
+  fp = readImage(fpfile)
+  ft = readImage(ftfile)
+  fd1,fd2 = FaultSurfer3X.fd([fl,fp,ft]);
+  fs = FaultSurfer3X([fl,fp,ft])
+  fs.setThreshold(0.4)
+  quads = fs.findQuads()
+  plot3(gx,fd1,cmin=-0.02,cmax=0.02,cmap=bwrNotch(0.5))
+  plot3(gx,fd2,cmin=-0.02,cmax=0.02,cmap=bwrNotch(0.5))
+  plot3(gx,quads=quads)
+
+def goSurfing():
+  gx = readImage(gxfile)
+  gsx = readImage(gsxfile)
+  fl = readImage(flfile)
+  fp = readImage(fpfile)
+  ft = readImage(ftfile)
+  p2 = readImage(p2file)
+  p3 = readImage(p3file)
+  fs = FaultSurfer3([fl,fp,ft])
+  fs.setThreshold(0.2)
+  quads = fs.findQuads()
+  quads = fs.linkQuads(quads)
+  surfs = fs.findSurfs(quads)
+  surfs = fs.getSurfsWithSize(surfs,1000)
+  frs = fs.findShifts(20.0,surfs,gsx,p2,p3)
+  print "frs: min =",min(frs)," max =",max(frs)
+  writeImage(frsfile,frs)
+  fs1,fs2,fs3 = fs.findSlips(-0.012345,surfs)
+  writeImage(fs1file,fs1)
+  writeImage(fs2file,fs2)
+  writeImage(fs3file,fs3)
+  plot3(gx,surfs=surfs)
+  #plot3(gx,surfs=surfs,smax=10.0)
+  #plot3(gx,frs,-5.0,5.0,cmap=bwrNotch(1.0))
+  #plot3(gx,fs1,-5.0,5.0,cmap=bwrNotch(1.0))
+  #plot3(gx,fs2,-0.50,0.50,cmap=bwrNotch(1.0))
+  #plot3(gx,fs3,-0.50,0.50,cmap=bwrNotch(1.0))
+  #plot3(gx)
   
 def goDisplay(what):
   def show2(g1,g2):
@@ -159,45 +202,12 @@ def goDisplay(what):
     g = readImage("g")
     s = readImage("frs")
     plot3(g,s,cmin=-5.0,cmax=5.0,cmap=bwrNotch(1.0))
-  elif what=="gft1":
+  elif what=="gfs1":
     g = readImage("g")
-    ft1 = readImage("ft1")
-    plot3(g,ft1,cmin=0.0,cmax=1.0,cmap=jetRamp(1.0))
+    fs1 = readImage("fs1")
+    plot3(g,fs1,cmin=0.0,cmax=1.0,cmap=jetRamp(1.0))
   else:
     print "do not know how to display ",what
-
-def goSurfing():
-  g = readImage(gfile)
-  gs = readImage(gsfile)
-  fl = readImage(flfile)
-  fp = readImage(fpfile)
-  ft = readImage(ftfile)
-  p2 = readImage(p2file)
-  p3 = readImage(p3file)
-  fs = FaultSurfer3([fl,fp,ft])
-  fs.setThreshold(0.4)
-  quads = fs.findQuads()
-  quads = fs.linkQuads(quads)
-  surfs = fs.findSurfs(quads)
-  surfs = fs.getSurfsWithSize(surfs,4000)
-  plot3(g,surfs=surfs)
-  s = fs.findShifts(20.0,surfs,gs,p2,p3)
-  print "s: min =",min(s)," max =",max(s)
-  writeImage(frsfile,s)
-  t1,t2,t3 = fs.findThrows(-0.012345,surfs)
-  writeImage(ft1file,t1)
-  writeImage(ft2file,t2)
-  writeImage(ft3file,t3)
-  #plot3(g,surfs=surfs,smax=5.0)
-  plot3(g,s,-2.0,2.0,cmap=bwrNotch(1.0))
-  #plot3(g,surfs=surfs)
-  #plot3(g,surfs=surfs,smax=-3.75)
-  #plot3(g,surfs=surfs,smax= 3.75)
-  #plot3(g,s,-10,10,cmap=bwrFill(0.7))
-  #plot3(g,t1,-10.0,10.0,cmap=bwrFill(0.7))
-  #plot3(g,t2,-0.50,0.50,cmap=bwrFill(0.7))
-  #plot3(g,t3,-0.50,0.50,cmap=bwrFill(0.7))
-  #plot3(g)
 
 #############################################################################
 # graphics
@@ -218,22 +228,27 @@ def bwrNotch(alpha):
   return ColorMap.setAlpha(ColorMap.BLUE_WHITE_RED,a)
 
 def plot3(f,g=None,cmin=None,cmax=None,cmap=None,
-          xyz=None,surfs=None,smax=None):
+          xyz=None,surfs=None,smax=None,quads=None):
   n1 = len(f[0][0])
   n2 = len(f[0])
   n3 = len(f)
   sf = SimpleFrame(AxesOrientation.XRIGHT_YOUT_ZDOWN)
   if g==None:
     ipg = sf.addImagePanels(s1,s2,s3,f)
-    ipg.setClips(-3.0,3.0)
+    if cmap!=None:
+      ipg.setColorModel(cmap)
+    if cmin!=None and cmax!=None:
+      ipg.setClips(cmin,cmax)
+    else:
+      ipg.setClips(-3.0,3.0)
   else:
     ipg = ImagePanelGroup2(s1,s2,s3,f,g)
     ipg.setClips1(-3.0,3.0)
+    if cmin!=None and cmax!=None:
+      ipg.setClips2(cmin,cmax)
     if cmap==None:
       cmap = jetFill(0.8)
     ipg.setColorModel2(cmap)
-    if cmin and cmax:
-      ipg.setClips2(cmin,cmax)
     sf.world.addChild(ipg)
   if xyz:
     pg = PointGroup(0.2,xyz)
@@ -273,7 +288,23 @@ def plot3(f,g=None,cmin=None,cmax=None,cmap=None,
       qg.setStates(None)
       sg.addChild(qg)
     sf.world.addChild(sg)
-  ipg.setSlices(100,51,24);
+  if quads:
+    ss = StateSet()
+    lms = LightModelState()
+    lms.setTwoSide(True)
+    ss.add(lms)
+    ms = MaterialState()
+    ms.setSpecular(Color.GRAY)
+    ms.setShininess(100.0)
+    ms.setColorMaterial(GL_AMBIENT_AND_DIFFUSE)
+    ms.setEmissiveBack(Color(0.0,0.0,0.5))
+    ss.add(ms)
+    xyz,uvw,rgb = FaultSurfer3X.getXyzUvwRgb(quads,0.0)
+    qg = QuadGroup(xyz,uvw,rgb)
+    qg.setStates(ss)
+    sf.world.addChild(qg)
+  #ipg.setSlices(95,51,24) # good for parallel faults
+  ipg.setSlices(95,51,5) # good for conjugate faults
   sf.setSize(700,700)
   vc = sf.getViewCanvas()
   ov = sf.getOrbitView()

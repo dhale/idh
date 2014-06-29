@@ -1,4 +1,28 @@
 ---
+Huge simplifying assumption
+  no faults are vertical
+    when extracting faults, ignore samples for which abs(dip)<tiny
+  so make all fault normal vectors point upwards
+  use these when computing directional derivatives
+
+---
+Simplest idea for surface extraction
+  Heap the quads
+  while quads remain in the heap
+    seed = remove quad from queue
+    orient seed so that normal points up
+    use fast marching to grow surface
+      never link a quad with normal pointing down
+
+---
+Filtering fault images
+  iterate
+    [flt,fpt,ftt] = thin([fl,fp,ft])
+    [fl,fp,ft] = smooth([fl,fp,ft])
+      in smoothing, scale extent by fl (not by flt)
+        so that large fl tend to win at intersections
+
+---
 TODO
 Canning & Schoonebeek
 fault scanning
@@ -6,6 +30,17 @@ fault surfing
   first use what I have now!
   read/write fault surfaces (quad meshes)
   research surface processing
+    extraction algorithm (Canny like)
+      while quads remain with fl > flhi, ...
+        put quad with max fl > flhi on heap
+        while heap is not empty {
+          remove from heap quad with highest score
+          compute scores for quad nabors
+            quad score = fl-fllo && 
+              measure of alignment of quad normal
+                with fault normal &&
+                with normals of quads added so far
+          add quad nabors to heap
 fault throws
 unfaulting
   Simon
@@ -27,6 +62,11 @@ fake data
       AAAAAAAAAAOOOOOOOOOO
       OAOAOAOAOAOAOAOAOAOA
     noise levels
+fault images in HSB color
+  hue = fault strike in [-180,180]
+  saturation = fault dip in [0,dipmax)
+  brightness = 1
+  alpha = fault likelihood
 fault quad images!
   colored by fl (same as thinning?)
   colored by fp (fault phi, hue cmap)?
@@ -36,6 +76,46 @@ fault quad images!
     green if edge-2 intersection
     blue  if edge-3 intersection
     alpha = fl
+
+Surface extraction
+  a quad may be part of multiple surfs
+    due to limited image/surf resolution
+      actually a good thing,
+        eliminates float epsilon problems
+  extract one fault surf at a time
+  grow each fault surf one quad at a time
+  choose quads with which to grow by their scores
+  a quad nabor score is high if
+    its fl is high (must be greater than fllo)
+    either its normal is aligned with local average
+      which must be computed repeatedly
+    or its edges are shared by more than two quads
+      which means that it may be a surface intersection
+  find all quads
+  while quads remain with fl > flhi
+    select quad not yet in a surf having largest fl > flhi
+    construct new surf with that one quad
+    for each quad nabor
+      if fl>fllo, add quad nabor to list
+    while list is not empty
+      update scores of all nabors in the list
+      remove the nabor with best score
+      if score is good enough
+        add the nabor to the surface
+        for each quad nabor
+          if fl>fllo, add quad nabor to list
+
+    extraction algorithm (Canny like)
+      while quads remain with fl > flhi, ...
+        put quad with max fl > flhi on heap
+        while heap is not empty {
+          remove from heap quad with highest score
+          compute scores for quad nabors
+            quad score = fl-fllo && 
+              measure of alignment of quad normal
+                with fault normal &&
+                with normals of quads added so far
+          add quad nabors to heap
 
 ---
 Nomenclature
@@ -47,7 +127,7 @@ u   unfaulted and unfolded coordinates
 gx  seismic image g(x)
 gw  seismic image unfaulted
 gu  seismic image unfaulted and unfolded
-gs  seismic image smoothed
+gsx seismic image smoothed
 gsw seismic image smoothed, unfaulted
 gsu seismic image smoothed, unfaulted and unfolded
 
@@ -133,8 +213,8 @@ dip has +- discontinuity
 
 strike in [0:360), dip in [0:45)
 strike ambiguous for dip = 0 degrees
-strike has 180 degree discontinuity
-as dip goes through vertical
+  and will have 180-degree discontinuities
+    for faults nearly vertical
 
 ---
 3D fault displacements

@@ -66,16 +66,16 @@ public class FaultSurfer3 {
   }
 
   /**
-   * Returns fault throw vectors for an array of fault surfaces.
-   * Throw vectors are computed for only one side of faults.
-   * Throws for the other side of the fault are set to zero.
-   * Throws for samples not adjacent to faults are marked using
+   * Returns fault slip vectors for an array of fault surfaces.
+   * Slip vectors are computed for only one side of faults.
+   * Slips for the other side of the fault are set to zero.
+   * Slips for samples not adjacent to faults are marked using
    * a specified value.
-   * @param tmark the mark for throws not adjacent to a fault.
+   * @param tmark the mark for slips not adjacent to a fault.
    * @param surfs array of fault surfaces.
-   * @return array {t1,t2,t3} of components of fault throws.
+   * @return array {s1,s2,s3} of components of fault slips.
    */
-  public float[][][][] findThrows(float tmark, Surf[] surfs) {
+  public float[][][][] findSlips(float tmark, Surf[] surfs) {
     int n1 = _n1, n2 = _n2, n3 = _n3;
     float[][][] t1 = new float[n3][n2][n1];
     float[][][] t2 = new float[n3][n2][n1];

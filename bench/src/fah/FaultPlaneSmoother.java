@@ -24,26 +24,27 @@ import static edu.mines.jtk.util.Parallel.*;
  * [-90,90] degrees. The angle phi is the strike of the fault, and 
  * the angle theta is its deviation from vertical. 
  * <p>
- * To define these angles more precisely, let vectors u, v and w be 
- * initially aligned with axes 1, 2 and 3 of a 3D array, respectively. 
- * (Axis 1 is typically the vertical axis.) First rotate the vectors 
- * (u,v,w) by angle phi about vector u (which is aligned with axis 1), 
- * where angle phi is positive clockwise when viewed from the head of 
- * vector u towards its tail. The vectors v and w may now point in new 
- * directions, but both still lie in the 23 plane. Then rotate the 
- * vectors (u,v,w) by angle theta about the vector v, where angle theta 
- * is positive counterclockwise when viewed from the head of vector v 
- * towards its tail. After these rotations, vector v remains in the 23 
- * plane. The vectors u and v lie within the fault plane (u points down 
- * the fault, and v is horizontal), and the vector w is normal to that 
- * plane.
+ * To define these angles more precisely, let vectors u, v and w be
+ * initially aligned with axes 3, 2 and 1 of a 3D array, respectively.
+ * (Axes 3, 2, and 1 typically correspond to axes X, Y, and Z, where
+ * axis 1 and axis Z are vertical coordinates increasing downward.)
+ * First rotate the vectors (u,v,w) by angle phi about vector w (which
+ * is aligned with axis 1), where angle phi is positive clockwise when
+ * viewed from the head of vector u towards its tail. The vectors u and
+ * v may now point in new directions, but both still lie in the 23
+ * plane. Then rotate the vectors u and w by angle theta about the
+ * vector v, where angle theta is positive counterclockwise when viewed
+ * from the head of vector v towards its tail. After these rotations,
+ * vector v remains in the 23 plane. The vectors v and w lie within the
+ * fault plane (w points down the fault, and v is horizontal), and the
+ * vector u is normal to that plane.
  * <p>
  * Let ct = cos(theta), st = sin(theta), cp = cos(phi), sp = sin(phi),
  * where both angles theta and phi are in the range [-90,90] degrees. 
  * The three orthonormal vectors (u,v,w) after the two rotations are 
- * u = { ct,-st*sp, st*cp}, 
+ * u = {-st,-ct*sp, ct*cp}.
  * v = {  0,    cp,    sp},
- * w = {-st,-ct*sp, ct*cp}.
+ * w = { ct,-st*sp, st*cp}, 
  * <p>
  * Gaussian smoothing is specified by half-widths sigma for each of 
  * the principle directions of the rotated vectors (u,v,w).
@@ -164,9 +165,9 @@ public class FaultPlaneSmoother {
     float t = (float)toRadians(theta);
     float cp = cos(p), sp = sin(p);
     float ct = cos(t), st = sin(t);
-    final float u1 =   ct, u2 = -st*sp, u3 = st*cp; // u down the fault
+    final float u1 =  -st, u2 = -ct*sp, u3 = ct*cp; // u normal to fault
     final float v1 = 0.0f, v2 =     cp, v3 =    sp; // v along strike
-    final float w1 =  -st, w2 = -ct*sp, w3 = ct*cp; // w normal to fault
+    final float w1 =   ct, w2 = -st*sp, w3 = st*cp; // w down the fault
     final float twopi = 2.0f*FLT_PI;
     final float dk1 = twopi/_n1fft;
     final float dk2 = twopi/_n2fft;
@@ -238,9 +239,9 @@ public class FaultPlaneSmoother {
     float t = (float)toRadians(theta);
     float cp = cos(p), sp = sin(p);
     float ct = cos(t), st = sin(t);
-    final float u1 =   ct, u2 = -st*sp, u3 = st*cp; // u down the fault
+    final float u1 =  -st, u2 = -ct*sp, u3 = ct*cp; // u normal to fault
     final float v1 = 0.0f, v2 =     cp, v3 =    sp; // v along strike
-    final float w1 =  -st, w2 = -ct*sp, w3 = ct*cp; // w normal to fault
+    final float w1 =   ct, w2 = -st*sp, w3 = st*cp; // w down the fault
     final float twopi = 2.0f*FLT_PI;
     final float dk1 = twopi/_n1fft;
     final float dk2 = twopi/_n2fft;
@@ -327,12 +328,12 @@ public class FaultPlaneSmoother {
     float[][][] g1 = zerofloat(n1,n2,n3);
     float[][][] g2 = zerofloat(n1,n2,n3);
     f1[n3/2][n2/2][n1/2] = 1.0f;
-    f2[n3/4][n2/4][n1/4] = 2.0f;
+    f2[n3/4][n2/4][n1/4] = 1.0f;
     float[][][][] f = {f1,f2};
     float[][][][] g = {g1,g2};
-    double sigmau = 30.0;
+    double sigmau = 1.0;
     double sigmav = 15.0;
-    double sigmaw = 1.0;
+    double sigmaw = 30.0;
     double phi = 30.0;
     double theta = 45.0;
     FaultPlaneSmoother fps = new FaultPlaneSmoother(sigmau,sigmav,sigmaw,f);
