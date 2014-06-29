@@ -18,6 +18,8 @@ import edu.mines.jtk.sgl.*;
 import edu.mines.jtk.util.*;
 import static edu.mines.jtk.util.ArrayMath.*;
 
+import static fah.FaultGeometry.*;
+
 /**
  * Generates fake seismic data with faults and horizons.
  * @author Dave Hale, Colorado School of Mines
@@ -122,7 +124,7 @@ public class FakeData {
     float sa = 1.0f/na;
 
     // Folding transforms
-    Random r = new Random(31);
+    Random r = new Random(2);
     int ng = 31;
     float[] g2 = mul(n2-1,randfloat(r,ng));
     float[] g3 = mul(n3-1,randfloat(r,ng));
@@ -133,20 +135,21 @@ public class FakeData {
     VerticalShear3 shear = new VerticalShear3(s1,s2);
 
     // Faulting transforms
+    float r1a = 0.0f*n1, r2a = 0.4f*n2, r3a = 0.5f*n3;
+    float r1b = 0.0f*n1, r2b = 0.1f*n2, r3b = 0.3f*n3;
+    float r1c = 0.3f*n1, r2c = 0.7f*n2, r3c = 0.5f*n3;
+    float phia =  10.0f, thetaa =  75.0f; 
+    if (conjugate) phia += 180.0f;
+    float phib =  10.0f, thetab =  75.0f;
+    float phic = 190.0f, thetac =  75.0f;
     /*
-    float r1a = 0.0f*n1, r2a = 0.5f*n2, r3a = 0.3f*n3;
-    float r1b = 0.0f*n1, r2b = 0.3f*n2, r3b = 0.1f*n3;
-    float r1c = 0.3f*n1, r2c = 0.5f*n2, r3c = 0.7f*n3;
-    float phia =  10.0f, thetaa =  15.0f; if (conjugate) thetaa = -10.0f;
-    float phib =  10.0f, thetab =  15.0f;
-    float phic =  10.0f, thetac = -15.0f;
-    */
     float r1a = 0.0f*n1, r2a = 0.3f*n2, r3a = 0.5f*n3;
     float r1b = 0.0f*n1, r2b = 0.1f*n2, r3b = 0.3f*n3;
     float r1c = 0.3f*n1, r2c = 0.7f*n2, r3c = 0.5f*n3;
     float phia = -89.0f, thetaa =  15.0f; if (conjugate) thetaa = -10.0f;
     float phib = -89.0f, thetab =  15.0f;
     float phic = -89.0f, thetac = -15.0f;
+    */
     float[] c1 = {0.0f}, c2 = {0.0f}, sc = {20.0f}, hc = {sa*5.0f};
     T2 throwa = new Linear2(0.0f,sa*0.1f,0.0f,0.0f,0.0f,0.0f);
     T2 throwb = new Linear2(0.0f,sa*0.1f,0.0f,0.0f,0.0f,0.0f);
@@ -567,7 +570,7 @@ public class FakeData {
      * @param fx1 coordinate x1 of a reference point on the fault.
      * @param fx2 coordinate x2 of a reference point on the fault.
      * @param fx3 coordinate x3 of a reference point on the fault.
-     * @param fphi fault strike, measured in degrees from x2 axis.
+     * @param fphi fault strike, measured in degrees from x3 axis.
      * @param ftheta fault dip, measured in degrees from x1 axis.
      * @param fthrow fault throw, function of fault-plane coordinates.
      */
@@ -587,29 +590,21 @@ public class FakeData {
 
       // Tangent of fault dip.
       float rtheta = toRadians(ftheta);
-      _ttheta = tan(rtheta);
+      _ottheta = 1.0f/tan(rtheta);
 
       // Fault normal vector.
-      float ctheta = cos(rtheta);
-      float stheta = sin(rtheta);
-      _u1 = -stheta;
-      _u2 = -ctheta*_sphi;
-      _u3 =  ctheta*_cphi;
-
-      // Ensure vertical component of normal vector is non-positive.
-      if (_u1>0.0f) {
-        _u1 = -_u1;
-        _u2 = -_u2;
-        _u3 = -_u3;
-      }
+      float[] w = faultNormalVectorFromStrikeAndDip(fphi,ftheta);
+      _w1 = w[0];
+      _w2 = w[1];
+      _w3 = w[2];
 
       // Constant needed to locate points with respect to plane.
-      _u0 = -(fx1*_u1+fx2*_u2+fx3*_u3);
+      _w0 = -(fx1*_w1+fx2*_w2+fx3*_w3);
 
-      // Rotation matrix used to align fault trace with axis 2.
+      // Rotation matrix used to align fault strike with axis 3.
       _r22 =  _cphi;
-      _r23 =  _sphi;
-      _r32 = -_sphi;
+      _r23 = -_sphi;
+      _r32 =  _sphi;
       _r33 =  _cphi;
 
       // Fault throw.
@@ -623,9 +618,9 @@ public class FakeData {
         float y1 = x1;
         float y2 = _r22*x2+_r23*x3;
         float y3 = _r32*x2+_r33*x3;
-        C2 t = _t2.f(y1,y2);
+        C2 t = _t2.f(y1,y3);
         y1 -= t.c1;
-        y3 -= t.c1*_ttheta;
+        y2 -= t.c1*_ottheta;
         x1 = y1;
         x2 = _r22*y2+_r32*y3;
         x3 = _r23*y2+_r33*y3;
@@ -644,28 +639,27 @@ public class FakeData {
         x2 -= _r2;
         x3 -= _r3;
         float y1 = x1;
-        float y2 = _r22*x2+_r23*x3;
         float y3 = _r32*x2+_r33*x3;
-        D2 dt = _t2.df(y1,y2);
+        D2 dt = _t2.df(y1,y3);
         float y11 = -dt.d11;
-        float y12 = -dt.d12;
-        float y31 = y11*_ttheta;
-        float y32 = y12*_ttheta;
-        d11 += y11;        d12 += y12*_cphi;        d13 += y12*_sphi;
-        d21 -= y31*_sphi;  d22 -= y32*_cphi*_sphi;  d23 -= y32*_sphi*_sphi;
-        d31 += y31*_cphi;  d32 += y32*_cphi*_cphi;  d33 += y32*_cphi*_sphi;
+        float y13 = -dt.d12;
+        float y21 = y11*_ottheta;
+        float y23 = y13*_ottheta;
+        d11 += y11;        d12 += y13*_sphi;        d13 += y13*_cphi;
+        d21 += y21*_cphi;  d22 += y23*_cphi*_sphi;  d23 += y23*_cphi*_cphi;
+        d31 -= y21*_sphi;  d32 -= y23*_sphi*_sphi;  d33 -= y23*_cphi*_sphi;
       }
       return new D3(d11,d12,d13,
                     d21,d22,d23,
                     d31,d32,d33);
     }
     private float _r1,_r2,_r3;
-    private float _cphi,_sphi,_ttheta;
-    private float _u0,_u1,_u2,_u3;
+    private float _cphi,_sphi,_ottheta;
+    private float _w0,_w1,_w2,_w3;
     private float _r22,_r23,_r32,_r33;
     private T2 _t2;
     private boolean faulted(float x1, float x2, float x3) {
-      return _u0+_u1*x1+_u2*x2+_u3*x3>=0.0f;
+      return _w0+_w1*x1+_w2*x2+_w3*x3>=0.0f;
     }
   }
 

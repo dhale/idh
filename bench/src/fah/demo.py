@@ -31,10 +31,10 @@ fs3file = "fs3" # fault slip (3rd component)
 def main(args):
   #goFakeData()
   #goSlopes()
-  #goScan()
-  #goThin()
-  #goSmooth()
-  goQuads()
+  goScan()
+  goThin()
+  goSmooth()
+  #goQuads()
   #goSurfing()
   #goDisplay("gx")
 
@@ -77,10 +77,10 @@ def goSlopes():
   print "p3  min =",min(p3)," max =",max(p3)
   print "p3k min =",min(p3k)," max =",max(p3k)
   print "ep min =",min(ep)," max =",max(ep)
-  #plot3(gx,p2, cmin=-2,cmax=2,cmap=bwrNotch(1.0))
-  #plot3(gx,p2k,cmin=-2,cmax=2,cmap=bwrNotch(1.0))
-  #plot3(gx,p3, cmin=-2,cmax=2,cmap=bwrNotch(1.0))
-  #plot3(gx,p3k,cmin=-2,cmax=2,cmap=bwrNotch(1.0))
+  #plot3(gx,p2, cmin=-1,cmax=1,cmap=bwrNotch(1.0))
+  #plot3(gx,p2k,cmin=-1,cmax=1,cmap=bwrNotch(1.0))
+  #plot3(gx,p3, cmin=-1,cmax=1,cmap=bwrNotch(1.0))
+  #plot3(gx,p3k,cmin=-1,cmax=1,cmap=bwrNotch(1.0))
   #plot3(gx,sub(1,ep),cmin=0,cmax=1,cmap=jetRamp(1.0))
 
 def goScan():
@@ -88,11 +88,11 @@ def goScan():
   p2 = readImage(p2file)
   p3 = readImage(p3file)
   gx = readImage(gxfile)
-  gx = FaultScanner3.taper(10,0,0,gx);
+  gx = FaultScanner.taper(10,0,0,gx);
   sigmaPhi,sigmaTheta = 4,20
-  minPhi,maxPhi = -90,90
-  minTheta,maxTheta = -20,20
-  fsc = FaultScanner3(sigmaPhi,sigmaTheta)
+  minPhi,maxPhi = 0,360
+  minTheta,maxTheta = 70,89
+  fsc = FaultScanner(sigmaPhi,sigmaTheta)
   sw = Stopwatch()
   sw.restart()
   fl,fp,ft = fsc.scan(minPhi,maxPhi,minTheta,maxTheta,p2,p3,gx)
@@ -104,8 +104,8 @@ def goScan():
   writeImage(flfile,fl)
   writeImage(fpfile,fp)
   writeImage(ftfile,ft)
-  #plot3(gx)
-  #plot3(gx,fl,cmin=0.4,cmax=1,cmap=jetRamp(1.0))
+  plot3(gx)
+  plot3(gx,fl,cmin=0.4,cmax=1,cmap=jetRamp(1.0))
 
 def goThin():
   print "goThin ..."
@@ -113,16 +113,14 @@ def goThin():
   fl = readImage(flfile)
   fp = readImage(fpfile)
   ft = readImage(ftfile)
-  flt,fpt,ftt = FaultScanner3.thin(False,[fl,fp,ft])
-  #flt,fpt,ftt = FaultScanner3.thin([fl,fp,ft])
+  flt,fpt,ftt = FaultScanner.thin([fl,fp,ft])
   writeImage(fltfile,flt)
   writeImage(fptfile,fpt)
   writeImage(fttfile,ftt)
   plot3(gx)
   plot3(gx,fl,cmin=0.25,cmax=1.0,cmap=jetRamp(1.0))
   plot3(gx,flt,cmin=0.25,cmax=1.0,cmap=jetRamp(1.0))
-  plot3(gx,ftt,cmin=-15,cmax=15,cmap=bwrNotch(0.5))
-  plot3(gx,abs(ftt),cmap=jetRamp(1.0))
+  plot3(gx,ftt,cmin=70,cmax=80,cmap=jetFill(0.5))
 
 def goSmooth():
   print "goSmooth ..."
@@ -303,15 +301,14 @@ def plot3(f,g=None,cmin=None,cmax=None,cmap=None,
     qg = QuadGroup(xyz,uvw,rgb)
     qg.setStates(ss)
     sf.world.addChild(qg)
-  #ipg.setSlices(95,51,24) # good for parallel faults
-  ipg.setSlices(95,51,5) # good for conjugate faults
+  ipg.setSlices(95,5,51)
   sf.setSize(700,700)
   vc = sf.getViewCanvas()
   ov = sf.getOrbitView()
   vc.setBackground(Color.WHITE)
-  ov.setAzimuthAndElevation(40.0,25.0)
+  ov.setAzimuthAndElevation(-55.0,25.0)
+  ov.setTranslate(Vector3(-0.0677,-0.0421,-0.0445))
   ov.setScale(2.2)
-  ov.setTranslate(Vector3(-0.0102,-0.0508,0.0395))
 
 #############################################################################
 run(main)
