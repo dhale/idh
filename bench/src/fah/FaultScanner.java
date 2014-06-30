@@ -4,6 +4,7 @@ This program and accompanying materials are made available under the terms of
 the Common Public License - v1.0, which accompanies this distribution, and is 
 available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
+
 package fah;
 
 import java.util.*;
@@ -186,6 +187,13 @@ public class FaultScanner {
     return scan(phiSampling,thetaSampling,snd);
   }
 
+  /**
+   * Thins fault images to include only ridges in fault likelihoods.
+   * After thinning, may be only one voxel wide. Thinned fault strikes and
+   * dips are set to zero where thinned fault likelihoods are zero.
+   * @param flpt array {fl,fp,ft} of fault likelihoods, strikes, and dips.
+   * @return array {fl,fp,ft} of thinned fault likelihoods, strikes, and dips.
+   */
   public static float[][][][] thin(float[][][][] flpt) {
     int n1 = n1(flpt);
     int n2 = n2(flpt);
@@ -199,19 +207,24 @@ public class FaultScanner {
     float[][][] ff = new float[n3][n2][n1];
     float[][][] pp = new float[n3][n2][n1];
     float[][][] tt = new float[n3][n2][n1];
-    for (int i3=1; i3<n3-1; ++i3) {
-      for (int i2=1; i2<n2-1; ++i2) {
-        float[] fmm = f[i3-1][i2-1];
-        float[] fm0 = f[i3-1][i2  ];
-        float[] fmp = f[i3-1][i2+1];
-        float[] f0m = f[i3  ][i2-1];
-        float[] f00 = f[i3  ][i2  ];
-        float[] f0p = f[i3  ][i2+1];
-        float[] fpm = f[i3+1][i2-1];
-        float[] fp0 = f[i3+1][i2  ];
-        float[] fpp = f[i3+1][i2+1];
-        float[] p00 = p[i3  ][i2  ];
-        float[] t00 = t[i3  ][i2  ];
+    int inset23 = 1; // increasing this will eliminate faults near edges
+    for (int i3=inset23; i3<n3-inset23; ++i3) {
+      int i3m = max(i3-1,0);
+      int i3p = min(i3+1,n3-1);
+      for (int i2=inset23; i2<n2-inset23; ++i2) {
+        int i2m = max(i2-1,0);
+        int i2p = min(i2+1,n2-1);
+        float[] fmm = f[i3m][i2m];
+        float[] fm0 = f[i3m][i2 ];
+        float[] fmp = f[i3m][i2p];
+        float[] f0m = f[i3 ][i2m];
+        float[] f00 = f[i3 ][i2 ];
+        float[] f0p = f[i3 ][i2p];
+        float[] fpm = f[i3p][i2m];
+        float[] fp0 = f[i3p][i2 ];
+        float[] fpp = f[i3p][i2p];
+        float[] p00 = p[i3 ][i2 ];
+        float[] t00 = t[i3 ][i2 ];
         for (int i1=0; i1<n1; ++i1) {
           float f000 = f00[i1];
           float p000 = p00[i1];
@@ -232,13 +245,16 @@ public class FaultScanner {
         }
       }
     }
-    return new float[][][][]{ff,pp,tt};
+    float[][][][] flptn = new float[][][][]{ff,pp,tt};
+    removeEdgeEffects(flptn);
+    return flptn;
   }
 
   /**
-   * Applies structure-oriented smoothing limited by faults.
+   * Applies structure-oriented smoothing limited by fault likelihoods.
    * For this method, faults are assumed to exist and smoothing is limited
    * at samples where fault likelihood exceeds a specified value.
+   * This methods is usually applied using thinned fault likelihoods.
    * @param flstop smoothing stops where fault likelihood &gt; this value.
    * @param sigma half-width of smoothing (except near faults).
    * @param p2 array of slopes in 2nd dimension.
@@ -299,8 +315,8 @@ public class FaultScanner {
     // initialize f,p,t (fault likelihood, phi, and theta)
     // for all phi:
     //   rotate snum,sden so that strike vector is aligned with axis 2
-    //   smooth snum,sden along fault strike
-    //   compute fphi,tphi (fault likelihood and theta, as for 2D faults)
+    //   smooth snum,sden along fault strike (that is, along axis 2)
+    //   compute fphi,tphi (fault likelihood and dip) in 1-3 slices
     //   unrotate fphi,tphi to original coordinates
     //   update f,p,t for maximum likelihood
     final int n1 = snd[0][0][0].length;
@@ -319,7 +335,7 @@ public class FaultScanner {
       float[][][][] rsnd = r.rotate(snd);
       smooth2(rsnd);
       float[][][][] rftp = scanTheta(thetaSampling,rsnd);
-      rsnd = null;
+      rsnd = null; // enable gc to collect this large array
       float[][][][] ftp = r.unrotate(rftp);
       final float[][][] fp = ftp[0];
       final float[][][] tp = ftp[1];
@@ -335,9 +351,9 @@ public class FaultScanner {
             float fpi = fp32[i1];
             float tpi = tp32[i1];
             if (fpi<0.0f) fpi = 0.0f; // necessary because of sinc
-            if (fpi>1.0f) fpi = 1.0f; // interpolation in unrotate
-            if (tpi<tmin) tpi = tmin;
-            if (tpi>tmax) tpi = tmax;
+            if (fpi>1.0f) fpi = 1.0f; // interpolation in unrotate,
+            if (tpi<tmin) tpi = tmin; // for both fault likelihood
+            if (tpi>tmax) tpi = tmax; // and fault dip theta
             if (fpi>f32[i1]) {
               f32[i1] = fpi;
               p32[i1] = phi;
@@ -540,7 +556,15 @@ public class FaultScanner {
     return ref;
   }
 
-  // For one fault strike, scans over all fault dips theta.
+  // For one fault strike, scans over all fault dips theta. The fault strike
+  // vector has already been aligned with image axis 2, and semblance
+  // numerators and denominators have already been smoothed in that direction.
+  // Therefore, this scan over fault dip can be performed independently for
+  // each i2. For each fault dip theta, this method shears semblance num and
+  // den to align any faults having that dip with image axis 1. Semblance
+  // num and den are then smoothed vertically, with an extent sigma that is
+  // dip-adjusted (shorter for smaller fault dips), so that after unshearing
+  // the extent of smoothing is roughly the same for all fault dips.
   private float[][][][] scanTheta(Sampling thetaSampling, float[][][][] snd) {
     final int n1 = n1(snd), n2 = n2(snd), n3 = n3(snd);
     final Sampling st = thetaSampling;
@@ -563,10 +587,10 @@ public class FaultScanner {
         float ti = (float)st.getValue(it);
         float theta = toRadians(ti);
         float shear = -1.0f/tan(theta);
-        float sigma = (float)_sigmaTheta*sin(theta);
         float[][] sns = shear(si,shear,sn2);
         float[][] sds = shear(si,shear,sd2);
-        RecursiveExponentialFilter ref = makeRef(_sigmaTheta);
+        float sigma = (float)_sigmaTheta*sin(theta);
+        RecursiveExponentialFilter ref = makeRef(sigma);
         ref.apply1(sns,sns);
         ref.apply1(sds,sds);
         float[][] ss = semblanceFromNumDen(sns,sds);
@@ -592,7 +616,7 @@ public class FaultScanner {
     return ft;
   }
 
-  // Makes an array like that specified, which may contain null arrays.
+  // Makes an array like that specified, including any null arrays.
   private float[][][][] like(float[][][][] p) {
     int n1 = n1(p[0]);
     int n2 = n2(p[0]);
@@ -725,6 +749,8 @@ public class FaultScanner {
     return new float[][][][]{sn,sd};
   }
 
+  // Computes semblance ratios from numerators and denominators.
+  // Takes care to ensure that semblances are in range [0,1].
   private static float[][] semblanceFromNumDen(float[][] sn, float[][] sd) {
     int n1 = sn[0].length;
     int n2 = sn.length;
@@ -746,6 +772,80 @@ public class FaultScanner {
       }
     }
     return sr;
+  }
+
+  // Removes spurious faults caused by image boundaries. A sample of
+  // fault likelihood, strike and dip is deemed spurious if it is
+  // both near and nearly parallel to the image boundary. This method
+  // zeros any such samples.
+  private static void removeEdgeEffects(float[][][][] flpt) {
+    int n1 = n1(flpt);
+    int n2 = n2(flpt);
+    int n3 = n3(flpt);
+    float[][][] f = flpt[0];
+    float[][][] p = flpt[1];
+    float[][][] t = flpt[2];
+    int inset23 = 5; // TODO: make this a parameter?
+    for (int i3=0,j3=n3-1; i3<inset23; ++i3,--j3) {
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          float fi = f[i3][i2][i1];
+          float pi = p[i3][i2][i1];
+          float ti = t[i3][i2][i1];
+          if (fi!=0.0f) {
+            float[] w = faultNormalVectorFromStrikeAndDip(pi,ti);
+            float w3 = w[2];
+            if (w3*w3>0.5f) {
+              f[i3][i2][i1] = 0.0f;
+              p[i3][i2][i1] = 0.0f;
+              t[i3][i2][i1] = 0.0f;
+            }
+          }
+          float fj = f[j3][i2][i1];
+          float pj = p[j3][i2][i1];
+          float tj = t[j3][i2][i1];
+          if (fj!=0.0f) {
+            float[] w = faultNormalVectorFromStrikeAndDip(pj,tj);
+            float w3 = w[2];
+            if (w3*w3>0.5f) {
+              f[j3][i2][i1] = 0.0f;
+              p[j3][i2][i1] = 0.0f;
+              t[j3][i2][i1] = 0.0f;
+            }
+          }
+        }
+      }
+    }
+    for (int i3=0; i3<n3; ++i3) {
+      for (int i2=0,j2=n2-1; i2<inset23; ++i2,--j2) {
+        for (int i1=0; i1<n1; ++i1) {
+          float fi = f[i3][i2][i1];
+          float pi = p[i3][i2][i1];
+          float ti = t[i3][i2][i1];
+          if (fi!=0.0f) {
+            float[] w = faultNormalVectorFromStrikeAndDip(pi,ti);
+            float w2 = w[1];
+            if (w2*w2>0.5f) {
+              f[i3][i2][i1] = 0.0f;
+              p[i3][i2][i1] = 0.0f;
+              t[i3][i2][i1] = 0.0f;
+            }
+          }
+          float fj = f[i3][j2][i1];
+          float pj = p[i3][j2][i1];
+          float tj = t[i3][j2][i1];
+          if (fj!=0.0f) {
+            float[] w = faultNormalVectorFromStrikeAndDip(pj,tj);
+            float w2 = w[1];
+            if (w2*w2>0.5f) {
+              f[i3][j2][i1] = 0.0f;
+              p[i3][j2][i1] = 0.0f;
+              t[i3][j2][i1] = 0.0f;
+            }
+          }
+        }
+      }
+    }
   }
 
   ///////////////////////////////////////////////////////////////////////////

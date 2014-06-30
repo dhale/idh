@@ -31,7 +31,7 @@ fs3file = "fs3" # fault slip (3rd component)
 def main(args):
   #goFakeData()
   #goSlopes()
-  goScan()
+  #goScan()
   goThin()
   goSmooth()
   #goQuads()
@@ -66,7 +66,7 @@ def goSlopes():
   print "goSlopes ..."
   gx = readImage(gxfile)
   sigma1,sigma2,sigma3,pmax = 16.0,1.0,1.0,5.0
-  p2,p3,ep = FaultScanner3.slopes(sigma1,sigma2,sigma3,pmax,gx)
+  p2,p3,ep = FaultScanner.slopes(sigma1,sigma2,sigma3,pmax,gx)
   writeImage(p2file,p2)
   writeImage(p3file,p3)
   writeImage(epfile,ep)
@@ -105,7 +105,7 @@ def goScan():
   writeImage(fpfile,fp)
   writeImage(ftfile,ft)
   plot3(gx)
-  plot3(gx,fl,cmin=0.4,cmax=1,cmap=jetRamp(1.0))
+  plot3(gx,fl,cmin=0.25,cmax=1,cmap=jetRamp(1.0))
 
 def goThin():
   print "goThin ..."
@@ -119,8 +119,9 @@ def goThin():
   writeImage(fttfile,ftt)
   plot3(gx)
   plot3(gx,fl,cmin=0.25,cmax=1.0,cmap=jetRamp(1.0))
-  plot3(gx,flt,cmin=0.25,cmax=1.0,cmap=jetRamp(1.0))
-  plot3(gx,ftt,cmin=70,cmax=80,cmap=jetFill(0.5))
+  plot3(gx,flt,cmin=0.25,cmax=1.0,cmap=jetFillExceptMin(1.0))
+  plot3(gx,fpt,cmin=0,cmax=360,cmap=hueFillExceptMin(1.0))
+  plot3(gx,ftt,cmin=60,cmax=90,cmap=jetFillExceptMin(1.0))
 
 def goSmooth():
   print "goSmooth ..."
@@ -130,7 +131,7 @@ def goSmooth():
   fl = readImage(fltfile)
   p2 = readImage(p2file)
   p3 = readImage(p3file)
-  gsx = FaultScanner3.smooth(flstop,fsigma,p2,p3,fl,gx)
+  gsx = FaultScanner.smooth(flstop,fsigma,p2,p3,fl,gx)
   writeImage(gsxfile,gsx)
   #plot3(gx)
   plot3(gsx)
@@ -212,10 +213,14 @@ def goDisplay(what):
 
 def jetFill(alpha):
   return ColorMap.setAlpha(ColorMap.JET,alpha)
-def bwrFill(alpha):
-  return ColorMap.setAlpha(ColorMap.BLUE_WHITE_RED,alpha)
+def jetFillExceptMin(alpha):
+  a = fillfloat(alpha,256)
+  a[0] = 0.0
+  return ColorMap.setAlpha(ColorMap.JET,a)
 def jetRamp(alpha):
   return ColorMap.setAlpha(ColorMap.JET,rampfloat(0.0,alpha/256,256))
+def bwrFill(alpha):
+  return ColorMap.setAlpha(ColorMap.BLUE_WHITE_RED,alpha)
 def bwrNotch(alpha):
   a = zerofloat(256)
   for i in range(len(a)):
@@ -224,6 +229,12 @@ def bwrNotch(alpha):
     else:
       a[i] = alpha*(i-127.0)/128.0
   return ColorMap.setAlpha(ColorMap.BLUE_WHITE_RED,a)
+def hueFill(alpha):
+  return ColorMap.getHue(0.0,1.0,alpha)
+def hueFillExceptMin(alpha):
+  a = fillfloat(alpha,256)
+  a[0] = 0.0
+  return ColorMap.setAlpha(ColorMap.getHue(0.0,1.0),a)
 
 def plot3(f,g=None,cmin=None,cmax=None,cmap=None,
           xyz=None,surfs=None,smax=None,quads=None):
