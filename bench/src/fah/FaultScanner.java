@@ -10,9 +10,11 @@ package fah;
 import java.util.*;
 
 import edu.mines.jtk.dsp.*;
-import static fah.FaultGeometry.*;
+import edu.mines.jtk.util.Stopwatch;
 import static edu.mines.jtk.util.ArrayMath.*;
 import static edu.mines.jtk.util.Parallel.*;
+
+import static fah.FaultGeometry.*;
 
 /**
  * Computes fault likelihoods, strikes, and dips, by scanning over fault
@@ -201,17 +203,17 @@ public class FaultScanner {
     float[][][] f = flpt[0];
     float[][][] p = flpt[1];
     float[][][] t = flpt[2];
+    f = copy(f);
     RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(1.0);
-    rgf.applyXX0(f,f);
     rgf.applyX0X(f,f);
+    rgf.applyXX0(f,f);
     float[][][] ff = new float[n3][n2][n1];
     float[][][] pp = new float[n3][n2][n1];
     float[][][] tt = new float[n3][n2][n1];
-    int inset23 = 1; // increasing this will eliminate faults near edges
-    for (int i3=inset23; i3<n3-inset23; ++i3) {
+    for (int i3=0; i3<n3; ++i3) {
       int i3m = max(i3-1,0);
       int i3p = min(i3+1,n3-1);
-      for (int i2=inset23; i2<n2-inset23; ++i2) {
+      for (int i2=0; i2<n2; ++i2) {
         int i2m = max(i2-1,0);
         int i2p = min(i2+1,n2-1);
         float[] fmm = f[i3m][i2m];
@@ -249,6 +251,54 @@ public class FaultScanner {
     removeEdgeEffects(flptn);
     return flptn;
   }
+  public static float[][][][] thinX(float[][][][] flpt) {
+    int n1 = n1(flpt);
+    int n2 = n2(flpt);
+    int n3 = n3(flpt);
+    float[][][] f = flpt[0];
+    float[][][] p = flpt[1];
+    float[][][] t = flpt[2];
+    f = copy(f);
+    RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(1.0);
+    rgf.applyX0X(f,f);
+    rgf.applyXX0(f,f);
+    float[][][] ff = new float[n3][n2][n1];
+    float[][][] pp = new float[n3][n2][n1];
+    float[][][] tt = new float[n3][n2][n1];
+    for (int i3=0; i3<n3; ++i3) {
+      int i3m = max(i3-1,0);
+      int i3p = min(i3+1,n3-1);
+      for (int i2=0; i2<n2; ++i2) {
+        int i2m = max(i2-1,0);
+        int i2p = min(i2+1,n2-1);
+        float[] fmi = f[i3m][i2 ];
+        float[] fim = f[i3 ][i2m];
+        float[] fii = f[i3 ][i2 ];
+        float[] fip = f[i3 ][i2p];
+        float[] fpi = f[i3p][i2 ];
+        float[] fpp = f[i3p][i2p];
+        float[] pii = p[i3 ][i2 ];
+        float[] tii = t[i3 ][i2 ];
+        for (int i1=0; i1<n1; ++i1) {
+          float fiii = fii[i1];
+          float piii = pii[i1];
+          float tiii = tii[i1];
+          if ((                piii<= 45.0f && fim[i1]<fiii && fip[i1]<fiii) ||
+              ( 45.0f<=piii && piii<=135.0f && fpi[i1]<fiii && fmi[i1]<fiii) ||
+              (135.0f<=piii && piii<=225.0f && fip[i1]<fiii && fim[i1]<fiii) ||
+              (225.0f<=piii && piii<=315.0f && fmi[i1]<fiii && fpi[i1]<fiii) ||
+              (315.0f<=piii                 && fim[i1]<fiii && fip[i1]<fiii)) {
+            ff[i3][i2][i1] = fiii;
+            pp[i3][i2][i1] = piii;
+            tt[i3][i2][i1] = tiii;
+          }
+        }
+      }
+    }
+    float[][][][] flptn = new float[][][][]{ff,pp,tt};
+    removeEdgeEffects(flptn);
+    return flptn;
+  }
 
   /**
    * Applies structure-oriented smoothing limited by fault likelihoods.
@@ -269,7 +319,7 @@ public class FaultScanner {
     int n2 = g[0].length;
     int n3 = g.length;
     EigenTensors3 d = new EigenTensors3(n1,n2,n3,true);
-    d.setEigenvalues(0.001f,1.00f,1.00f);
+    d.setEigenvalues(0.0001f,1.00f,1.00f);
     float[][][] s = new float[n3][n2][n1];
     for (int i3=0; i3<n3; ++i3) {
       for (int i2=0; i2<n2; ++i2) {
@@ -328,9 +378,11 @@ public class FaultScanner {
     final float tmin = (float)thetaSampling.getFirst();
     final float tmax = (float)thetaSampling.getLast();
     int np = phiSampling.getCount();
+    Stopwatch sw = new Stopwatch();
+    sw.start();
     for (int ip=0; ip<np; ++ip) {
       final float phi = (float)phiSampling.getValue(ip);
-      trace("FaultScanner.scan: ip/np="+ip+"/"+np+" phi="+phi);
+      trace("FaultScanner.scan: ip/np="+ip+"/"+np+" time="+sw.time());
       Rotator r = new Rotator(phi,n1,n2,n3);
       float[][][][] rsnd = r.rotate(snd);
       smooth2(rsnd);
@@ -363,6 +415,7 @@ public class FaultScanner {
         }
       }});
     }
+    sw.stop();
     return new float[][][][]{f,p,t};
   }
 
@@ -774,10 +827,10 @@ public class FaultScanner {
     return sr;
   }
 
-  // Removes spurious faults caused by image boundaries. A sample of
-  // fault likelihood, strike and dip is deemed spurious if it is
-  // both near and nearly parallel to the image boundary. This method
-  // zeros any such samples.
+  // Removes spurious faults caused by image boundaries. A sample of fault
+  // likelihood, strike and dip is deemed spurious if it is both near and
+  // nearly parallel to the image boundary. This method zeros likelihoods,
+  // strikes and dips for any such samples.
   private static void removeEdgeEffects(float[][][][] flpt) {
     int n1 = n1(flpt);
     int n2 = n2(flpt);
@@ -785,29 +838,32 @@ public class FaultScanner {
     float[][][] f = flpt[0];
     float[][][] p = flpt[1];
     float[][][] t = flpt[2];
-    int inset23 = 5; // TODO: make this a parameter?
-    for (int i3=0,j3=n3-1; i3<inset23; ++i3,--j3) {
+    int imax = 5; // max number of samples near boundary
+    float amin = 30.0f; // min angle between normal vectors
+    float cmax = cos(toRadians(amin));
+    float wwmax = cmax*cmax; 
+    for (int i3=0,j3=n3-1; i3<imax; ++i3,--j3) {
       for (int i2=0; i2<n2; ++i2) {
         for (int i1=0; i1<n1; ++i1) {
           float fi = f[i3][i2][i1];
           float pi = p[i3][i2][i1];
           float ti = t[i3][i2][i1];
+          float fj = f[j3][i2][i1];
+          float pj = p[j3][i2][i1];
+          float tj = t[j3][i2][i1];
           if (fi!=0.0f) {
             float[] w = faultNormalVectorFromStrikeAndDip(pi,ti);
             float w3 = w[2];
-            if (w3*w3>0.5f) {
+            if (w3*w3>wwmax) {
               f[i3][i2][i1] = 0.0f;
               p[i3][i2][i1] = 0.0f;
               t[i3][i2][i1] = 0.0f;
             }
           }
-          float fj = f[j3][i2][i1];
-          float pj = p[j3][i2][i1];
-          float tj = t[j3][i2][i1];
           if (fj!=0.0f) {
             float[] w = faultNormalVectorFromStrikeAndDip(pj,tj);
             float w3 = w[2];
-            if (w3*w3>0.5f) {
+            if (w3*w3>wwmax) {
               f[j3][i2][i1] = 0.0f;
               p[j3][i2][i1] = 0.0f;
               t[j3][i2][i1] = 0.0f;
@@ -817,27 +873,27 @@ public class FaultScanner {
       }
     }
     for (int i3=0; i3<n3; ++i3) {
-      for (int i2=0,j2=n2-1; i2<inset23; ++i2,--j2) {
+      for (int i2=0,j2=n2-1; i2<imax; ++i2,--j2) {
         for (int i1=0; i1<n1; ++i1) {
           float fi = f[i3][i2][i1];
           float pi = p[i3][i2][i1];
           float ti = t[i3][i2][i1];
+          float fj = f[i3][j2][i1];
+          float pj = p[i3][j2][i1];
+          float tj = t[i3][j2][i1];
           if (fi!=0.0f) {
             float[] w = faultNormalVectorFromStrikeAndDip(pi,ti);
             float w2 = w[1];
-            if (w2*w2>0.5f) {
+            if (w2*w2>wwmax) {
               f[i3][i2][i1] = 0.0f;
               p[i3][i2][i1] = 0.0f;
               t[i3][i2][i1] = 0.0f;
             }
           }
-          float fj = f[i3][j2][i1];
-          float pj = p[i3][j2][i1];
-          float tj = t[i3][j2][i1];
           if (fj!=0.0f) {
             float[] w = faultNormalVectorFromStrikeAndDip(pj,tj);
             float w2 = w[1];
-            if (w2*w2>0.5f) {
+            if (w2*w2>wwmax) {
               f[i3][j2][i1] = 0.0f;
               p[i3][j2][i1] = 0.0f;
               t[i3][j2][i1] = 0.0f;

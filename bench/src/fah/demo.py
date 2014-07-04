@@ -8,6 +8,7 @@ from fakeutils import *
 s1,s2,s3 = getSamplings()
 n1,n2,n3 = s1.count,s2.count,s3.count
 
+# Names and descriptions of files used below.
 gxfile  = "gx" # input image (maybe after bilateral filtering)
 gsxfile = "gsx" # image after lsf with fault likelihoods
 p2file  = "p2" # inline slopes
@@ -28,22 +29,24 @@ fs1file = "fs1" # fault slip (1st component)
 fs2file = "fs2" # fault slip (2nd component)
 fs3file = "fs3" # fault slip (3rd component)
 
+# Processing begins here.
 def main(args):
   #goFakeData()
   #goSlopes()
   #goScan()
-  goThin()
-  goSmooth()
+  #goThin()
+  #goSmooth()
+  goNodes()
   #goQuads()
   #goSurfing()
   #goDisplay("gx")
 
 def goFakeData():
-  sequence = 'OA'
-  #sequence = 'OOOOOAAAAA'
-  #sequence = 'OAOAOAOAOA'
+  sequence = 'OA' # 1 episode of folding, followed by one episode of faulting
+  #sequence = 'OOOOOAAAAA' # 5 episodes of folding, then 5 of faulting
+  #sequence = 'OAOAOAOAOA' # 5 interleaved episodes of folding and faulting
   nfault = 3
-  conjugate = False
+  conjugate = True
   impedance = False
   wavelet = True
   noise = 0.0
@@ -136,17 +139,28 @@ def goSmooth():
   #plot3(gx)
   plot3(gsx)
 
+def goNodes():
+  gx = readImage(gxfile)
+  fl = readImage(flfile)
+  fp = readImage(fpfile)
+  ft = readImage(ftfile)
+  fs = FaultSkinner([fl,fp,ft])
+  cells = fs.findCells()
+  print "number of cells =",len(cells)
+  skins = fs.findSkins(cells)
+  print "number of skins =",len(skins)
+  for i in range(5):
+    cells = skins[i].getCells()
+    plot3(gx,cells=cells)
+
 def goQuads():
   gx = readImage(gxfile)
   fl = readImage(flfile)
   fp = readImage(fpfile)
   ft = readImage(ftfile)
-  fd1,fd2 = FaultSurfer3X.fd([fl,fp,ft]);
-  fs = FaultSurfer3X([fl,fp,ft])
-  fs.setThreshold(0.4)
-  quads = fs.findQuads()
-  plot3(gx,fd1,cmin=-0.02,cmax=0.02,cmap=bwrNotch(0.5))
-  plot3(gx,fd2,cmin=-0.02,cmax=0.02,cmap=bwrNotch(0.5))
+  fs = FaultSurfer([fl,fp,ft])
+  fs.setThreshold(0.25)
+  quads = fs.findQuadsX()
   plot3(gx,quads=quads)
 
 def goSurfing():
@@ -237,7 +251,7 @@ def hueFillExceptMin(alpha):
   return ColorMap.setAlpha(ColorMap.getHue(0.0,1.0),a)
 
 def plot3(f,g=None,cmin=None,cmax=None,cmap=None,
-          xyz=None,surfs=None,smax=None,quads=None):
+          xyz=None,surfs=None,smax=None,quads=None,cells=None):
   n1 = len(f[0][0])
   n2 = len(f[0])
   n3 = len(f)
@@ -297,7 +311,7 @@ def plot3(f,g=None,cmin=None,cmax=None,cmap=None,
       qg.setStates(None)
       sg.addChild(qg)
     sf.world.addChild(sg)
-  if quads:
+  if quads or cells:
     ss = StateSet()
     lms = LightModelState()
     lms.setTwoSide(True)
@@ -308,11 +322,14 @@ def plot3(f,g=None,cmin=None,cmax=None,cmap=None,
     ms.setColorMaterial(GL_AMBIENT_AND_DIFFUSE)
     ms.setEmissiveBack(Color(0.0,0.0,0.5))
     ss.add(ms)
-    xyz,uvw,rgb = FaultSurfer3X.getXyzUvwRgb(quads,0.0)
+    if quads:
+        xyz,uvw,rgb = FaultSurfer.getXyzUvwRgb(quads,0.0)
+    elif cells:
+        xyz,uvw,rgb = FaultSkinner.getXyzUvwRgb(cells)
     qg = QuadGroup(xyz,uvw,rgb)
     qg.setStates(ss)
     sf.world.addChild(qg)
-  ipg.setSlices(95,5,51)
+  ipg.setSlices(95,21,51)
   sf.setSize(700,700)
   vc = sf.getViewCanvas()
   ov = sf.getOrbitView()

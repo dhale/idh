@@ -7,7 +7,23 @@ Huge simplifying assumption
 
 ---
 Simplest idea for surface extraction
-  Heap the quads
+  do not use ridge detection to find horizontal quads
+    fault-edge intersections tend to be unstable
+  find only vertical quads
+    use the thinning algorithm!
+    do not average fp or ft
+      use the one with largest fl
+      average fp and ft directly!
+    vertical quads easily oriented!
+      normal points upward
+  surfs are arrays of arrays
+    same data structure used for warping
+  no unstructured grid
+    array (or hashmap with (i1,i2,i3) keys) for quads
+    array (or hashmap with (i1,i2,i3) keys) of nodes
+    can search grids with loops
+      as in image processing
+  heap the quads
   while quads remain in the heap
     seed = remove quad from queue
     orient seed so that normal points up

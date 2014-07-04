@@ -13,14 +13,14 @@ import edu.mines.jtk.dsp.*;
 import edu.mines.jtk.util.*;
 
 import static edu.mines.jtk.util.ArrayMath.*;
-import static fah.FaultUtil.*;
+import static fah.FaultGeometry.*;
 
 /**
  * Finds fault surfaces using fault likelihoods and orientations.
  * @author Dave Hale, Colorado School of Mines
  * @version 2014.06.03
  */
-public class FaultSurfer3X {
+public class FaultSurfer {
 
   public float[][][] findShifts(
     double smax, Surf[] surfs, 
@@ -163,10 +163,10 @@ public class FaultSurfer3X {
       return Arrays.asList(_quads).iterator();
     }
     public float[][] getXyzUvwRgb() {
-      return FaultSurfer3X.getXyzUvwRgb(_quads,_flmin);
+      return FaultSurfer.getXyzUvwRgb(_quads,_flmin);
     }
     public float[][] getXyzUvwRgbShifts(float smax) {
-      return FaultSurfer3X.getXyzUvwRgbShifts(_quads,smax);
+      return FaultSurfer.getXyzUvwRgbShifts(_quads,smax);
     }
 
     /**
@@ -196,10 +196,10 @@ public class FaultSurfer3X {
      * average of u2 components of quad normal vectors is non-negative.
      */
     public void orientU2() {
-      float u2sum = 0.0f;
+      float w2sum = 0.0f;
       for (FaultQuad q:_quads)
-        u2sum += q.u2;
-      if (u2sum<0.0) {
+        w2sum += q.w2;
+      if (w2sum<0.0) {
         for (FaultQuad q:_quads)
           q.flip();
         for (FaultQuad q:_quads)
@@ -212,10 +212,10 @@ public class FaultSurfer3X {
      * average of u1 components of quad normal vectors is negative.
      */
     public void orient() {
-      float u1sum = 0.0f;
+      float w1sum = 0.0f;
       for (FaultQuad q:_quads)
-        u1sum += q.u1;
-      if (u1sum>0.0) {
+        w1sum += q.w1;
+      if (w1sum>0.0) {
         for (FaultQuad q:_quads)
           q.flip();
         for (FaultQuad q:_quads)
@@ -348,7 +348,7 @@ public class FaultSurfer3X {
       for (FaultQuad quad:_quads) {
         if (quad.isVertical()) {
           FaultQuad.Vert vert = quad.getVert();
-          vert.computeThrowFromShifts();
+          vert.computeSlipFromShifts();
         }
       }
     }
@@ -403,7 +403,7 @@ public class FaultSurfer3X {
    * Constructs a fault surfer for specified likelihoods and orientations.
    * @param flpt array {fl,fp,ft} of fault likelihoods, strikes and dips.
    */
-  public FaultSurfer3X(float[][][][] flpt) {
+  public FaultSurfer(float[][][][] flpt) {
     _fl = flpt[0];
     _fp = flpt[1];
     _ft = flpt[2];
@@ -422,107 +422,131 @@ public class FaultSurfer3X {
   }
 
   /**
-   * Returns array of quads for faults, ridge surfaces in fault likelihood.
-   * Returned quads may share nodes, but are neither linked nor oriented.
+   * Returns array of quads in ridge surfaces of fault likelihood.
+   * Returned quads may share nodes, but are not linked.
+   * @return array of quads.
    */
   public FaultQuad[] findQuads() {
     int n1 = _n1, n2 = _n2, n3 = _n3;
-    float[][][] fl = _fl, fp = _fp, ft = _ft;
-    float flmin = _flmin;
 
-    // Directional derivatives of fault likelihood. Quads correspond to edges
-    // of the image sampling grid where the 1st derivative changes sign and
-    // the 2nd derivative is negative.
-    float[][][][] fd = fd(new float[][][][]{fl,fp,ft});
+    // Directional derivatives of fault likelihood. Faults intersect edges of
+    // the image sampling grid where the 1st derivative changes sign and the
+    // 2nd derivative is negative. Such intersections lie on ridges of fault
+    // likelihood.
+    float[][][][] fd = fd12();
     float[][][] f1 = fd[0];
     float[][][] f2 = fd[1];
 
-    // Array of nodes; will be non-null where faults are found.
-    FaultNode[][][] nodes = new FaultNode[n3][n2][n1];
+    // Array of nodes; nodes will be non-null at locations of faults. Each
+    // node lies within one cube-shaped cell of the image sampling grid, and
+    // each cell has eight image samples in its corners. So an image with
+    // n1*n2*n3 samples has a sampling grid with (n1-1)*(n2-1)*(n3-1) cells.
+    FaultNode[][][] nodes = new FaultNode[n3-1][n2-1][n1-1];
 
     // List of quads within fault surfaces.
     ArrayList<FaultQuad> quads = new ArrayList<FaultQuad>();
 
-    // Construct nodes by looking for intersections of quads with grid edges.
-    // We assume that edges within slice i3 have already been checked.
-    // Therefore, we need only check edges within the slice j3, and edges
-    // between the two slices i3 and j3.
-    for (int i3=1,j3=i3+1; i3<n3; ++i3,++j3) {
-      j3 = min(j3,n3-1);
-      for (int i2=1,j2=i2+1; i2<n2; ++i2,++j2) {
-        j2 = min(j2,n2-1);
-        for (int i1=1,j1=i1+1; i1<n1; ++i1,++j1) {
-          j1 = min(j1,n1-1);
-
-          // Edge i1---j1.
-          if (fl[i3][i2][i1]>=flmin && 
-              fl[i3][i2][j1]>=flmin &&
-              f1[i3][i2][i1]*f1[i3][i2][j1]<0.0f &&
-              f2[i3][i2][i1]<0.0f && f2[i3][i2][j1]<0.0f)
-            processEdge(i1,i2,i3,j1,i2,i3,fl,fp,ft,fd,nodes,quads);
-
-          // Edge i2---j2.
-          if (fl[i3][i2][i1]>=flmin && 
-              fl[i3][j2][i1]>=flmin &&
-              f1[i3][i2][i1]*f1[i3][j2][i1]<0.0f &&
-              f2[i3][i2][i1]<0.0f && f2[i3][j2][i1]<0.0f)
-            processEdge(i1,i2,i3,i1,j2,i3,fl,fp,ft,fd,nodes,quads);
-
-          // Edge i3---j3.
-          if (fl[i3][i2][i1]>=flmin && 
-              fl[j3][i2][i1]>=flmin &&
-              f1[i3][i2][i1]*f1[j3][i2][i1]<0.0f &&
-              f2[i3][i2][i1]<0.0f && f2[j3][i2][i1]<0.0f)
-            processEdge(i1,i2,i3,i1,i2,j3,fl,fp,ft,fd,nodes,quads);
+    // Look for intersections of ridges with grid edges.
+    for (int i3=0; i3<_n3; ++i3) {
+      for (int i2=0; i2<_n2; ++i2) {
+        for (int i1=0; i1<_n1; ++i1) {
+          if (i1<_n1-1)
+            processEdge(i1,i2,i3,i1+1,i2,i3,fd,nodes,quads);
+          if (i2<_n2-1)
+            processEdge(i1,i2,i3,i1,i2+1,i3,fd,nodes,quads);
+          if (i3<_n3-1) 
+            processEdge(i1,i2,i3,i1,i2,i3+1,fd,nodes,quads);
         }
       }
     }
 
     // Complete computation of values for all non-null nodes. 
     completeNodes(nodes);
-
     return quads.toArray(new FaultQuad[0]);
   }
-  private static void processEdge(
-    int i1, int i2, int i3, int j1, int j2, int j3,
-    float[][][] fl, float[][][] fp, float[][][] ft, float[][][][] fd,
-    FaultNode[][][] nodes, ArrayList<FaultQuad> quads)
-  {
+
+  // Processes an edge of the image sampling grid that might intersect a
+  // fault. If a fault-edge intersection is found, then this method (1) uses
+  // values of fault images at the image endpoints to update fault nodes in up
+  // to four cell nabors of the edge, and (2) for an interior edge (one not on
+  // the image boundary), uses four such fault nodes to construct a new fault
+  // quad.
+  private void processEdge(
+      int i1, int i2, int i3, int j1, int j2, int j3, float[][][][] fd,
+      FaultNode[][][] nodes, ArrayList<FaultQuad> quads) {
+    float[][][] fl = _fl; // fault likelihood
+    float[][][] fp = _fp; // fault strike (phi)
+    float[][][] ft = _ft; // fault dip (theta)
     float[][][] f1 = fd[0]; // 1st derivative
     float[][][] f2 = fd[1]; // 2nd derivative
 
-    // Fault attributes for grid indices i and j.
+    // Fault attributes for samples at endpoints of edge.
+    float f1i = f1[i3][i2][i1];
+    float f2i = f2[i3][i2][i1];
     float fli = fl[i3][i2][i1];
     float fpi = fp[i3][i2][i1];
     float fti = ft[i3][i2][i1];
-    float f1i = f1[i3][i2][i1];
+    float f1j = f1[j3][j2][j1];
+    float f2j = f2[j3][j2][j1];
     float flj = fl[j3][j2][j1];
     float fpj = fp[j3][j2][j1];
     float ftj = ft[j3][j2][j1];
-    float f1j = f1[j3][j2][j1];
-    float[] ui = faultNormalFromStrikeAndDip(fpi,fti);
-    float[] uj = faultNormalFromStrikeAndDip(fpj,ftj);
-    float u1i = ui[0];
-    float u2i = ui[1];
-    float u3i = ui[2];
-    float u1j = uj[0];
-    float u2j = uj[1];
-    float u3j = uj[2];
 
-    // Weights for interpolation of values for indices i and j.
-    float wi = -f1j/(f1i-f1j);
-    float wj = 1.0f-wi;
+    // If either fault likelihood is too low, then not a fault.
+    if (fli<_flmin || flj<_flmin)
+      return;
+
+    // If 1st derivative does not change sign, then not a fault.
+    if (f1i*f1j>=0.0f)
+      return;
+
+    // If either 2nd derivative is non-negative, then not a fault.
+    if (f2i>=0.0f || f2j>=0.0f)
+      return;
+
+    // Fault normal vectors for each end of edge.
+    float[] wi = faultNormalVectorFromStrikeAndDip(fpi,fti);
+    float[] wj = faultNormalVectorFromStrikeAndDip(fpj,ftj);
+    float w1i = wi[0], w2i = wi[1], w3i = wi[2];
+    float w1j = wj[0], w2j = wj[1], w3j = wj[2];
+
+    // If fault normal vectors at each end of edge have opposite directions,
+    // then not a fault.
+    if (w1i*w1j+w2i*w2j+w3i*w3j<0.0f)
+      return;
+
+    // Vertical image boundaries are discontinuities that may look like
+    // faults. If a fault appears to be near and nearly parallel to image
+    // boundaries, then assume is a boundary artifact and not truly a fault.
+    int imax = 5; // max number of samples considered to be near boundary
+    float wwmax = 0.75f; // cosine of 30 degrees, squared
+    if (i2<j2 && (i2<imax || j2>=_n2-imax) && (w2i*w2i>wwmax || w2j*w2j>wwmax))
+      return;
+    if (i3<j3 && (i3<imax || j3>=_n3-imax) && (w3i*w3i>wwmax || w3j*w3j>wwmax))
+      return;
+
+    // Weights for interpolation of values for indices i and j. Here we assume
+    // that (1) the 1st derivative of fault likelihood is zero somewhere on
+    // the edge, and (2) the 1st derivative is well approximated by a linear
+    // function of distance along the edge.
+    float ai = -f1j/(f1i-f1j);
+    float aj = 1.0f-ai;
+    //assert ai!=0.0f;
+    //assert aj!=0.0f;
 
     // Compute values on edge of sampling grid via linear interpolation.
-    float el = wi*fli+wj*flj;
-    float x1 = wi*i1+wj*j1;
-    float x2 = wi*i2+wj*j2;
-    float x3 = wi*i3+wj*j3;
-    float u1 = wi*u1i+wj*u1j;
-    float u2 = wi*u2i+wj*u2j;
-    float u3 = wi*u3i+wj*u3j;
+    float el = ai*fli+aj*flj;
+    float x1 = ai*i1 +aj*j1;
+    float x2 = ai*i2 +aj*j2;
+    float x3 = ai*i3 +aj*j3;
+    float w1 = ai*w1i+aj*w1j;
+    float w2 = ai*w2i+aj*w2j;
+    float w3 = ai*w3i+aj*w3j;
 
-    // The edge intersected and the four nodes for a new quad.
+    // The edge intersected and the four nodes for a new quad. Nodes abcd are
+    // ordered counter-clockwise, when viewed from the upper (hanging wall)
+    // side of the quad. For edges on boundaries of the image sampling grid,
+    // some of these nodes will be null.
     int edge;
     FaultNode na,nb,nc,nd;
     if (i1<j1) { // if edge i1---j1, ...
@@ -531,29 +555,170 @@ public class FaultSurfer3X {
       nb = nodeAt(i1,i2-1,i3  ,nodes);
       nc = nodeAt(i1,i2-1,i3-1,nodes);
       nd = nodeAt(i1,i2  ,i3-1,nodes);
+      assert w1<0.0f; // fault normal vectors point upward!
     } else if (i2<j2) { // else if edge i2---j2, ...
       edge = 2;
       na = nodeAt(i1  ,i2,i3  ,nodes);
       nb = nodeAt(i1-1,i2,i3  ,nodes);
       nc = nodeAt(i1-1,i2,i3-1,nodes);
       nd = nodeAt(i1  ,i2,i3-1,nodes);
-    } else { // else edge i3---j3, ...
+      if (w2<0.0f) { FaultNode nt = nb; nb = nd; nd = nt; }
+    } else { // else if edge i3---j3, ...
       edge = 3;
       na = nodeAt(i1  ,i2  ,i3,nodes);
-      nb = nodeAt(i1-1,i2  ,i3,nodes);
+      nb = nodeAt(i1  ,i2-1,i3,nodes);
       nc = nodeAt(i1-1,i2-1,i3,nodes);
-      nd = nodeAt(i1  ,i2-1,i3,nodes);
+      nd = nodeAt(i1-1,i2  ,i3,nodes);
+      if (w3<0.0f) { FaultNode nt = nb; nb = nd; nd = nt; }
     }
 
-    // Accumulate values in those four nodes.
-    na.accumulate(el,x1,x2,x3,u1,u2,u3);
-    nb.accumulate(el,x1,x2,x3,u1,u2,u3);
-    nc.accumulate(el,x1,x2,x3,u1,u2,u3);
-    nd.accumulate(el,x1,x2,x3,u1,u2,u3);
+    // Accumulate values computed above in any non-null nodes.
+    if (na!=null) na.accumulate(el,x1,x2,x3,w1,w2,w3);
+    if (nb!=null) nb.accumulate(el,x1,x2,x3,w1,w2,w3);
+    if (nc!=null) nc.accumulate(el,x1,x2,x3,w1,w2,w3);
+    if (nd!=null) nd.accumulate(el,x1,x2,x3,w1,w2,w3);
 
-    // Construct a new quad that references the four nodes.
-    FaultQuad quad = new FaultQuad(edge,i1,i2,i3,na,nb,nc,nd);
-    quads.add(quad);
+    // If four non-null nodes exist, construct a new quad.
+    if (na!=null && nb!=null && nc!=null && nd!=null) {
+      FaultQuad quad = new FaultQuad(edge,i1,i2,i3,na,nb,nc,nd);
+      quads.add(quad);
+    }
+  }
+
+  // Experimental
+  public FaultQuad[] findQuadsX() {
+    int n1 = _n1, n2 = _n2, n3 = _n3;
+    float[][][] f = _fl, p = _fp, t = _ft;
+
+    // Smooth fault likelihoods in 2nd and 3rd dimensions. This helps to
+    // eliminate spurious ridges, and improves the accuracy of 2nd-order
+    // finite-difference approximations (parabolic interpolation) used to
+    // locate ridges.
+    float[][][] fs = new float[n3][n2][n1];
+    RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(1.0);
+    rgf.applyX0X(f,fs);
+    rgf.applyXX0(fs,fs);
+    f = fs;
+
+    // Array of nodes; nodes will be non-null at locations of faults. Each
+    // node lies within one cube-shaped cell of the image sampling grid, and
+    // each cell has eight image samples in its corners. So an image with
+    // n1*n2*n3 samples has a sampling grid with (n1-1)*(n2-1)*(n3-1) cells.
+    FaultNode[][][] nodes = new FaultNode[n3-1][n2-1][n1-1];
+
+    // List of quads within fault surfaces.
+    ArrayList<FaultQuad> quads = new ArrayList<FaultQuad>();
+
+    // Vertical image boundaries are discontinuities that may look like
+    // faults. If a fault appears to be near and nearly parallel to image
+    // boundaries, then assume it is a boundary artifact and not truly a
+    // fault.
+    int imax = 5; // max number of samples considered to be near boundary
+    float wwmax = 0.75f; // cosine of 30 degrees, squared
+
+    // Loop over all samples, looking for ridges.
+    for (int i3=0; i3<n3; ++i3) {
+      int i3m = max(i3-1,0);
+      int i3p = min(i3+1,n3-1);
+      for (int i2=0; i2<n2; ++i2) {
+        int i2m = max(i2-1,0);
+        int i2p = min(i2+1,n2-1);
+        float[] fmi = f[i3m][i2 ];
+        float[] fim = f[i3 ][i2m];
+        float[] fip = f[i3 ][i2p];
+        float[] fpi = f[i3p][i2 ];
+        float[] fii = f[i3 ][i2 ];
+        float[] pii = p[i3 ][i2 ];
+        float[] tii = t[i3 ][i2 ];
+        for (int i1=0; i1<n1; ++i1) {
+          float fimi = fim[i1 ];
+          float fipi = fip[i1 ];
+          float fmii = fmi[i1 ];
+          float fpii = fpi[i1 ];
+          float fiii = fii[i1 ];
+          float piii = pii[i1 ];
+          float tiii = tii[i1 ];
+
+          // If N-S ridge intersects edge 2, ...
+          if ((fipi<fiii && fimi<fiii) &&
+              ((315.0f<=piii || piii<= 45.0f) || 
+               (135.0f<=piii && piii<=225.0f))) {
+            float f1 = 0.5f*(fipi-fimi); // 1st derivative
+            float f2 = fimi-2.0f*fiii+fipi; // 2nd derivative
+            float d2 = -f1/f2; // distance to ridge along edge 2
+            float fl = fiii+f1*d2+0.5f*f2*d2*d2; // fault likelihood
+            if (fl>=_flmin) {
+              int k2 = (d2<0.0f)?i2-1:i2; // cell index in 2nd dimension
+              float[] w = faultNormalVectorFromStrikeAndDip(piii,tiii);
+              float w1 = w[0], w2 = w[1], w3 = w[2]; // fault normal vector
+              if (imax<=k2 && k2<_n2-imax || w2*w2<=wwmax) {
+                FaultNode na = nodeAt(i1  ,k2,i3  ,nodes);
+                FaultNode nb = nodeAt(i1-1,k2,i3  ,nodes);
+                FaultNode nc = nodeAt(i1-1,k2,i3-1,nodes);
+                FaultNode nd = nodeAt(i1  ,k2,i3-1,nodes);
+                if (na!=null) na.accumulate(fl,i1,i2+d2,i3,w1,w2,w3);
+                if (nb!=null) nb.accumulate(fl,i1,i2+d2,i3,w1,w2,w3);
+                if (nc!=null) nc.accumulate(fl,i1,i2+d2,i3,w1,w2,w3);
+                if (nd!=null) nd.accumulate(fl,i1,i2+d2,i3,w1,w2,w3);
+                if (na!=null && nb!=null && nc!=null && nd!=null) {
+                  FaultQuad quad = new FaultQuad(2,i1,k2,i3,na,nb,nc,nd);
+                  quads.add(quad);
+                }
+              }
+            }
+          }
+
+          // If E-W ridge intersects edge 3, ...
+          if ((fpii<fiii && fmii<fiii) &&
+              (( 45.0f<=piii && piii<=135.0f) ||
+               (225.0f<=piii && piii<=315.0f))) {
+            float f1 = 0.5f*(fpii-fmii); // 1st derivative
+            float f2 = fmii-2.0f*fiii+fpii; // 2nd derivative
+            float d3 = -f1/f2; // distance to ridge along edge 3
+            float fl = fiii+f1*d3+0.5f*f2*d3*d3; // fault likelihood
+            if (fl>_flmin) {
+              int k3 = (d3<0.0f)?i3-1:i3; // cell index in 3rd dimension
+              float[] w = faultNormalVectorFromStrikeAndDip(piii,tiii);
+              float w1 = w[0], w2 = w[1], w3 = w[2]; // fault normal vector
+              if (imax<=k3 && k3<_n3-imax || w3*w3<=wwmax) {
+                FaultNode na = nodeAt(i1  ,i2  ,k3,nodes);
+                FaultNode nb = nodeAt(i1-1,i2  ,k3,nodes);
+                FaultNode nc = nodeAt(i1-1,i2-1,k3,nodes);
+                FaultNode nd = nodeAt(i1  ,i2-1,k3,nodes);
+                if (na!=null) na.accumulate(fl,i1,i2,i3+d3,w1,w2,w3);
+                if (nb!=null) nb.accumulate(fl,i1,i2,i3+d3,w1,w2,w3);
+                if (nc!=null) nc.accumulate(fl,i1,i2,i3+d3,w1,w2,w3);
+                if (nd!=null) nd.accumulate(fl,i1,i2,i3+d3,w1,w2,w3);
+                if (na!=null && nb!=null && nc!=null && nd!=null) {
+                  FaultQuad quad = new FaultQuad(3,i1,i2,k3,na,nb,nc,nd);
+                  quads.add(quad);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Complete computation of values for all non-null nodes. 
+    completeNodes(nodes);
+    return quads.toArray(new FaultQuad[0]);
+  }
+
+  // Returns a node with specified indices from the specified array. If node
+  // indices are out of bounds, then this method simply returns null.
+  // Otherwise, it returns the node, constructing a new node if necessary.
+  private FaultNode nodeAt(
+      int i1, int i2, int i3, FaultNode[][][] nodes) {
+    FaultNode node = null;
+    if (0<=i1 && i1<_n1-1 && 0<=i2 && i2<_n2-1 && 0<=i3 && i3<_n3-1) {
+      node = nodes[i3][i2][i1];
+      if (node==null) {
+        node = new FaultNode();
+        nodes[i3][i2][i1] = node;
+      }
+    }
+    return node;
   }
 
   private static class TwoQuads {
@@ -572,7 +737,7 @@ public class FaultSurfer3X {
   }
 
   /**
-   * Returns an array of linked and oriented quads.
+   * Returns an array of linked quads.
    */
   public FaultQuad[] linkQuads(FaultQuad[] quads) {
 
@@ -757,10 +922,10 @@ public class FaultSurfer3X {
       xyz.add(nb.x3); xyz.add(nb.x2); xyz.add(nb.x1); fcl.add(nb.fl);
       xyz.add(nc.x3); xyz.add(nc.x2); xyz.add(nc.x1); fcl.add(nc.fl);
       xyz.add(nd.x3); xyz.add(nd.x2); xyz.add(nd.x1); fcl.add(nd.fl);
-      uvw.add(na.u3); uvw.add(na.u2); uvw.add(na.u1);
-      uvw.add(nb.u3); uvw.add(nb.u2); uvw.add(nb.u1);
-      uvw.add(nc.u3); uvw.add(nc.u2); uvw.add(nc.u1);
-      uvw.add(nd.u3); uvw.add(nd.u2); uvw.add(nd.u1);
+      uvw.add(na.w3); uvw.add(na.w2); uvw.add(na.w1);
+      uvw.add(nb.w3); uvw.add(nb.w2); uvw.add(nb.w1);
+      uvw.add(nc.w3); uvw.add(nc.w2); uvw.add(nc.w1);
+      uvw.add(nd.w3); uvw.add(nd.w2); uvw.add(nd.w1);
     }
     float[] fc = fcl.trim();
     float fcmin = flmin;
@@ -939,23 +1104,6 @@ public class FaultSurfer3X {
     }
   }
 
-  // Nodes are inside a box inset by this many samples from image bounds.
-  // This number reduces artifacts caused by image boundaries. Must be
-  // at least one sample, to avoid array index out of bounds exceptions.
-  // TODO: clean up computation of fault likelihoods to reduce artifacts.
-  // Should be able to get within one sample of image bounds, although
-  // approximations to Gaussian derivatives will be less accurate there.
-  private static final int INSET23 = 5;
-  //private static final int INSET23 = 1;
-
-  private static FaultNode nodeAt(
-      int i1, int i2, int i3, FaultNode[][][] nodes) {
-    FaultNode node = nodes[i3][i2][i1];
-    if (node==null)
-      nodes[i3][i2][i1] = node = new FaultNode();
-    return node;
-  }
-
   /**
    * Completes the averaging of values for all non-null nodes.
    */
@@ -1000,20 +1148,20 @@ public class FaultSurfer3X {
     }
   }
   private static void unlinkIfFolded(FaultQuad q1, FaultQuad q2) {
-    final float uusmall = 0.00f; // folded if angle > 90 degrees
-    //final float uusmall = 0.25f; // folded if angle > 60 degrees
-    //final float uusmall = 0.50f; // folded if angle > 45 degrees
-    //final float uusmall = 0.75f; // folded if angle > 30 degrees
+    final float wwsmall = 0.00f; // folded if angle > 90 degrees
+    //final float wwsmall = 0.25f; // folded if angle > 60 degrees
+    //final float wwsmall = 0.50f; // folded if angle > 45 degrees
+    //final float wwsmall = 0.75f; // folded if angle > 30 degrees
     if (q1!=null && q2!=null) {
       boolean qq = q1.isOrientedLikeNabor(q2);
-      float uu = q1.u1*q2.u1+q1.u2*q2.u2+q1.u3*q2.u3;
+      float ww = q1.w1*q2.w1+q1.w2*q2.w2+q1.w3*q2.w3;
       if (qq) {
-        if (uu<uusmall) {
+        if (ww<wwsmall) {
           q1.unlink();
           q2.unlink();
         }
       } else {
-        if (uu>-uusmall) {
+        if (ww>-wwsmall) {
           q1.unlink();
           q2.unlink();
         }
@@ -1202,29 +1350,31 @@ public class FaultSurfer3X {
 
   /**
    * Computes 1st and 2nd directional derivatives of fault likelihood.
-   * The direction is normal to the fault, computed using fault strike and
-   * dip. The normal vector points upwards, from the footwall into the hanging
-   * wall.
+   * The direction is normal to the fault, as determined by fault
+   * strike and dip.
+   * @return array {fd1,fd2} of 1st and 2nd derivatives.
    */
-  public static float[][][][] fd(float[][][][] flpt) {
-    float[][][] f = flpt[0];
-    float[][][] p = flpt[1];
-    float[][][] t = flpt[2];
+  public float[][][][] fd12() {
+    float[][][] f = _fl;
+    float[][][] p = _fp;
+    float[][][] t = _ft;
     int n1 = f[0][0].length;
     int n2 = f[0].length;
     int n3 = f.length;
-    RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(1.0);
     float[][][] fs = new float[n3][n2][n1];
-    rgf.apply000(f,fs);
     float[][][] d1 = new float[n3][n2][n1];
     float[][][] d2 = new float[n3][n2][n1];
-    int inset23 = 5;
-    for (int i3=inset23; i3<n3-inset23; ++i3) {
-      int i3m = i3-1, i3p = i3+1;
-      for (int i2=inset23; i2<n2-inset23; ++i2) {
-        int i2m = i2-1, i2p = i2+1;
-        for (int i1=1; i1<n1-1; ++i1) {
-          int i1m = i1-1, i1p = i1+1;
+    RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(1.0);
+    rgf.apply000(f,fs);
+    for (int i3=0; i3<n3; ++i3) {
+      int i3m = max(i3-1,0);
+      int i3p = min(i3+1,n3-1);
+      for (int i2=0; i2<n2; ++i2) {
+        int i2m = max(i2-1,0);
+        int i2p = min(i2+1,n2-1);
+        for (int i1=0; i1<n1; ++i1) {
+          int i1m = max(i1-1,0);
+          int i1p = min(i1+1,n1-1);
 
           // Need 19 samples.
           float fmmi = fs[i3m][i2m][i1 ];
@@ -1254,37 +1404,27 @@ public class FaultSurfer3X {
 
           // Hessian matrix.
           float h11 = fiip-2.0f*fiii+fiim;
+          float h22 = fipi-2.0f*fiii+fimi;
+          float h33 = fpii-2.0f*fiii+fmii;
           float h12 = 0.25f*(fipp-fipm-fimp+fimm);
           float h13 = 0.25f*(fpip-fpim-fmip+fmim);
-          float h21 = h12;
-          float h22 = fipi-2.0f*fiii+fimi;
           float h23 = 0.25f*(fppi-fpmi-fmpi+fmmi);
+          float h21 = h12;
           float h31 = h13;
           float h32 = h23;
-          float h33 = fpii-2.0f*fiii+fmii;
 
           // Fault normal vector, pointing upward.
-          float pi = toRadians(p[i3][i2][i1]);
-          float ti = toRadians(t[i3][i2][i1]);
-          float cp = cos(pi); 
-          float sp = sin(pi);
-          float ct = cos(ti);
-          float st = sin(ti);
-          float u1 = -st;
-          float u2 = -sp*ct;
-          float u3 =  cp*ct;
-          if (u1>0.0) {
-            u1 = -u1;
-            u2 = -u2;
-            u3 = -u3;
-          }
+          float pi = p[i3][i2][i1];
+          float ti = t[i3][i2][i1];
+          float[] w = faultNormalVectorFromStrikeAndDip(pi,ti);
+          float w1 = w[0], w2 = w[1], w3 = w[2];
 
           // 1st and 2nd directional derivatives.
-          d1[i3][i2][i1] = u1*g1+u2*g2+u3*g3;
+          d1[i3][i2][i1] = w1*g1+w2*g2+w3*g3;
           d2[i3][i2][i1] = 
-              u1*h11*u1+u1*h12*u2+u1*h13*u3+
-              u2*h21*u1+u2*h22*u2+u2*h23*u3+
-              u3*h31*u1+u3*h32*u2+u3*h33*u3;
+              w1*h11*w1+w1*h12*w2+w1*h13*w3+
+              w2*h21*w1+w2*h22*w2+w2*h23*w3+
+              w3*h31*w1+w3*h32*w2+w3*h33*w3;
         }
       }
     }

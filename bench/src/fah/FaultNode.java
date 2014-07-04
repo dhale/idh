@@ -6,23 +6,23 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package fah;
 
-import static fah.FaultUtil.*;
+import static fah.FaultGeometry.*;
 
 import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
  * A node on a fault surface, referenced by one or more quads.
  * @author Dave Hale, Colorado School of Mines
- * @version 2014.06.03
+ * @version 2014.06.29
  */
 public class FaultNode {
 
   float fl,fp,ft; // fault likelihood, strike and dip
   float x1,x2,x3; // point on fault
-  float u1,u2,u3; // normal vector
+  float u1,u2,u3; // dip vector
   float v1,v2,v3; // strike vector
-  float w1,w2,w3; // dip vector
-  int na; // number of values accumulated into this node
+  float w1,w2,w3; // normal vector
+  int nac; // number of values accumulated into this node
 
   /**
    * Accumulates specified values into this node. Nodes are constructed when
@@ -34,77 +34,41 @@ public class FaultNode {
    * @param x1 1st coordinate of node location.
    * @param x2 2nd coordinate of node location.
    * @param x3 3rd coordinate of node location.
-   * @param u1 1st component of node normal vector.
-   * @param u2 2nd component of node normal vector.
-   * @param u3 3rd component of node normal vector.
+   * @param w1 1st component of node normal vector.
+   * @param w2 2nd component of node normal vector.
+   * @param w3 3rd component of node normal vector.
    */
   void accumulate(
       float fl,
       float x1, float x2, float x3,
-      float u1, float u2, float u3) {
-
-    // If not valid, do nothing.
-    if (!isValid())
-      return;
-
-    // If normal vectors are inconsistent, this node is not valid.
-    if (u1*this.u1+u2*this.u2+u3*this.u3<0.0) {
-      this.na = -1;
-      this.fl = 0.0f;
-    }
-
-    // If node not yet marked invalid, accumulate values.
-    // Weight values by non-negative fault likelihood.
-    if (na>=0) {
-      this.fl += fl;
-      this.x1 += fl*x1;
-      this.x2 += fl*x2;
-      this.x3 += fl*x3;
-      this.u1 += fl*u1;
-      this.u2 += fl*u2;
-      this.u3 += fl*u3;
-      this.na += 1;
-    }
+      float w1, float w2, float w3) {
+    this.fl += fl;
+    this.x1 += x1;
+    this.x2 += x2;
+    this.x3 += x3;
+    this.w1 += w1;
+    this.w2 += w2;
+    this.w3 += w3;
+    this.nac += 1;
   }
 
   /**
    * Completes the computation of fields for this node.
+   * Called only after all field values have been accumulated.
    */
   void complete() {
-    assert na>0;
-    float scale = 1.0f/fl;
-    x1 *= scale; 
-    x2 *= scale; 
-    x3 *= scale;
-    u1 *= scale; 
-    u2 *= scale; 
-    u3 *= scale;
-    float us = 1.0f/sqrt(u1*u1+u2*u2+u3*u3);
-    u1 *= us; 
-    u2 *= us; 
-    u3 *= us;
-    float[] u = {u1,u2,u3};
-    float[] v = faultStrikeVectorFromNormal(u);
-    float[] w = faultDipVectorFromNormal(u);
-    v1 = v[0];
-    v2 = v[1];
-    v3 = v[2];
-    w1 = w[0];
-    w2 = w[1];
-    w3 = w[2];
-    fl /= na;
-    fp = faultStrikeFromNormal(u);
-    ft = faultDipFromNormal(u);
-  }
-
-  /**
-   * Determines whether or not this node is valid.
-   * A node is valid if it has accumulated consistent values.
-   * Any inconsistent values, such as normal vectors pointing
-   * in opposite directions, will forever invalidate this node.
-   */
-  boolean isValid() {
-    return na>0;
+    assert nac>0;
+    float scale = 1.0f/nac;
+    fl *= scale;
+    x1 *= scale; x2 *= scale; x3 *= scale;
+    scale = 1.0f/sqrt(w1*w1+w2*w2+w3*w3);
+    w1 *= scale; w2 *= scale; w3 *= scale;
+    fp = faultStrikeFromNormalVector(w1,w2,w3);
+    ft = faultDipFromNormalVector(w1,w2,w3);
+    float[] v = faultStrikeVectorFromStrikeAndDip(fp,ft);
+    float[] u = faultDipVectorFromStrikeAndDip(fp,ft);
+    v1 = v[0]; v2 = v[1]; v3 = v[2];
+    u1 = u[0]; u2 = u[1]; u3 = u[2];
   }
 
   void blocky() {

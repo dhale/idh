@@ -22,10 +22,10 @@ import static fah.FaultUtil.*;
  * directions of axes 2 and 3. If a quad intersects a horizontal edge,
  * we say that the quad is "vertical", even though its four nodes may
  * not lie within a vertical plane. Vertical quads are most important
- * because we seek to estimate fault throws for faults that we assume
+ * because we seek to estimate fault slips for faults that we assume
  * are more vertical than horizontal.
  * @author Dave Hale, Colorado School of Mines
- * @version 2014.06.03
+ * @version 2014.06.29
  */
 public class FaultQuad {
 
@@ -34,8 +34,8 @@ public class FaultQuad {
   FaultNode na,nb,nc,nd; // four nodes referenced by this quad
   FaultQuad qa,qb,qc,qd; // four quad nabors correspond to nodes
   float c1,c2,c3; // quad center point
-  float u1,u2,u3; // quad normal vector
-  float us23; // scale factor 1/sqrt(u2*u2+u3*u3)
+  float w1,w2,w3; // quad normal vector
+  float ws23; // scale factor 1/sqrt(w2*w2+w3*w3)
   Vert v; // auxiliary data, if quad is vertical
 
   /**
@@ -78,7 +78,7 @@ public class FaultQuad {
    * Computes the plane for this quad if not already computed.
    */
   void computePlane() {
-    if (u1==0.0f && u2==0.0f && u3==0.0f) {
+    if (w1==0.0f && w2==0.0f && w3==0.0f) {
       float ax1 = na.x1, ax2 = na.x2, ax3 = na.x3;
       float bx1 = nb.x1, bx2 = nb.x2, bx3 = nb.x3;
       float cx1 = nc.x1, cx2 = nc.x2, cx3 = nc.x3;
@@ -92,18 +92,18 @@ public class FaultQuad {
       c1 = 0.25f*(ax1+bx1+cx1+dx1);
       c2 = 0.25f*(ax2+bx2+cx2+dx2);
       c3 = 0.25f*(ax3+bx3+cx3+dx3);
-      u1 = ca3*db2-ca2*db3; // remember that sample coordinates
-      u2 = ca1*db3-ca3*db1; // (x3,x2,x1) correspond to (x,y,z)
-      u3 = ca2*db1-ca1*db2; // in right-handed coordinate system
-      float us = sqrt(u1*u1+u2*u2+u3*u3);
-      if (us>0.0f) {
-        us = 1.0f/us;
-        u1 *= us;
-        u2 *= us;
-        u3 *= us;
-        us23 = sqrt(u2*u2+u3*u3);
-        if (us23>0.0f)
-          us23 = 1.0f/us23;
+      w1 = ca3*db2-ca2*db3; // remember that sample coordinates
+      w2 = ca1*db3-ca3*db1; // (x3,x2,x1) correspond to (x,y,z)
+      w3 = ca2*db1-ca1*db2; // in right-handed coordinate system
+      float ws = sqrt(w1*w1+w2*w2+w3*w3);
+      if (ws>0.0f) {
+        ws = 1.0f/ws;
+        w1 *= ws;
+        w2 *= ws;
+        w3 *= ws;
+        ws23 = sqrt(w2*w2+w3*w3);
+        if (ws23>0.0f)
+          ws23 = 1.0f/ws23;
       }
     }
   }
@@ -125,12 +125,12 @@ public class FaultQuad {
            goodNormal(nd);
   }
   private boolean goodNormal(FaultNode n) {
-    float uu = u1*n.u1+u2*n.u2+u3*n.u3;
-    //return uu*uu>0.80f;
-    //return uu*uu>0.75f; // angle less than 30 degrees // OK for F3D
-    //return uu*uu>0.50f; // angle less than 45 degrees
-    //return uu*uu>0.25f; // angle less than 60 degrees
-    return uu*uu>0.0f; // angle less than 90 degrees
+    float ww = w1*n.w1+w2*n.w2+w3*n.w3;
+    //return ww*ww>0.80f;
+    //return ww*ww>0.75f; // angle less than 30 degrees // OK for F3D
+    //return ww*ww>0.50f; // angle less than 45 degrees
+    //return ww*ww>0.25f; // angle less than 60 degrees
+    return ww*ww>0.0f; // angle less than 90 degrees
   }
 
   /**
@@ -184,9 +184,9 @@ public class FaultQuad {
      FaultNode ne = na; na = nd; nd = ne; // swap na-nd
      FaultNode nf = nb; nb = nc; nc = nf; // swap nb-nc
      FaultQuad qe = qa; qa = qc; qc = qe; // swap qa-qc
-     u1 = -u1;
-     u2 = -u2;
-     u3 = -u3;
+     w1 = -w1;
+     w2 = -w2;
+     w3 = -w3;
    }
 
   /**
@@ -208,10 +208,11 @@ public class FaultQuad {
   }
   void orient(FaultNode n) {
     computePlane();
-    if (u1*n.u1+u2*n.u2+u3*n.u3<0.0f) {
-      n.u1 = -n.u1;
-      n.u2 = -n.u2;
-      n.u3 = -n.u3;
+    //TODO: what should this do? is this necessary?
+    if (w1*n.w1+w2*n.w2+w3*n.w3<0.0f) {
+      n.w1 = -n.w1;
+      n.w2 = -n.w2;
+      n.w3 = -n.w3;
       n.v1 = -n.v1;
       n.v2 = -n.v2;
       n.v3 = -n.v3;
@@ -248,7 +249,7 @@ public class FaultQuad {
   }
 
   /**
-   * Auxiliary data associated with vertical quads.
+   * Auxiliary data and methods for vertical quads.
    * Vertical quads are used to estimate fault displacements.
    * Before constructing these data, quads must be linked and oriented
    * so that east, north, west and south directions can be defined.
@@ -258,12 +259,12 @@ public class FaultQuad {
     FaultQuad qe,qn,qw,qs; // quads east, north, west, and south
     int i2m,i2p; // sample indices i2 on minus and plus sides of quad
     int i3m,i3p; // sample indices i3 on minus and plus sides of quad
-    float[] emp; // array of errors minus-plus
-    float[] epm; // array of errors plus-minus
+    float[] emp; // array of alignment errors minus-plus
+    float[] epm; // array of alignment errors plus-minus
     float smp; // shift minus-plus
     float spm; // shift plus-minus
-    float t1,t2,t3; // fault throw vector
-    boolean tp; // true if fault throw is displacement of plus side
+    float t1,t2,t3; // fault slip vector
+    boolean tp; // true if fault slip is displacement of plus side
 
     /**
      * Constructs data for the specified vertical quad.
@@ -276,12 +277,12 @@ public class FaultQuad {
       i2m = i2p = q.i2;
       i3m = i3p = q.i3;
       if (q.edge==2) {
-        if (q.u2>0.0f)
+        if (q.w2>0.0f)
           ++i2p;
         else
           ++i2m;
       } else if (q.edge==3) {
-        if (q.u3>0.0f)
+        if (q.w3>0.0f)
           ++i3p;
         else
           ++i3m;
@@ -331,19 +332,18 @@ public class FaultQuad {
     }
 
     /**
-     * Computes fault throw vector from vertical shifts.
+     * Computes fault slip vector from vertical shifts.
      */
-    void computeThrowFromShifts() {
+    void computeSlipFromShifts() {
 
       // Start on fault plane with integer x1 = i1.
-      float us = q.us23, u1 = us*q.u1, u2 = us*q.u2, u3 = us*q.u3;
-      float ut = (q.i1-q.c1)*u1;
-      float x1 = q.i1, x2 = q.c2-ut*u2, x3 = q.c3-ut*u3;
+      float ws = q.ws23, w1 = ws*q.w1, w2 = ws*q.w2, w3 = ws*q.w3;
+      float wt = (q.i1-q.c1)*w1;
+      float x1 = q.i1, x2 = q.c2-wt*w2, x3 = q.c3-wt*w3;
       float y1 = x1, y2 = x2, y3 = x3;
 
-      // Choose the largest (presumably non-negative) shift.
-      // Throw corresponds to either the minus or plus side, 
-      // depending on which shift is chosen.
+      // Choose the largest (presumably non-negative) shift. Slip corresponds
+      // to either the minus or plus side, depending on which shift is chosen.
       float s1 = max(smp,spm);
       tp = s1==smp;
 
@@ -356,14 +356,14 @@ public class FaultQuad {
       // Stop walking when we get to a quad corresponding to the 
       // shift, or when we can find no more quads to walk on.
       else if (s1>0.0f) {
-        us = q.us23; u1 = us*q.u1; u2 = us*q.u2; u3 = us*q.u3;
-        y1 += 1.0f; y2 -= u1*u2; y3 -= u1*u3;
+        ws = q.ws23; w1 = ws*q.w1; w2 = ws*q.w2; w3 = ws*q.w3;
+        y1 += 1.0f; y2 -= w1*w2; y3 -= w1*w3;
         FaultQuad qi = quadSouth(q,y1,y2,y3);
         while (qi!=null && abs(y1-x1-s1)>0.5f) {
-          us = qi.us23; u1 = us*qi.u1; u2 = us*qi.u2; u3 = us*qi.u3;
-          ut = (y1-qi.c1)*u1+(y2-qi.c2)*u2+(y3-qi.c3)*u3;
-          y2 -= ut*u2; y3 -= ut*u3;
-          y1 += 1.0f; y2 -= u1*u2; y3 -= u1*u3;
+          ws = qi.ws23; w1 = ws*qi.w1; w2 = ws*qi.w2; w3 = ws*qi.w3;
+          wt = (y1-qi.c1)*w1+(y2-qi.c2)*w2+(y3-qi.c3)*w3;
+          y2 -= wt*w2; y3 -= wt*w3;
+          y1 += 1.0f; y2 -= w1*w2; y3 -= w1*w3;
           qi = quadSouth(qi,y1,y2,y3);
         }
       }
@@ -372,24 +372,27 @@ public class FaultQuad {
       // Stop walking when we get to a quad corresponding to the 
       // shift, or when we can find no more quads to walk on.
       else {
-        us = q.us23; u1 = us*q.u1; u2 = us*q.u2; u3 = us*q.u3;
-        y1 -= 1.0f; y2 += u1*u2; y3 += u1*u3;
+        ws = q.ws23; w1 = ws*q.w1; w2 = ws*q.w2; w3 = ws*q.w3;
+        y1 -= 1.0f; y2 += w1*w2; y3 += w1*w3;
         FaultQuad qi = quadNorth(q,y1,y2,y3);
         while (qi!=null && abs(y1-x1-s1)>0.5f) {
-          us = qi.us23; u1 = us*qi.u1; u2 = us*qi.u2; u3 = us*qi.u3;
-          ut = (y1-qi.c1)*u1+(y2-qi.c2)*u2+(y3-qi.c3)*u3;
-          y2 -= ut*u2; y3 -= ut*u3;
-          y1 -= 1.0f; y2 += u1*u2; y3 += u1*u3;
+          ws = qi.ws23; w1 = ws*qi.w1; w2 = ws*qi.w2; w3 = ws*qi.w3;
+          wt = (y1-qi.c1)*w1+(y2-qi.c2)*w2+(y3-qi.c3)*w3;
+          y2 -= wt*w2; y3 -= wt*w3;
+          y1 -= 1.0f; y2 += w1*w2; y3 += w1*w3;
           qi = quadNorth(qi,y1,y2,y3);
         }
       }
 
-      // Now as close as we can get for the shift; compute the throw.
+      // Now as close as we can get for the shift; compute the slip.
       float d1 = x1+s1-y1;
-      y1 += d1; y2 -= d1*u1*u2; y3 -= d1*u1*u3;
+      y1 += d1; y2 -= d1*w1*w2; y3 -= d1*w1*w3;
       t1 = y1-x1; t2 = y2-x2; t3 = y3-x3;
     }
 
+    /**
+     * Returns packed xyz coordinates of up- and down-dip samples.
+     */
     float[] sampleFaultDip() {
       FaultQuad qi;
       float y1,y2,y3;
@@ -398,34 +401,34 @@ public class FaultQuad {
       FloatList xyz = new FloatList();
 
       // First sample lies within fault plane with integer x1 = i1.
-      float us = q.us23, u1 = us*q.u1, u2 = us*q.u2, u3 = us*q.u3;
-      float ut = (q.i1-q.c1)*u1;
-      float x1 = q.i1, x2 = q.c2-ut*u2, x3 = q.c3-ut*u3;
+      float ws = q.ws23, w1 = ws*q.w1, w2 = ws*q.w2, w3 = ws*q.w3;
+      float wt = (q.i1-q.c1)*w1;
+      float x1 = q.i1, x2 = q.c2-wt*w2, x3 = q.c3-wt*w3;
       xyz.add(x3); xyz.add(x2); xyz.add(x1);
 
       // Collect samples south; increment x1 by one for each sample.
-      us = q.us23; u1 = us*q.u1; u2 = us*q.u2; u3 = us*q.u3;
-      y1 = x1+1.0f; y2 = x2-u1*u2; y3 = x3-u1*u3;
+      ws = q.ws23; w1 = ws*q.w1; w2 = ws*q.w2; w3 = ws*q.w3;
+      y1 = x1+1.0f; y2 = x2-w1*w2; y3 = x3-w1*w3;
       qi = quadSouth(q,y1,y2,y3);
       while (qi!=null) {
-        us = qi.us23; u1 = us*qi.u1; u2 = us*qi.u2; u3 = us*qi.u3;
-        ut = (y1-qi.c1)*u1+(y2-qi.c2)*u2+(y3-qi.c3)*u3;
-        y2 -= ut*u2; y3 -= ut*u3;
+        ws = qi.ws23; w1 = ws*qi.w1; w2 = ws*qi.w2; w3 = ws*qi.w3;
+        wt = (y1-qi.c1)*w1+(y2-qi.c2)*w2+(y3-qi.c3)*w3;
+        y2 -= wt*w2; y3 -= wt*w3;
         xyz.add(y3); xyz.add(y2); xyz.add(y1);
-        y1 += 1.0f; y2 -= u1*u2; y3 -= u1*u3;
+        y1 += 1.0f; y2 -= w1*w2; y3 -= w1*w3;
         qi = quadSouth(qi,y1,y2,y3);
       }
 
       // Collect samples north; decrement x1 by one for each sample.
-      us = q.us23; u1 = us*q.u1; u2 = us*q.u2; u3 = us*q.u3;
-      y1 = x1-1.0f; y2 = x2+u1*u2; y3 = x3+u1*u3;
+      ws = q.ws23; w1 = ws*q.w1; w2 = ws*q.w2; w3 = ws*q.w3;
+      y1 = x1-1.0f; y2 = x2+w1*w2; y3 = x3+w1*w3;
       qi = quadNorth(q,y1,y2,y3);
       while (qi!=null) {
-        us = qi.us23; u1 = us*qi.u1; u2 = us*qi.u2; u3 = us*qi.u3;
-        ut = (y1-qi.c1)*u1+(y2-qi.c2)*u2+(y3-qi.c3)*u3;
-        y2 -= ut*u2; y3 -= ut*u3;
+        ws = qi.ws23; w1 = ws*qi.w1; w2 = ws*qi.w2; w3 = ws*qi.w3;
+        wt = (y1-qi.c1)*w1+(y2-qi.c2)*w2+(y3-qi.c3)*w3;
+        y2 -= wt*w2; y3 -= wt*w3;
         xyz.add(y3); xyz.add(y2); xyz.add(y1);
-        y1 -= 1.0f; y2 += u1*u2; y3 += u1*u3;
+        y1 -= 1.0f; y2 += w1*w2; y3 += w1*w3;
         qi = quadNorth(qi,y1,y2,y3);
       }
 
@@ -463,11 +466,11 @@ public class FaultQuad {
       // Errors for lag zero.
       emp = new float[lmax+1+lmax];
       epm = new float[lmax+1+lmax];
-      float us = q.us23, u1 = us*q.u1, u2 = us*q.u2, u3 = us*q.u3;
-      float ut = (i1-q.c1)*u1;
-      float x1 = i1, x2 = q.c2-ut*u2, x3 = q.c3-ut*u3;
-      float x2m = x2-d*u2, x3m = x3-d*u3;
-      float x2p = x2+d*u2, x3p = x3+d*u3;
+      float ws = q.ws23, w1 = ws*q.w1, w2 = ws*q.w2, w3 = ws*q.w3;
+      float wt = (i1-q.c1)*w1;
+      float x1 = i1, x2 = q.c2-wt*w2, x3 = q.c3-wt*w3;
+      float x2m = x2-d*w2, x3m = x3-d*w3;
+      float x2p = x2+d*w2, x3p = x3+d*w3;
       float fm = valueAt(x1,x2m,x3m,f);
       float fp = valueAt(x1,x2p,x3p,f);
       float p2m = valueAt(x1,x2m,x3m,p2);
@@ -478,25 +481,25 @@ public class FaultQuad {
       float epml = epm[lmax] = error(fp,fm);
 
       // Initial shifts compensate for horizontal distance d.
-      float s23 = d*((p2m+p2p)*u2+(p3m+p3p)*u3);
+      float s23 = d*((p2m+p2p)*w2+(p3m+p3p)*w3);
       smp = -s23;
       spm =  s23;
 
       // Errors for samples south; any extrapolated errors are negative.
-      us = q.us23; u1 = us*q.u1; u2 = us*q.u2; u3 = us*q.u3;
-      y1 = x1+1.0f; y2 = x2-u1*u2; y3 = x3-u1*u3;
+      ws = q.ws23; w1 = ws*q.w1; w2 = ws*q.w2; w3 = ws*q.w3;
+      y1 = x1+1.0f; y2 = x2-w1*w2; y3 = x3-w1*w3;
       qi = quadSouth(q,y1,y2,y3);
       nlag = min(lmax,n1-1-i1);
       for (int ilag=1; ilag<=lmax; ++ilag) {
         if (qi!=null && ilag<=nlag) {
-          us = qi.us23; u1 = us*qi.u1; u2 = us*qi.u2; u3 = us*qi.u3;
-          ut = (y1-qi.c1)*u1+(y2-qi.c2)*u2+(y3-qi.c3)*u3;
-          y2 -= ut*u2; y3 -= ut*u3;
-          gm = valueAt(y1,y2-d*u2,y3-d*u3,f);
-          gp = valueAt(y1,y2+d*u2,y3+d*u3,f);
+          ws = qi.ws23; w1 = ws*qi.w1; w2 = ws*qi.w2; w3 = ws*qi.w3;
+          wt = (y1-qi.c1)*w1+(y2-qi.c2)*w2+(y3-qi.c3)*w3;
+          y2 -= wt*w2; y3 -= wt*w3;
+          gm = valueAt(y1,y2-d*w2,y3-d*w3,f);
+          gp = valueAt(y1,y2+d*w2,y3+d*w3,f);
           empl = emp[lmax+ilag] = error(fm,gp);
           epml = epm[lmax+ilag] = error(fp,gm);
-          y1 += 1.0f; y2 -= u1*u2; y3 -= u1*u3;
+          y1 += 1.0f; y2 -= w1*w2; y3 -= w1*w3;
           qi = quadSouth(qi,y1,y2,y3);
         } else {
           emp[lmax+ilag] = -empl;
@@ -505,20 +508,20 @@ public class FaultQuad {
       }
 
       // Errors for samples north; any extrapolated errors are negative.
-      us = q.us23; u1 = us*q.u1; u2 = us*q.u2; u3 = us*q.u3;
-      y1 = x1-1.0f; y2 = x2+u1*u2; y3 = x3+u1*u3;
+      ws = q.ws23; w1 = ws*q.w1; w2 = ws*q.w2; w3 = ws*q.w3;
+      y1 = x1-1.0f; y2 = x2+w1*w2; y3 = x3+w1*w3;
       qi = quadNorth(q,y1,y2,y3);
       nlag = min(lmax,i1);
       for (int ilag=1; ilag<=lmax; ++ilag) {
         if (qi!=null && ilag<=nlag) {
-          us = qi.us23; u1 = us*qi.u1; u2 = us*qi.u2; u3 = us*qi.u3;
-          ut = (y1-qi.c1)*u1+(y2-qi.c2)*u2+(y3-qi.c3)*u3;
-          y2 -= ut*u2; y3 -= ut*u3;
-          gm = valueAt(y1,y2-d*u2,y3-d*u3,f);
-          gp = valueAt(y1,y2+d*u2,y3+d*u3,f);
+          ws = qi.ws23; w1 = ws*qi.w1; w2 = ws*qi.w2; w3 = ws*qi.w3;
+          wt = (y1-qi.c1)*w1+(y2-qi.c2)*w2+(y3-qi.c3)*w3;
+          y2 -= wt*w2; y3 -= wt*w3;
+          gm = valueAt(y1,y2-d*w2,y3-d*w3,f);
+          gp = valueAt(y1,y2+d*w2,y3+d*w3,f);
           empl = emp[lmax-ilag] = error(fm,gp);
           epml = epm[lmax-ilag] = error(fp,gm);
-          y1 -= 1.0f; y2 += u1*u2; y3 += u1*u3;
+          y1 -= 1.0f; y2 += w1*w2; y3 += w1*w3;
           qi = quadNorth(qi,y1,y2,y3);
         } else {
           emp[lmax-ilag] = -empl;
