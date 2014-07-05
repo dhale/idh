@@ -45,13 +45,34 @@ public class FaultSkinner {
    */
   public static class Cell {
 
-    int i1,i2,i3; // fault cell indices
-    float x1,x2,x3; // fault cell coordinates
-    float fl,fp,ft; // fault likelihood, strike (phi) and dip (theta)
-    float u1,u2,u3; // fault dip vector
-    float v1,v2,v3; // fault strike vector
-    float w1,w2,w3; // fault normal vector
-    Cell ca,cb,cl,cr; // cell nabors above, below, left and right
+    /*
+    // TODO: are these necessary?
+    @Override
+    public boolean equals(Object object) {
+      if (object==this)
+        return true;
+      if (object!=null && object.getClass()==this.getClass()) {
+        Cell that = (Cell)object;
+        return this.i1==that.i1 && this.i2==that.i2 && this.i3==that.i3;
+      }
+      return false;
+    }
+    @Override
+    public int hashCode() {
+      return i1^i2^i3;
+    }
+    */
+
+    /////////////////////////////////////////////////////////////////////////
+    // package
+
+    int i1,i2,i3; // cell indices
+    float x1,x2,x3; // cell coordinates
+    float fl,fp,ft; // likelihood, strike (phi) and dip (theta)
+    float u1,u2,u3; // dip vector
+    float v1,v2,v3; // strike vector
+    float w1,w2,w3; // normal vector
+    Cell ca,cb,cl,cr; // nabors above, below, left and right
     Skin skin; // if not null, the skin to which this cell belongs
 
     Cell(float x1, float x2, float x3, float fl, float fp, float ft) {
@@ -71,35 +92,24 @@ public class FaultSkinner {
       this.v1 = v[0]; this.v2 = v[1]; this.v3 = v[2];
       this.w1 = w[0]; this.w2 = w[1]; this.w3 = w[2];
     }
-
-    /*
-    // TODO: are these necessary?
-    @Override
-    public boolean equals(Object object) {
-      if (object==this)
-        return true;
-      if (object!=null && object.getClass()==this.getClass()) {
-        Cell that = (Cell)object;
-        return this.i1==that.i1 && this.i2==that.i2 && this.i3==that.i3;
-      }
-      return false;
-    }
-    @Override
-    public int hashCode() {
-      return i1^i2^i3;
-    }
-    */
   }
 
   /**
    * A linked list of fault cells.
    */
   public static class Skin {
-    Cell seed; // the cell in this skin with highest fl; or null, if empty
-    ArrayList<Cell> cellList; // list of cells in this skin; or null
-    Cell[] cellArray; // array of cells in this skin; or null
-    Cell[][] cellsAB; // arrays of arrays of cells ordered from above to below
-    Cell[][] cellsLR; // arrays of arrays of cells ordered from left to right
+
+    /**
+     * Returns the number of cells in this skin.
+     */
+    public int size() {
+      int size = 0;
+      if (cellArray!=null)
+        size = cellArray.length;
+      if (cellList!=null)
+        size = cellList.size();
+      return size;
+    }
 
     /**
      * Gets an array of cells in this skin.
@@ -113,6 +123,22 @@ public class FaultSkinner {
       return cellArray;
     }
 
+    /////////////////////////////////////////////////////////////////////////
+    // package
+
+    Cell seed; // the cell in this skin with highest fl; or null, if empty
+    ArrayList<Cell> cellList; // list of cells in this skin; or null
+    Cell[] cellArray; // array of cells in this skin; or null
+    Cell[][] cellsAB; // arrays of arrays of cells ordered from above to below
+    Cell[][] cellsLR; // arrays of arrays of cells ordered from left to right
+
+    /**
+     * Constructs an empty skin.
+     */
+    Skin() {
+      cellList = new ArrayList<Cell>();
+    }
+
     /**
      * Adds the specified cell to this skin.
      * @param cell the cell to be added.
@@ -122,13 +148,6 @@ public class FaultSkinner {
         this.seed = cell;
       cellList.add(cell);
       cell.skin = this;
-    }
-
-    /**
-     * Constructs an empty skin.
-     */
-    Skin() {
-      cellList = new ArrayList<Cell>();
     }
   }
 
@@ -146,33 +165,51 @@ public class FaultSkinner {
     _fllo = 0.1f;
     _flhi = 0.5f;
     _dflmax = 0.1f;
-    _dfpmax = 20.0f;
-    _dftmax =  4.0f;
+    _dfpmax = 10.0f;
+    _dftmax = 10.0f;
     _dabmax = 0.5f;
-    _dcwmin = cos(toRadians(30.0f));
   }
 
   /**
-   * Sets thresholds for fault likelihoods used in skinning. All cells in a
-   * skin will have fault likelihoods not less than the lower threshold fllo.
-   * At least one cell in a skin will have a fault likelihood not less than
-   * the upper threshold flhi.
-   * @param fllo the lower threshold.
-   * @param flhi the upper threshold.
+   * Sets thresholds for fault likelihoods used when growing skins. All cells
+   * in a skin will have fault likelihoods not less than the lower threshold
+   * At least one cell in a skin will have a fault likelihood not less
+   * than the upper threshold.
+   * @param lowerLikelihood the lower threshold.
+   * @param upperLikelihood the upper threshold.
    */
-  public void setLikelihoodThresholds(double fllo, double flhi) {
-    _fllo = (float)_fllo;
-    _flhi = (float)_flhi;
+  public void setGrowingThresholds(
+      double lowerLikelihood, double upperLikelihood) {
+    Check.argument(lowerLikelihood<=upperLikelihood,
+        "lowerLikelihood does not exceed upperLikelihood");
+    _fllo = (float)lowerLikelihood;
+    _flhi = (float)upperLikelihood;
   }
 
   /**
-   * Sets upper bounds for angle differences used in skinning. Cells can be
-   * nabors only if the differences in their strikes and dips are less than
-   * these thresholds.
+   * Sets thresholds for differences in fault likelihood, strike and dip. A
+   * cell and its nabors should have similar fault properties. The specified
+   * thresholds are the maximum differences permitted between a cell and its
+   * nabors.
+   * @param maxDeltaLikelihood upper bound on changes in fault likelihood.
+   * @param maxDeltaPhi upper bound for changes in fault strike.
+   * @param maxDeltaTheta upper bound for changes in fault dip.
    */
-  public void setOrientationThresholds(double pmax, double tmax) {
-    _dfpmax = (float)pmax;
-    _dftmax = (float)tmax;
+  public void setDeltaThresholds(
+      double maxDeltaLikelihood, double maxDeltaPhi, double maxDeltaTheta) {
+    _dflmax = (float)maxDeltaLikelihood;
+    _dfpmax = (float)maxDeltaPhi;
+    _dftmax = (float)maxDeltaTheta;
+  }
+
+  /**
+   * Sets the threshold distance for planarity. A cell should lie near the
+   * planes of its nabors. The specified threshold is the maximum permitted
+   * distance to nabor planes.
+   * @param maxDistance upper bound on distance.
+   */
+  public void setPlanarityThreshold(double maxDistance) {
+    _dabmax = (float)maxDistance;
   }
 
   /**
@@ -339,7 +376,7 @@ public class FaultSkinner {
     FloatList xyz = new FloatList();
     FloatList uvw = new FloatList();
     FloatList fcl = new FloatList();
-    float size = 0.3f;
+    float size = 0.4f;
     float[] qa = {0.0f,-size,-size};
     float[] qb = {0.0f, size,-size};
     float[] qc = {0.0f, size, size};
@@ -422,7 +459,6 @@ public class FaultSkinner {
   private float _dfpmax; // max difference between strikes of nabors
   private float _dftmax; // max difference between dips of nabors
   private float _dabmax; // max distance to planes of nabors
-  private float _dcwmin; // min dot product of normals of nabors
   private static Comparator<Cell> _cellComparator = new Comparator<Cell>() {
     public int compare(Cell c1, Cell c2) {
       if (c1.fl<c2.fl)
@@ -473,7 +509,7 @@ public class FaultSkinner {
           Cell cell = growSet.pollLast();
           skin.add(cell);
 
-          // Link with all good nabors, and add them to the grow set.
+          // Link mutually best nabors, and add them to the grow set.
           Cell ca,cb,cl,cr;
           ca = findNaborAbove(cellArray,cell);
           cb = findNaborBelow(cellArray,ca);
@@ -621,21 +657,27 @@ public class FaultSkinner {
   // assumed to be within one sample of each other. This method uses other
   // attributes of the cells to determine whether or not they can be nabors.
   private boolean canBeNabors(Cell ca, Cell cb) {
-    if (ca==null || cb==null)
-      return false;
-    if (minFl(ca,cb)<_fllo)
-      return false;
-    if (absDeltaFl(ca,cb)>_dflmax)
-      return false;
-    if (absDeltaFp(ca,cb)>_dfpmax)
-      return false;
-    if (absDeltaFt(ca,cb)>_dftmax)
-      return false;
-    if (dotNormalVectors(ca,cb)<_dcwmin)
-      return false;
-    if (maxDistanceToPlane(ca,cb)>_dabmax)
-      return false;
-    return true;
+    boolean can = true;
+    boolean mfl = true, dfl = true, dfp = true, dft = true, dtp = true;
+    if (ca==null || cb==null) {
+      can = false;
+    } else if (minFl(ca,cb)<_fllo) {
+      can = false;
+      mfl = false;
+    } else if (absDeltaFl(ca,cb)>_dflmax) {
+      can = false;
+      dfl = false;
+    } else if (absDeltaFp(ca,cb)>_dfpmax) {
+      can = false;
+      dfp = false;
+    } else if (absDeltaFt(ca,cb)>_dftmax) {
+      can = false;
+      dft = false;
+    } else if (maxDistanceToPlane(ca,cb)>_dabmax) {
+      can = false;
+      dtp = false;
+    }
+    return can;
   }
   private static float minFl(Cell ca, Cell cb) {
     return min(ca.fl,cb.fl);
@@ -650,11 +692,6 @@ public class FaultSkinner {
   private static float absDeltaFt(Cell ca, Cell cb) {
     return abs(ca.ft-cb.ft);
   }
-  private static float dotNormalVectors(Cell ca, Cell cb) {
-    float aw1 = ca.w1, aw2 = ca.w2, aw3 = ca.w3;
-    float bw1 = cb.w1, bw2 = cb.w2, bw3 = cb.w3;
-    return aw1*bw1+aw2*bw2+aw3*bw3;
-  }
   private static float maxDistanceToPlane(Cell ca, Cell cb) {
     float aw1 = ca.w1, aw2 = ca.w2, aw3 = ca.w3;
     float ax1 = ca.x1, ax2 = ca.x2, ax3 = ca.x3;
@@ -666,6 +703,11 @@ public class FaultSkinner {
     float dab = aw1*dx1+aw2*dx2+aw3*dx3;
     float dba = bw1*dx1+bw2*dx2+bw3*dx3;
     return max(dab,dba);
+  }
+  private static float dotNormalVectors(Cell ca, Cell cb) {
+    float aw1 = ca.w1, aw2 = ca.w2, aw3 = ca.w3;
+    float bw1 = cb.w1, bw2 = cb.w2, bw3 = cb.w3;
+    return aw1*bw1+aw2*bw2+aw3*bw3;
   }
 
   // Rotates a specified point by strike (phi) and dip (theta) angles,

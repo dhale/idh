@@ -37,7 +37,6 @@ def main(args):
   #goThin()
   #goSmooth()
   goNodes()
-  #goQuads()
   #goSurfing()
   #goDisplay("gx")
 
@@ -49,7 +48,7 @@ def goFakeData():
   conjugate = True
   impedance = False
   wavelet = True
-  noise = 0.0
+  noise = 0.5
   gx,p2,p3 = FakeData.seismicAndSlopes3d2014A(
       sequence,nfault,conjugate,impedance,wavelet,noise)
   writeImage(gxfile,gx)
@@ -94,7 +93,7 @@ def goScan():
   gx = FaultScanner.taper(10,0,0,gx);
   sigmaPhi,sigmaTheta = 4,20
   minPhi,maxPhi = 0,360
-  minTheta,maxTheta = 70,89
+  minTheta,maxTheta = 65,85
   fsc = FaultScanner(sigmaPhi,sigmaTheta)
   sw = Stopwatch()
   sw.restart()
@@ -146,12 +145,15 @@ def goNodes():
   ft = readImage(ftfile)
   fs = FaultSkinner([fl,fp,ft])
   cells = fs.findCells()
+  plot3(gx,cells=cells)
   print "number of cells =",len(cells)
   skins = fs.findSkins(cells)
   print "number of skins =",len(skins)
-  for i in range(5):
-    cells = skins[i].getCells()
-    plot3(gx,cells=cells)
+  for skin in skins:
+    if skin.size()>=4000:
+      cells = skin.getCells()
+      print "number of cells =",len(cells)
+      plot3(gx,cells=cells)
 
 def goQuads():
   gx = readImage(gxfile)
