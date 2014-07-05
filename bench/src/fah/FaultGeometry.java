@@ -59,7 +59,7 @@ public class FaultGeometry {
     double st = sin(t);
     float u1 = (float)( st);
     float u2 = (float)( ct*cp);
-    float u3 = (float)(-st*cp);
+    float u3 = (float)(-ct*sp);
     return new float[]{u1,u2,u3};
   }
 

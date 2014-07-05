@@ -18,10 +18,8 @@ import static fah.FaultGeometry.*;
 /**
  * Computes fault skins from images of fault likelihoods, strikes and dips. A
  * fault skin is a linked list of fault cells. Each fault cell is an oriented
- * point located on a ridge in an image of fault likelihood. After a fault
- * cell has been constructed, it can easily be found by simple indexing, as
- * for a 3D image. Each image sample corresponds to either no cell or one
- * cell.
+ * point located on a ridge in an image of fault likelihood. Each image sample
+ * corresponds to either no cell or one cell.
  * <p>
  * A cell has up to four neighbors ("nabors") that lie above, below, left and
  * right of the cell when viewed from above the fault, that is, when looking
@@ -32,124 +30,18 @@ import static fah.FaultGeometry.*;
  * along a fault trace, a path of constant depth that is everywhere tangent to
  * fault strike. Likewise, links to cell nabors above and below a cell can be
  * used to iterate up or down a fault. However, this simple up or down
- * iteration need not coincide with a fault curve that is everywhere tangent
- * to fault dip.
+ * iteration typically does not coincide with a fault curve that is everywhere
+ * tangent to fault dip.
+ * <p>
+ * A fault skin is grown by linking nearby cells having similar properties,
+ * beginning with a seed cell that has sufficiently high fault likelihood.
+ * Several of the methods in this class enable users to set parameters that
+ * control the growing process.
  *
  * @author Dave Hale, Colorado School of Mines
- * @version 2014.06.03
+ * @version 2014.07.03
  */
 public class FaultSkinner {
-
-  /**
-   * An oriented point. Fault skins are comprised of cells.
-   */
-  public static class Cell {
-
-    /*
-    // TODO: are these necessary?
-    @Override
-    public boolean equals(Object object) {
-      if (object==this)
-        return true;
-      if (object!=null && object.getClass()==this.getClass()) {
-        Cell that = (Cell)object;
-        return this.i1==that.i1 && this.i2==that.i2 && this.i3==that.i3;
-      }
-      return false;
-    }
-    @Override
-    public int hashCode() {
-      return i1^i2^i3;
-    }
-    */
-
-    /////////////////////////////////////////////////////////////////////////
-    // package
-
-    int i1,i2,i3; // cell indices
-    float x1,x2,x3; // cell coordinates
-    float fl,fp,ft; // likelihood, strike (phi) and dip (theta)
-    float u1,u2,u3; // dip vector
-    float v1,v2,v3; // strike vector
-    float w1,w2,w3; // normal vector
-    Cell ca,cb,cl,cr; // nabors above, below, left and right
-    Skin skin; // if not null, the skin to which this cell belongs
-
-    Cell(float x1, float x2, float x3, float fl, float fp, float ft) {
-      this.i1 = round(x1);
-      this.i2 = round(x2);
-      this.i3 = round(x3);
-      this.x1 = x1; 
-      this.x2 = x2; 
-      this.x3 = x3;
-      this.fl = fl; 
-      this.fp = fp; 
-      this.ft = ft;
-      float[] u = faultDipVectorFromStrikeAndDip(fp,ft);
-      float[] v = faultStrikeVectorFromStrikeAndDip(fp,ft);
-      float[] w = faultNormalVectorFromStrikeAndDip(fp,ft);
-      this.u1 = u[0]; this.u2 = u[1]; this.u3 = u[2];
-      this.v1 = v[0]; this.v2 = v[1]; this.v3 = v[2];
-      this.w1 = w[0]; this.w2 = w[1]; this.w3 = w[2];
-    }
-  }
-
-  /**
-   * A linked list of fault cells.
-   */
-  public static class Skin {
-
-    /**
-     * Returns the number of cells in this skin.
-     */
-    public int size() {
-      int size = 0;
-      if (cellArray!=null)
-        size = cellArray.length;
-      if (cellList!=null)
-        size = cellList.size();
-      return size;
-    }
-
-    /**
-     * Gets an array of cells in this skin.
-     * @return array of cells.
-     */
-    public Cell[] getCells() {
-      if (cellArray==null) {
-        cellArray = cellList.toArray(new Cell[0]);
-        cellList = null;
-      }
-      return cellArray;
-    }
-
-    /////////////////////////////////////////////////////////////////////////
-    // package
-
-    Cell seed; // the cell in this skin with highest fl; or null, if empty
-    ArrayList<Cell> cellList; // list of cells in this skin; or null
-    Cell[] cellArray; // array of cells in this skin; or null
-    Cell[][] cellsAB; // arrays of arrays of cells ordered from above to below
-    Cell[][] cellsLR; // arrays of arrays of cells ordered from left to right
-
-    /**
-     * Constructs an empty skin.
-     */
-    Skin() {
-      cellList = new ArrayList<Cell>();
-    }
-
-    /**
-     * Adds the specified cell to this skin.
-     * @param cell the cell to be added.
-     */
-    void add(Cell cell) {
-      if (this.seed==null)
-        this.seed = cell;
-      cellList.add(cell);
-      cell.skin = this;
-    }
-  }
 
   /**
    * Constructs a fault skinner for specified likelihoods and orientations.
@@ -166,19 +58,23 @@ public class FaultSkinner {
     _flhi = 0.5f;
     _dflmax = 0.1f;
     _dfpmax = 10.0f;
-    _dftmax = 10.0f;
-    _dabmax = 0.5f;
+    _dftmax = 2.0f;
+    _dnpmax = 0.5f;
+    _ncsmin = 400;
   }
 
   /**
-   * Sets thresholds for fault likelihoods used when growing skins. All cells
-   * in a skin will have fault likelihoods not less than the lower threshold
-   * At least one cell in a skin will have a fault likelihood not less
-   * than the upper threshold.
-   * @param lowerLikelihood the lower threshold.
-   * @param upperLikelihood the upper threshold.
+   * Sets fault likelihood thresholds used when growing skins. Cells in a skin
+   * should have, or be connected to cells that have, high fault likelihoods.
+   * All cells in a skin will have fault likelihoods not less than the lower
+   * threshold. At least one cell in a skin will have a fault likelihood not
+   * less than the upper threshold. 
+   * <p>
+   * The default thresholds are 0.1 and 0.5, respectively.
+   * @param lowerLikelihood lower threshold for fault likelihood.
+   * @param upperLikelihood upper threshold for fault likelihood.
    */
-  public void setGrowingThresholds(
+  public void setGrowingLikelihoods(
       double lowerLikelihood, double upperLikelihood) {
     Check.argument(lowerLikelihood<=upperLikelihood,
         "lowerLikelihood does not exceed upperLikelihood");
@@ -187,201 +83,78 @@ public class FaultSkinner {
   }
 
   /**
-   * Sets thresholds for differences in fault likelihood, strike and dip. A
+   * Sets thresholds for variations in fault likelihood, strike and dip. A
    * cell and its nabors should have similar fault properties. The specified
-   * thresholds are the maximum differences permitted between a cell and its
+   * thresholds are maximum differences permitted between a cell and its
    * nabors.
+   * <p>
+   * The default limits are 0.1, 10 degrees, and 2 degrees, respectively.
    * @param maxDeltaLikelihood upper bound on changes in fault likelihood.
-   * @param maxDeltaPhi upper bound for changes in fault strike.
-   * @param maxDeltaTheta upper bound for changes in fault dip.
+   * @param maxDeltaStrike upper bound for changes in fault strike, in degrees.
+   * @param maxDeltaDip upper bound for changes in fault dip, in degrees.
    */
-  public void setDeltaThresholds(
-      double maxDeltaLikelihood, double maxDeltaPhi, double maxDeltaTheta) {
+  public void setMaxDeltas(
+      double maxDeltaLikelihood, double maxDeltaStrike, double maxDeltaDip) {
     _dflmax = (float)maxDeltaLikelihood;
-    _dfpmax = (float)maxDeltaPhi;
-    _dftmax = (float)maxDeltaTheta;
+    _dfpmax = (float)maxDeltaStrike;
+    _dftmax = (float)maxDeltaDip;
   }
 
   /**
-   * Sets the threshold distance for planarity. A cell should lie near the
-   * planes of its nabors. The specified threshold is the maximum permitted
-   * distance to nabor planes.
-   * @param maxDistance upper bound on distance.
+   * Sets the threshold planar distance. A cell should lie near the planes of
+   * nabor cells. The specified threshold is the maximum distance to nabor
+   * planes.
+   * @param maxPlanarDistance upper bound on planar distance, in samples.
    */
-  public void setPlanarityThreshold(double maxDistance) {
-    _dabmax = (float)maxDistance;
+  public void setMaxPlanarDistance(double maxPlanarDistance) {
+    _dnpmax = (float)maxPlanarDistance;
+  }
+
+  /**
+   * Sets the minimum number of cells in a skin.
+   * <p>
+   * The default minimum size is 400.
+   */
+  public void setMinSkinSize(int minSize) {
+    _ncsmin = minSize;
   }
 
   /**
    * Returns array of cells in ridge surfaces of fault likelihood.
    * @return array of cells.
    */
-  public Cell[] findCells() {
-    int n1 = _n1, n2 = _n2, n3 = _n3;
-    float[][][] f = _fl, p = _fp, t = _ft;
-
-    // Smooth fault likelihoods in 2nd and 3rd dimensions. This helps to
-    // eliminate spurious ridges, and improves the accuracy of 2nd-order
-    // finite-difference approximations (parabolic interpolation) used to
-    // locate ridges.
-    float[][][] fs = new float[n3][n2][n1];
-    RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(1.0);
-    rgf.applyX0X(f,fs);
-    rgf.applyXX0(fs,fs);
-    f = fs;
-
-    // Vertical image boundaries are discontinuities that may look like
-    // faults. If a fault appears to be near and nearly parallel to image
-    // boundaries, then assume it is a boundary artifact and not truly a
-    // fault.
-    int imax = 5; // max number of samples considered to be near boundary
-    float wwmax = 0.75f; // cosine of 30 degrees, squared
-
-    // Loop over all samples. Construct cells for samples nearest to ridges.
-    ArrayList<Cell> cells = new ArrayList<Cell>();
-    for (int i3=0; i3<n3; ++i3) {
-      int i3m = max(i3-1,0);
-      int i3p = min(i3+1,n3-1);
-      for (int i2=0; i2<n2; ++i2) {
-        int i2m = max(i2-1,0);
-        int i2p = min(i2+1,n2-1);
-        float[] fmi = f[i3m][i2 ];
-        float[] fim = f[i3 ][i2m];
-        float[] fip = f[i3 ][i2p];
-        float[] fpi = f[i3p][i2 ];
-        float[] fmm = f[i3m][i2m];
-        float[] fpp = f[i3p][i2p];
-        float[] fmp = f[i3m][i2p];
-        float[] fpm = f[i3p][i2m];
-        float[] fii = f[i3 ][i2 ];
-        float[] pii = p[i3 ][i2 ];
-        float[] tii = t[i3 ][i2 ];
-        for (int i1=0; i1<n1; ++i1) {
-          float fmii = fmi[i1 ];
-          float fimi = fim[i1 ];
-          float fipi = fip[i1 ];
-          float fpii = fpi[i1 ];
-          float fmmi = fmm[i1 ];
-          float fppi = fpp[i1 ];
-          float fmpi = fmp[i1 ];
-          float fpmi = fpm[i1 ];
-          float fiii = fii[i1 ];
-          float piii = pii[i1 ];
-          float tiii = tii[i1 ];
-
-          // Most image samples will not have a fault cell.
-          Cell cell = null;
-
-          // If S-N ridge, ...
-          if ((fipi<fiii && fimi<fiii) &&
-              ((337.5f<=piii || piii<= 22.5f) || 
-               (157.5f<=piii && piii<=202.5f))) {
-            float f1 = 0.5f*(fipi-fimi); // 1st derivative
-            float f2 = fipi-2.0f*fiii+fimi; // 2nd derivative
-            float dr = -f1/f2; // signed distance to ridge
-            float fl = fiii+f1*dr+0.5f*f2*dr*dr; // fault likelihood
-            if (fl>=_fllo && (cell==null || fl>cell.fl)) {
-              float[] w = faultNormalVectorFromStrikeAndDip(piii,tiii);
-              float w1 = w[0], w2 = w[1], w3 = w[2];
-              if (imax<=i2 && i2<_n2-imax || w2*w2<=wwmax) {
-                float x2 = i2+dr;
-                cell = new Cell(i1,x2,i3,fl,piii,tiii);
-              }
-            }
-          }
-
-          // If SW-NE ridge, ...
-          if ((fmpi<fiii && fpmi<fiii) &&
-              (( 22.5f<=piii && piii<= 67.5f) || 
-               (202.5f<=piii && piii<=247.5f))) {
-            float f1 = 0.5f*(fmpi-fpmi); // 1st derivative
-            float f2 = fmpi-2.0f*fiii+fpmi; // 2nd derivative
-            float dr = -f1/f2; // signed distance to ridge
-            float fl = fiii+f1*dr+0.5f*f2*dr*dr; // fault likelihood
-            if (fl>=_fllo && (cell==null || fl>cell.fl)) {
-              float[] w = faultNormalVectorFromStrikeAndDip(piii,tiii);
-              float w1 = w[0], w2 = w[1], w3 = w[2];
-              if ((imax<=i2 && i2<_n2-imax || w2*w2<=wwmax) &&
-                  (imax<=i3 && i3<_n3-imax || w3*w3<=wwmax)) {
-                float x2 = i2+dr;
-                float x3 = i3-dr;
-                cell = new Cell(i1,x2,x3,fl,piii,tiii);
-              }
-            }
-          }
-
-          // If W-E ridge, ...
-          if ((fpii<fiii && fmii<fiii) &&
-              ((67.5f<=piii && piii<=112.5f) ||
-               (247.5f<=piii && piii<=292.5f))) {
-            float f1 = 0.5f*(fpii-fmii); // 1st derivative
-            float f2 = fmii-2.0f*fiii+fpii; // 2nd derivative
-            float dr = -f1/f2; // signed distance to ridge
-            float fl = fiii+f1*dr+0.5f*f2*dr*dr; // fault likelihood
-            if (fl>=_fllo && (cell==null || fl>cell.fl)) {
-              float[] w = faultNormalVectorFromStrikeAndDip(piii,tiii);
-              float w1 = w[0], w2 = w[1], w3 = w[2];
-              if (imax<=i3 && i3<_n3-imax || w3*w3<=wwmax) {
-                float x3 = i3+dr;
-                cell = new Cell(i1,i2,x3,fl,piii,tiii);
-              }
-            }
-          }
-
-          // If NW-SE ridge, ...
-          if ((fppi<fiii && fmmi<fiii) &&
-              ((112.5f<=piii && piii<=157.5f) || 
-               (292.5f<=piii && piii<=337.5f))) {
-            float f1 = 0.5f*(fppi-fmmi); // 1st derivative
-            float f2 = fppi-2.0f*fiii+fmmi; // 2nd derivative
-            float dr = -f1/f2; // signed distance to ridge
-            float fl = fiii+f1*dr+0.5f*f2*dr*dr; // fault likelihood
-            if (fl>=_fllo && (cell==null || fl>cell.fl)) {
-              float[] w = faultNormalVectorFromStrikeAndDip(piii,tiii);
-              float w1 = w[0], w2 = w[1], w3 = w[2];
-              if ((imax<=i2 && i2<_n2-imax || w2*w2<=wwmax) &&
-                  (imax<=i3 && i3<_n3-imax || w3*w3<=wwmax)) {
-                float x2 = i2+dr;
-                float x3 = i3+dr;
-                cell = new Cell(i1,x2,x3,fl,piii,tiii);
-              }
-            }
-          }
-
-          // If we constructed a cell, add it to the list.
-          if (cell!=null)
-            cells.add(cell);
-        }
-      }
-    }
-    return cells.toArray(new Cell[0]);
+  public FaultCell[] findCells() {
+    return cells();
   }
 
   /**
-   * Returns an array of skins comprised of specified cells. Skins will
-   * include only those cells with fault likelihoods not less than the higher
-   * skinning threshold.
-   * @param cells array of cells; will be sorted by fault likelihood.
+   * Returns an array of skins comprised of specified cells. Some cells may be
+   * unused. For example, cells with fault likelihoods less than the lower
+   * threshold for growing skins will be unused. Likewise, cells that do not
+   * form a skin with sufficient size will be unused.
+   * @param cells array of cells from which to grow skins.
    * @return array of skins.
    */
-  public Skin[] findSkins(Cell[] cells) {
-    return skin(cells);
+  public FaultSkin[] findSkins(FaultCell[] cells) {
+    return skins(cells);
   }
 
   /**
-   * Gets arrays {xyz,uvw,rgb} of quad coordinates, normals and colors.
-   * Each quad represents one cell.
+   * Gets arrays {xyz,uvw,rgb} of cell coordinates, normals and colors.
+   * In these arrays, cells are represented by quads with specified size.
+   * @param size the size (in samples) of the quads.
+   * @param cells the cells for which to compute quads.
    */
-  public static float[][] getXyzUvwRgb(Cell[] cells) {
+  public static float[][] getXyzUvwRgb(float size, FaultCell[] cells) {
     FloatList xyz = new FloatList();
     FloatList uvw = new FloatList();
     FloatList fcl = new FloatList();
-    float size = 0.4f;
+    size *= 0.5f;
     float[] qa = {0.0f,-size,-size};
     float[] qb = {0.0f, size,-size};
     float[] qc = {0.0f, size, size};
     float[] qd = {0.0f,-size, size};
-    for (Cell cell:cells) {
+    for (FaultCell cell:cells) {
       float x1 = cell.x1;
       float x2 = cell.x2;
       float x3 = cell.x3;
@@ -424,12 +197,12 @@ public class FaultSkinner {
   // private
 
   // Used to quickly search for potential cell nabors.
-  private static class CellArray {
-    CellArray(int n1, int n2, int n3, Cell[] cells) {
+  private static class FaultCellArray {
+    FaultCellArray(int n1, int n2, int n3, FaultCell[] cells) {
       _n1 = n1; _n2 = n2; _n3 = n3;
-      _cells = new Cell[n3][n2][n1];
+      _cells = new FaultCell[n3][n2][n1];
       if (cells!=null) {
-        for (Cell cell:cells) {
+        for (FaultCell cell:cells) {
           int i1 = cell.i1;
           int i2 = cell.i2;
           int i3 = cell.i3;
@@ -437,18 +210,18 @@ public class FaultSkinner {
         }
       }
     }
-    Cell get(int i1, int i2, int i3) {
+    FaultCell get(int i1, int i2, int i3) {
       if (0<=i1 && i1<_n1 && 0<=i2 && i2<_n2 && 0<=i3 && i3<_n3) {
         return _cells[i3][i2][i1];
       } else {
         return null;
       }
     }
-    void set(int i1, int i2, int i3, Cell cell) {
+    void set(int i1, int i2, int i3, FaultCell cell) {
       _cells[i3][i2][i1] = cell;
     }
     private int _n1,_n2,_n3;
-    private Cell[][][] _cells;
+    private FaultCell[][][] _cells;
   }
 
   private int _n1,_n2,_n3; // dimensions of fault images fl, fp and ft
@@ -458,9 +231,11 @@ public class FaultSkinner {
   private float _dflmax; // max difference between likelihoods of nabors
   private float _dfpmax; // max difference between strikes of nabors
   private float _dftmax; // max difference between dips of nabors
-  private float _dabmax; // max distance to planes of nabors
-  private static Comparator<Cell> _cellComparator = new Comparator<Cell>() {
-    public int compare(Cell c1, Cell c2) {
+  private float _dnpmax; // max distance to planes of nabors
+  private int _ncsmin; // min number of cells that form a skin
+  private static Comparator<FaultCell> _cellComparator = 
+      new Comparator<FaultCell>() {
+    public int compare(FaultCell c1, FaultCell c2) {
       if (c1.fl<c2.fl)
         return -1;
       else if (c1.fl>c2.fl)
@@ -470,47 +245,191 @@ public class FaultSkinner {
     }
   };
 
-  private Skin[] skin(Cell[] cells) {
+  // Uses fault images to find cells, oriented points located on ridges.
+  private FaultCell[] cells() {
+    int n1 = _n1, n2 = _n2, n3 = _n3;
+    float[][][] f = _fl, p = _fp, t = _ft;
+
+    // Smooth fault likelihoods in 2nd and 3rd dimensions. This helps to
+    // eliminate spurious ridges, and improves the accuracy of 2nd-order
+    // finite-difference approximations (parabolic interpolation) used to
+    // locate ridges.
+    float[][][] fs = new float[n3][n2][n1];
+    RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(1.0);
+    rgf.applyX0X(f,fs);
+    rgf.applyXX0(fs,fs);
+    f = fs;
+
+    // Vertical image boundaries are discontinuities that may look like
+    // faults. If a fault appears to be near and nearly parallel to image
+    // boundaries, then assume it is a boundary artifact and not truly a
+    // fault.
+    int imax = 5; // max number of samples considered to be near boundary
+    float wwmax = 0.75f; // cosine of 30 degrees, squared
+
+    // Loop over all samples. Construct cells for samples nearest to ridges.
+    ArrayList<FaultCell> cells = new ArrayList<FaultCell>();
+    for (int i3=0; i3<n3; ++i3) {
+      int i3m = max(i3-1,0);
+      int i3p = min(i3+1,n3-1);
+      for (int i2=0; i2<n2; ++i2) {
+        int i2m = max(i2-1,0);
+        int i2p = min(i2+1,n2-1);
+        float[] fmi = f[i3m][i2 ];
+        float[] fim = f[i3 ][i2m];
+        float[] fip = f[i3 ][i2p];
+        float[] fpi = f[i3p][i2 ];
+        float[] fmm = f[i3m][i2m];
+        float[] fpp = f[i3p][i2p];
+        float[] fmp = f[i3m][i2p];
+        float[] fpm = f[i3p][i2m];
+        float[] fii = f[i3 ][i2 ];
+        float[] pii = p[i3 ][i2 ];
+        float[] tii = t[i3 ][i2 ];
+        for (int i1=0; i1<n1; ++i1) {
+          float fmii = fmi[i1 ];
+          float fimi = fim[i1 ];
+          float fipi = fip[i1 ];
+          float fpii = fpi[i1 ];
+          float fmmi = fmm[i1 ];
+          float fppi = fpp[i1 ];
+          float fmpi = fmp[i1 ];
+          float fpmi = fpm[i1 ];
+          float fiii = fii[i1 ];
+          float piii = pii[i1 ];
+          float tiii = tii[i1 ];
+
+          // Most image samples will not have a fault cell.
+          FaultCell cell = null;
+
+          // If S-N ridge, ...
+          if ((fipi<fiii && fimi<fiii) &&
+              ((337.5f<=piii || piii<= 22.5f) || 
+               (157.5f<=piii && piii<=202.5f))) {
+            float f1 = 0.5f*(fipi-fimi); // 1st derivative
+            float f2 = fipi-2.0f*fiii+fimi; // 2nd derivative
+            float dr = -f1/f2; // signed distance to ridge
+            float fl = fiii+f1*dr+0.5f*f2*dr*dr; // fault likelihood
+            if (fl>=_fllo && (cell==null || fl>cell.fl)) {
+              float[] w = faultNormalVectorFromStrikeAndDip(piii,tiii);
+              float w1 = w[0], w2 = w[1], w3 = w[2];
+              if (imax<=i2 && i2<_n2-imax || w2*w2<=wwmax) {
+                float x2 = i2+dr;
+                cell = new FaultCell(i1,x2,i3,fl,piii,tiii);
+              }
+            }
+          }
+
+          // If SW-NE ridge, ...
+          if ((fmpi<fiii && fpmi<fiii) &&
+              (( 22.5f<=piii && piii<= 67.5f) || 
+               (202.5f<=piii && piii<=247.5f))) {
+            float f1 = 0.5f*(fmpi-fpmi); // 1st derivative
+            float f2 = fmpi-2.0f*fiii+fpmi; // 2nd derivative
+            float dr = -f1/f2; // signed distance to ridge
+            float fl = fiii+f1*dr+0.5f*f2*dr*dr; // fault likelihood
+            if (fl>=_fllo && (cell==null || fl>cell.fl)) {
+              float[] w = faultNormalVectorFromStrikeAndDip(piii,tiii);
+              float w1 = w[0], w2 = w[1], w3 = w[2];
+              if ((imax<=i2 && i2<_n2-imax || w2*w2<=wwmax) &&
+                  (imax<=i3 && i3<_n3-imax || w3*w3<=wwmax)) {
+                float x2 = i2+dr;
+                float x3 = i3-dr;
+                cell = new FaultCell(i1,x2,x3,fl,piii,tiii);
+              }
+            }
+          }
+
+          // If W-E ridge, ...
+          if ((fpii<fiii && fmii<fiii) &&
+              ((67.5f<=piii && piii<=112.5f) ||
+               (247.5f<=piii && piii<=292.5f))) {
+            float f1 = 0.5f*(fpii-fmii); // 1st derivative
+            float f2 = fmii-2.0f*fiii+fpii; // 2nd derivative
+            float dr = -f1/f2; // signed distance to ridge
+            float fl = fiii+f1*dr+0.5f*f2*dr*dr; // fault likelihood
+            if (fl>=_fllo && (cell==null || fl>cell.fl)) {
+              float[] w = faultNormalVectorFromStrikeAndDip(piii,tiii);
+              float w1 = w[0], w2 = w[1], w3 = w[2];
+              if (imax<=i3 && i3<_n3-imax || w3*w3<=wwmax) {
+                float x3 = i3+dr;
+                cell = new FaultCell(i1,i2,x3,fl,piii,tiii);
+              }
+            }
+          }
+
+          // If NW-SE ridge, ...
+          if ((fppi<fiii && fmmi<fiii) &&
+              ((112.5f<=piii && piii<=157.5f) || 
+               (292.5f<=piii && piii<=337.5f))) {
+            float f1 = 0.5f*(fppi-fmmi); // 1st derivative
+            float f2 = fppi-2.0f*fiii+fmmi; // 2nd derivative
+            float dr = -f1/f2; // signed distance to ridge
+            float fl = fiii+f1*dr+0.5f*f2*dr*dr; // fault likelihood
+            if (fl>=_fllo && (cell==null || fl>cell.fl)) {
+              float[] w = faultNormalVectorFromStrikeAndDip(piii,tiii);
+              float w1 = w[0], w2 = w[1], w3 = w[2];
+              if ((imax<=i2 && i2<_n2-imax || w2*w2<=wwmax) &&
+                  (imax<=i3 && i3<_n3-imax || w3*w3<=wwmax)) {
+                float x2 = i2+dr;
+                float x3 = i3+dr;
+                cell = new FaultCell(i1,x2,x3,fl,piii,tiii);
+              }
+            }
+          }
+
+          // If we constructed a cell, add it to the list.
+          if (cell!=null)
+            cells.add(cell);
+        }
+      }
+    }
+    return cells.toArray(new FaultCell[0]);
+  }
+
+  // Returns skins constructed from specified cells.
+  private FaultSkin[] skins(FaultCell[] cells) {
+    int ncell = cells.length;
 
     // Array of cells used to quickly find cell nabors.
-    CellArray cellArray = new CellArray(_n1,_n2,_n3,cells);
+    FaultCellArray cellArray = new FaultCellArray(_n1,_n2,_n3,cells);
 
     // Empty list of skins.
-    ArrayList<Skin> skinList = new ArrayList<Skin>();
+    ArrayList<FaultSkin> skinList = new ArrayList<FaultSkin>();
 
     // Sort array of cells by increasing fault likelihoods.
+    FaultCell[] temp = new FaultCell[ncell];
+    System.arraycopy(cells,0,temp,0,ncell);
+    cells = temp;
     Arrays.sort(cells,_cellComparator);
 
-    // While cells with high fault likelihood remain, ...
-    int kseed = cells.length-1;
-    while (kseed>=0 && cells[kseed].fl>_flhi) {
+    // While cells with sufficiently high fault likelihood remain, ...
+    for (int kseed=ncell-1; kseed>=0; --kseed) {
 
-      // Look for a skinless cell with high fault likelihood.
-      while (kseed>=0 && cells[kseed].skin!=null)
+      // Skip cells with low fault likelihood and cells already in a skin.
+      while (kseed>=0 && cells[kseed].fl<_flhi && cells[kseed].skin!=null)
         --kseed;
 
       // If we found a cell with which to construct a new skin, ...
-      if (kseed>=0 && cells[kseed].fl>_flhi) {
-        Cell seed = cells[kseed];
+      if (kseed>=0) {
 
-        // Make a new empty skin and add it to the skin list.
-        Skin skin = new Skin();
-        skinList.add(skin);
+        // Make a new empty skin.
+        FaultSkin skin = new FaultSkin();
 
-        // Make a new sorted set of cells used to grow the skin from the seed.
-        TreeSet<Cell> growSet = new TreeSet<Cell>(_cellComparator);
-        growSet.add(seed);
+        // Make a new sorted set of cells, initially with only the seed cell.
+        TreeSet<FaultCell> growSet = new TreeSet<FaultCell>(_cellComparator);
+        growSet.add(cells[kseed]);
 
         // While the grow set is not empty, ...
         while (!growSet.isEmpty()) {
 
           // Get the cell with highest fault likelihood, while removing it
           // from the grow set, and add it to the skin.
-          Cell cell = growSet.pollLast();
+          FaultCell cell = growSet.pollLast();
           skin.add(cell);
 
           // Link mutually best nabors, and add them to the grow set.
-          Cell ca,cb,cl,cr;
+          FaultCell ca,cb,cl,cr;
           ca = findNaborAbove(cellArray,cell);
           cb = findNaborBelow(cellArray,ca);
           if (ca!=null && ca.skin==null && cb==cell) {
@@ -536,51 +455,67 @@ public class FaultSkinner {
             growSet.add(cr);
           }
         }
+
+        // Done growing. Add this skin to the list.
+        skinList.add(skin);
       }
     }
-    return skinList.toArray(new Skin[0]);
+
+    // Copy skins with sufficient size to a list of big skins to be returned.
+    // Make skinless all cells contained in any smaller skins.
+    ArrayList<FaultSkin> bigSkinList = new ArrayList<FaultSkin>();
+    for (FaultSkin skin:skinList) {
+      if (skin.size()>=_ncsmin) {
+        bigSkinList.add(skin);
+      } else {
+        for (FaultCell cell:skin.cellList)
+          cell.skin = null;
+      }
+    }
+    return bigSkinList.toArray(new FaultSkin[0]);
   }
 
   // Returns true if the specified cells are nabors. This method assumes that
   // all links are mutual. For example, if c1 is the nabor above c2, then c2
   // must be the nabor below c1.
-  private static boolean areNabors(Cell c1, Cell c2) {
+  private static boolean areNabors(FaultCell c1, FaultCell c2) {
     return c1.ca==c2 || c1.cb==c2 || c1.cl==c2 || c1.cr==c2;
   }
 
   // Methods to link mutually best nabors.
-  private void linkLeftRight(Cell cl, Cell cr) {
-    cr.cl = cl;
-    cl.cr = cr;
-  }
-  private void linkAboveBelow(Cell ca, Cell cb) {
+  private void linkAboveBelow(FaultCell ca, FaultCell cb) {
     cb.ca = ca;
     ca.cb = cb;
   }
+  private void linkLeftRight(FaultCell cl, FaultCell cr) {
+    cr.cl = cl;
+    cl.cr = cr;
+  }
 
-  // Methods to return good nabors of a specified cell. Return null if no
-  // nabor is good enough, based on various thresholds.
-  private Cell findNaborAbove(CellArray cells, Cell cell) {
+  // Methods to find good nabors of a specified cell. These methods return
+  // null if no nabor is good enough, based on various thresholds.
+  private FaultCell findNaborAbove(FaultCellArray cells, FaultCell cell) {
     if (cell==null) return null;
     if (cell.ca!=null) return cell.ca;
     return findNaborAboveBelow(true,cells,cell);
   }
-  private Cell findNaborBelow(CellArray cells, Cell cell) {
+  private FaultCell findNaborBelow(FaultCellArray cells, FaultCell cell) {
     if (cell==null) return null;
     if (cell.cb!=null) return cell.cb;
     return findNaborAboveBelow(false,cells,cell);
   }
-  private Cell findNaborLeft(CellArray cells, Cell cell) {
+  private FaultCell findNaborLeft(FaultCellArray cells, FaultCell cell) {
     if (cell==null) return null;
     if (cell.cl!=null) return cell.cl;
     return findNaborLeftRight(true,cells,cell);
   }
-  private Cell findNaborRight(CellArray cells, Cell cell) {
+  private FaultCell findNaborRight(FaultCellArray cells, FaultCell cell) {
     if (cell==null) return null;
     if (cell.cr!=null) return cell.cr;
     return findNaborLeftRight(false,cells,cell);
   }
-  private Cell findNaborAboveBelow(boolean above, CellArray cells, Cell cell) {
+  private FaultCell findNaborAboveBelow(
+      boolean above, FaultCellArray cells, FaultCell cell) {
     int i1 = cell.i1;
     int i2 = cell.i2;
     int i3 = cell.i3;
@@ -597,11 +532,11 @@ public class FaultSkinner {
       u2 = -u2;
       u3 = -u3;
     }
-    Cell cmax = null;
+    FaultCell cmax = null;
     float dmax = 0.0f;
     for (int k3=-1; k3<=1; ++k3) {
       for (int k2=-1; k2<=1; ++k2) {
-        Cell c = cells.get(i1+k1,i2+k2,i3+k3);
+        FaultCell c = cells.get(i1+k1,i2+k2,i3+k3);
         if (c!=null) {
           float d1 = c.x1-x1;
           float d2 = c.x2-x2;
@@ -616,7 +551,8 @@ public class FaultSkinner {
     }
     return canBeNabors(cell,cmax) ? cmax : null;
   }
-  private Cell findNaborLeftRight(boolean left, CellArray cells, Cell cell) {
+  private FaultCell findNaborLeftRight(
+      boolean left, FaultCellArray cells, FaultCell cell) {
     int i1 = cell.i1;
     int i2 = cell.i2;
     int i3 = cell.i3;
@@ -631,13 +567,13 @@ public class FaultSkinner {
       v2 = -v2;
       v3 = -v3;
     }
-    Cell cmax = null;
+    FaultCell cmax = null;
     float dmax = 0.0f;
     for (int k3=-1; k3<=1; ++k3) {
       for (int k2=-1; k2<=1; ++k2) {
         if (k2==0 && k3==0)
           continue;
-        Cell c = cells.get(i1,i2+k2,i3+k3);
+        FaultCell c = cells.get(i1,i2+k2,i3+k3);
         if (c!=null) {
           float d1 = c.x1-x1;
           float d2 = c.x2-x2;
@@ -656,7 +592,7 @@ public class FaultSkinner {
   // Returns true if two specified cells can be nabors. The two cells are
   // assumed to be within one sample of each other. This method uses other
   // attributes of the cells to determine whether or not they can be nabors.
-  private boolean canBeNabors(Cell ca, Cell cb) {
+  private boolean canBeNabors(FaultCell ca, FaultCell cb) {
     boolean can = true;
     boolean mfl = true, dfl = true, dfp = true, dft = true, dtp = true;
     if (ca==null || cb==null) {
@@ -673,26 +609,26 @@ public class FaultSkinner {
     } else if (absDeltaFt(ca,cb)>_dftmax) {
       can = false;
       dft = false;
-    } else if (maxDistanceToPlane(ca,cb)>_dabmax) {
+    } else if (maxDistanceToPlane(ca,cb)>_dnpmax) {
       can = false;
       dtp = false;
     }
     return can;
   }
-  private static float minFl(Cell ca, Cell cb) {
+  private static float minFl(FaultCell ca, FaultCell cb) {
     return min(ca.fl,cb.fl);
   }
-  private static float absDeltaFl(Cell ca, Cell cb) {
+  private static float absDeltaFl(FaultCell ca, FaultCell cb) {
     return abs(ca.fl-cb.fl);
   }
-  private static float absDeltaFp(Cell ca, Cell cb) {
+  private static float absDeltaFp(FaultCell ca, FaultCell cb) {
     float del = ca.fp-cb.fp;
     return min(abs(del),abs(del+360.0f),abs(del-360.0f));
   }
-  private static float absDeltaFt(Cell ca, Cell cb) {
+  private static float absDeltaFt(FaultCell ca, FaultCell cb) {
     return abs(ca.ft-cb.ft);
   }
-  private static float maxDistanceToPlane(Cell ca, Cell cb) {
+  private static float maxDistanceToPlane(FaultCell ca, FaultCell cb) {
     float aw1 = ca.w1, aw2 = ca.w2, aw3 = ca.w3;
     float ax1 = ca.x1, ax2 = ca.x2, ax3 = ca.x3;
     float bw1 = cb.w1, bw2 = cb.w2, bw3 = cb.w3;
@@ -704,7 +640,7 @@ public class FaultSkinner {
     float dba = bw1*dx1+bw2*dx2+bw3*dx3;
     return max(dab,dba);
   }
-  private static float dotNormalVectors(Cell ca, Cell cb) {
+  private static float dotNormalVectors(FaultCell ca, FaultCell cb) {
     float aw1 = ca.w1, aw2 = ca.w2, aw3 = ca.w3;
     float bw1 = cb.w1, bw2 = cb.w2, bw3 = cb.w3;
     return aw1*bw1+aw2*bw2+aw3*bw3;

@@ -29,14 +29,15 @@ fs1file = "fs1" # fault slip (1st component)
 fs2file = "fs2" # fault slip (2nd component)
 fs3file = "fs3" # fault slip (3rd component)
 
-# Processing begins here.
+# Processing begins here. When experimenting with one part of this demo, we
+# can disable other parts that have already written results to files.
 def main(args):
   #goFakeData()
   #goSlopes()
   #goScan()
   #goThin()
   #goSmooth()
-  goNodes()
+  goSkin()
   #goSurfing()
   #goDisplay("gx")
 
@@ -48,7 +49,7 @@ def goFakeData():
   conjugate = True
   impedance = False
   wavelet = True
-  noise = 0.5
+  noise = 0.0
   gx,p2,p3 = FakeData.seismicAndSlopes3d2014A(
       sequence,nfault,conjugate,impedance,wavelet,noise)
   writeImage(gxfile,gx)
@@ -138,7 +139,7 @@ def goSmooth():
   #plot3(gx)
   plot3(gsx)
 
-def goNodes():
+def goSkin():
   gx = readImage(gxfile)
   fl = readImage(flfile)
   fp = readImage(fpfile)
@@ -146,14 +147,14 @@ def goNodes():
   fs = FaultSkinner([fl,fp,ft])
   cells = fs.findCells()
   plot3(gx,cells=cells)
-  print "number of cells =",len(cells)
+  print "total number of cells =",len(cells)
   skins = fs.findSkins(cells)
-  print "number of skins =",len(skins)
-  for skin in skins:
-    if skin.size()>=4000:
-      cells = skin.getCells()
-      print "number of cells =",len(cells)
-      plot3(gx,cells=cells)
+  print "total number of skins =",len(skins)
+  for iskin,skin in enumerate(skins):
+    print "number of cells in skin",iskin,"=",skin.size()
+    cells = skin.getCells()
+    links = skin.getCellLinksXyz()
+    plot3(gx,cells=cells,links=links)
 
 def goQuads():
   gx = readImage(gxfile)
@@ -253,7 +254,7 @@ def hueFillExceptMin(alpha):
   return ColorMap.setAlpha(ColorMap.getHue(0.0,1.0),a)
 
 def plot3(f,g=None,cmin=None,cmax=None,cmap=None,
-          xyz=None,surfs=None,smax=None,quads=None,cells=None):
+          xyz=None,surfs=None,smax=None,quads=None,cells=None,links=None):
   n1 = len(f[0][0])
   n2 = len(f[0])
   n3 = len(f)
@@ -327,10 +328,13 @@ def plot3(f,g=None,cmin=None,cmax=None,cmap=None,
     if quads:
         xyz,uvw,rgb = FaultSurfer.getXyzUvwRgb(quads,0.0)
     elif cells:
-        xyz,uvw,rgb = FaultSkinner.getXyzUvwRgb(cells)
+        xyz,uvw,rgb = FaultCell.getXyzUvwRgb(0.5,cells)
     qg = QuadGroup(xyz,uvw,rgb)
     qg.setStates(ss)
     sf.world.addChild(qg)
+  if links:
+    lg = LineGroup(links)
+    sf.world.addChild(lg)
   ipg.setSlices(95,21,51)
   sf.setSize(700,700)
   vc = sf.getViewCanvas()
