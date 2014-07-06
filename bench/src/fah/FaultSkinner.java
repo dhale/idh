@@ -54,11 +54,11 @@ public class FaultSkinner {
     _n1 = _fl[0][0].length;
     _n2 = _fl[0].length;
     _n3 = _fl.length;
-    _fllo = 0.1f;
-    _flhi = 0.5f;
-    _dflmax = 0.1f;
-    _dfpmax = 10.0f;
-    _dftmax = 2.0f;
+    _fllo = 0.2f;
+    _flhi = 0.8f;
+    _dflmax = 0.2f;
+    _dfpmax = 30.0f;
+    _dftmax = 10.0f;
     _dnpmax = 0.5f;
     _ncsmin = 400;
   }
@@ -70,7 +70,7 @@ public class FaultSkinner {
    * threshold. At least one cell in a skin will have a fault likelihood not
    * less than the upper threshold. 
    * <p>
-   * The default thresholds are 0.1 and 0.5, respectively.
+   * The default thresholds are 0.2 and 0.8, respectively.
    * @param lowerLikelihood lower threshold for fault likelihood.
    * @param upperLikelihood upper threshold for fault likelihood.
    */
@@ -88,7 +88,7 @@ public class FaultSkinner {
    * thresholds are maximum differences permitted between a cell and its
    * nabors.
    * <p>
-   * The default limits are 0.1, 10 degrees, and 2 degrees, respectively.
+   * The default limits are 0.1, 30 degrees, and 10 degrees, respectively.
    * @param maxDeltaLikelihood upper bound on changes in fault likelihood.
    * @param maxDeltaStrike upper bound for changes in fault strike, in degrees.
    * @param maxDeltaDip upper bound for changes in fault dip, in degrees.
@@ -104,6 +104,8 @@ public class FaultSkinner {
    * Sets the threshold planar distance. A cell should lie near the planes of
    * nabor cells. The specified threshold is the maximum distance to nabor
    * planes.
+   * <p>
+   * The default maximim planar distance is 0.5 samples.
    * @param maxPlanarDistance upper bound on planar distance, in samples.
    */
   public void setMaxPlanarDistance(double maxPlanarDistance) {
@@ -113,7 +115,7 @@ public class FaultSkinner {
   /**
    * Sets the minimum number of cells in a skin.
    * <p>
-   * The default minimum size is 400.
+   * The default minimum skin size is 400.
    */
   public void setMinSkinSize(int minSize) {
     _ncsmin = minSize;
@@ -196,34 +198,6 @@ public class FaultSkinner {
   ///////////////////////////////////////////////////////////////////////////
   // private
 
-  // Used to quickly search for potential cell nabors.
-  private static class FaultCellArray {
-    FaultCellArray(int n1, int n2, int n3, FaultCell[] cells) {
-      _n1 = n1; _n2 = n2; _n3 = n3;
-      _cells = new FaultCell[n3][n2][n1];
-      if (cells!=null) {
-        for (FaultCell cell:cells) {
-          int i1 = cell.i1;
-          int i2 = cell.i2;
-          int i3 = cell.i3;
-          _cells[i3][i2][i1] = cell;
-        }
-      }
-    }
-    FaultCell get(int i1, int i2, int i3) {
-      if (0<=i1 && i1<_n1 && 0<=i2 && i2<_n2 && 0<=i3 && i3<_n3) {
-        return _cells[i3][i2][i1];
-      } else {
-        return null;
-      }
-    }
-    void set(int i1, int i2, int i3, FaultCell cell) {
-      _cells[i3][i2][i1] = cell;
-    }
-    private int _n1,_n2,_n3;
-    private FaultCell[][][] _cells;
-  }
-
   private int _n1,_n2,_n3; // dimensions of fault images fl, fp and ft
   private float[][][] _fl,_fp,_ft; // fault likelihoods, strikes and dips
   private float _fllo; // lower threshold on fault likelihoods
@@ -268,7 +242,7 @@ public class FaultSkinner {
     float wwmax = 0.75f; // cosine of 30 degrees, squared
 
     // Loop over all samples. Construct cells for samples nearest to ridges.
-    ArrayList<FaultCell> cells = new ArrayList<FaultCell>();
+    ArrayList<FaultCell> cellList = new ArrayList<FaultCell>();
     for (int i3=0; i3<n3; ++i3) {
       int i3m = max(i3-1,0);
       int i3p = min(i3+1,n3-1);
@@ -302,6 +276,14 @@ public class FaultSkinner {
           // Most image samples will not have a fault cell.
           FaultCell cell = null;
 
+          // Accumulators for ridge likelihoods and locations. Depending on
+          // the limits on fault strike used below, we may find more than one
+          // ridge.
+          float nr = 0;
+          float fl = 0.0f;
+          float d2 = 0.0f;
+          float d3 = 0.0f;
+
           // If S-N ridge, ...
           if ((fipi<fiii && fimi<fiii) &&
               ((337.5f<=piii || piii<= 22.5f) || 
@@ -309,13 +291,14 @@ public class FaultSkinner {
             float f1 = 0.5f*(fipi-fimi); // 1st derivative
             float f2 = fipi-2.0f*fiii+fimi; // 2nd derivative
             float dr = -f1/f2; // signed distance to ridge
-            float fl = fiii+f1*dr+0.5f*f2*dr*dr; // fault likelihood
-            if (fl>=_fllo && (cell==null || fl>cell.fl)) {
+            float fr = fiii+f1*dr+0.5f*f2*dr*dr; // fault likelihood
+            if (fr>=_fllo) {
               float[] w = faultNormalVectorFromStrikeAndDip(piii,tiii);
               float w1 = w[0], w2 = w[1], w3 = w[2];
               if (imax<=i2 && i2<_n2-imax || w2*w2<=wwmax) {
-                float x2 = i2+dr;
-                cell = new FaultCell(i1,x2,i3,fl,piii,tiii);
+                fl += fr;
+                d2 += dr;
+                nr += 1;
               }
             }
           }
@@ -327,33 +310,35 @@ public class FaultSkinner {
             float f1 = 0.5f*(fmpi-fpmi); // 1st derivative
             float f2 = fmpi-2.0f*fiii+fpmi; // 2nd derivative
             float dr = -f1/f2; // signed distance to ridge
-            float fl = fiii+f1*dr+0.5f*f2*dr*dr; // fault likelihood
-            if (fl>=_fllo && (cell==null || fl>cell.fl)) {
+            float fr = fiii+f1*dr+0.5f*f2*dr*dr; // fault likelihood
+            if (fr>=_fllo) {
               float[] w = faultNormalVectorFromStrikeAndDip(piii,tiii);
               float w1 = w[0], w2 = w[1], w3 = w[2];
               if ((imax<=i2 && i2<_n2-imax || w2*w2<=wwmax) &&
                   (imax<=i3 && i3<_n3-imax || w3*w3<=wwmax)) {
-                float x2 = i2+dr;
-                float x3 = i3-dr;
-                cell = new FaultCell(i1,x2,x3,fl,piii,tiii);
+                fl += fr;
+                d2 += dr;
+                d3 -= dr;
+                nr += 1;
               }
             }
           }
 
           // If W-E ridge, ...
           if ((fpii<fiii && fmii<fiii) &&
-              ((67.5f<=piii && piii<=112.5f) ||
+              (( 67.5f<=piii && piii<=112.5f) ||
                (247.5f<=piii && piii<=292.5f))) {
             float f1 = 0.5f*(fpii-fmii); // 1st derivative
             float f2 = fmii-2.0f*fiii+fpii; // 2nd derivative
             float dr = -f1/f2; // signed distance to ridge
-            float fl = fiii+f1*dr+0.5f*f2*dr*dr; // fault likelihood
-            if (fl>=_fllo && (cell==null || fl>cell.fl)) {
+            float fr = fiii+f1*dr+0.5f*f2*dr*dr; // fault likelihood
+            if (fr>=_fllo) {
               float[] w = faultNormalVectorFromStrikeAndDip(piii,tiii);
               float w1 = w[0], w2 = w[1], w3 = w[2];
               if (imax<=i3 && i3<_n3-imax || w3*w3<=wwmax) {
-                float x3 = i3+dr;
-                cell = new FaultCell(i1,i2,x3,fl,piii,tiii);
+                fl += fr;
+                d3 += dr;
+                nr += 1;
               }
             }
           }
@@ -365,34 +350,40 @@ public class FaultSkinner {
             float f1 = 0.5f*(fppi-fmmi); // 1st derivative
             float f2 = fppi-2.0f*fiii+fmmi; // 2nd derivative
             float dr = -f1/f2; // signed distance to ridge
-            float fl = fiii+f1*dr+0.5f*f2*dr*dr; // fault likelihood
-            if (fl>=_fllo && (cell==null || fl>cell.fl)) {
+            float fr = fiii+f1*dr+0.5f*f2*dr*dr; // fault likelihood
+            if (fr>=_fllo) {
               float[] w = faultNormalVectorFromStrikeAndDip(piii,tiii);
               float w1 = w[0], w2 = w[1], w3 = w[2];
               if ((imax<=i2 && i2<_n2-imax || w2*w2<=wwmax) &&
                   (imax<=i3 && i3<_n3-imax || w3*w3<=wwmax)) {
-                float x2 = i2+dr;
-                float x3 = i3+dr;
-                cell = new FaultCell(i1,x2,x3,fl,piii,tiii);
+                fl += fr;
+                d2 += dr;
+                d3 += dr;
+                nr += 1;
               }
             }
           }
 
-          // If we constructed a cell, add it to the list.
-          if (cell!=null)
-            cells.add(cell);
+          // If at least one ridge, construct a cell and add to list.
+          if (nr>0) {
+            fl /= nr;
+            d2 /= nr;
+            d3 /= nr;
+            cell = new FaultCell(i1,i2+d2,i3+d3,fl,piii,tiii);
+            cellList.add(cell);
+          }
         }
       }
     }
-    return cells.toArray(new FaultCell[0]);
+    return cellList.toArray(new FaultCell[0]);
   }
 
   // Returns skins constructed from specified cells.
   private FaultSkin[] skins(FaultCell[] cells) {
     int ncell = cells.length;
 
-    // Array of cells used to quickly find cell nabors.
-    FaultCellArray cellArray = new FaultCellArray(_n1,_n2,_n3,cells);
+    // Grid of cells used to quickly find cell nabors.
+    FaultCellGrid cellGrid = new FaultCellGrid(_n1,_n2,_n3,cells);
 
     // Empty list of skins.
     ArrayList<FaultSkin> skinList = new ArrayList<FaultSkin>();
@@ -406,8 +397,8 @@ public class FaultSkinner {
     // While cells with sufficiently high fault likelihood remain, ...
     for (int kseed=ncell-1; kseed>=0; --kseed) {
 
-      // Skip cells with low fault likelihood and cells already in a skin.
-      while (kseed>=0 && cells[kseed].fl<_flhi && cells[kseed].skin!=null)
+      // Skip cells with low fault likelihood or that are already in a skin.
+      while (kseed>=0 && (cells[kseed].fl<_flhi || cells[kseed].skin!=null))
         --kseed;
 
       // If we found a cell with which to construct a new skin, ...
@@ -430,26 +421,26 @@ public class FaultSkinner {
 
           // Link mutually best nabors, and add them to the grow set.
           FaultCell ca,cb,cl,cr;
-          ca = findNaborAbove(cellArray,cell);
-          cb = findNaborBelow(cellArray,ca);
+          ca = findNaborAbove(cellGrid,cell);
+          cb = findNaborBelow(cellGrid,ca);
           if (ca!=null && ca.skin==null && cb==cell) {
             linkAboveBelow(ca,cb);
             growSet.add(ca);
           }
-          cb = findNaborBelow(cellArray,cell);
-          ca = findNaborAbove(cellArray,cb);
+          cb = findNaborBelow(cellGrid,cell);
+          ca = findNaborAbove(cellGrid,cb);
           if (cb!=null && cb.skin==null && ca==cell) {
             linkAboveBelow(ca,cb);
             growSet.add(cb);
           }
-          cl = findNaborLeft(cellArray,cell);
-          cr = findNaborRight(cellArray,cl);
+          cl = findNaborLeft(cellGrid,cell);
+          cr = findNaborRight(cellGrid,cl);
           if (cl!=null && cl.skin==null && cr==cell) {
             linkLeftRight(cl,cr);
             growSet.add(cl);
           }
-          cr = findNaborRight(cellArray,cell);
-          cl = findNaborLeft(cellArray,cr);
+          cr = findNaborRight(cellGrid,cell);
+          cl = findNaborLeft(cellGrid,cr);
           if (cr!=null && cr.skin==null && cl==cell) {
             linkLeftRight(cl,cr);
             growSet.add(cr);
@@ -494,99 +485,21 @@ public class FaultSkinner {
 
   // Methods to find good nabors of a specified cell. These methods return
   // null if no nabor is good enough, based on various thresholds.
-  private FaultCell findNaborAbove(FaultCellArray cells, FaultCell cell) {
-    if (cell==null) return null;
-    if (cell.ca!=null) return cell.ca;
-    return findNaborAboveBelow(true,cells,cell);
+  private FaultCell findNaborAbove(FaultCellGrid cells, FaultCell cell) {
+    FaultCell ca = cells.findCellAbove(cell);
+    return canBeNabors(cell,ca)?ca:null;
   }
-  private FaultCell findNaborBelow(FaultCellArray cells, FaultCell cell) {
-    if (cell==null) return null;
-    if (cell.cb!=null) return cell.cb;
-    return findNaborAboveBelow(false,cells,cell);
+  private FaultCell findNaborBelow(FaultCellGrid cells, FaultCell cell) {
+    FaultCell cb = cells.findCellBelow(cell);
+    return canBeNabors(cell,cb)?cb:null;
   }
-  private FaultCell findNaborLeft(FaultCellArray cells, FaultCell cell) {
-    if (cell==null) return null;
-    if (cell.cl!=null) return cell.cl;
-    return findNaborLeftRight(true,cells,cell);
+  private FaultCell findNaborLeft(FaultCellGrid cells, FaultCell cell) {
+    FaultCell cl = cells.findCellLeft(cell);
+    return canBeNabors(cell,cl)?cl:null;
   }
-  private FaultCell findNaborRight(FaultCellArray cells, FaultCell cell) {
-    if (cell==null) return null;
-    if (cell.cr!=null) return cell.cr;
-    return findNaborLeftRight(false,cells,cell);
-  }
-  private FaultCell findNaborAboveBelow(
-      boolean above, FaultCellArray cells, FaultCell cell) {
-    int i1 = cell.i1;
-    int i2 = cell.i2;
-    int i3 = cell.i3;
-    float x1 = cell.x1;
-    float x2 = cell.x2;
-    float x3 = cell.x3;
-    float u1 = cell.u1;
-    float u2 = cell.u2;
-    float u3 = cell.u3;
-    int k1 = 1;
-    if (above) {
-      k1 = -1;
-      u1 = -u1;
-      u2 = -u2;
-      u3 = -u3;
-    }
-    FaultCell cmax = null;
-    float dmax = 0.0f;
-    for (int k3=-1; k3<=1; ++k3) {
-      for (int k2=-1; k2<=1; ++k2) {
-        FaultCell c = cells.get(i1+k1,i2+k2,i3+k3);
-        if (c!=null) {
-          float d1 = c.x1-x1;
-          float d2 = c.x2-x2;
-          float d3 = c.x3-x3;
-          float d = (d1*u1+d2*u2+d3*u3)/sqrt(d1*d1+d2*d2+d3*d3);
-          if (d>dmax) {
-            cmax = c;
-            dmax = d;
-          }
-        }
-      }
-    }
-    return canBeNabors(cell,cmax) ? cmax : null;
-  }
-  private FaultCell findNaborLeftRight(
-      boolean left, FaultCellArray cells, FaultCell cell) {
-    int i1 = cell.i1;
-    int i2 = cell.i2;
-    int i3 = cell.i3;
-    float x1 = cell.x1;
-    float x2 = cell.x2;
-    float x3 = cell.x3;
-    float v1 = cell.v1;
-    float v2 = cell.v2;
-    float v3 = cell.v3;
-    if (left) {
-      v1 = -v1;
-      v2 = -v2;
-      v3 = -v3;
-    }
-    FaultCell cmax = null;
-    float dmax = 0.0f;
-    for (int k3=-1; k3<=1; ++k3) {
-      for (int k2=-1; k2<=1; ++k2) {
-        if (k2==0 && k3==0)
-          continue;
-        FaultCell c = cells.get(i1,i2+k2,i3+k3);
-        if (c!=null) {
-          float d1 = c.x1-x1;
-          float d2 = c.x2-x2;
-          float d3 = c.x3-x3;
-          float d = (d1*v1+d2*v2+d3*v3)/sqrt(d1*d1+d2*d2+d3*d3);
-          if (d>dmax) {
-            cmax = c;
-            dmax = d;
-          }
-        }
-      }
-    }
-    return canBeNabors(cell,cmax) ? cmax : null;
+  private FaultCell findNaborRight(FaultCellGrid cells, FaultCell cell) {
+    FaultCell cr = cells.findCellRight(cell);
+    return canBeNabors(cell,cr)?cr:null;
   }
 
   // Returns true if two specified cells can be nabors. The two cells are
@@ -594,24 +507,18 @@ public class FaultSkinner {
   // attributes of the cells to determine whether or not they can be nabors.
   private boolean canBeNabors(FaultCell ca, FaultCell cb) {
     boolean can = true;
-    boolean mfl = true, dfl = true, dfp = true, dft = true, dtp = true;
     if (ca==null || cb==null) {
       can = false;
     } else if (minFl(ca,cb)<_fllo) {
       can = false;
-      mfl = false;
     } else if (absDeltaFl(ca,cb)>_dflmax) {
       can = false;
-      dfl = false;
     } else if (absDeltaFp(ca,cb)>_dfpmax) {
       can = false;
-      dfp = false;
     } else if (absDeltaFt(ca,cb)>_dftmax) {
       can = false;
-      dft = false;
     } else if (maxDistanceToPlane(ca,cb)>_dnpmax) {
       can = false;
-      dtp = false;
     }
     return can;
   }
@@ -639,11 +546,6 @@ public class FaultSkinner {
     float dab = aw1*dx1+aw2*dx2+aw3*dx3;
     float dba = bw1*dx1+bw2*dx2+bw3*dx3;
     return max(dab,dba);
-  }
-  private static float dotNormalVectors(FaultCell ca, FaultCell cb) {
-    float aw1 = ca.w1, aw2 = ca.w2, aw3 = ca.w3;
-    float bw1 = cb.w1, bw2 = cb.w2, bw3 = cb.w3;
-    return aw1*bw1+aw2*bw2+aw3*bw3;
   }
 
   // Rotates a specified point by strike (phi) and dip (theta) angles,

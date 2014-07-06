@@ -1,4 +1,25 @@
 ---
+Filling in the holes?
+  apply distance transform to thinned fault likelihood
+    fd = FDT(fl) + tiny random number
+    fd = 1/(1+fd^2)
+  fdc = cells(fd)
+    fd = smoothRGF1(fd)
+    find ridges using FD approximations for both gradient and hessian
+    enhance FaultSkinner to not require strike and dip images
+    use strike and dip limits from scan, plus some small tolerance
+  flc = cells(fl,fp,ft;fd)
+  fls = skin(flc,fdc)
+    enhance FaultSkinner to 
+      use optional fdc cells
+      distinguish between finding
+        a best nabor, but not a mutual best nabor
+        no best nabor
+      if the latter, look for a best nabor in fdc
+        if found, copy that the
+  use fd skins to dilate-and-erode fl skins?
+  
+---
 Huge simplifying assumption
   no faults are vertical
     when extracting faults, ignore samples for which abs(dip)<tiny

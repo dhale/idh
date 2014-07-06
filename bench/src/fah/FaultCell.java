@@ -18,8 +18,8 @@ import static fah.FaultGeometry.*;
  * Fault cells are computed from images of fault likelihoods, strikes and
  * dips. Each fault cell is an oriented point located on a ridge in an image
  * of fault likelihood. Fault cells have indices (i1,i2,i3) that indicate
- * which image sample is nearest to the ridge. An image sample corresponds to
- * either no cell or one cell.
+ * which image sample is nearest to this ridge. In this way an image sample
+ * is associated with either no cell or one cell.
  * <p>
  * A fault cell has up to four neighbors ("nabors") that lie above, below,
  * left and right of the cell when viewed from above the fault, that is, when
@@ -99,10 +99,9 @@ public class FaultCell {
   int i1,i2,i3; // cell indices
   float x1,x2,x3; // cell coordinates
   float fl,fp,ft; // likelihood, strike (phi) and dip (theta)
-  float u1,u2,u3; // dip vector
+  float u1,u2,u3,us; // dip vector and scale factor 1/u1
   float v1,v2,v3; // strike vector
   float w1,w2,w3; // normal vector
-  float ws23; // scale factor 1/sqrt(w2*w2+w3*w3)
   FaultCell ca,cb,cl,cr; // nabors above, below, left and right
   FaultSkin skin; // if not null, the skin to which this cell belongs
   int i2m,i2p; // sample indices i2 for minus and plus sides of cell
@@ -114,24 +113,21 @@ public class FaultCell {
   float t1,t2,t3; // fault slip vector
 
   FaultCell(float x1, float x2, float x3, float fl, float fp, float ft) {
-    this.i1 = round(x1);
-    this.i2 = round(x2);
-    this.i3 = round(x3);
     this.x1 = x1; 
     this.x2 = x2; 
     this.x3 = x3;
     this.fl = fl; 
     this.fp = fp; 
     this.ft = ft;
+    i1 = round(x1);
+    i2 = round(x2);
+    i3 = round(x3);
     float[] u = faultDipVectorFromStrikeAndDip(fp,ft);
     float[] v = faultStrikeVectorFromStrikeAndDip(fp,ft);
     float[] w = faultNormalVectorFromStrikeAndDip(fp,ft);
-    this.u1 = u[0]; this.u2 = u[1]; this.u3 = u[2];
-    this.v1 = v[0]; this.v2 = v[1]; this.v3 = v[2];
-    this.w1 = w[0]; this.w2 = w[1]; this.w3 = w[2];
-
-    // Scale factor used to walk efficiently up and down a skin.
-    ws23 = 1.0f/sqrt(w2*w2+w3*w3);
+    u1 = u[0]; u2 = u[1]; u3 = u[2]; us = 1.0f/u1;
+    v1 = v[0]; v2 = v[1]; v3 = v[2];
+    w1 = w[0]; w2 = w[1]; w3 = w[2];
 
     // Indices (i2m,i2p) and (i3m,i3p) for minus-plus pairs of samples.
     // Cell normal vector w points from the minus side to the plus side.

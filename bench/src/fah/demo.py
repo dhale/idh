@@ -35,9 +35,9 @@ def main(args):
   #goFakeData()
   #goSlopes()
   #goScan()
+  goSkin()
   #goThin()
   #goSmooth()
-  goSkin()
   #goSurfing()
   #goDisplay("gx")
 
@@ -49,7 +49,7 @@ def goFakeData():
   conjugate = True
   impedance = False
   wavelet = True
-  noise = 0.0
+  noise = 0.5
   gx,p2,p3 = FakeData.seismicAndSlopes3d2014A(
       sequence,nfault,conjugate,impedance,wavelet,noise)
   writeImage(gxfile,gx)
@@ -153,8 +153,9 @@ def goSkin():
   for iskin,skin in enumerate(skins):
     print "number of cells in skin",iskin,"=",skin.size()
     cells = skin.getCells()
-    links = skin.getCellLinksXyz()
-    plot3(gx,cells=cells,links=links)
+    plot3(gx,cells=cells)
+    #links = skin.getCellLinksXyz()
+    #plot3(gx,cells=cells,links=links)
 
 def goQuads():
   gx = readImage(gxfile)
@@ -328,7 +329,7 @@ def plot3(f,g=None,cmin=None,cmax=None,cmap=None,
     if quads:
         xyz,uvw,rgb = FaultSurfer.getXyzUvwRgb(quads,0.0)
     elif cells:
-        xyz,uvw,rgb = FaultCell.getXyzUvwRgb(0.5,cells)
+        xyz,uvw,rgb = FaultCell.getXyzUvwRgb(2.0,cells)
     qg = QuadGroup(xyz,uvw,rgb)
     qg.setStates(ss)
     sf.world.addChild(qg)
