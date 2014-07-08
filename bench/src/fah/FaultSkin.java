@@ -10,6 +10,7 @@ package fah;
 import java.util.ArrayList;
 import java.util.HashSet;
 
+import edu.mines.jtk.awt.ColorMap;
 import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
@@ -107,7 +108,7 @@ public class FaultSkin {
   }
 
   /**
-   * Gets arrays of packed xyz cell coordinates that show cell links.
+   * Gets arrays of packed cell coordinates for cell links.
    * Each returned array contains packed (x,y,z) cell coordinates for
    * exactly one above-below or left-right linked list of cells.
    * @return array of arrays of packed xyz cell coordinates.
@@ -119,6 +120,7 @@ public class FaultSkin {
     int nsLR = cellsLR.length; // number of segments for LR links
     int ns = nsAB+nsLR; // total number of segments
     float[][] xyz = new float[ns][];
+    float[][] rgb = new float[ns][];
     for (int is=0; is<ns; ++is) { // for all segments, ...
       FaultCell[] cells = (is<nsAB)?cellsAB[is]:cellsLR[is-nsAB]; // the cells
       int np = cells.length; // number of points in this segment
@@ -160,5 +162,36 @@ public class FaultSkin {
     cell.skin = this;
     cellsAB = null;
     cellsLR = null;
+  }
+
+  /**
+   * Gets a cell nearest the centroid of this skin.
+   * In illustrations, this cell is often a good representative.
+   * @return the cell nearest the centroid.
+   */
+  public FaultCell getCellNearestCentroid() {
+    float c1 = 0.0f;
+    float c2 = 0.0f;
+    float c3 = 0.0f;
+    float cs = 0.0f;
+    for (FaultCell c:cellList) {
+      c1 += c.fl*c.x1;
+      c2 += c.fl*c.x2;
+      c3 += c.fl*c.x3;
+      cs += c.fl;
+    }
+    c1 /= cs;
+    c2 /= cs;
+    c3 /= cs;
+    float dmin = Float.MAX_VALUE;
+    FaultCell cmin = null;
+    for (FaultCell c:cellList) {
+      float d = c.distanceSquaredTo(c1,c2,c3);
+      if (d<dmin) {
+        cmin = c;
+        dmin = d;
+      }
+    }
+    return cmin;
   }
 }

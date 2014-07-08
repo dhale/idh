@@ -154,49 +154,11 @@ def goSkin():
   print "total number of skins =",len(skins)
   for iskin,skin in enumerate(skins):
     print "number of cells in skin",iskin,"=",skin.size()
-    cells = skin.getCells()
+    #cells = skin.getCells()
     #plot3(gx,cells=cells)
-    links = skin.getCellLinksXyz()
-    plot3(gx,cells=cells,links=links)
+    plot3(gx,skins=[skin],links=True,curve=True,trace=True)
+  plot3(gx,skins=skins,links=False);
 
-def goQuads():
-  gx = readImage(gxfile)
-  fl = readImage(flfile)
-  fp = readImage(fpfile)
-  ft = readImage(ftfile)
-  fs = FaultSurfer([fl,fp,ft])
-  fs.setThreshold(0.25)
-  quads = fs.findQuadsX()
-  plot3(gx,quads=quads)
-
-def goSurfing():
-  gx = readImage(gxfile)
-  gsx = readImage(gsxfile)
-  fl = readImage(flfile)
-  fp = readImage(fpfile)
-  ft = readImage(ftfile)
-  p2 = readImage(p2file)
-  p3 = readImage(p3file)
-  fs = FaultSurfer3([fl,fp,ft])
-  fs.setThreshold(0.2)
-  quads = fs.findQuads()
-  quads = fs.linkQuads(quads)
-  surfs = fs.findSurfs(quads)
-  surfs = fs.getSurfsWithSize(surfs,1000)
-  frs = fs.findShifts(20.0,surfs,gsx,p2,p3)
-  print "frs: min =",min(frs)," max =",max(frs)
-  writeImage(frsfile,frs)
-  fs1,fs2,fs3 = fs.findSlips(-0.012345,surfs)
-  writeImage(fs1file,fs1)
-  writeImage(fs2file,fs2)
-  writeImage(fs3file,fs3)
-  plot3(gx,surfs=surfs)
-  #plot3(gx,surfs=surfs,smax=10.0)
-  #plot3(gx,frs,-5.0,5.0,cmap=bwrNotch(1.0))
-  #plot3(gx,fs1,-5.0,5.0,cmap=bwrNotch(1.0))
-  #plot3(gx,fs2,-0.50,0.50,cmap=bwrNotch(1.0))
-  #plot3(gx,fs3,-0.50,0.50,cmap=bwrNotch(1.0))
-  #plot3(gx)
   
 def goDisplay(what):
   def show2(g1,g2):
@@ -257,7 +219,8 @@ def hueFillExceptMin(alpha):
   return ColorMap.setAlpha(ColorMap.getHue(0.0,1.0),a)
 
 def plot3(f,g=None,cmin=None,cmax=None,cmap=None,
-          xyz=None,surfs=None,smax=None,quads=None,cells=None,links=None):
+          xyz=None,cells=None,skins=None,smax=None,
+          links=False,curve=False,trace=False):
   n1 = len(f[0][0])
   n2 = len(f[0])
   n3 = len(f)
@@ -292,7 +255,22 @@ def plot3(f,g=None,cmin=None,cmax=None,cmap=None,
     #ss.add(ps)
     #pg.setStates(ss)
     sf.world.addChild(pg)
-  if surfs:
+  if cells:
+    ss = StateSet()
+    lms = LightModelState()
+    lms.setTwoSide(True)
+    ss.add(lms)
+    ms = MaterialState()
+    ms.setSpecular(Color.GRAY)
+    ms.setShininess(100.0)
+    ms.setColorMaterial(GL_AMBIENT_AND_DIFFUSE)
+    ms.setEmissiveBack(Color(0.0,0.0,0.5))
+    ss.add(ms)
+    xyz,uvw,rgb = FaultCell.getXyzUvwRgb(0.5,cells)
+    qg = QuadGroup(xyz,uvw,rgb)
+    qg.setStates(ss)
+    sf.world.addChild(qg)
+  if skins:
     sg = Group()
     ss = StateSet()
     lms = LightModelState()
@@ -306,38 +284,32 @@ def plot3(f,g=None,cmin=None,cmax=None,cmap=None,
       ms.setEmissiveBack(Color(0.0,0.0,0.5))
     ss.add(ms)
     sg.setStates(ss)
-    for surf in surfs:
-      #surf.blocky()
+    size = 2.0
+    if links:
+      size = 0.5 
+    for skin in skins:
       if smax:
-        xyz,uvw,rgb = surf.getXyzUvwRgbShifts(smax)
+        xyz,uvw,rgb = skin.getXyzUvwRgbShifts(smax)
       else:
-        xyz,uvw,rgb = surf.getXyzUvwRgb()
-      #qg = QuadGroup(False,xyz,rgb)
-      qg = QuadGroup(True,xyz,rgb) #qg = QuadGroup(xyz,uvw,rgb)
+        xyz,uvw,rgb = skin.getCellXyzUvwRgb(size)
+      qg = QuadGroup(xyz,uvw,rgb)
       qg.setStates(None)
       sg.addChild(qg)
+      if curve or trace:
+        cell = skin.getCellNearestCentroid()
+        if curve:
+          xyz = cell.getFaultCurveXyz()
+          pg = PointGroup(0.5,xyz)
+          sg.addChild(pg)
+        if trace:
+          xyz = cell.getFaultTraceXyz()
+          pg = PointGroup(0.5,xyz)
+          sg.addChild(pg)
+      if links:
+        xyz = skin.getCellLinksXyz()
+        lg = LineGroup(xyz)
+        sg.addChild(lg)
     sf.world.addChild(sg)
-  if quads or cells:
-    ss = StateSet()
-    lms = LightModelState()
-    lms.setTwoSide(True)
-    ss.add(lms)
-    ms = MaterialState()
-    ms.setSpecular(Color.GRAY)
-    ms.setShininess(100.0)
-    ms.setColorMaterial(GL_AMBIENT_AND_DIFFUSE)
-    ms.setEmissiveBack(Color(0.0,0.0,0.5))
-    ss.add(ms)
-    if quads:
-        xyz,uvw,rgb = FaultSurfer.getXyzUvwRgb(quads,0.0)
-    elif cells:
-        xyz,uvw,rgb = FaultCell.getXyzUvwRgb(2.0,cells)
-    qg = QuadGroup(xyz,uvw,rgb)
-    qg.setStates(ss)
-    sf.world.addChild(qg)
-  if links:
-    lg = LineGroup(links)
-    sf.world.addChild(lg)
   #ipg.setSlices(95,21,51)
   ipg.setSlices(95,5,95)
   sf.setSize(700,700)

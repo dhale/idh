@@ -228,7 +228,7 @@ public class FaultCell {
    * @param p input and output array {p1,p2,p3} of point coordinates.
    * @return the cell with a plane that contains the output point.
    */
-  public FaultCell walkUpFrom(float[] p) {
+  FaultCell walkUpDipFrom(float[] p) {
     FaultCell cell = this;
     float p1 = p[0];
     float p2 = p[1];
@@ -267,7 +267,7 @@ public class FaultCell {
    * @param p input and output array {p1,p2,p3} of point coordinates.
    * @return the cell with a plane that contains the output point.
    */
-  public FaultCell walkDownFrom(float[] p) {
+  FaultCell walkDownDipFrom(float[] p) {
     FaultCell cell = this;
     float p1 = p[0];
     float p2 = p[1];
@@ -295,6 +295,49 @@ public class FaultCell {
     p[1] = p2;
     p[2] = p3;
     return cell;
+  }
+
+  /**
+   * Returns an array of packed (x,y,z) coordinates for a fault curve.
+   * The fault curve is everywhere tangent to fault dip, and contains 
+   * the point for this cell.
+   * @return array of packed (x,y,z) coordinates.
+   */
+  public float[] getFaultCurveXyz() {
+    FloatList xyz = new FloatList();
+    float[] p = new float[3];
+    p[0] = x1; p[1] = x2; p[2] = x3;
+    FaultCell cell = this;
+    for (int j1=cell.i1; j1==cell.i1; --j1) {
+      xyz.add(p[2]); xyz.add(p[1]); xyz.add(p[0]);
+      cell = cell.walkUpDipFrom(p);
+    }
+    cell = this;
+    p[0] = x1; p[1] = x2; p[2] = x3;
+    cell = cell.walkDownDipFrom(p);
+    for (int j1=cell.i1; j1==cell.i1; ++j1) {
+      xyz.add(p[2]); xyz.add(p[1]); xyz.add(p[0]);
+      cell = cell.walkDownDipFrom(p);
+    }
+    return xyz.trim();
+  }
+
+  /**
+   * Returns an array of packed (x,y,z) coordinates for a fault trace.
+   * The fault trace is everywhere tangent to fault strike, and contains 
+   * the point for this cell.
+   * @return array of packed (x,y,z) coordinates.
+   */
+  public float[] getFaultTraceXyz() {
+    FloatList xyz = new FloatList();
+    xyz.add(x3); xyz.add(x2); xyz.add(x1);
+    for (FaultCell c=this.cl; c!=null; c=c.cl) {
+      xyz.add(c.x3); xyz.add(c.x2); xyz.add(c.x1);
+    }
+    for (FaultCell c=this.cr; c!=null; c=c.cr) {
+      xyz.add(c.x3); xyz.add(c.x2); xyz.add(c.x1);
+    }
+    return xyz.trim();
   }
 
   /**
@@ -347,7 +390,7 @@ public class FaultCell {
     for (int ilag=1; ilag<=lmax; ++ilag) {
       if (ilag<=nlagAbove) {
         y[0] = y1; y[1] = y2; y[2] = y3;
-        cell = cell.walkUpFrom(y);
+        cell = cell.walkUpDipFrom(y);
         y1 = y[0]; y2 = y[1]; y3 = y[2];
         d2 =  d*cell.v3;
         d3 = -d*cell.v2;
@@ -366,7 +409,7 @@ public class FaultCell {
     for (int ilag=1; ilag<=lmax; ++ilag) {
       if (ilag<=nlagBelow) {
         y[0] = y1; y[1] = y2; y[2] = y3;
-        cell = cell.walkDownFrom(y);
+        cell = cell.walkDownDipFrom(y);
         y1 = y[0]; y2 = y[1]; y3 = y[2];
         d2 =  d*cell.v3;
         d3 = -d*cell.v2;
