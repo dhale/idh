@@ -23,14 +23,6 @@ import static edu.mines.jtk.util.ArrayMath.*;
 public class FaultSkin {
 
   /**
-   * Gets an array of cells in this skin.
-   * @return array of cells.
-   */
-  public FaultCell[] getCells() {
-    return cellList.toArray(new FaultCell[0]);
-  }
-
-  /**
    * Gets the cell that was the seed used to grow this skin.
    * @return the seed cell.
    */
@@ -43,6 +35,14 @@ public class FaultSkin {
    */
   public int size() {
     return cellList.size();
+  }
+
+  /**
+   * Gets an array of cells in this skin.
+   * @return array of cells.
+   */
+  public FaultCell[] getCells() {
+    return cellList.toArray(new FaultCell[0]);
   }
 
   /**

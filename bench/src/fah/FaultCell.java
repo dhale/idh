@@ -340,90 +340,6 @@ public class FaultCell {
     return xyz.trim();
   }
 
-  /**
-   * Computes alignment errors and initializes shifts. Computes both
-   * minus-plus (emp) and plus-minus (epm) errors. The minus-plus errors
-   * correspond to differences between the sample value on the minus side of
-   * this cell and those for the plus sides of cells up and down dip from this
-   * cell. The plus-minus errors are similarly defined.
-   * <p>
-   * This method uses specified slopes to initialize both minus-plus and
-   * plus-minus shifts to compensate for the fact that shifts are estimated
-   * using image samples located a horizontal distance d away from this cell.
-   * <p>
-   * For lags where image sample values are unavailable, say, near surface
-   * boundaries, errors are extrapolated from other lags, but are negated, so
-   * that extrapolated errors can be detected and modified later, after errors
-   * for all relevant cells have been computed.
-   */
-  void computeErrorsAndInitShifts(
-    int lmax, float d, float[][][] f, float[][][] p2, float[][][] p3) 
-  {
-    int n1 = f[0][0].length;
-    float[] y = new float[3];
-
-    // Errors for lag zero.
-    FaultCell cell = this;
-    float d2 =  d*cell.v3;
-    float d3 = -d*cell.v2;
-    float y1 = x1, y2 = x2, y3 = x3;
-    float fm = imageValueAt(y1,y2-d2,y3-d3,f);
-    float fp = imageValueAt(y1,y2+d2,y3+d3,f);
-    float gm = fm;
-    float gp = fp;
-    float p2m = imageValueAt(y1,y2-d2,y3-d3,p2);
-    float p2p = imageValueAt(y1,y2+d2,y3+d3,p2);
-    float p3m = imageValueAt(y1,y2-d2,y3-d3,p3);
-    float p3p = imageValueAt(y1,y2+d2,y3+d3,p3);
-    emp = new float[lmax+1+lmax];
-    epm = new float[lmax+1+lmax];
-    float empl = emp[lmax] = alignmentError(fm,gp);
-    float epml = epm[lmax] = alignmentError(fp,gm);
-
-    // Initial shifts compensate for horizontal distance d.
-    float s23 = d*((p2m+p2p)*w2+(p3m+p3p)*w3);
-    smp = -s23;
-    spm =  s23;
-
-    // Errors for samples above; make any extrapolated errors negative.
-    int nlagAbove = min(lmax,i1);
-    for (int ilag=1; ilag<=lmax; ++ilag) {
-      if (ilag<=nlagAbove) {
-        y[0] = y1; y[1] = y2; y[2] = y3;
-        cell = cell.walkUpDipFrom(y);
-        y1 = y[0]; y2 = y[1]; y3 = y[2];
-        d2 =  d*cell.v3;
-        d3 = -d*cell.v2;
-        gm = imageValueAt(y1,y2-d2,y3-d3,f);
-        gp = imageValueAt(y1,y2+d2,y3+d3,f);
-        empl = emp[lmax-ilag] = alignmentError(fm,gp);
-        epml = epm[lmax-ilag] = alignmentError(fp,gm);
-      } else {
-        emp[lmax-ilag] = -empl;
-        epm[lmax-ilag] = -epml;
-      }
-    }
-
-    // Errors for samples below; make any extrapolated errors negative.
-    int nlagBelow = min(lmax,n1-1-i1);
-    for (int ilag=1; ilag<=lmax; ++ilag) {
-      if (ilag<=nlagBelow) {
-        y[0] = y1; y[1] = y2; y[2] = y3;
-        cell = cell.walkDownDipFrom(y);
-        y1 = y[0]; y2 = y[1]; y3 = y[2];
-        d2 =  d*cell.v3;
-        d3 = -d*cell.v2;
-        gm = imageValueAt(y1,y2-d2,y3-d3,f);
-        gp = imageValueAt(y1,y2+d2,y3+d3,f);
-        empl = emp[lmax+ilag] = alignmentError(fm,gp);
-        epml = epm[lmax+ilag] = alignmentError(fp,gm);
-      } else {
-        emp[lmax+ilag] = -empl;
-        epm[lmax+ilag] = -epml;
-      }
-    }
-  }
-
   /////////////////////////////////////////////////////////////////////////
   // private
 
@@ -464,22 +380,6 @@ public class FaultCell {
     float y2 = -cp*st*x1+cp*ct*x2+sp*x3;
     float y3 =  sp*st*x1-sp*ct*x2+cp*x3;
     return new float[]{y1,y2,y3};
-  }
-
-  private static float alignmentError(float f, float g) {
-    float fmg = f-g;
-    return fmg*fmg;
-  }
-
-  private static float imageValueAt(
-    float p1, float p2, float p3, float[][][]f) {
-    int n1 = f[0][0].length;
-    int n2 = f[0].length;
-    int n3 = f.length;
-    int i1 = max(0,min(n1-1,round(p1)));
-    int i2 = max(0,min(n2-1,round(p2)));
-    int i3 = max(0,min(n3-1,round(p3)));
-    return f[i3][i2][i1];
   }
 
   private static class FloatList {
