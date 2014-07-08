@@ -145,7 +145,9 @@ def goSkin():
   fp = readImage(fpfile)
   ft = readImage(ftfile)
   fs = FaultSkinner([fl,fp,ft])
+  fs.setMinSkinSize(4000)
   cells = fs.findCells()
+  plot3(gx)
   plot3(gx,cells=cells)
   print "total number of cells =",len(cells)
   skins = fs.findSkins(cells)
@@ -153,9 +155,9 @@ def goSkin():
   for iskin,skin in enumerate(skins):
     print "number of cells in skin",iskin,"=",skin.size()
     cells = skin.getCells()
-    plot3(gx,cells=cells)
-    #links = skin.getCellLinksXyz()
-    #plot3(gx,cells=cells,links=links)
+    #plot3(gx,cells=cells)
+    links = skin.getCellLinksXyz()
+    plot3(gx,cells=cells,links=links)
 
 def goQuads():
   gx = readImage(gxfile)
@@ -336,7 +338,8 @@ def plot3(f,g=None,cmin=None,cmax=None,cmap=None,
   if links:
     lg = LineGroup(links)
     sf.world.addChild(lg)
-  ipg.setSlices(95,21,51)
+  #ipg.setSlices(95,21,51)
+  ipg.setSlices(95,5,95)
   sf.setSize(700,700)
   vc = sf.getViewCanvas()
   ov = sf.getOrbitView()

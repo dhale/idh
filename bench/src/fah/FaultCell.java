@@ -99,7 +99,7 @@ public class FaultCell {
   int i1,i2,i3; // cell indices
   float x1,x2,x3; // cell coordinates
   float fl,fp,ft; // likelihood, strike (phi) and dip (theta)
-  float u1,u2,u3,us; // dip vector and scale factor 1/u1
+  float u1,u2,u3,us; // dip vector and scale factor 1/u1 = 1/sin(theta)
   float v1,v2,v3; // strike vector
   float w1,w2,w3; // normal vector
   FaultCell ca,cb,cl,cr; // nabors above, below, left and right
@@ -156,101 +156,255 @@ public class FaultCell {
   }
 
   /**
+   * Returns the distance squared from this cell to a point.
+   * @param p1 1st coordinate of point.
+   * @param p2 2nd coordinate of point.
+   * @param p3 3rd coordinate of point.
+   * @return distance squared.
+   */
+  float distanceTo(float p1, float p2, float p3) {
+    return sqrt(distanceSquaredTo(p1,p2,p3));
+  }
+
+  /**
+   * Returns the distance squared from this cell to a point.
+   * @param p1 1st coordinate of point.
+   * @param p2 2nd coordinate of point.
+   * @param p3 3rd coordinate of point.
+   * @return distance squared.
+   */
+  float distanceSquaredTo(float p1, float p2, float p3) {
+    float d1 = p1-x1;
+    float d2 = p2-x2;
+    float d3 = p3-x3;
+    return d1*d1+d2*d2+d3*d3;
+  }
+
+  /**
+   * Returns the signed distance from the plane of this cell to a point. The
+   * distance is positive if the point lies on the side of the plane toward
+   * which the normal vector points, negative if on the other side.
+   * @param p1 1st coordinate of point.
+   * @param p2 2nd coordinate of point.
+   * @param p3 3rd coordinate of point.
+   * @return signed distance.
+   */
+  float distanceFromPlaneTo(float p1, float p2, float p3) {
+    return w1*(p1-x1)+w2*(p2-x2)+w3*(p3-x3);
+  }
+
+  /**
+   * Gets the cell above this cell that is nearest to the specified point.
+   * @param p1 1st coordinate of point.
+   * @param p2 2nd coordinate of point.
+   * @param p3 3rd coordinate of point.
+   * @return the cell above; null, if none.
+   */
+  FaultCell getCellAboveNearestTo(float p1, float p2, float p3) {
+    FaultCell cla = (cl!=null)?cl.ca:null;
+    FaultCell cra = (cr!=null)?cr.ca:null;
+    return nearestCell(ca,cla,cra,p1,p2,p3);
+  }
+
+  /**
+   * Gets the cell below this cell that is nearest to the specified point.
+   * @param p1 1st coordinate of point.
+   * @param p2 2nd coordinate of point.
+   * @param p3 3rd coordinate of point.
+   * @return the cell below; null, if none.
+   */
+  FaultCell getCellBelowNearestTo(float p1, float p2, float p3) {
+    FaultCell clb = (cl!=null)?cl.cb:null;
+    FaultCell crb = (cr!=null)?cr.cb:null;
+    return nearestCell(cb,clb,crb,p1,p2,p3);
+  }
+
+  /**
+   * Walks a point up the fault along a curve tangent to fault dip.
+   * The input point is assumed to lie in the plane of this cell,
+   * and the output point will lie in the plane of the returned cell.
+   * That returned cell will be one immediately above this cell, if
+   * sufficient nabors exist, or this cell, otherwise.
+   * @param p input and output array {p1,p2,p3} of point coordinates.
+   * @return the cell with a plane that contains the output point.
+   */
+  public FaultCell walkUpFrom(float[] p) {
+    FaultCell cell = this;
+    float p1 = p[0];
+    float p2 = p[1];
+    float p3 = p[2];
+    assert abs(cell.distanceFromPlaneTo(p1,p2,p3))<0.01f;
+
+    // Use dip vector of specified cell to walk the point up its plane.
+    p1 -= 1.0f;
+    p2 -= cell.us*cell.u2;
+    p3 -= cell.us*cell.u3;
+
+    // If a cell below is found, project point horizontally onto its plane.
+    FaultCell ca = cell.getCellAboveNearestTo(p1,p2,p3);
+    if (ca!=null) {
+      cell = ca;
+      float us = cell.us;
+      float ws = us*us*cell.distanceFromPlaneTo(p1,p2,p3);
+      p2 -= ws*cell.w2;
+      p3 -= ws*cell.w3;
+    }
+
+    // Return updated point and cell.
+    assert abs(cell.distanceFromPlaneTo(p1,p2,p3))<0.01f;
+    p[0] = p1;
+    p[1] = p2;
+    p[2] = p3;
+    return cell;
+  }
+
+  /**
+   * Walks a point down the fault along a curve tangent to fault dip.
+   * The input point is assumed to lie in the plane of this cell,
+   * and the output point will lie in the plane of the returned cell.
+   * That returned cell will be one immediately below this cell, if
+   * sufficient cell nabors exist, or this cell, otherwise.
+   * @param p input and output array {p1,p2,p3} of point coordinates.
+   * @return the cell with a plane that contains the output point.
+   */
+  public FaultCell walkDownFrom(float[] p) {
+    FaultCell cell = this;
+    float p1 = p[0];
+    float p2 = p[1];
+    float p3 = p[2];
+    assert abs(cell.distanceFromPlaneTo(p1,p2,p3))<0.01f;
+
+    // Use dip vector of specified cell to walk the point down its plane.
+    p1 += 1.0f;
+    p2 += cell.us*cell.u2;
+    p3 += cell.us*cell.u3;
+
+    // If a cell below is found, project point horizontally onto its plane.
+    FaultCell cb = cell.getCellBelowNearestTo(p1,p2,p3);
+    if (cb!=null) {
+      cell = cb;
+      float us = cell.us;
+      float ws = us*us*cell.distanceFromPlaneTo(p1,p2,p3);
+      p2 -= ws*cell.w2;
+      p3 -= ws*cell.w3;
+    }
+
+    // Return updated point and cell.
+    assert abs(cell.distanceFromPlaneTo(p1,p2,p3))<0.01f;
+    p[0] = p1;
+    p[1] = p2;
+    p[2] = p3;
+    return cell;
+  }
+
+  /**
    * Computes alignment errors and initializes shifts. Computes both
    * minus-plus (emp) and plus-minus (epm) errors. The minus-plus errors
    * correspond to differences between the sample value on the minus side of
-   * this cell and those for the plus sides of cells up and down dip from
-   * this cell. The plus-minus errors are defined similarly.
+   * this cell and those for the plus sides of cells up and down dip from this
+   * cell. The plus-minus errors are similarly defined.
    * <p>
-   * Uses specified slopes to initialize both minus-plus and plus-minus shifts
-   * to compensate for the fact that shifts are estimated using image samples
-   * located a horizontal distance d away from this cell.
+   * This method uses specified slopes to initialize both minus-plus and
+   * plus-minus shifts to compensate for the fact that shifts are estimated
+   * using image samples located a horizontal distance d away from this cell.
    * <p>
    * For lags where image sample values are unavailable, say, near surface
    * boundaries, errors are extrapolated from other lags, but are negated, so
-   * that extrapolated errors can be detected and modified later after errors
-   * for all cells in the surface have been computed.
+   * that extrapolated errors can be detected and modified later, after errors
+   * for all relevant cells have been computed.
    */
-  /*
   void computeErrorsAndInitShifts(
     int lmax, float d, float[][][] f, float[][][] p2, float[][][] p3) 
   {
     int n1 = f[0][0].length;
-    int nlag;
-    float y1,y2,y3,gm,gp;
-    Cell ci;
+    float[] y = new float[3];
 
     // Errors for lag zero.
+    FaultCell cell = this;
+    float d2 =  d*cell.v3;
+    float d3 = -d*cell.v2;
+    float y1 = x1, y2 = x2, y3 = x3;
+    float fm = imageValueAt(y1,y2-d2,y3-d3,f);
+    float fp = imageValueAt(y1,y2+d2,y3+d3,f);
+    float gm = fm;
+    float gp = fp;
+    float p2m = imageValueAt(y1,y2-d2,y3-d3,p2);
+    float p2p = imageValueAt(y1,y2+d2,y3+d3,p2);
+    float p3m = imageValueAt(y1,y2-d2,y3-d3,p3);
+    float p3p = imageValueAt(y1,y2+d2,y3+d3,p3);
     emp = new float[lmax+1+lmax];
     epm = new float[lmax+1+lmax];
-    float us = q.us23, u1 = us*q.u1, u2 = us*q.u2, u3 = us*q.u3;
-    float ut = (i1-q.c1)*u1;
-    float x1 = i1, x2 = q.c2-ut*u2, x3 = q.c3-ut*u3;
-
-    float x2m = x2-d*w2, x3m = x3-d*w3;
-    float x2p = x2+d*w2, x3p = x3+d*w3;
-    float fm = valueAt(x1,x2m,x3m,f);
-    float fp = valueAt(x1,x2p,x3p,f);
-    float p2m = valueAt(x1,x2m,x3m,p2);
-    float p2p = valueAt(x1,x2p,x3p,p2);
-    float p3m = valueAt(x1,x2m,x3m,p3);
-    float p3p = valueAt(x1,x2p,x3p,p3);
-    float empl = emp[lmax] = error(fm,fp);
-    float epml = epm[lmax] = error(fp,fm);
+    float empl = emp[lmax] = alignmentError(fm,gp);
+    float epml = epm[lmax] = alignmentError(fp,gm);
 
     // Initial shifts compensate for horizontal distance d.
     float s23 = d*((p2m+p2p)*w2+(p3m+p3p)*w3);
     smp = -s23;
     spm =  s23;
 
-    // Errors for samples south; any extrapolated errors are negative.
-    us = q.us23; u1 = us*q.u1; u2 = us*q.u2; u3 = us*q.u3;
-    y1 = x1+1.0f; y2 = x2-u1*u2; y3 = x3-u1*u3;
-    qi = quadSouth(q,y1,y2,y3);
-    nlag = min(lmax,n1-1-i1);
+    // Errors for samples above; make any extrapolated errors negative.
+    int nlagAbove = min(lmax,i1);
     for (int ilag=1; ilag<=lmax; ++ilag) {
-      if (qi!=null && ilag<=nlag) {
-        us = qi.us23; u1 = us*qi.u1; u2 = us*qi.u2; u3 = us*qi.u3;
-        ut = (y1-qi.c1)*u1+(y2-qi.c2)*u2+(y3-qi.c3)*u3;
-        y2 -= ut*u2; y3 -= ut*u3;
-        gm = valueAt(y1,y2-d*u2,y3-d*u3,f);
-        gp = valueAt(y1,y2+d*u2,y3+d*u3,f);
-        empl = emp[lmax+ilag] = error(fm,gp);
-        epml = epm[lmax+ilag] = error(fp,gm);
-        y1 += 1.0f; y2 -= u1*u2; y3 -= u1*u3;
-        qi = quadSouth(qi,y1,y2,y3);
-      } else {
-        emp[lmax+ilag] = -empl;
-        epm[lmax+ilag] = -epml;
-      }
-    }
-
-    // Errors for samples north; any extrapolated errors are negative.
-    us = q.us23; u1 = us*q.u1; u2 = us*q.u2; u3 = us*q.u3;
-    y1 = x1-1.0f; y2 = x2+u1*u2; y3 = x3+u1*u3;
-    qi = quadNorth(q,y1,y2,y3);
-    nlag = min(lmax,i1);
-    for (int ilag=1; ilag<=lmax; ++ilag) {
-      if (qi!=null && ilag<=nlag) {
-        us = qi.us23; u1 = us*qi.u1; u2 = us*qi.u2; u3 = us*qi.u3;
-        ut = (y1-qi.c1)*u1+(y2-qi.c2)*u2+(y3-qi.c3)*u3;
-        y2 -= ut*u2; y3 -= ut*u3;
-        gm = valueAt(y1,y2-d*u2,y3-d*u3,f);
-        gp = valueAt(y1,y2+d*u2,y3+d*u3,f);
-        empl = emp[lmax-ilag] = error(fm,gp);
-        epml = epm[lmax-ilag] = error(fp,gm);
-        y1 -= 1.0f; y2 += u1*u2; y3 += u1*u3;
-        qi = quadNorth(qi,y1,y2,y3);
+      if (ilag<=nlagAbove) {
+        y[0] = y1; y[1] = y2; y[2] = y3;
+        cell = cell.walkUpFrom(y);
+        y1 = y[0]; y2 = y[1]; y3 = y[2];
+        d2 =  d*cell.v3;
+        d3 = -d*cell.v2;
+        gm = imageValueAt(y1,y2-d2,y3-d3,f);
+        gp = imageValueAt(y1,y2+d2,y3+d3,f);
+        empl = emp[lmax-ilag] = alignmentError(fm,gp);
+        epml = epm[lmax-ilag] = alignmentError(fp,gm);
       } else {
         emp[lmax-ilag] = -empl;
         epm[lmax-ilag] = -epml;
       }
     }
+
+    // Errors for samples below; make any extrapolated errors negative.
+    int nlagBelow = min(lmax,n1-1-i1);
+    for (int ilag=1; ilag<=lmax; ++ilag) {
+      if (ilag<=nlagBelow) {
+        y[0] = y1; y[1] = y2; y[2] = y3;
+        cell = cell.walkDownFrom(y);
+        y1 = y[0]; y2 = y[1]; y3 = y[2];
+        d2 =  d*cell.v3;
+        d3 = -d*cell.v2;
+        gm = imageValueAt(y1,y2-d2,y3-d3,f);
+        gp = imageValueAt(y1,y2+d2,y3+d3,f);
+        empl = emp[lmax+ilag] = alignmentError(fm,gp);
+        epml = epm[lmax+ilag] = alignmentError(fp,gm);
+      } else {
+        emp[lmax+ilag] = -empl;
+        epm[lmax+ilag] = -epml;
+      }
+    }
   }
-  */
 
   /////////////////////////////////////////////////////////////////////////
   // private
+
+  private static FaultCell nearestCell(
+      FaultCell c1, FaultCell c2, FaultCell c3, 
+      float p1, float p2, float p3) 
+  {
+    float ds1 = distanceSquared(c1,p1,p2,p3);
+    float ds2 = distanceSquared(c2,p1,p2,p3);
+    float ds3 = distanceSquared(c3,p1,p2,p3);
+    float dsm = min(ds1,ds2,ds3);
+    if (dsm==ds1) { 
+      return c1;
+    } else if (dsm==ds2) {
+      return c2;
+    } else {
+      return c3;
+    }
+  }
+
+  private static float distanceSquared(
+      FaultCell c, float p1, float p2, float p3) {
+    return c!=null ? c.distanceSquaredTo(p1,p2,p3) : Float.MAX_VALUE;
+  }
 
   /**
    * Rotates a specified point by strike (phi) and dip (theta) angles. Uses
@@ -267,6 +421,22 @@ public class FaultCell {
     float y2 = -cp*st*x1+cp*ct*x2+sp*x3;
     float y3 =  sp*st*x1-sp*ct*x2+cp*x3;
     return new float[]{y1,y2,y3};
+  }
+
+  private static float alignmentError(float f, float g) {
+    float fmg = f-g;
+    return fmg*fmg;
+  }
+
+  private static float imageValueAt(
+    float p1, float p2, float p3, float[][][]f) {
+    int n1 = f[0][0].length;
+    int n2 = f[0].length;
+    int n3 = f.length;
+    int i1 = max(0,min(n1-1,round(p1)));
+    int i2 = max(0,min(n2-1,round(p2)));
+    int i3 = max(0,min(n3-1,round(p3)));
+    return f[i3][i2][i1];
   }
 
   private static class FloatList {

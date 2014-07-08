@@ -138,6 +138,7 @@ public class FaultCellGrid {
     return findCellLeftRight(false,cell);
   }
 
+
   ///////////////////////////////////////////////////////////////////////////
   // private
 
