@@ -300,10 +300,11 @@ public class FaultCell {
   /**
    * Returns an array of packed (x,y,z) coordinates for a fault curve.
    * The fault curve is everywhere tangent to fault dip, and contains 
-   * the point for this cell.
+   * the point for this cell. Returned coordinates are not in order.
    * @return array of packed (x,y,z) coordinates.
    */
   public float[] getFaultCurveXyz() {
+    System.out.println("getFaultCurveXyz ...");
     FloatList xyz = new FloatList();
     float[] p = new float[3];
     p[0] = x1; p[1] = x2; p[2] = x3;
@@ -319,24 +320,30 @@ public class FaultCell {
       xyz.add(p[2]); xyz.add(p[1]); xyz.add(p[0]);
       cell = cell.walkDownDipFrom(p);
     }
+    System.out.println("... done");
     return xyz.trim();
   }
 
   /**
    * Returns an array of packed (x,y,z) coordinates for a fault trace.
    * The fault trace is everywhere tangent to fault strike, and contains 
-   * the point for this cell.
+   * the point for this cell. Returned coordinates are not in order.
    * @return array of packed (x,y,z) coordinates.
    */
   public float[] getFaultTraceXyz() {
+    System.out.println("getFaultTraceXyz ...");
     FloatList xyz = new FloatList();
     xyz.add(x3); xyz.add(x2); xyz.add(x1);
-    for (FaultCell c=this.cl; c!=null; c=c.cl) {
+    FaultCell c;
+    for (c=this.cl; c!=null && c!=this; c=c.cl) {
       xyz.add(c.x3); xyz.add(c.x2); xyz.add(c.x1);
     }
-    for (FaultCell c=this.cr; c!=null; c=c.cr) {
-      xyz.add(c.x3); xyz.add(c.x2); xyz.add(c.x1);
+    if (c!=this) { // if we did not end at this cell, ...
+      for (c=this.cr; c!=null && c!=this; c=c.cr) {
+        xyz.add(c.x3); xyz.add(c.x2); xyz.add(c.x1);
+      }
     }
+    System.out.println("... done");
     return xyz.trim();
   }
 
@@ -383,7 +390,7 @@ public class FaultCell {
   }
 
   private static class FloatList {
-    public int n;
+    public int n = 0;
     public float[] a = new float[1024];
     public void add(float f) {
       if (n==a.length) {

@@ -22,6 +22,10 @@ import static fah.FaultGeometry.*;
 
 /**
  * Generates fake seismic data with faults and horizons.
+ * <em>
+ * Jacobians of functions used in folding and faulting have been implemented
+ * but not tested. Therefore, beware of errors in calculated slopes p2 and p3.
+ * </em>
  * @author Dave Hale, Colorado School of Mines
  * @version 2014.06.04
  */
@@ -50,15 +54,16 @@ public class FakeData {
       sp.setSize(700,700);
     } else if (args[0].equals("seismicAndSlopes3d2014A")) {
       String[] sequences = {"OA"};
-      int[] nfaults = {3};
+      int[] nplanars = {0};
       boolean[] conjugates = {false};
+      boolean[] conicals = {true};
       boolean[] impedances = {false};
       boolean[] wavelets = {true};
       double[] noises = {0.5};
       int n = sequences.length;
       for (int i=0; i<n; ++i) {
         float[][][][] f = seismicAndSlopes3d2014A(
-            sequences[i],nfaults[i],conjugates[i],
+            sequences[i],nplanars[i],conjugates[i],conicals[i],
             impedances[i],wavelets[i],noises[i]);
         trace(" f min="+min(f[0])+" max="+max(f[0]));
         trace("p2 min="+min(f[1])+" max="+max(f[1]));
@@ -87,20 +92,25 @@ public class FakeData {
   /**
    * Returns a fake 3D seismic image with slopes.
    * @param noise rms of noise (relative to signal) added to the image.
+   * @return array of arrays {f,p2,p3} with image f and slopes p2 and p3.
    */
   public static float[][][][] seismicAndSlopes3d2014A(double noise) {
-    return seismicAndSlopes3d2014A("OA",3,false,false,true,noise);
+    return seismicAndSlopes3d2014A("OA",3,false,false,false,true,noise);
   }
 
   /**
    * Returns a fake 3D seismic image with slopes.
    * @param sequence string of 'O' and 'A' for fOlding and fAulting.
+   * @param nplanar number of planar faults.
+   * @param conjugate true, to make one of the faults a conjugate fault.
+   * @param conical true, to include a conical fault.
    * @param impedance true, for impedance instead of reflectivity.
    * @param wavelet true, for wavelet; false, for no wavelet.
    * @param noise rms of noise (relative to signal) added to the image.
+   * @return array of arrays {f,p2,p3} with image f and slopes p2 and p3.
    */
   public static float[][][][] seismicAndSlopes3d2014A(
-      String sequence, int nfault, boolean conjugate,
+      String sequence, int nplanar, boolean conjugate, boolean conical,
       boolean impedance, boolean wavelet, double noise) {
     int n1 = 101;
     int n2 = 102;
@@ -138,16 +148,20 @@ public class FakeData {
     float r1a = 0.0f*n1, r2a = 0.4f*n2, r3a = 0.5f*n3;
     float r1b = 0.0f*n1, r2b = 0.1f*n2, r3b = 0.3f*n3;
     float r1c = 0.3f*n1, r2c = 0.7f*n2, r3c = 0.5f*n3;
-    float phia =  10.0f, thetaa = 75.0f; if (conjugate) phia += 180.0f;
-    float phib =  10.0f, thetab = 75.0f;
-    float phic = 190.0f, thetac = 75.0f;
+    float r1d = 0.1f*n1, r2d = 0.5f*n2, r3d = 0.5f*n3;
+    float phia =  22.5f, thetaa = 75.0f; if (conjugate) phia += 180.0f;
+    float phib =  22.5f, thetab = 75.0f;
+    float phic = 202.5f, thetac = 75.0f;
+    float thetad = 75.0f;
     float[] c1 = {0.0f}, c2 = {0.0f}, sc = {20.0f}, hc = {sa*5.0f};
     T2 throwa = new Linear2(0.0f,sa*0.1f,0.0f,0.0f,0.0f,0.0f);
     T2 throwb = new Linear2(0.0f,sa*0.1f,0.0f,0.0f,0.0f,0.0f);
     T2 throwc = new Gaussians2(c1,c2,sc,hc);
+    T1 throwd = new Linear1(0.0f,sa*0.1f);
     PlanarFault3 faulta = new PlanarFault3(r1a,r2a,r3a,phia,thetaa,throwa);
     PlanarFault3 faultb = new PlanarFault3(r1b,r2b,r3b,phib,thetab,throwb);
     PlanarFault3 faultc = new PlanarFault3(r1c,r2c,r3c,phic,thetac,throwc);
+    ConicalFault3 faultd = new ConicalFault3(r1d,r2d,r3d,thetad,throwd);
 
     // Reflectivity or impedance.
     float[][][][] p = makeReflectivityWithNormals(m1,n2,n3);
@@ -160,9 +174,10 @@ public class FakeData {
       if (sequence.charAt(js)=='O') {
         p = apply(shear,p);
       } else if (sequence.charAt(js)=='A') {
-        if (nfault>0) p = apply(faulta,p);
-        if (nfault>1) p = apply(faultb,p);
-        if (nfault>2) p = apply(faultc,p);
+        if (nplanar>0) p = apply(faulta,p);
+        if (nplanar>1) p = apply(faultb,p);
+        if (nplanar>2) p = apply(faultc,p);
+        if (conical) p = apply(faultd,p);
       }
     }
 
@@ -562,7 +577,7 @@ public class FakeData {
      * @param fx2 coordinate x2 of a reference point on the fault.
      * @param fx3 coordinate x3 of a reference point on the fault.
      * @param fphi fault strike, measured in degrees from x3 axis.
-     * @param ftheta fault dip, measured in degrees from x1 axis.
+     * @param ftheta fault dip, measured in degrees from horizontal.
      * @param fthrow fault throw, function of fault-plane coordinates.
      */
     public PlanarFault3(
@@ -651,6 +666,92 @@ public class FakeData {
     private T2 _t2;
     private boolean faulted(float x1, float x2, float x3) {
       return _w0+_w1*x1+_w2*x2+_w3*x3>=0.0f;
+    }
+  }
+
+  /**
+   * A conical fault in a 3D image.
+   */
+  private static class ConicalFault3 implements T3 {
+
+    /**
+     * Constructs a conical fault. The cone geometry is defined by the
+     * location of its apex and by its dip angle. Throw is a function of depth
+     * relative to the apex, where throw must be zero.
+     * @param fa1 coordinate x1 of fault apex.
+     * @param fa2 coordinate x2 of a reference point on the fault.
+     * @param fa3 coordinate x3 of a reference point on the fault.
+     * @param ftheta fault dip, measured in degrees from x1 axis.
+     * @param fthrow fault throw.
+     */
+    public ConicalFault3(
+        float fa1, float fa2, float fa3,
+        float ftheta, T1 fthrow) {
+
+      // Apex of cone, the origin in fault coordinates.
+      _a1 = fa1;
+      _a2 = fa2;
+      _a3 = fa3;
+
+      // Inverse tangent of fault dip.
+      float rtheta = toRadians(ftheta);
+      _ottheta = 1.0f/tan(rtheta);
+
+      // Fault throw.
+      _t1 = fthrow;
+    }
+    public C3 f(float x1, float x2, float x3) {
+      if (faulted(x1,x2,x3)) {
+        x1 -= _a1;
+        x2 -= _a2;
+        x3 -= _a3;
+        float t = _t1.f(x1);
+        float h = t*_ottheta;
+        float xs = 1.0f/sqrt(x2*x2+x3*x3);
+        x1 -= t;
+        x2 -= h*x2*xs;
+        x3 -= h*x3*xs;
+        x1 += _a1;
+        x2 += _a2;
+        x3 += _a3;
+      }
+      return new C3(x1,x2,x3);
+    }
+    public D3 df(float x1, float x2, float x3) {
+      float d11 = 1.0f, d12 = 0.0f, d13 = 0.0f,
+            d21 = 0.0f, d22 = 1.0f, d23 = 0.0f,
+            d31 = 0.0f, d32 = 0.0f, d33 = 1.0f;
+      if (faulted(x1,x2,x3)) {
+        x1 -= _a1;
+        x2 -= _a2;
+        x3 -= _a3;
+        float t = _t1.f(x1);
+        float dt = _t1.df(x1);
+        float h = t*_ottheta;
+        float xs = 1.0f/sqrt(x2*x2+x3*x3);
+        float xs3 = xs*xs*xs;
+        d11 -= dt;
+        d21 -= dt*_ottheta*x2*xs;
+        d22 -= t*_ottheta*x3*x3*xs3;
+        d23 += t*_ottheta*x2*x3*xs3;
+        d31 -= dt*_ottheta*x3*xs;
+        d32 += t*_ottheta*x2*x3*xs3;
+        d33 -= t*_ottheta*x3*x3*xs3;
+      }
+      return new D3(d11,d12,d13,
+                    d21,d22,d23,
+                    d31,d32,d33);
+    }
+    private float _a1,_a2,_a3;
+    private float _ottheta;
+    private T1 _t1;
+    private boolean faulted(float x1, float x2, float x3) {
+      if (x1<=_a1)
+        return false;
+      float d1 = x1-_a1;
+      float d2 = x2-_a2;
+      float d3 = x3-_a3;
+      return d2*d2+d3*d3>d1*d1*_ottheta*_ottheta;
     }
   }
 

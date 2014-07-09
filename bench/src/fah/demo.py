@@ -45,13 +45,14 @@ def goFakeData():
   sequence = 'OA' # 1 episode of folding, followed by one episode of faulting
   #sequence = 'OOOOOAAAAA' # 5 episodes of folding, then 5 of faulting
   #sequence = 'OAOAOAOAOA' # 5 interleaved episodes of folding and faulting
-  nfault = 3
+  nplanar = 0
   conjugate = True
+  conical = True
   impedance = False
   wavelet = True
-  noise = 0.5
+  noise = 0.0
   gx,p2,p3 = FakeData.seismicAndSlopes3d2014A(
-      sequence,nfault,conjugate,impedance,wavelet,noise)
+      sequence,nplanar,conjugate,conical,impedance,wavelet,noise)
   writeImage(gxfile,gx)
   writeImage(p2kfile,p2)
   writeImage(p3kfile,p3)
@@ -145,6 +146,7 @@ def goSkin():
   fp = readImage(fpfile)
   ft = readImage(ftfile)
   fs = FaultSkinner([fl,fp,ft])
+  fs.setGrowLikelihoods(0.2,0.7)
   fs.setMinSkinSize(4000)
   cells = fs.findCells()
   plot3(gx)
@@ -156,8 +158,8 @@ def goSkin():
     print "number of cells in skin",iskin,"=",skin.size()
     #cells = skin.getCells()
     #plot3(gx,cells=cells)
-    plot3(gx,skins=[skin],links=True,curve=True,trace=True)
-  plot3(gx,skins=skins,links=False);
+    plot3(gx,skins=[skin],links=True,curve=False,trace=False)
+  plot3(gx,skins=skins,links=False,curve=True,trace=True);
 
   
 def goDisplay(what):

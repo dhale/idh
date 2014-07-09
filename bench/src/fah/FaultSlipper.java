@@ -56,8 +56,9 @@ public class FaultSlipper {
    * that extrapolated errors can be detected and modified later, after errors
    * for all relevant cells have been computed.
    */
-  void computeErrorsAndInitShifts(FaultCell cell,
-      int lmax, float d, float[][][] f, float[][][] p2, float[][][] p3) {
+  void computeErrorsAndInitShifts(
+      FaultCell cell, int lmax, float d, 
+      float[][][] f, float[][][] p2, float[][][] p3) {
     int n1 = f[0][0].length;
     float[] y = new float[3];
 

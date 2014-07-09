@@ -64,7 +64,7 @@ public class FaultSkinner {
   }
 
   /**
-   * Sets fault likelihood thresholds used when growing skins. Cells in a skin
+   * Sets fault likelihood thresholds used to grow skins. Cells in a skin
    * should have, or be connected to cells that have, high fault likelihoods.
    * All cells in a skin will have fault likelihoods not less than the lower
    * threshold. At least one cell in a skin will have a fault likelihood not
@@ -74,7 +74,7 @@ public class FaultSkinner {
    * @param lowerLikelihood lower threshold for fault likelihood.
    * @param upperLikelihood upper threshold for fault likelihood.
    */
-  public void setGrowingLikelihoods(
+  public void setGrowLikelihoods(
       double lowerLikelihood, double upperLikelihood) {
     Check.argument(lowerLikelihood<=upperLikelihood,
         "lowerLikelihood does not exceed upperLikelihood");
@@ -459,7 +459,7 @@ public class FaultSkinner {
       if (skin.size()>=_ncsmin) {
         bigSkinList.add(skin);
       } else {
-        for (FaultCell cell:skin.cellList)
+        for (FaultCell cell:skin.getCellList())
           cell.skin = null;
       }
     }
