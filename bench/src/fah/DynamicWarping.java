@@ -681,6 +681,17 @@ public class DynamicWarping {
   }
 
   /**
+   * Smooths (and normalizes) alignment errors in only the 1st dimension.
+   * Input and output arrays can be the same array.
+   * @param e input array[n2][n1][nl] of alignment errors.
+   * @param es output array[n2][n1][nl] of smoothed errors.
+   */
+  public void smoothErrors1(float[][][] e, float[][][] es) {
+    smoothErrors1(_bstrain1,e,es);
+    normalizeErrors(es);
+  }
+
+  /**
    * Returns smoothed shifts.
    * @param u array of shifts to be smoothed.
    * @return array of smoothed shifts

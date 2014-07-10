@@ -92,7 +92,7 @@ public class FaultCell {
       uvw.add(w3); uvw.add(w2); uvw.add(w1);
       float fc = cell.fl;
       if (smax<0.0f) {
-        fc = -cell.spm;
+        fc = cell.spm;
       } else if (smax>0.0f) {
         fc = cell.smp;
       }
@@ -104,6 +104,98 @@ public class FaultCell {
     float[] fc = fcl.trim();
     float[] rgb = cmap.getRgbFloats(fc);
     return new float[][]{xyz.trim(),uvw.trim(),rgb};
+  }
+
+  /**
+   * Returns an array of packed (x,y,z) coordinates for a fault curve.
+   * The fault curve is everywhere tangent to fault dip, and contains the
+   * point for this cell. Returned coordinates are in above-to-below order.
+   * @return array of packed (x,y,z) coordinates.
+   */
+  public float[] getFaultCurveXyz() {
+    FloatList xyz = new FloatList();
+    float[] p = new float[3];
+
+    // Find xyz for this cell and above this cell by walking up dip.
+    FaultCell cell = this;
+    p[0] = x1; p[1] = x2; p[2] = x3;
+    for (int j1=cell.i1; j1==cell.i1; --j1) {
+      xyz.add(p[2]); xyz.add(p[1]); xyz.add(p[0]);
+      cell = cell.walkUpDipFrom(p);
+    }
+
+    // Number of xyz found above this cell.
+    int na = xyz.n/3-1;
+
+    // Find xyz for cells below this one by walking down dip.
+    cell = this;
+    p[0] = x1; p[1] = x2; p[2] = x3;
+    cell = cell.walkDownDipFrom(p); // in this walk, skip this cell
+    for (int j1=cell.i1; j1==cell.i1; ++j1) {
+      xyz.add(p[2]); xyz.add(p[1]); xyz.add(p[0]);
+      cell = cell.walkDownDipFrom(p);
+    }
+
+    // Flip the order of all xyz found above this cell while walking up.
+    float[] xyzs = xyz.trim();
+    for (int ia=0,i=ia*3,ja=na-1,j=ja*3; ia<ja; ++ia,i+=3,--ja,j-=3) {
+      float xi = xyzs[i  ];
+      float yi = xyzs[i+1];
+      float zi = xyzs[i+2];
+      xyzs[i  ] = xyzs[j  ];
+      xyzs[i+1] = xyzs[j+1];
+      xyzs[i+2] = xyzs[j+2];
+      xyzs[j  ] = xi;
+      xyzs[j+1] = yi;
+      xyzs[j+2] = zi;
+    }
+    return xyzs;
+  }
+
+  /**
+   * Returns an array of packed (x,y,z) coordinates for a fault trace.
+   * The fault trace is everywhere tangent to fault strike, and contains 
+   * the point for this cell. Returned coordinates are left-to-right order.
+   * @return array of packed (x,y,z) coordinates.
+   */
+  public float[] getFaultTraceXyz() {
+    FloatList xyz = new FloatList();
+
+    // First add coordinates for this cell.
+    xyz.add(x3); xyz.add(x2); xyz.add(x1);
+
+    // Add coordinates for cells to the left of this cell. Take care to handle
+    // the case in which this cell is found while walking left.
+    FaultCell c;
+    for (c=this.cl; c!=null && c!=this; c=c.cl) {
+      xyz.add(c.x3); xyz.add(c.x2); xyz.add(c.x1);
+    }
+
+    // Number of xyz found left of this cell.
+    int nl = xyz.n/3-1;
+
+    // If we did not end at this cell, then add coordinates of cells to
+    // the right of this cell. Again, watch for this cell.
+    if (c!=this) { // if we did not end at this cell, ...
+      for (c=this.cr; c!=null && c!=this; c=c.cr) {
+        xyz.add(c.x3); xyz.add(c.x2); xyz.add(c.x1);
+      }
+    }
+
+    // Flip the order of all xyz found left of this cell.
+    float[] xyzs = xyz.trim();
+    for (int il=0,i=il*3,jl=nl-1,j=jl*3; il<jl; ++il,i+=3,--jl,j-=3) {
+      float xi = xyzs[i  ];
+      float yi = xyzs[i+1];
+      float zi = xyzs[i+2];
+      xyzs[i  ] = xyzs[j  ];
+      xyzs[i+1] = xyzs[j+1];
+      xyzs[i+2] = xyzs[j+2];
+      xyzs[j  ] = xi;
+      xyzs[j+1] = yi;
+      xyzs[j+2] = zi;
+    }
+    return xyzs;
   }
 
   /////////////////////////////////////////////////////////////////////////
@@ -123,7 +215,7 @@ public class FaultCell {
   float[] epm; // array of alignment errors plus-minus
   float smp; // shift from minus side to plus side of cell
   float spm; // shift from plus side to minus side of cell
-  float t1,t2,t3; // fault slip vector
+  float s1,s2,s3; // fault dip-slip vector
 
   FaultCell(float x1, float x2, float x3, float fl, float fp, float ft) {
     this.x1 = x1; 
@@ -308,52 +400,6 @@ public class FaultCell {
     p[1] = p2;
     p[2] = p3;
     return cell;
-  }
-
-  /**
-   * Returns an array of packed (x,y,z) coordinates for a fault curve.
-   * The fault curve is everywhere tangent to fault dip, and contains 
-   * the point for this cell. Returned coordinates are not in order.
-   * @return array of packed (x,y,z) coordinates.
-   */
-  public float[] getFaultCurveXyz() {
-    FloatList xyz = new FloatList();
-    float[] p = new float[3];
-    p[0] = x1; p[1] = x2; p[2] = x3;
-    FaultCell cell = this;
-    for (int j1=cell.i1; j1==cell.i1; --j1) {
-      xyz.add(p[2]); xyz.add(p[1]); xyz.add(p[0]);
-      cell = cell.walkUpDipFrom(p);
-    }
-    cell = this;
-    p[0] = x1; p[1] = x2; p[2] = x3;
-    cell = cell.walkDownDipFrom(p);
-    for (int j1=cell.i1; j1==cell.i1; ++j1) {
-      xyz.add(p[2]); xyz.add(p[1]); xyz.add(p[0]);
-      cell = cell.walkDownDipFrom(p);
-    }
-    return xyz.trim();
-  }
-
-  /**
-   * Returns an array of packed (x,y,z) coordinates for a fault trace.
-   * The fault trace is everywhere tangent to fault strike, and contains 
-   * the point for this cell. Returned coordinates are not in order.
-   * @return array of packed (x,y,z) coordinates.
-   */
-  public float[] getFaultTraceXyz() {
-    FloatList xyz = new FloatList();
-    xyz.add(x3); xyz.add(x2); xyz.add(x1);
-    FaultCell c;
-    for (c=this.cl; c!=null && c!=this; c=c.cl) {
-      xyz.add(c.x3); xyz.add(c.x2); xyz.add(c.x1);
-    }
-    if (c!=this) { // if we did not end at this cell, ...
-      for (c=this.cr; c!=null && c!=this; c=c.cr) {
-        xyz.add(c.x3); xyz.add(c.x2); xyz.add(c.x1);
-      }
-    }
-    return xyz.trim();
   }
 
   /////////////////////////////////////////////////////////////////////////

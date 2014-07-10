@@ -16,7 +16,7 @@ import static edu.mines.jtk.util.ArrayMath.*;
 import static fah.FaultGeometry.*;
 
 /**
- * Uses image samples alongside fault skins to estimate fault dip slips.
+ * Uses image samples alongside fault skins to estimate fault dip-slips.
  *
  * @author Dave Hale, Colorado School of Mines
  * @version 2014.07.05
@@ -24,28 +24,54 @@ import static fah.FaultGeometry.*;
 public class FaultSlipper {
 
   /**
-   * Computes fault shifts for all cells in the specified skin.
+   * Constructs a fault slipper for the specified seismic image and slopes.
+   * @param gs seismic image, smoothed up to (but not across) faults.
+   * @param p2 slopes in the 2nd dimension.
+   * @param p3 slopes in the 3rd dimension.
    */
-  public void computeShifts(
-      FaultSkin skin, double smax, 
-      float[][][] f, float[][][] p2, float[][][] p3) {
-    int lmax = (int)abs(smax); // DynamicWarping needs an integer limit
+  public FaultSlipper(float[][][] gs, float[][][] p2, float[][][] p3) {
+    _gs = gs;
+    _p2 = p2;
+    _p3 = p3;
+  }
+
+  /**
+   * Computes fault shifts for all cells in the specified skins.
+   * @param skins array of skins for which to compute shifts.
+   * @param smax maximum shift, in samples.
+   */
+  public void computeShifts(FaultSkin[] skins, double smax) {
+    for (FaultSkin skin:skins)
+      computeShifts(skin,smax);
+  }
+
+  /**
+   * Computes fault shifts for all cells in the specified skin.
+   * @param skin the skin for which to compute shifts.
+   * @param smax maximum shift, in samples.
+   */
+  public void computeShifts(FaultSkin skin, double smax) {
+    Check.argument(smax>=0.0f,"smax not less than zero");
+    int lmax = round((float)smax); // DynamicWarping needs an integer limit
     float d = 2.0f; // use image values two samples away from fault
     FaultCell[][] cab = skin.getCellsAB();
     FaultCell[][] clr = skin.getCellsLR();
-    computeErrorsAndInitShifts(skin,lmax,d,f,p2,p3);
+    computeErrorsAndInitShifts(skin,lmax,d,_gs,_p2,_p3);
     extrapolateErrors(cab);
     DynamicWarping dw = new DynamicWarping(-lmax,lmax);
     dw.setStrainMax(0.25,0.25);
     findShiftsMP(dw,cab,clr);
     findShiftsPM(dw,cab,clr);
-    filterShifts(skin);
-    smoothShifts(skin);
-    smoothShifts(skin);
+    clearErrors(skin);
+    cleanShifts(skin); // TODO: does this help?
+    for (int nsmooth=0; nsmooth<2; ++nsmooth) // TODO: two smoothings?
+      smoothShifts(skin);
   }
 
   ///////////////////////////////////////////////////////////////////////////
   // private
+
+  private float[][][] _gs,_p2,_p3; // seismic image (smoothed) and slopes
 
   /**
    * Computes alignment errors and initializes shifts for specified skin.
@@ -202,7 +228,7 @@ public class FaultSlipper {
           emp[jab][ilagm] = empim;
           epm[jab][ilagm] = epmim;
 
-          // Extrapolate for positive lags.
+          // Extrapolate for positive lags, as for negative lags.
           float empip = emp[jab][ilagp];
           float epmip = epm[jab][ilagp];
           for (int kab=jab; kab>=0 && empip<0.0f; --kab)
@@ -224,22 +250,20 @@ public class FaultSlipper {
       DynamicWarping dw, FaultCell[][] cab, FaultCell[][] clr) {
     findShifts(dw,true,cab,clr);
   }
-
   private static void findShiftsPM(
       DynamicWarping dw, FaultCell[][] cab, FaultCell[][] clr) {
     findShifts(dw,false,cab,clr);
   }
-
   private static void findShifts(
-      DynamicWarping dw, boolean mp, FaultCell[][] clr, FaultCell[][] cab) {
+      DynamicWarping dw, boolean mp, FaultCell[][] cab, FaultCell[][] clr) {
 
     // Arrays of arrays of errors, linked above and below.
     int nab = cab.length;
     float[][][] eab = new float[nab][][];
     for (int iab=0; iab<nab; ++iab) {
-      int lab = cab[iab].length;
-      eab[iab] = new float[lab][];
-      for (int jab=0; jab<lab; ++jab) {
+      int mab = cab[iab].length;
+      eab[iab] = new float[mab][];
+      for (int jab=0; jab<mab; ++jab) {
         FaultCell c = cab[iab][jab];
         eab[iab][jab] = mp?c.emp:c.epm;
       }
@@ -249,28 +273,27 @@ public class FaultSlipper {
     int nlr = clr.length;
     float[][][] elr = new float[nlr][][];
     for (int ilr=0; ilr<nlr; ++ilr) {
-      int llr = clr[ilr].length;
-      elr[ilr] = new float[llr][];
-      for (int jlr=0; jlr<llr; ++jlr) {
+      int mlr = clr[ilr].length;
+      elr[ilr] = new float[mlr][];
+      for (int jlr=0; jlr<mlr; ++jlr) {
         FaultCell c = clr[ilr][jlr];
         elr[ilr][jlr] = mp?c.emp:c.epm;
       }
     }
 
     // Smooth alignment errors in above-below and left-right directions.
+    // Two smoothings in both directions has often worked well.
     for (int ismooth=0; ismooth<2; ++ismooth) {
-      for (float[][] eabi:eab)
-        dw.smoothErrors(eabi,eabi);
-      for (float[][] elri:elr)
-        dw.smoothErrors(elri,elri);
+      dw.smoothErrors1(eab,eab);
+      dw.smoothErrors1(elr,elr);
     }
 
     // Find shifts by accumulating once more and then backtracking.
     for (int iab=0; iab<nab; ++iab) {
       float[][] dab = dw.accumulateForward(eab[iab]);
       float[] s = dw.backtrackReverse(dab,eab[iab]);
-      int lab = s.length;
-      for (int jab=0; jab<lab; ++jab) {
+      int mab = s.length;
+      for (int jab=0; jab<mab; ++jab) {
         FaultCell c = cab[iab][jab];
         if (mp) {
           c.smp += s[jab];
@@ -303,12 +326,29 @@ public class FaultSlipper {
     }
   }
 
-  private static void filterShifts(FaultSkin skin) {
+  // Minus-plus and plus-minus shifts need not have equal magnitudes, but they
+  // should have opposite signs. If they have the same sign, we get suspicous,
+  // and assume a normal fault with positive smp and negative spm.
+  // TODO: can we do better than this?
+  private static void cleanShifts(FaultSkin skin) {
     for (FaultCell cell:skin) {
-      if (cell.smp*cell.spm>0.0f) {
-        cell.smp = 0.0f;
-        cell.spm = 0.0f;
+      float smp = cell.smp;
+      float spm = cell.spm;
+      if (smp*spm>0.0f) {
+        if (spm>0.0f)
+          spm = -smp;
+        if (smp<0.0f)
+          smp = -spm;
+        cell.smp = smp;
+        cell.spm = spm;
       }
+    }
+  }
+
+  private static void clearErrors(FaultSkin skin) {
+    for (FaultCell cell:skin) {
+      cell.emp = null;
+      cell.epm = null;
     }
   }
 

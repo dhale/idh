@@ -38,7 +38,6 @@ def main(args):
   #goThin()
   #goSmooth()
   goSkin()
-  #goSurfing()
   #goDisplay("gx")
 
 def goFakeData():
@@ -129,7 +128,7 @@ def goThin():
 
 def goSmooth():
   print "goSmooth ..."
-  flstop = 0.25
+  flstop = 0.1
   fsigma = 16.0
   gx = readImage(gxfile)
   fl = readImage(fltfile)
@@ -157,17 +156,15 @@ def goSkin():
   plot3(gx,cells=cells)
   print "total number of cells =",len(cells)
   skins = fs.findSkins(cells)
-  fs = FaultSlipper()
-  smax = 20.0
+  fs = FaultSlipper(gsx,p2,p3)
   print "total number of skins =",len(skins)
   for iskin,skin in enumerate(skins):
     print "number of cells in skin",iskin,"=",skin.size()
-    #cells = skin.getCells()
-    #plot3(gx,cells=cells)
-    fs.computeShifts(skin,smax,gsx,p2,p3)
+    fs.computeShifts(skin,20.0)
     plot3(gx,skins=[skin],links=True,curve=False,trace=False)
-  plot3(gx,skins=skins,links=False,curve=True,trace=True);
-  plot3(gx,skins=skins,smax=10.0);
+  plot3(gx,skins=skins,links=False,curve=True,trace=True)
+  plot3(gx,skins=skins,smax=-10.0)
+  plot3(gx,skins=skins,smax=10.0)
   
 def goDisplay(what):
   def show2(g1,g2):
@@ -299,11 +296,11 @@ def plot3(f,g=None,cmin=None,cmax=None,cmap=None,
       size = 0.5 
     for skin in skins:
       if smax>0.0:
-        cmap = ColorMap(0.0,smax,ColorMap.JET)
+        cmap = ColorMap(0.0,smax,ColorMap.JET) # shifts smp
       elif smax<0.0:
-        cmap = ColorMap(smax,0.0,ColorMap.JET)
+        cmap = ColorMap(smax,0.0,ColorMap.JET) # shifts spm
       else:
-        cmap = ColorMap(0.0,1.0,ColorMap.JET)
+        cmap = ColorMap(0.0,1.0,ColorMap.JET) # fault likelihoods
       xyz,uvw,rgb = skin.getCellXyzUvwRgb(size,smax,cmap)
       qg = QuadGroup(xyz,uvw,rgb)
       qg.setStates(None)
@@ -329,9 +326,11 @@ def plot3(f,g=None,cmin=None,cmax=None,cmap=None,
   vc = sf.getViewCanvas()
   ov = sf.getOrbitView()
   vc.setBackground(Color.WHITE)
+  radius = 0.5*sqrt(n1*n1+n2*n2+n3*n3)
+  ov.setWorldSphere(BoundingSphere(0.5*n1,0.5*n2,0.5*n3,radius))
   ov.setAzimuthAndElevation(-55.0,25.0)
-  ov.setTranslate(Vector3(-0.0677,-0.0421,-0.0445))
-  ov.setScale(2.2)
+  ov.setTranslate(Vector3(0.0241,0.0517,0.0103))
+  ov.setScale(1.2)
 
 #############################################################################
 run(main)

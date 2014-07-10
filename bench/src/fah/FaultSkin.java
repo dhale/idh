@@ -63,7 +63,6 @@ public class FaultSkin implements Iterable<FaultCell> {
     ArrayList<FaultCell[]> cellsList = new ArrayList<FaultCell[]>();
 
     // For all cells in this skin, ...
-    int ncellAdded = 0;
     for (FaultCell cell:_cellList) {
 
       // If the cell is not already in an array, ...
@@ -79,7 +78,6 @@ public class FaultSkin implements Iterable<FaultCell> {
         for (; c!=null; c=c.cb) {
           cList.add(c);
           cellSet.add(c);
-          ++ncellAdded;
         }
 
         // Convert the list to an array and add it to the list of arrays.
@@ -109,19 +107,19 @@ public class FaultSkin implements Iterable<FaultCell> {
       // If the cell is not already in an array, ...
       if (!cellSet.contains(cell)) {
 
-        // Search left until we have no left nabor or until we return
-        // to the cell with which we began, as for a conical fault.
+        // Search left until we find no left nabor or until that left
+        // nabor is the cell with which we began the search.
         FaultCell c = cell;
-        for (FaultCell cl=c.cl; cl!=null && c!=cell; cl=c.cl)
+        for (FaultCell cl=c.cl; cl!=null && cl!=cell; cl=c.cl)
           c = cl;
 
         // Remember the leftmost cell found and add it to a new list.
         FaultCell cLeft = c;
         ArrayList<FaultCell> cList = new ArrayList<FaultCell>();
-        cList.add(cLeft);
-        cellSet.add(cLeft);
+        cList.add(c);
+        cellSet.add(c);
 
-        // Add cells to the right. Again beware of cycles.
+        // Add cells found to the right. Again beware of cycles.
         for (c=c.cr; c!=null && c!=cLeft; c=c.cr) {
           cList.add(c);
           cellSet.add(c);
@@ -131,9 +129,11 @@ public class FaultSkin implements Iterable<FaultCell> {
         cellsList.add(cList.toArray(new FaultCell[0]));
       }
     }
+    assert _cellList.size()==cellSet.size();
 
     // Convert the list of arrays to the array of arrays to be returned.
     _cellsLR = cellsList.toArray(new FaultCell[0][]);
+    checkCellArrays(_cellsLR);
     return _cellsLR;
   }
 
@@ -199,10 +199,13 @@ public class FaultSkin implements Iterable<FaultCell> {
     float[][] rgb = new float[ns][];
     for (int is=0; is<ns; ++is) { // for all segments, ...
       FaultCell[] cells = (is<nsAB)?cellsAB[is]:cellsLR[is-nsAB]; // the cells
-      int np = cells.length; // number of points in this segment
+      int ncell = cells.length; // number of cells in this segment
+      int np = ncell; // number of points in this segment
+      if (is>=nsAB && cells[0].cl==cells[ncell-1]) // if a LR cycle, ...
+        ++np; // then add one more so we end with the starting point
       float[] xyzi = new float[3*np]; // xyz for this segment
       for (int ip=0,ic=0; ip<np; ++ip) {
-        FaultCell cell = cells[ip];
+        FaultCell cell = cells[ip%ncell];
         xyzi[ic++] = cell.x3;
         xyzi[ic++] = cell.x2;
         xyzi[ic++] = cell.x1;
@@ -243,6 +246,25 @@ public class FaultSkin implements Iterable<FaultCell> {
   private ArrayList<FaultCell> _cellList; // list of cells in this skin
   private FaultCell[][] _cellsAB; // arrays of cells from above to below
   private FaultCell[][] _cellsLR; // arrays of cells from left to right
+
+  private void checkCellArrays() {
+    if (_cellsAB!=null)
+      checkCellArrays(_cellsAB);
+    if (_cellsLR!=null)
+      checkCellArrays(_cellsLR);
+  }
+
+  private static void checkCellArrays(FaultCell[][] cells) {
+    HashSet<FaultCell> cellSet = new HashSet<FaultCell>();
+    int ncell = cells.length;
+    for (int icell=0; icell<ncell; ++icell) {
+      int mcell = cells[icell].length;
+      for (int jcell=0; jcell<mcell; ++jcell) {
+        FaultCell c = cells[icell][jcell];
+        assert cellSet.add(c);
+      }
+    }
+  }
 
   private static void trace(String s) {
     System.out.println(s);
