@@ -23,29 +23,46 @@ import static fah.FaultGeometry.*;
  */
 public class FaultSlipper {
 
-  public FaultSlipper(FaultSkin[] skins) {
-    _skinList = new ArrayList<FaultSkin>(skins.length);
-    for (FaultSkin skin:skins)
-      _skinList.add(skin);
+  /**
+   * Computes fault shifts for all cells in the specified skin.
+   */
+  public void computeShifts(
+      FaultSkin skin, double smax, 
+      float[][][] f, float[][][] p2, float[][][] p3) {
+    int lmax = (int)abs(smax); // DynamicWarping needs an integer limit
+    float d = 2.0f; // use image values two samples away from fault
+    FaultCell[][] cab = skin.getCellsAB();
+    FaultCell[][] clr = skin.getCellsLR();
+    computeErrorsAndInitShifts(skin,lmax,d,f,p2,p3);
+    extrapolateErrors(cab);
+    DynamicWarping dw = new DynamicWarping(-lmax,lmax);
+    dw.setStrainMax(0.25,0.25);
+    findShiftsMP(dw,cab,clr);
+    findShiftsPM(dw,cab,clr);
+    filterShifts(skin);
+    smoothShifts(skin);
+    smoothShifts(skin);
   }
 
   ///////////////////////////////////////////////////////////////////////////
   // private
 
-  private ArrayList<FaultSkin> _skinList;
-
-  private void computeErrorsAndInitShifts(
-      int lmax, float d, float[][][] f, float[][][] p2, float[][][] p3) {
-    for (FaultSkin skin:_skinList) {
-    }
+  /**
+   * Computes alignment errors and initializes shifts for specified skin.
+   */
+  private static void computeErrorsAndInitShifts(
+      FaultSkin skin, int lmax, float d, 
+      float[][][] f, float[][][] p2, float[][][] p3) {
+    for (FaultCell cell:skin)
+      computeErrorsAndInitShifts(cell,lmax,d,f,p2,p3);
   }
 
   /**
-   * Computes alignment errors and initializes shifts for this cell. Computes
+   * Computes alignment errors and initializes shifts for one cell. Computes
    * both minus-plus (emp) and plus-minus (epm) errors. The minus-plus errors
    * correspond to differences between the sample value on the minus side of
-   * this cell and those for the plus sides of cells up and down dip from this
-   * cell. The plus-minus errors are similarly defined. 
+   * the cell and those for the plus sides of cells up and down dip from the
+   * cell. The plus-minus errors are similarly defined for opposite sides.
    * <p> 
    * This method uses specified slopes to initialize both minus-plus and
    * plus-minus shifts to compensate for the fact that shifts are estimated
@@ -56,15 +73,15 @@ public class FaultSlipper {
    * that extrapolated errors can be detected and modified later, after errors
    * for all relevant cells have been computed.
    */
-  void computeErrorsAndInitShifts(
+  private static void computeErrorsAndInitShifts(
       FaultCell cell, int lmax, float d, 
       float[][][] f, float[][][] p2, float[][][] p3) {
     int n1 = f[0][0].length;
     float[] y = new float[3];
 
     // New arrays for alignment errors.
-    cell.emp = new float[lmax+1+lmax];
-    cell.epm = new float[lmax+1+lmax];
+    float[] emp = cell.emp = new float[lmax+1+lmax];
+    float[] epm = cell.epm = new float[lmax+1+lmax];
 
     // Errors for lag zero.
     float d2 =  d*cell.v3;
@@ -78,8 +95,8 @@ public class FaultSlipper {
     float p2p = imageValueAt(y1,y2+d2,y3+d3,p2);
     float p3m = imageValueAt(y1,y2-d2,y3-d3,p3);
     float p3p = imageValueAt(y1,y2+d2,y3+d3,p3);
-    float empl = cell.emp[lmax] = alignmentError(fm,gp);
-    float epml = cell.epm[lmax] = alignmentError(fp,gm);
+    float empl = emp[lmax] = alignmentError(fm,gp);
+    float epml = epm[lmax] = alignmentError(fp,gm);
 
     // Initial shifts compensate for horizontal distance d.
     float s23 = d*((p2m+p2p)*cell.w2+(p3m+p3p)*cell.w3);
@@ -99,11 +116,11 @@ public class FaultSlipper {
         d3 = -d*ca.v2;
         gm = imageValueAt(y1,y2-d2,y3-d3,f);
         gp = imageValueAt(y1,y2+d2,y3+d3,f);
-        empl = ca.emp[lmax-ilag] = alignmentError(fm,gp);
-        epml = ca.epm[lmax-ilag] = alignmentError(fp,gm);
+        empl = emp[lmax-ilag] = alignmentError(fm,gp);
+        epml = epm[lmax-ilag] = alignmentError(fp,gm);
       } else {
-        ca.emp[lmax-ilag] = -empl;
-        ca.epm[lmax-ilag] = -epml;
+        emp[lmax-ilag] = -empl;
+        epm[lmax-ilag] = -epml;
       }
     }
 
@@ -120,11 +137,11 @@ public class FaultSlipper {
         d3 = -d*cb.v2;
         gm = imageValueAt(y1,y2-d2,y3-d3,f);
         gp = imageValueAt(y1,y2+d2,y3+d3,f);
-        empl = cb.emp[lmax+ilag] = alignmentError(fm,gp);
-        epml = cb.epm[lmax+ilag] = alignmentError(fp,gm);
+        empl = emp[lmax+ilag] = alignmentError(fm,gp);
+        epml = epm[lmax+ilag] = alignmentError(fp,gm);
       } else {
-        cb.emp[lmax+ilag] = -empl;
-        cb.epm[lmax+ilag] = -epml;
+        emp[lmax+ilag] = -empl;
+        epm[lmax+ilag] = -epml;
       }
     }
   }
@@ -146,26 +163,25 @@ public class FaultSlipper {
    * already stored in the cells, but are negative, so in this second
    * extrapolation we simply change their sign.
    */
-  /*
   private static void extrapolateErrors(FaultCell[][] cab) {
-    int mns = qns.length;
+    int nab = cab.length;
 
-    // For all arrays of quads linked north-south, ...
-    for (int ins=0; ins<mns; ++ins) {
-      int lns = qns[ins].length;
-      float[][] emp = new float[lns][];
-      float[][] epm = new float[lns][];
+    // For all arrays of cells linked above-below, ...
+    for (int iab=0; iab<nab; ++iab) {
+      int mab = cab[iab].length;
+      float[][] emp = new float[mab][];
+      float[][] epm = new float[mab][];
 
-      // Get arrays of errors for all quads in the array.
-      for (int jns=0; jns<lns; ++jns) {
-        Vert v = qns[ins][jns].getVert();
-        emp[jns] = v.emp;
-        epm[jns] = v.epm;
+      // Get arrays of errors for all cells in the array.
+      for (int jab=0; jab<mab; ++jab) {
+        FaultCell c = cab[iab][jab];
+        emp[jab] = c.emp;
+        epm[jab] = c.epm;
       }
       int lmax = (emp[0].length-1)/2;
 
       // For each array of errors, ...
-      for (int jns=0; jns<lns; ++jns) {
+      for (int jab=0; jab<mab; ++jab) {
 
         // For all lags, negative and positive, ...
         for (int ilag=1; ilag<=lmax; ++ilag) {
@@ -173,37 +189,128 @@ public class FaultSlipper {
           int ilagp = lmax+ilag;
 
           // Extrapolate for negative lags.
-          float empim = emp[jns][ilagm];
-          float epmim = epm[jns][ilagm];
-          for (int kns=jns; kns<lns && empim<0.0f; ++kns)
-            if (emp[kns][ilagm]>=0.0f)
-              empim = emp[kns][ilagm];
-          for (int kns=jns; kns<lns && epmim<0.0f; ++kns)
-            if (epm[kns][ilagm]>=0.0f)
-              epmim = epm[kns][ilagm];
-          if (empim<0.0f) empim = -empim;
-          if (epmim<0.0f) epmim = -epmim;
-          emp[jns][ilagm] = empim;
-          epm[jns][ilagm] = epmim;
+          float empim = emp[jab][ilagm];
+          float epmim = epm[jab][ilagm];
+          for (int kab=jab; kab<mab && empim<0.0f; ++kab)
+            if (emp[kab][ilagm]>=0.0f) // if we find a good emp for this lag,
+              empim = emp[kab][ilagm]; // remember it for use below
+          for (int kab=jab; kab<mab && epmim<0.0f; ++kab)
+            if (epm[kab][ilagm]>=0.0f) // same thing for a good epm
+              epmim = epm[kab][ilagm];
+          if (empim<0.0f) empim = -empim; // if no good emp, use what we have
+          if (epmim<0.0f) epmim = -epmim; // likewise if no good epm
+          emp[jab][ilagm] = empim;
+          epm[jab][ilagm] = epmim;
 
           // Extrapolate for positive lags.
-          float empip = emp[jns][ilagp];
-          float epmip = epm[jns][ilagp];
-          for (int kns=jns; kns>=0 && empip<0.0f; --kns)
-            if (emp[kns][ilagp]>=0.0f)
-              empip = emp[kns][ilagp];
-          for (int kns=jns; kns>=0 && epmip<0.0f; --kns)
-            if (epm[kns][ilagp]>=0.0f)
-              epmip = epm[kns][ilagp];
+          float empip = emp[jab][ilagp];
+          float epmip = epm[jab][ilagp];
+          for (int kab=jab; kab>=0 && empip<0.0f; --kab)
+            if (emp[kab][ilagp]>=0.0f)
+              empip = emp[kab][ilagp];
+          for (int kab=jab; kab>=0 && epmip<0.0f; --kab)
+            if (epm[kab][ilagp]>=0.0f)
+              epmip = epm[kab][ilagp];
           if (empip<0.0f) empip = -empip;
           if (epmip<0.0f) epmip = -epmip;
-          emp[jns][ilagp] = empip;
-          epm[jns][ilagp] = epmip;
+          emp[jab][ilagp] = empip;
+          epm[jab][ilagp] = epmip;
         }
       }
     }
   }
-  */
+
+  private static void findShiftsMP(
+      DynamicWarping dw, FaultCell[][] cab, FaultCell[][] clr) {
+    findShifts(dw,true,cab,clr);
+  }
+
+  private static void findShiftsPM(
+      DynamicWarping dw, FaultCell[][] cab, FaultCell[][] clr) {
+    findShifts(dw,false,cab,clr);
+  }
+
+  private static void findShifts(
+      DynamicWarping dw, boolean mp, FaultCell[][] clr, FaultCell[][] cab) {
+
+    // Arrays of arrays of errors, linked above and below.
+    int nab = cab.length;
+    float[][][] eab = new float[nab][][];
+    for (int iab=0; iab<nab; ++iab) {
+      int lab = cab[iab].length;
+      eab[iab] = new float[lab][];
+      for (int jab=0; jab<lab; ++jab) {
+        FaultCell c = cab[iab][jab];
+        eab[iab][jab] = mp?c.emp:c.epm;
+      }
+    }
+
+    // Arrays of arrays of errors, linked left and right.
+    int nlr = clr.length;
+    float[][][] elr = new float[nlr][][];
+    for (int ilr=0; ilr<nlr; ++ilr) {
+      int llr = clr[ilr].length;
+      elr[ilr] = new float[llr][];
+      for (int jlr=0; jlr<llr; ++jlr) {
+        FaultCell c = clr[ilr][jlr];
+        elr[ilr][jlr] = mp?c.emp:c.epm;
+      }
+    }
+
+    // Smooth alignment errors in above-below and left-right directions.
+    for (int ismooth=0; ismooth<2; ++ismooth) {
+      for (float[][] eabi:eab)
+        dw.smoothErrors(eabi,eabi);
+      for (float[][] elri:elr)
+        dw.smoothErrors(elri,elri);
+    }
+
+    // Find shifts by accumulating once more and then backtracking.
+    for (int iab=0; iab<nab; ++iab) {
+      float[][] dab = dw.accumulateForward(eab[iab]);
+      float[] s = dw.backtrackReverse(dab,eab[iab]);
+      int lab = s.length;
+      for (int jab=0; jab<lab; ++jab) {
+        FaultCell c = cab[iab][jab];
+        if (mp) {
+          c.smp += s[jab];
+        } else {
+          c.spm += s[jab];
+        }
+      }
+    }
+  }
+
+  private static void smoothShifts(FaultSkin skin) {
+    FaultCell[] cellNabors = new FaultCell[4];
+    for (FaultCell cell:skin) {
+      float smp = 0.0f;
+      float spm = 0.0f;
+      float css = 0.0f;
+      cellNabors[0] = cell.ca;
+      cellNabors[1] = cell.cb;
+      cellNabors[2] = cell.cl;
+      cellNabors[3] = cell.cr;
+      for (FaultCell cellNabor:cellNabors) {
+        if (cellNabor!=null) {
+          smp += cell.smp+cellNabor.smp;
+          spm += cell.spm+cellNabor.spm;
+          css += 2.0f;
+        }
+      }
+      cell.smp = smp/css;
+      cell.spm = spm/css;
+    }
+  }
+
+  private static void filterShifts(FaultSkin skin) {
+    for (FaultCell cell:skin) {
+      if (cell.smp*cell.spm>0.0f) {
+        cell.smp = 0.0f;
+        cell.spm = 0.0f;
+      }
+    }
+  }
 
   private static float alignmentError(float f, float g) {
     float fmg = f-g;
@@ -219,5 +326,9 @@ public class FaultSlipper {
     int i2 = max(0,min(n2-1,round(p2)));
     int i3 = max(0,min(n3-1,round(p3)));
     return f[i3][i2][i1];
+  }
+
+  private static void trace(String s) {
+    System.out.println(s);
   }
 }

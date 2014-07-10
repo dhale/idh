@@ -251,65 +251,17 @@ public class FaultScanner {
     removeEdgeEffects(flptn);
     return flptn;
   }
-  public static float[][][][] thinX(float[][][][] flpt) {
-    int n1 = n1(flpt);
-    int n2 = n2(flpt);
-    int n3 = n3(flpt);
-    float[][][] f = flpt[0];
-    float[][][] p = flpt[1];
-    float[][][] t = flpt[2];
-    f = copy(f);
-    RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(1.0);
-    rgf.applyX0X(f,f);
-    rgf.applyXX0(f,f);
-    float[][][] ff = new float[n3][n2][n1];
-    float[][][] pp = new float[n3][n2][n1];
-    float[][][] tt = new float[n3][n2][n1];
-    for (int i3=0; i3<n3; ++i3) {
-      int i3m = max(i3-1,0);
-      int i3p = min(i3+1,n3-1);
-      for (int i2=0; i2<n2; ++i2) {
-        int i2m = max(i2-1,0);
-        int i2p = min(i2+1,n2-1);
-        float[] fmi = f[i3m][i2 ];
-        float[] fim = f[i3 ][i2m];
-        float[] fii = f[i3 ][i2 ];
-        float[] fip = f[i3 ][i2p];
-        float[] fpi = f[i3p][i2 ];
-        float[] fpp = f[i3p][i2p];
-        float[] pii = p[i3 ][i2 ];
-        float[] tii = t[i3 ][i2 ];
-        for (int i1=0; i1<n1; ++i1) {
-          float fiii = fii[i1];
-          float piii = pii[i1];
-          float tiii = tii[i1];
-          if ((                piii<= 45.0f && fim[i1]<fiii && fip[i1]<fiii) ||
-              ( 45.0f<=piii && piii<=135.0f && fpi[i1]<fiii && fmi[i1]<fiii) ||
-              (135.0f<=piii && piii<=225.0f && fip[i1]<fiii && fim[i1]<fiii) ||
-              (225.0f<=piii && piii<=315.0f && fmi[i1]<fiii && fpi[i1]<fiii) ||
-              (315.0f<=piii                 && fim[i1]<fiii && fip[i1]<fiii)) {
-            ff[i3][i2][i1] = fiii;
-            pp[i3][i2][i1] = piii;
-            tt[i3][i2][i1] = tiii;
-          }
-        }
-      }
-    }
-    float[][][][] flptn = new float[][][][]{ff,pp,tt};
-    removeEdgeEffects(flptn);
-    return flptn;
-  }
 
   /**
    * Applies structure-oriented smoothing limited by fault likelihoods.
-   * For this method, faults are assumed to exist and smoothing is limited
+   * For this method, faults are assumed to exist and smoothing stops
    * at samples where fault likelihood exceeds a specified value.
    * This methods is usually applied using thinned fault likelihoods.
    * @param flstop smoothing stops where fault likelihood &gt; this value.
-   * @param sigma half-width of smoothing (except near faults).
+   * @param sigma smoothing radius (except near faults).
    * @param p2 array of slopes in 2nd dimension.
    * @param p3 array of slopes in 3rd dimension.
-   * @param fl array of fault likelihoods, typically after thinning.
+   * @param fl array of fault likelihoods, typically thinned.
    * @param g image to be smoothed.
    */
   public static float[][][] smooth(

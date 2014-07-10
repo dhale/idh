@@ -40,12 +40,19 @@ import static fah.FaultGeometry.*;
 public class FaultCell {
 
   /**
-   * Gets arrays {xyz,uvw,rgb} of cell coordinates, normals and colors.
-   * In these arrays, cells are represented by quads with specified size.
+   * Gets arrays {xyz,uvw,rgb} of cell coordinates, normals and colors. In
+   * these arrays, the specified cells are represented by quads with specified
+   * size, and colors corresponding to fault likelihoods or shifts.
    * @param size the size (in samples) of the quads.
+   * @param smax if zero, colors correspond to fault likelihoods with a
+   * maximum value of 1. If positive, colors correspond to minus-plus shifts
+   * with the specified maximum shift. If negative, colors correspond to
+   * plus-minus shifts with minimum equal to the specified shift.
+   * @param cmap the colormap used to compute rgb colors from floats.
    * @param cells the cells for which to compute quads.
    */
-  public static float[][] getXyzUvwRgb(float size, FaultCell[] cells) {
+  public static float[][] getXyzUvwRgb(
+      float size, float smax, ColorMap cmap, FaultCell[] cells) {
     FloatList xyz = new FloatList();
     FloatList uvw = new FloatList();
     FloatList fcl = new FloatList();
@@ -61,7 +68,6 @@ public class FaultCell {
       float w1 = cell.w1;
       float w2 = cell.w2;
       float w3 = cell.w3;
-      float fl = cell.fl;
       float fp = toRadians(cell.fp);
       float ft = toRadians(cell.ft);
       float cp = cos(fp);
@@ -76,19 +82,26 @@ public class FaultCell {
       float b1 = x1+rb[0], b2 = x2+rb[1], b3 = x3+rb[2];
       float c1 = x1+rc[0], c2 = x2+rc[1], c3 = x3+rc[2];
       float d1 = x1+rd[0], d2 = x2+rd[1], d3 = x3+rd[2];
-      xyz.add(a3); xyz.add(a2); xyz.add(a1); fcl.add(fl);
-      xyz.add(b3); xyz.add(b2); xyz.add(b1); fcl.add(fl);
-      xyz.add(c3); xyz.add(c2); xyz.add(c1); fcl.add(fl);
-      xyz.add(d3); xyz.add(d2); xyz.add(d1); fcl.add(fl);
+      xyz.add(a3); xyz.add(a2); xyz.add(a1);
+      xyz.add(b3); xyz.add(b2); xyz.add(b1);
+      xyz.add(c3); xyz.add(c2); xyz.add(c1);
+      xyz.add(d3); xyz.add(d2); xyz.add(d1);
       uvw.add(w3); uvw.add(w2); uvw.add(w1);
       uvw.add(w3); uvw.add(w2); uvw.add(w1);
       uvw.add(w3); uvw.add(w2); uvw.add(w1);
       uvw.add(w3); uvw.add(w2); uvw.add(w1);
+      float fc = cell.fl;
+      if (smax<0.0f) {
+        fc = -cell.spm;
+      } else if (smax>0.0f) {
+        fc = cell.smp;
+      }
+      fcl.add(fc);
+      fcl.add(fc);
+      fcl.add(fc);
+      fcl.add(fc);
     }
     float[] fc = fcl.trim();
-    float fcmin = 0.0f;
-    float fcmax = 1.0f;
-    ColorMap cmap = new ColorMap(fcmin,fcmax,ColorMap.JET);
     float[] rgb = cmap.getRgbFloats(fc);
     return new float[][]{xyz.trim(),uvw.trim(),rgb};
   }
@@ -304,7 +317,6 @@ public class FaultCell {
    * @return array of packed (x,y,z) coordinates.
    */
   public float[] getFaultCurveXyz() {
-    System.out.println("getFaultCurveXyz ...");
     FloatList xyz = new FloatList();
     float[] p = new float[3];
     p[0] = x1; p[1] = x2; p[2] = x3;
@@ -320,7 +332,6 @@ public class FaultCell {
       xyz.add(p[2]); xyz.add(p[1]); xyz.add(p[0]);
       cell = cell.walkDownDipFrom(p);
     }
-    System.out.println("... done");
     return xyz.trim();
   }
 
@@ -331,7 +342,6 @@ public class FaultCell {
    * @return array of packed (x,y,z) coordinates.
    */
   public float[] getFaultTraceXyz() {
-    System.out.println("getFaultTraceXyz ...");
     FloatList xyz = new FloatList();
     xyz.add(x3); xyz.add(x2); xyz.add(x1);
     FaultCell c;
@@ -343,7 +353,6 @@ public class FaultCell {
         xyz.add(c.x3); xyz.add(c.x2); xyz.add(c.x1);
       }
     }
-    System.out.println("... done");
     return xyz.trim();
   }
 

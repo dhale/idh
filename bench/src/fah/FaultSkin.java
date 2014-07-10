@@ -19,7 +19,7 @@ import static edu.mines.jtk.util.ArrayMath.*;
  * @version 2014.07.05
  */
 
-public class FaultSkin {
+public class FaultSkin implements Iterable<FaultCell> {
 
   /**
    * Gets the cell that was the seed used to grow this skin.
@@ -45,11 +45,11 @@ public class FaultSkin {
   }
 
   /**
-   * Gets a list of cells in this skin. 
-   * @return list of cells; by reference, not by copy.
+   * Returns an iterator for the cells in this skin. 
+   * @return cell iterator.
    */
-  public List<FaultCell> getCellList() {
-    return _cellList;
+  public Iterator<FaultCell> iterator() {
+    return _cellList.iterator();
   }
 
   /**
@@ -63,6 +63,7 @@ public class FaultSkin {
     ArrayList<FaultCell[]> cellsList = new ArrayList<FaultCell[]>();
 
     // For all cells in this skin, ...
+    int ncellAdded = 0;
     for (FaultCell cell:_cellList) {
 
       // If the cell is not already in an array, ...
@@ -73,19 +74,21 @@ public class FaultSkin {
         for (FaultCell ca=c.ca; ca!=null; ca=c.ca)
           c = ca;
 
-        // Add the top cell and all cells below it.
+        // Add the top cell and all cells below it to a new list.
         ArrayList<FaultCell> cList = new ArrayList<FaultCell>();
         for (; c!=null; c=c.cb) {
           cList.add(c);
           cellSet.add(c);
+          ++ncellAdded;
         }
 
-        // Convert the list to an array and add it to the big list.
+        // Convert the list to an array and add it to the list of arrays.
         cellsList.add(cList.toArray(new FaultCell[0]));
       }
     }
+    assert _cellList.size()==cellSet.size();
 
-    // Convert the big list to the array to be returned.
+    // Convert the list of arrays to the array of arrays to be returned.
     _cellsAB = cellsList.toArray(new FaultCell[0][]);
     return _cellsAB;
   }
@@ -124,24 +127,60 @@ public class FaultSkin {
           cellSet.add(c);
         }
 
-        // Convert the list to an array and add it to the big list.
+        // Convert the list to an array and add it to the list of arrays.
         cellsList.add(cList.toArray(new FaultCell[0]));
       }
     }
 
-    // Convert the big list to the array to be returned.
+    // Convert the list of arrays to the array of arrays to be returned.
     _cellsLR = cellsList.toArray(new FaultCell[0][]);
     return _cellsLR;
   }
 
   /**
-   * Gets arrays {xyz,uvw,rgb} of cell coordinates, normals and colors.
-   * In these arrays, cells in this skin are represented by quads with
-   * specified size.
-   * @param size the size (in samples) of the quads representing cells.
+   * Gets a cell nearest the centroid of this skin.
+   * In illustrations, this cell is often a good representative.
+   * @return the cell nearest the centroid.
    */
-  public float[][] getCellXyzUvwRgb(float size) {
-    return FaultCell.getXyzUvwRgb(size,getCells());
+  public FaultCell getCellNearestCentroid() {
+    float c1 = 0.0f;
+    float c2 = 0.0f;
+    float c3 = 0.0f;
+    float cs = 0.0f;
+    for (FaultCell c:_cellList) {
+      c1 += c.fl*c.x1;
+      c2 += c.fl*c.x2;
+      c3 += c.fl*c.x3;
+      cs += c.fl;
+    }
+    c1 /= cs;
+    c2 /= cs;
+    c3 /= cs;
+    float dmin = Float.MAX_VALUE;
+    FaultCell cmin = null;
+    for (FaultCell c:_cellList) {
+      float d = c.distanceSquaredTo(c1,c2,c3);
+      if (d<dmin) {
+        cmin = c;
+        dmin = d;
+      }
+    }
+    return cmin;
+  }
+
+  /**
+   * Gets arrays {xyz,uvw,rgb} of cell coordinates, normals and colors. In
+   * these arrays, cells in this skin are represented by quads with specified
+   * size, and colors corresponding to fault likelihoods or shifts.
+   * @param size size (in samples) of the quads.
+   * @param smax if zero, colors correspond to fault likelihoods with a
+   * maximum value of 1. If positive, colors correspond to minus-plus shifts
+   * with the specified maximum shift. If negative, colors correspond to
+   * plus-minus shifts with minimum equal to the specified shift.
+   * @param cmap colormap used to compute rgb colors from cell properties.
+   */
+  public float[][] getCellXyzUvwRgb(float size, float smax, ColorMap cmap) {
+    return FaultCell.getXyzUvwRgb(size,smax,cmap,getCells());
   }
 
   /**
@@ -176,11 +215,6 @@ public class FaultSkin {
   /////////////////////////////////////////////////////////////////////////
   // package
 
-  private FaultCell _seed; // cell in this skin with highest fl; null, if empty
-  private ArrayList<FaultCell> _cellList; // list of cells in this skin
-  private FaultCell[][] _cellsAB; // arrays of cells from above to below
-  private FaultCell[][] _cellsLR; // arrays of cells from left to right
-
   /**
    * Constructs an empty skin.
    */
@@ -189,10 +223,11 @@ public class FaultSkin {
   }
 
   /**
-   * Adds the specified cell to this skin.
+   * Adds the specified skinless cell to this skin.
    * @param cell the cell to be added.
    */
   void add(FaultCell cell) {
+    assert cell.skin==null;
     cell.skin = this;
     if (_seed==null)
       _seed = cell;
@@ -201,34 +236,15 @@ public class FaultSkin {
     _cellsLR = null;
   }
 
-  /**
-   * Gets a cell nearest the centroid of this skin.
-   * In illustrations, this cell is often a good representative.
-   * @return the cell nearest the centroid.
-   */
-  public FaultCell getCellNearestCentroid() {
-    float c1 = 0.0f;
-    float c2 = 0.0f;
-    float c3 = 0.0f;
-    float cs = 0.0f;
-    for (FaultCell c:_cellList) {
-      c1 += c.fl*c.x1;
-      c2 += c.fl*c.x2;
-      c3 += c.fl*c.x3;
-      cs += c.fl;
-    }
-    c1 /= cs;
-    c2 /= cs;
-    c3 /= cs;
-    float dmin = Float.MAX_VALUE;
-    FaultCell cmin = null;
-    for (FaultCell c:_cellList) {
-      float d = c.distanceSquaredTo(c1,c2,c3);
-      if (d<dmin) {
-        cmin = c;
-        dmin = d;
-      }
-    }
-    return cmin;
+  /////////////////////////////////////////////////////////////////////////
+  // private
+
+  private FaultCell _seed; // cell in this skin with highest fl; null, if empty
+  private ArrayList<FaultCell> _cellList; // list of cells in this skin
+  private FaultCell[][] _cellsAB; // arrays of cells from above to below
+  private FaultCell[][] _cellsLR; // arrays of cells from left to right
+
+  private static void trace(String s) {
+    System.out.println(s);
   }
 }

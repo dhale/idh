@@ -35,9 +35,9 @@ def main(args):
   #goFakeData()
   #goSlopes()
   #goScan()
-  goSkin()
   #goThin()
   #goSmooth()
+  goSkin()
   #goSurfing()
   #goDisplay("gx")
 
@@ -142,6 +142,9 @@ def goSmooth():
 
 def goSkin():
   gx = readImage(gxfile)
+  gsx = readImage(gsxfile)
+  p2 = readImage(p2file)
+  p3 = readImage(p3file)
   fl = readImage(flfile)
   fp = readImage(fpfile)
   ft = readImage(ftfile)
@@ -150,17 +153,21 @@ def goSkin():
   fs.setMinSkinSize(4000)
   cells = fs.findCells()
   plot3(gx)
+  plot3(gsx)
   plot3(gx,cells=cells)
   print "total number of cells =",len(cells)
   skins = fs.findSkins(cells)
+  fs = FaultSlipper()
+  smax = 20.0
   print "total number of skins =",len(skins)
   for iskin,skin in enumerate(skins):
     print "number of cells in skin",iskin,"=",skin.size()
     #cells = skin.getCells()
     #plot3(gx,cells=cells)
+    fs.computeShifts(skin,smax,gsx,p2,p3)
     plot3(gx,skins=[skin],links=True,curve=False,trace=False)
   plot3(gx,skins=skins,links=False,curve=True,trace=True);
-
+  plot3(gx,skins=skins,smax=10.0);
   
 def goDisplay(what):
   def show2(g1,g2):
@@ -221,7 +228,7 @@ def hueFillExceptMin(alpha):
   return ColorMap.setAlpha(ColorMap.getHue(0.0,1.0),a)
 
 def plot3(f,g=None,cmin=None,cmax=None,cmap=None,
-          xyz=None,cells=None,skins=None,smax=None,
+          xyz=None,cells=None,skins=None,smax=0.0,
           links=False,curve=False,trace=False):
   n1 = len(f[0][0])
   n2 = len(f[0])
@@ -268,7 +275,8 @@ def plot3(f,g=None,cmin=None,cmax=None,cmap=None,
     ms.setColorMaterial(GL_AMBIENT_AND_DIFFUSE)
     ms.setEmissiveBack(Color(0.0,0.0,0.5))
     ss.add(ms)
-    xyz,uvw,rgb = FaultCell.getXyzUvwRgb(0.5,cells)
+    cmap = ColorMap(0.0,1.0,ColorMap.JET)
+    xyz,uvw,rgb = FaultCell.getXyzUvwRgb(0.5,0.0,cmap,cells)
     qg = QuadGroup(xyz,uvw,rgb)
     qg.setStates(ss)
     sf.world.addChild(qg)
@@ -290,10 +298,13 @@ def plot3(f,g=None,cmin=None,cmax=None,cmap=None,
     if links:
       size = 0.5 
     for skin in skins:
-      if smax:
-        xyz,uvw,rgb = skin.getXyzUvwRgbShifts(smax)
+      if smax>0.0:
+        cmap = ColorMap(0.0,smax,ColorMap.JET)
+      elif smax<0.0:
+        cmap = ColorMap(smax,0.0,ColorMap.JET)
       else:
-        xyz,uvw,rgb = skin.getCellXyzUvwRgb(size)
+        cmap = ColorMap(0.0,1.0,ColorMap.JET)
+      xyz,uvw,rgb = skin.getCellXyzUvwRgb(size,smax,cmap)
       qg = QuadGroup(xyz,uvw,rgb)
       qg.setStates(None)
       sg.addChild(qg)

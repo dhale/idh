@@ -149,9 +149,9 @@ public class FakeData {
     float r1b = 0.0f*n1, r2b = 0.1f*n2, r3b = 0.3f*n3;
     float r1c = 0.3f*n1, r2c = 0.7f*n2, r3c = 0.5f*n3;
     float r1d = 0.1f*n1, r2d = 0.5f*n2, r3d = 0.5f*n3;
-    float phia =  22.5f, thetaa = 75.0f; if (conjugate) phia += 180.0f;
-    float phib =  22.5f, thetab = 75.0f;
-    float phic = 202.5f, thetac = 75.0f;
+    float phia =  10.0f, thetaa = 75.0f; if (conjugate) phia += 180.0f;
+    float phib =  10.0f, thetab = 75.0f;
+    float phic = 190.0f, thetac = 75.0f;
     float thetad = 75.0f;
     float[] c1 = {0.0f}, c2 = {0.0f}, sc = {20.0f}, hc = {sa*5.0f};
     T2 throwa = new Linear2(0.0f,sa*0.1f,0.0f,0.0f,0.0f,0.0f);
