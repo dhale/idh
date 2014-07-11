@@ -6,6 +6,8 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package fah;
 
+import java.io.Serializable;
+
 import edu.mines.jtk.awt.ColorMap;
 import static edu.mines.jtk.util.ArrayMath.*;
 
@@ -37,7 +39,102 @@ import static fah.FaultGeometry.*;
  * @version 2014.07.05
  */
 
-public class FaultCell {
+public class FaultCell implements Serializable {
+  private static final long serialVersionUID = 1L;
+
+  /**
+   * Returns an array of packed (x,y,z) coordinates for a fault curve.
+   * The fault curve is everywhere tangent to fault dip, and contains the
+   * point for this cell. Returned coordinates are in above-to-below order.
+   * @return array of packed (x,y,z) coordinates.
+   */
+  public float[] getFaultCurveXyz() {
+    FloatList xyz = new FloatList();
+    float[] p = new float[3];
+
+    // Gather xyz for this cell and above this cell by walking up dip.
+    FaultCell cell = this;
+    p[0] = x1; p[1] = x2; p[2] = x3;
+    for (int j1=cell.i1; j1==cell.i1; --j1) {
+      xyz.add(p[2]); xyz.add(p[1]); xyz.add(p[0]);
+      cell = cell.walkUpDipFrom(p);
+    }
+
+    // Remember the number of xyz gathered, including xyz for this cell.
+    int na = xyz.n/3;
+
+    // Gather xyz for cells below this one by walking down dip. We have
+    // already gathered the xyz for this cell, so now we skip to the one
+    // below it.
+    cell = this;
+    p[0] = x1; p[1] = x2; p[2] = x3;
+    cell = cell.walkDownDipFrom(p); // skip this cell
+    for (int j1=this.i1+1; j1==cell.i1; ++j1) {
+      xyz.add(p[2]); xyz.add(p[1]); xyz.add(p[0]);
+      cell = cell.walkDownDipFrom(p);
+    }
+
+    // Flip the order of all xyz gathered above this cell while walking up.
+    float[] xyzs = xyz.trim();
+    for (int ia=1,i=ia*3,ja=na-1,j=ja*3; ia<ja; ++ia,i+=3,--ja,j-=3) {
+      float xi = xyzs[i  ];
+      float yi = xyzs[i+1];
+      float zi = xyzs[i+2];
+      xyzs[i  ] = xyzs[j  ];
+      xyzs[i+1] = xyzs[j+1];
+      xyzs[i+2] = xyzs[j+2];
+      xyzs[j  ] = xi;
+      xyzs[j+1] = yi;
+      xyzs[j+2] = zi;
+    }
+    return xyzs;
+  }
+
+  /**
+   * Returns an array of packed (x,y,z) coordinates for a fault trace.
+   * The fault trace is everywhere tangent to fault strike, and contains 
+   * the point for this cell. Returned coordinates are left-to-right order.
+   * @return array of packed (x,y,z) coordinates.
+   */
+  public float[] getFaultTraceXyz() {
+    FloatList xyz = new FloatList();
+
+    // First gather coordinates for this cell.
+    xyz.add(x3); xyz.add(x2); xyz.add(x1);
+
+    // Then gather coordinates for cells to the left of this cell. Take care
+    // to handle the case in which this cell is found while walking left.
+    FaultCell c;
+    for (c=this.cl; c!=null && c!=this; c=c.cl) {
+      xyz.add(c.x3); xyz.add(c.x2); xyz.add(c.x1);
+    }
+
+    // Remember number of xyz gathered, including xyz for this cell.
+    int nl = xyz.n/3;
+
+    // If we did not end at this cell, then gather coordinates of all
+    // cells to the right of this cell.
+    if (c!=this) {
+      for (c=this.cr; c!=null; c=c.cr) {
+        xyz.add(c.x3); xyz.add(c.x2); xyz.add(c.x1);
+      }
+    }
+
+    // Flip the order of all xyz gathered left of this cell.
+    float[] xyzs = xyz.trim();
+    for (int il=1,i=il*3,jl=nl-1,j=jl*3; il<jl; ++il,i+=3,--jl,j-=3) {
+      float xi = xyzs[i  ];
+      float yi = xyzs[i+1];
+      float zi = xyzs[i+2];
+      xyzs[i  ] = xyzs[j  ];
+      xyzs[i+1] = xyzs[j+1];
+      xyzs[i+2] = xyzs[j+2];
+      xyzs[j  ] = xi;
+      xyzs[j+1] = yi;
+      xyzs[j+2] = zi;
+    }
+    return xyzs;
+  }
 
   /**
    * Gets arrays {xyz,uvw,rgb} of cell coordinates, normals and colors. In
@@ -106,105 +203,13 @@ public class FaultCell {
     return new float[][]{xyz.trim(),uvw.trim(),rgb};
   }
 
-  /**
-   * Returns an array of packed (x,y,z) coordinates for a fault curve.
-   * The fault curve is everywhere tangent to fault dip, and contains the
-   * point for this cell. Returned coordinates are in above-to-below order.
-   * @return array of packed (x,y,z) coordinates.
-   */
-  public float[] getFaultCurveXyz() {
-    FloatList xyz = new FloatList();
-    float[] p = new float[3];
-
-    // Find xyz for this cell and above this cell by walking up dip.
-    FaultCell cell = this;
-    p[0] = x1; p[1] = x2; p[2] = x3;
-    for (int j1=cell.i1; j1==cell.i1; --j1) {
-      xyz.add(p[2]); xyz.add(p[1]); xyz.add(p[0]);
-      cell = cell.walkUpDipFrom(p);
-    }
-
-    // Number of xyz found above this cell.
-    int na = xyz.n/3-1;
-
-    // Find xyz for cells below this one by walking down dip.
-    cell = this;
-    p[0] = x1; p[1] = x2; p[2] = x3;
-    cell = cell.walkDownDipFrom(p); // in this walk, skip this cell
-    for (int j1=cell.i1; j1==cell.i1; ++j1) {
-      xyz.add(p[2]); xyz.add(p[1]); xyz.add(p[0]);
-      cell = cell.walkDownDipFrom(p);
-    }
-
-    // Flip the order of all xyz found above this cell while walking up.
-    float[] xyzs = xyz.trim();
-    for (int ia=0,i=ia*3,ja=na-1,j=ja*3; ia<ja; ++ia,i+=3,--ja,j-=3) {
-      float xi = xyzs[i  ];
-      float yi = xyzs[i+1];
-      float zi = xyzs[i+2];
-      xyzs[i  ] = xyzs[j  ];
-      xyzs[i+1] = xyzs[j+1];
-      xyzs[i+2] = xyzs[j+2];
-      xyzs[j  ] = xi;
-      xyzs[j+1] = yi;
-      xyzs[j+2] = zi;
-    }
-    return xyzs;
-  }
-
-  /**
-   * Returns an array of packed (x,y,z) coordinates for a fault trace.
-   * The fault trace is everywhere tangent to fault strike, and contains 
-   * the point for this cell. Returned coordinates are left-to-right order.
-   * @return array of packed (x,y,z) coordinates.
-   */
-  public float[] getFaultTraceXyz() {
-    FloatList xyz = new FloatList();
-
-    // First add coordinates for this cell.
-    xyz.add(x3); xyz.add(x2); xyz.add(x1);
-
-    // Add coordinates for cells to the left of this cell. Take care to handle
-    // the case in which this cell is found while walking left.
-    FaultCell c;
-    for (c=this.cl; c!=null && c!=this; c=c.cl) {
-      xyz.add(c.x3); xyz.add(c.x2); xyz.add(c.x1);
-    }
-
-    // Number of xyz found left of this cell.
-    int nl = xyz.n/3-1;
-
-    // If we did not end at this cell, then add coordinates of cells to
-    // the right of this cell. Again, watch for this cell.
-    if (c!=this) { // if we did not end at this cell, ...
-      for (c=this.cr; c!=null && c!=this; c=c.cr) {
-        xyz.add(c.x3); xyz.add(c.x2); xyz.add(c.x1);
-      }
-    }
-
-    // Flip the order of all xyz found left of this cell.
-    float[] xyzs = xyz.trim();
-    for (int il=0,i=il*3,jl=nl-1,j=jl*3; il<jl; ++il,i+=3,--jl,j-=3) {
-      float xi = xyzs[i  ];
-      float yi = xyzs[i+1];
-      float zi = xyzs[i+2];
-      xyzs[i  ] = xyzs[j  ];
-      xyzs[i+1] = xyzs[j+1];
-      xyzs[i+2] = xyzs[j+2];
-      xyzs[j  ] = xi;
-      xyzs[j+1] = yi;
-      xyzs[j+2] = zi;
-    }
-    return xyzs;
-  }
-
   /////////////////////////////////////////////////////////////////////////
   // package
 
   int i1,i2,i3; // cell indices
   float x1,x2,x3; // cell coordinates
   float fl,fp,ft; // likelihood, strike (phi) and dip (theta)
-  float u1,u2,u3,us; // dip vector and scale factor 1/u1 = 1/sin(theta)
+  float u1,u2,u3,us; // dip vector and scale factor = 1/sin(theta)
   float v1,v2,v3; // strike vector
   float w1,w2,w3; // normal vector
   FaultCell ca,cb,cl,cr; // nabors above, below, left and right
@@ -401,6 +406,89 @@ public class FaultCell {
     p[2] = p3;
     return cell;
   }
+
+  /**
+   * Computes fault dip-slip vector from vertical shifts.
+   */
+   /*
+  void computeDipSlipFromShifts() {
+    float[] p = new float[3];
+
+    // Gather xyz for this cell and above this cell by walking up dip.
+    FaultCell cell = this;
+    p[0] = x1; p[1] = x2; p[2] = x3;
+    for (int j1=cell.i1; j1==cell.i1; --j1) {
+      xyz.add(p[2]); xyz.add(p[1]); xyz.add(p[0]);
+      cell = cell.walkUpDipFrom(p);
+    }
+
+    // Number of xyz found above this cell.
+    int na = xyz.n/3-1;
+
+    // Gather xyz for cells below this one by walking down dip.
+    cell = this;
+    p[0] = x1; p[1] = x2; p[2] = x3;
+    cell = cell.walkDownDipFrom(p); // already found xyz for *this* cell
+    for (int j1=cell.i1; j1==cell.i1; ++j1) {
+      xyz.add(p[2]); xyz.add(p[1]); xyz.add(p[0]);
+      cell = cell.walkDownDipFrom(p);
+    }
+
+    // Start on fault plane with integer x1 = i1.
+    float us = q.us23, u1 = us*q.u1, u2 = us*q.u2, u3 = us*q.u3;
+    float ut = (q.i1-q.c1)*u1;
+    float x1 = q.i1, x2 = q.c2-ut*u2, x3 = q.c3-ut*u3;
+    float y1 = x1, y2 = x2, y3 = x3;
+
+    // Choose the largest (presumably non-negative) shift.
+    // Throw corresponds to either the minus or plus side, 
+    // depending on which shift is chosen.
+    float s1 = max(smp,spm);
+    tp = s1==smp;
+
+    // If shift is small enough, do nothing.
+    if (abs(s1)<=0.5f) {
+      // do nothing
+    }
+
+    // Else, if shift is positive, walk south (downward) on quads.
+    // Stop walking when we get to a quad corresponding to the 
+    // shift, or when we can find no more quads to walk on.
+    else if (s1>0.0f) {
+      us = q.us23; u1 = us*q.u1; u2 = us*q.u2; u3 = us*q.u3;
+      y1 += 1.0f; y2 -= u1*u2; y3 -= u1*u3;
+      Quad qi = quadSouth(q,y1,y2,y3);
+      while (qi!=null && abs(y1-x1-s1)>0.5f) {
+        us = qi.us23; u1 = us*qi.u1; u2 = us*qi.u2; u3 = us*qi.u3;
+        ut = (y1-qi.c1)*u1+(y2-qi.c2)*u2+(y3-qi.c3)*u3;
+        y2 -= ut*u2; y3 -= ut*u3;
+        y1 += 1.0f; y2 -= u1*u2; y3 -= u1*u3;
+        qi = quadSouth(qi,y1,y2,y3);
+      }
+    }
+
+    // Else, if shift is negative, walk north (upward) on quads. 
+    // Stop walking when we get to a quad corresponding to the 
+    // shift, or when we can find no more quads to walk on.
+    else {
+      us = q.us23; u1 = us*q.u1; u2 = us*q.u2; u3 = us*q.u3;
+      y1 -= 1.0f; y2 += u1*u2; y3 += u1*u3;
+      Quad qi = quadNorth(q,y1,y2,y3);
+      while (qi!=null && abs(y1-x1-s1)>0.5f) {
+        us = qi.us23; u1 = us*qi.u1; u2 = us*qi.u2; u3 = us*qi.u3;
+        ut = (y1-qi.c1)*u1+(y2-qi.c2)*u2+(y3-qi.c3)*u3;
+        y2 -= ut*u2; y3 -= ut*u3;
+        y1 -= 1.0f; y2 += u1*u2; y3 += u1*u3;
+        qi = quadNorth(qi,y1,y2,y3);
+      }
+    }
+
+    // Now as close as we can get for the shift; compute the throw.
+    float d1 = x1+s1-y1;
+    y1 += d1; y2 -= d1*u1*u2; y3 -= d1*u1*u3;
+    t1 = y1-x1; t2 = y2-x2; t3 = y3-x3;
+  }
+  */
 
   /////////////////////////////////////////////////////////////////////////
   // private

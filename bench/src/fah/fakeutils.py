@@ -59,22 +59,22 @@ def readSlice3(name):
   return image
 
 from org.python.util import PythonObjectInputStream
-def readTensors(name):
+def readObject(name):
   """
-  Reads tensors from file with specified basename; e.g., "gx".
+  Reads an object from a file with specified basename.
   """
   fis = FileInputStream(seismicDir+name+".dat")
   ois = PythonObjectInputStream(fis)
-  tensors = ois.readObject()
+  obj = ois.readObject()
   ois.close()
-  return tensors
-def writeTensors(name,tensors):
+  return obj
+def writeObject(name,obj):
   """
-  Writes tensors to file with specified basename; e.g., "gx".
+  Writes an object to a file with specified basename.
   """
   fos = FileOutputStream(seismicDir+name+".dat")
   oos = ObjectOutputStream(fos)
-  oos.writeObject(tensors)
+  oos.writeObject(obj)
   oos.close()
 
 #############################################################################

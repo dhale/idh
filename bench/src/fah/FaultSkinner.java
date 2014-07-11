@@ -35,8 +35,8 @@ import static fah.FaultGeometry.*;
  * <p>
  * A fault skin is grown by linking nearby cells having similar properties,
  * beginning with a seed cell that has sufficiently high fault likelihood.
- * Several of the methods in this class enable users to set parameters that
- * control the growing process.
+ * Several methods in this class set parameters that control this growing
+ * process.
  *
  * @author Dave Hale, Colorado School of Mines
  * @version 2014.07.03
@@ -88,7 +88,7 @@ public class FaultSkinner {
    * thresholds are maximum differences permitted between a cell and its
    * nabors.
    * <p>
-   * The default limits are 0.1, 30 degrees, and 10 degrees, respectively.
+   * The default limits are 0.2, 30 degrees, and 10 degrees, respectively.
    * @param maxDeltaLikelihood upper bound on changes in fault likelihood.
    * @param maxDeltaStrike upper bound for changes in fault strike, in degrees.
    * @param maxDeltaDip upper bound for changes in fault dip, in degrees.

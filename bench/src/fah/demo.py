@@ -8,7 +8,7 @@ from fakeutils import *
 s1,s2,s3 = getSamplings()
 n1,n2,n3 = s1.count,s2.count,s3.count
 
-# Names and descriptions of files used below.
+# Names and descriptions of image files used below.
 gxfile  = "gx" # input image (maybe after bilateral filtering)
 gsxfile = "gsx" # image after lsf with fault likelihoods
 p2file  = "p2" # inline slopes
@@ -37,8 +37,8 @@ def main(args):
   #goScan()
   #goThin()
   #goSmooth()
-  goSkin()
-  #goDisplay("gx")
+  #goSkin()
+  goSlip()
 
 def goFakeData():
   sequence = 'OA' # 1 episode of folding, followed by one episode of faulting
@@ -151,18 +151,33 @@ def goSkin():
   fs.setGrowLikelihoods(0.2,0.7)
   fs.setMinSkinSize(4000)
   cells = fs.findCells()
+  skins = fs.findSkins(cells)
+  print "total number of cells =",len(cells)
+  print "total number of skins =",len(skins)
   plot3(gx)
   plot3(gsx)
   plot3(gx,cells=cells)
-  print "total number of cells =",len(cells)
-  skins = fs.findSkins(cells)
-  fs = FaultSlipper(gsx,p2,p3)
-  print "total number of skins =",len(skins)
   for iskin,skin in enumerate(skins):
+    skinName = "skin"+str(iskin)
+    writeObject(skinName,skin)
     print "number of cells in skin",iskin,"=",skin.size()
-    fs.computeShifts(skin,20.0)
     plot3(gx,skins=[skin],links=True,curve=False,trace=False)
   plot3(gx,skins=skins,links=False,curve=True,trace=True)
+
+def goSlip():
+  gx = readImage(gxfile)
+  gsx = readImage(gsxfile)
+  p2 = readImage(p2file)
+  p3 = readImage(p3file)
+  fs = FaultSlipper(gsx,p2,p3)
+  skins = []
+  for iskin in range(1):
+    skinName = "skin"+str(iskin)
+    skin = readObject(skinName)
+    print "number of cells in skin",iskin,"=",skin.size()
+    fs.computeShifts(skin,20.0)
+    writeObject(skinName,skin)
+    skins.append(skin)
   plot3(gx,skins=skins,smax=-10.0)
   plot3(gx,skins=skins,smax=10.0)
   

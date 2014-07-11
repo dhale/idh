@@ -7,6 +7,7 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package fah;
 
+import java.io.Serializable;
 import java.util.*;
 
 import edu.mines.jtk.awt.ColorMap;
@@ -19,7 +20,8 @@ import static edu.mines.jtk.util.ArrayMath.*;
  * @version 2014.07.05
  */
 
-public class FaultSkin implements Iterable<FaultCell> {
+public class FaultSkin implements Iterable<FaultCell>,Serializable {
+  private static final long serialVersionUID = 1L;
 
   /**
    * Gets the cell that was the seed used to grow this skin.
@@ -59,6 +61,7 @@ public class FaultSkin implements Iterable<FaultCell> {
   public FaultCell[][] getCellsAB() {
     if (_cellsAB!=null)
       return _cellsAB;
+
     HashSet<FaultCell> cellSet = new HashSet<FaultCell>(size());
     ArrayList<FaultCell[]> cellsList = new ArrayList<FaultCell[]>();
 
@@ -93,11 +96,12 @@ public class FaultSkin implements Iterable<FaultCell> {
 
   /**
    * Returns array of arrays of cells linked left and right.
-   * @return array of arrays of linked cells.
+   * @return array of arrays of linked cells; by reference, not by copy.
    */
   public FaultCell[][] getCellsLR() {
     if (_cellsLR!=null)
       return _cellsLR;
+
     HashSet<FaultCell> cellSet = new HashSet<FaultCell>(size());
     ArrayList<FaultCell[]> cellsList = new ArrayList<FaultCell[]>();
 
@@ -205,7 +209,7 @@ public class FaultSkin implements Iterable<FaultCell> {
         ++np; // then add one more so we end with the starting point
       float[] xyzi = new float[3*np]; // xyz for this segment
       for (int ip=0,ic=0; ip<np; ++ip) {
-        FaultCell cell = cells[ip%ncell];
+        FaultCell cell = cells[ip%ncell]; // % to handle any LR cycle
         xyzi[ic++] = cell.x3;
         xyzi[ic++] = cell.x2;
         xyzi[ic++] = cell.x1;

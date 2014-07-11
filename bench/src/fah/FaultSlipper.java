@@ -59,12 +59,12 @@ public class FaultSlipper {
     computeErrorsAndInitShifts(skin,lmax,d,_gs,_p2,_p3);
     extrapolateErrors(cab);
     DynamicWarping dw = new DynamicWarping(-lmax,lmax);
-    dw.setStrainMax(0.25,0.25);
+    dw.setStrainMax(0.25,0.25); // TODO: always 0.25?
     findShiftsMP(dw,cab,clr);
     findShiftsPM(dw,cab,clr);
     clearErrors(skin);
     cleanShifts(skin); // TODO: does this help?
-    for (int nsmooth=0; nsmooth<2; ++nsmooth) // TODO: two smoothings?
+    for (int nsmooth=0; nsmooth<2; ++nsmooth) // TODO: always 2?
       smoothShifts(skin);
   }
 
@@ -282,7 +282,7 @@ public class FaultSlipper {
     }
 
     // Smooth alignment errors in above-below and left-right directions.
-    // Two smoothings in both directions has often worked well.
+    // Two smoothings in both directions has typically worked well.
     for (int ismooth=0; ismooth<2; ++ismooth) {
       dw.smoothErrors1(eab,eab);
       dw.smoothErrors1(elr,elr);
@@ -304,25 +304,35 @@ public class FaultSlipper {
     }
   }
 
+  // Smooths shifts by replacing shifts in each cell with a weighted average
+  // of that cell's shifts and those of its cell nabors.
   private static void smoothShifts(FaultSkin skin) {
     FaultCell[] cellNabors = new FaultCell[4];
-    for (FaultCell cell:skin) {
-      float smp = 0.0f;
-      float spm = 0.0f;
-      float css = 0.0f;
+    FaultCell[] cells = skin.getCells();
+    int ncell = cells.length;
+    float[] smps = new float[ncell];
+    float[] spms = new float[ncell];
+    float[] csss = new float[ncell];
+    for (int icell=0; icell<ncell; ++icell) {
+      FaultCell cell = cells[icell];
       cellNabors[0] = cell.ca;
       cellNabors[1] = cell.cb;
       cellNabors[2] = cell.cl;
       cellNabors[3] = cell.cr;
       for (FaultCell cellNabor:cellNabors) {
         if (cellNabor!=null) {
-          smp += cell.smp+cellNabor.smp;
-          spm += cell.spm+cellNabor.spm;
-          css += 2.0f;
+          smps[icell] += cell.smp+cellNabor.smp;
+          spms[icell] += cell.spm+cellNabor.spm;
+          csss[icell] += 2.0f;
         }
       }
-      cell.smp = smp/css;
-      cell.spm = spm/css;
+    }
+    for (int icell=0; icell<ncell; ++icell) {
+      FaultCell cell = cells[icell];
+      float cssi = csss[icell];
+      float scli = cssi>0.0f?1.0f/cssi:1.0f;
+      cell.smp = smps[icell]*scli;
+      cell.spm = spms[icell]*scli;
     }
   }
 
