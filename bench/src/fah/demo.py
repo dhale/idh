@@ -37,19 +37,19 @@ def main(args):
   #goScan()
   #goThin()
   #goSmooth()
-  #goSkin()
-  goSlip()
+  nskin = goSkin()
+  goSlip(nskin)
 
 def goFakeData():
   sequence = 'OA' # 1 episode of folding, followed by one episode of faulting
   #sequence = 'OOOOOAAAAA' # 5 episodes of folding, then 5 of faulting
   #sequence = 'OAOAOAOAOA' # 5 interleaved episodes of folding and faulting
-  nplanar = 0
+  nplanar = 3
   conjugate = True
-  conical = True
+  conical = False
   impedance = False
   wavelet = True
-  noise = 0.0
+  noise = 0.5
   gx,p2,p3 = FakeData.seismicAndSlopes3d2014A(
       sequence,nplanar,conjugate,conical,impedance,wavelet,noise)
   writeImage(gxfile,gx)
@@ -129,14 +129,14 @@ def goThin():
 def goSmooth():
   print "goSmooth ..."
   flstop = 0.1
-  fsigma = 16.0
+  fsigma = 8.0
   gx = readImage(gxfile)
-  fl = readImage(fltfile)
+  flt = readImage(fltfile)
   p2 = readImage(p2file)
   p3 = readImage(p3file)
-  gsx = FaultScanner.smooth(flstop,fsigma,p2,p3,fl,gx)
+  gsx = FaultScanner.smooth(flstop,fsigma,p2,p3,flt,gx)
   writeImage(gsxfile,gsx)
-  #plot3(gx)
+  plot3(gx)
   plot3(gsx)
 
 def goSkin():
@@ -148,12 +148,13 @@ def goSkin():
   fp = readImage(fpfile)
   ft = readImage(ftfile)
   fs = FaultSkinner([fl,fp,ft])
-  fs.setGrowLikelihoods(0.2,0.7)
+  fs.setGrowLikelihoods(0.2,0.5)
   fs.setMinSkinSize(4000)
   cells = fs.findCells()
   skins = fs.findSkins(cells)
   print "total number of cells =",len(cells)
   print "total number of skins =",len(skins)
+  nskin = len(skins)
   plot3(gx)
   plot3(gsx)
   plot3(gx,cells=cells)
@@ -163,15 +164,16 @@ def goSkin():
     print "number of cells in skin",iskin,"=",skin.size()
     plot3(gx,skins=[skin],links=True,curve=False,trace=False)
   plot3(gx,skins=skins,links=False,curve=True,trace=True)
+  return nskin
 
-def goSlip():
+def goSlip(nskin):
   gx = readImage(gxfile)
   gsx = readImage(gsxfile)
   p2 = readImage(p2file)
   p3 = readImage(p3file)
   fs = FaultSlipper(gsx,p2,p3)
   skins = []
-  for iskin in range(1):
+  for iskin in range(nskin):
     skinName = "skin"+str(iskin)
     skin = readObject(skinName)
     print "number of cells in skin",iskin,"=",skin.size()

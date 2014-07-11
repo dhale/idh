@@ -355,6 +355,41 @@ public class FaultSlipper {
     }
   }
 
+  // Computes dip-slip vectors from vertical shifts for specified skin.
+  private void computeDipSlips(FaultSkin skin) {
+
+    // For all cells in the skin, ...
+    for (FaultCell cell:skin) {
+
+      // Use only the minus-plus shift (the fault throw).
+      // TODO: ignore spm?
+      float smp = cell.smp;
+
+      // Begin at cell location.
+      float[] p = {cell.x1,cell.x2,cell.x3};
+
+      // Walk down-dip (for normal fault) or up-dip (for reverse fault).
+      if (smp>0.0f) {
+        for (; smp>=1.0f; smp-=1.0f)
+          cell = cell.walkDownDipFrom(p);
+      } else {
+        for (; smp<=-1.0f; smp+=1.0f)
+          cell = cell.walkUpDipFrom(p);
+      }
+
+      // Account for any remaining shift.
+      float p1 = p[0], p2 = p[1], p3 = p[2];
+      p1 += smp;
+      p2 += smp*cell.us*cell.u2;
+      p3 += smp*cell.us*cell.u3;
+
+      // Compute dip slip.
+      cell.s1 = p1-cell.x1;
+      cell.s2 = p2-cell.x2;
+      cell.s3 = p3-cell.x3;
+    }
+  }
+
   private static void clearErrors(FaultSkin skin) {
     for (FaultCell cell:skin) {
       cell.emp = null;

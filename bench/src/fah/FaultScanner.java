@@ -271,7 +271,7 @@ public class FaultScanner {
     int n2 = g[0].length;
     int n3 = g.length;
     EigenTensors3 d = new EigenTensors3(n1,n2,n3,true);
-    d.setEigenvalues(0.0001f,1.00f,1.00f);
+    d.setEigenvalues(0.001f,1.00f,1.00f);
     float[][][] s = new float[n3][n2][n1];
     for (int i3=0; i3<n3; ++i3) {
       for (int i2=0; i2<n2; ++i2) {
