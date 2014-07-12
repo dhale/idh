@@ -17,6 +17,20 @@ import static fah.FaultGeometry.*;
 
 /**
  * Uses image samples alongside fault skins to estimate fault dip-slips.
+ * <p>
+ * Before estimating slips, the seismic images should be smoothed along
+ * reflectors, but not across faults. (Thinned fault likelihoods can be used
+ * to stop smoothing at potential fault locations.) This smoothing does what
+ * seismic interpreters do visually when estimating fault throws. In effect,
+ * such smoothing enables us to use samples of a seismic image located away
+ * from faults to estimate slips along those faults.
+ * <p>
+ * However, even after this smoothing, we may not want to use image samples
+ * located immediately adjacent to faults, as these samples may exhibit poor
+ * estimates of reflector slopes and smoothing filter artifacts. Therefore,
+ * image samples at some small horizontal distance (e.g., two samples away)
+ * from fault skins are used to estimate slips. Specified reflector slopes are
+ * then used to compensate for this small offset.
  *
  * @author Dave Hale, Colorado School of Mines
  * @version 2014.07.05
@@ -36,117 +50,119 @@ public class FaultSlipper {
   }
 
   /**
-   * Computes fault shifts for all cells in the specified skins.
-   * @param skins array of skins for which to compute shifts.
-   * @param smax maximum shift, in samples.
+   * Sets the offset distance used when estimating slips.
+   * The default offset is 2 samples.
+   * @param offset the offset, in samples.
    */
-  public void computeShifts(FaultSkin[] skins, double smax) {
-    for (FaultSkin skin:skins)
-      computeShifts(skin,smax);
+  public void setOffset(double offset) {
+    _offset = (float)abs(offset);
   }
 
   /**
-   * Computes fault shifts for all cells in the specified skin.
-   * @param skin the skin for which to compute shifts.
-   * @param smax maximum shift, in samples.
+   * Enables or disables a zero-slope reflector assumption. For educational
+   * use, only. Ignoring reflector slopes can yield significant errors in
+   * estimated dip slips. The default is false.
+   * @param zeroSlope true, to assume zero slopes; false, otherwise.
    */
-  public void computeShifts(FaultSkin skin, double smax) {
+  public void setZeroSlope(boolean zeroSlope) {
+    _zeroSlope = zeroSlope;
+  }
+
+  /**
+   * Computes fault dip slips for all cells in the specified skins.
+   * @param skins array of skins for which to compute shifts.
+   * @param smin an estimate for minimum fault throw, in samples.
+   * @param smax an estimate for maximum fault throw, in samples.
+   */
+  public void computeDipSlips(FaultSkin[] skins, double smin, double smax) {
+    for (FaultSkin skin:skins)
+      computeDipSlips(skin,smin,smax);
+  }
+
+  /**
+   * Computes fault dip slips for all cells in the specified skin.
+   * @param skin the skin for which to compute shifts.
+   * @param smin an estimate for minimum fault throw, in samples.
+   * @param smax an estimate for maximum fault throw, in samples.
+   */
+  public void computeDipSlips(FaultSkin skin, double smin, double smax) {
     Check.argument(smax>=0.0f,"smax not less than zero");
-    int lmax = round((float)smax); // DynamicWarping needs an integer limit
-    float d = 2.0f; // use image values two samples away from fault
     FaultCell[][] cab = skin.getCellsAB();
     FaultCell[][] clr = skin.getCellsLR();
-    computeErrorsAndInitShifts(skin,lmax,d,_gs,_p2,_p3);
-    extrapolateErrors(cab);
-    DynamicWarping dw = new DynamicWarping(-lmax,lmax);
+    int lmin = round((float)smin-2*_offset); // because shifts != throws
+    int lmax = round((float)smax+2*_offset); // TODO: use pmax*_offset?
+    DynamicWarping dw = new DynamicWarping(lmin,lmax);
     dw.setStrainMax(0.25,0.25); // TODO: always 0.25?
-    findShiftsMP(dw,cab,clr);
-    findShiftsPM(dw,cab,clr);
+    computeAlignmentErrors(skin,lmin,lmax,_offset,_gs);
+    extrapolateAlignmentErrors(lmin,lmax,cab);
+    computeShifts(dw,cab,clr);
     clearErrors(skin);
-    cleanShifts(skin); // TODO: does this help?
-    for (int nsmooth=0; nsmooth<2; ++nsmooth) // TODO: always 2?
+    for (int nsmooth=0; nsmooth<4; ++nsmooth) // TODO: always 4?
       smoothShifts(skin);
+    computeDipSlips(skin);
   }
 
   ///////////////////////////////////////////////////////////////////////////
   // private
 
   private float[][][] _gs,_p2,_p3; // seismic image (smoothed) and slopes
+  private float _offset = 2.0f; // horizontal offset (distance to faults)
+  private boolean _zeroSlope; // false, to assume reflector slopes = 0
 
   /**
    * Computes alignment errors and initializes shifts for specified skin.
    */
-  private static void computeErrorsAndInitShifts(
-      FaultSkin skin, int lmax, float d, 
-      float[][][] f, float[][][] p2, float[][][] p3) {
+  private static void computeAlignmentErrors(
+      FaultSkin skin, int lmin, int lmax, float offset, float[][][] f) {
     for (FaultCell cell:skin)
-      computeErrorsAndInitShifts(cell,lmax,d,f,p2,p3);
+      computeAlignmentErrors(cell,lmin,lmax,offset,f);
   }
 
   /**
-   * Computes alignment errors and initializes shifts for one cell. Computes
-   * both minus-plus (emp) and plus-minus (epm) errors. The minus-plus errors
+   * Computes minus-plus alignment errors for one cell. These errors
    * correspond to differences between the sample value on the minus side of
    * the cell and those for the plus sides of cells up and down dip from the
-   * cell. The plus-minus errors are similarly defined for opposite sides.
+   * cell.
    * <p> 
-   * This method uses specified slopes to initialize both minus-plus and
-   * plus-minus shifts to compensate for the fact that shifts are estimated
-   * using image samples located a horizontal distance d away from this cell. 
-   * <p> 
-   * For lags where image sample values are unavailable, say, near surface
-   * boundaries, errors are extrapolated from other lags, but are negated, so
+   * For lags where image sample values are unavailable (e.g., near image
+   * boundaries), errors are extrapolated from other lags, but are negated, so
    * that extrapolated errors can be detected and modified later, after errors
    * for all relevant cells have been computed.
    */
-  private static void computeErrorsAndInitShifts(
-      FaultCell cell, int lmax, float d, 
-      float[][][] f, float[][][] p2, float[][][] p3) {
+  private static void computeAlignmentErrors(
+      FaultCell cell, int lmin, int lmax, float offset, float[][][] f) {
+    Check.argument(lmin<=0,"lmin<=0");
+    Check.argument(lmax>=0,"lmax>=0");
     int n1 = f[0][0].length;
     float[] y = new float[3];
 
     // New arrays for alignment errors.
-    float[] emp = cell.emp = new float[lmax+1+lmax];
-    float[] epm = cell.epm = new float[lmax+1+lmax];
+    int lag0 = -lmin;
+    float[] emp = cell.emp = new float[1+lmax-lmin];
 
     // Errors for lag zero.
-    float d2 =  d*cell.v3;
-    float d3 = -d*cell.v2;
+    float d2 =  offset*cell.v3;
+    float d3 = -offset*cell.v2;
     float y1 = cell.x1, y2 = cell.x2, y3 = cell.x3;
     float fm = imageValueAt(y1,y2-d2,y3-d3,f);
-    float fp = imageValueAt(y1,y2+d2,y3+d3,f);
-    float gm = fm;
-    float gp = fp;
-    float p2m = imageValueAt(y1,y2-d2,y3-d3,p2);
-    float p2p = imageValueAt(y1,y2+d2,y3+d3,p2);
-    float p3m = imageValueAt(y1,y2-d2,y3-d3,p3);
-    float p3p = imageValueAt(y1,y2+d2,y3+d3,p3);
-    float empl = emp[lmax] = alignmentError(fm,gp);
-    float epml = epm[lmax] = alignmentError(fp,gm);
-
-    // Initial shifts compensate for horizontal distance d.
-    float s23 = d*((p2m+p2p)*cell.w2+(p3m+p3p)*cell.w3);
-    cell.smp = -s23;
-    cell.spm =  s23;
+    float gp = imageValueAt(y1,y2+d2,y3+d3,f);
+    float empl = emp[lag0] = alignmentError(fm,gp);
 
     // Errors for samples above; make any extrapolated errors negative.
     FaultCell ca = cell;
-    int nlaga = min(lmax,ca.i1);
+    int nlaga = min(-lmin,ca.i1);
     y1 = cell.x1; y2 = cell.x2; y3 = cell.x3;
-    for (int ilag=1; ilag<=lmax; ++ilag) {
+    for (int ilag=1; ilag<=-lmin; ++ilag) {
       if (ilag<=nlaga) {
         y[0] = y1; y[1] = y2; y[2] = y3;
         ca = ca.walkUpDipFrom(y);
         y1 = y[0]; y2 = y[1]; y3 = y[2];
-        d2 =  d*ca.v3;
-        d3 = -d*ca.v2;
-        gm = imageValueAt(y1,y2-d2,y3-d3,f);
+        d2 =  offset*ca.v3;
+        d3 = -offset*ca.v2;
         gp = imageValueAt(y1,y2+d2,y3+d3,f);
-        empl = emp[lmax-ilag] = alignmentError(fm,gp);
-        epml = epm[lmax-ilag] = alignmentError(fp,gm);
+        empl = emp[lag0-ilag] = alignmentError(fm,gp);
       } else {
-        emp[lmax-ilag] = -empl;
-        epm[lmax-ilag] = -epml;
+        emp[lag0-ilag] = -empl;
       }
     }
 
@@ -159,113 +175,104 @@ public class FaultSlipper {
         y[0] = y1; y[1] = y2; y[2] = y3;
         cb = cb.walkDownDipFrom(y);
         y1 = y[0]; y2 = y[1]; y3 = y[2];
-        d2 =  d*cb.v3;
-        d3 = -d*cb.v2;
-        gm = imageValueAt(y1,y2-d2,y3-d3,f);
+        d2 =  offset*cb.v3;
+        d3 = -offset*cb.v2;
         gp = imageValueAt(y1,y2+d2,y3+d3,f);
-        empl = emp[lmax+ilag] = alignmentError(fm,gp);
-        epml = epm[lmax+ilag] = alignmentError(fp,gm);
+        empl = emp[lag0+ilag] = alignmentError(fm,gp);
       } else {
-        emp[lmax+ilag] = -empl;
-        epm[lmax+ilag] = -epml;
+        emp[lag0+ilag] = -empl;
       }
     }
   }
 
   /**
-   * Extrapolates alignment errors emp and epm where not computed. Errors that
-   * could not be computed are negative, and are copies of errors for smaller
-   * lags that could be computed. (Errors for zero lag can always be
-   * computed.) 
+   * Extrapolates alignment errors emp where not computed. Errors that could
+   * not be computed are negative, and are copies of errors for smaller lags
+   * that could be computed. (Errors for zero lag can always be computed.) 
    * <p>
    * For each lag with a negative error, this method first attempts to
    * extrapolate using other errors for the same lag stored in cell nabors
-   * above or below. This first extrapolation works best when shifts vary
-   * slowly with depth.
+   * above or below. This first extrapolation, where feasible, works well when
+   * shifts vary slowly with depth.
    * <p> 
-   * If this first extrapolation is impossible, because the number of above
+   * If this first extrapolation is infeasible, because the number of above
    * and below nabors for some lag is too small, then errors are extrapolated
    * using the errors already computed for other lags. Those errors are
    * already stored in the cells, but are negative, so in this second
    * extrapolation we simply change their sign.
    */
-  private static void extrapolateErrors(FaultCell[][] cab) {
+  private static void extrapolateAlignmentErrors(
+      int lmin, int lmax, FaultCell[][] cab) {
     int nab = cab.length;
 
     // For all arrays of cells linked above-below, ...
     for (int iab=0; iab<nab; ++iab) {
       int mab = cab[iab].length;
       float[][] emp = new float[mab][];
-      float[][] epm = new float[mab][];
 
-      // Get arrays of errors for all cells in the array.
+      // Make arrays of errors for all cells in one above-below array.
       for (int jab=0; jab<mab; ++jab) {
         FaultCell c = cab[iab][jab];
         emp[jab] = c.emp;
-        epm[jab] = c.epm;
       }
-      int lmax = (emp[0].length-1)/2;
 
-      // For each array of errors, ...
+      // For each cell (each array of errors), ...
       for (int jab=0; jab<mab; ++jab) {
 
-        // For all lags, negative and positive, ...
-        for (int ilag=1; ilag<=lmax; ++ilag) {
-          int ilagm = lmax-ilag;
-          int ilagp = lmax+ilag;
+        // For all lags, ...
+        for (int lag=lmin,ilag=0; lag<=lmax; ++lag,++ilag) {
 
-          // Extrapolate for negative lags.
-          float empim = emp[jab][ilagm];
-          float epmim = epm[jab][ilagm];
-          for (int kab=jab; kab<mab && empim<0.0f; ++kab)
-            if (emp[kab][ilagm]>=0.0f) // if we find a good emp for this lag,
-              empim = emp[kab][ilagm]; // remember it for use below
-          for (int kab=jab; kab<mab && epmim<0.0f; ++kab)
-            if (epm[kab][ilagm]>=0.0f) // same thing for a good epm
-              epmim = epm[kab][ilagm];
-          if (empim<0.0f) empim = -empim; // if no good emp, use what we have
-          if (epmim<0.0f) epmim = -epmim; // likewise if no good epm
-          emp[jab][ilagm] = empim;
-          epm[jab][ilagm] = epmim;
+          // The error for one cell and one lag.
+          float empi = emp[jab][ilag];
 
-          // Extrapolate for positive lags, as for negative lags.
-          float empip = emp[jab][ilagp];
-          float epmip = epm[jab][ilagp];
-          for (int kab=jab; kab>=0 && empip<0.0f; --kab)
-            if (emp[kab][ilagp]>=0.0f)
-              empip = emp[kab][ilagp];
-          for (int kab=jab; kab>=0 && epmip<0.0f; --kab)
-            if (epm[kab][ilagp]>=0.0f)
-              epmip = epm[kab][ilagp];
-          if (empip<0.0f) empip = -empip;
-          if (epmip<0.0f) epmip = -epmip;
-          emp[jab][ilagp] = empip;
-          epm[jab][ilagp] = epmip;
-        }
+          // If negative, this error was extrapolating using errors for
+          // other lags, so search for an error with the same lag.
+          if (empi<0.0f) {
+
+            // If lag is negative, search below; otherwise, search above.
+            if (lag<0) {
+              for (int kab=jab; kab<mab && empi<0.0f; ++kab)
+                empi = emp[kab][ilag];
+            } else if (lag>0) {
+              for (int kab=jab; kab>=0 && empi<0.0f; --kab)
+                empi = emp[kab][ilag];
+            }
+
+            // If no good error found, use what we have (but made positive).
+            if (empi<0.0f) 
+              empi = -emp[jab][ilag];
+          }
+
+          // Update the error stored in the cell for one lag.
+          emp[jab][ilag] = empi;
+        } 
       }
     }
   }
 
-  private static void findShiftsMP(
+  /**
+   * Uses dynamic warping to compute minus-plus shifts. Assumes that
+   * minus-plus errors have already been computed and stored in the cells
+   * referenced in the specified above-below and left-right arrays.
+   */
+  private static void computeShifts(
       DynamicWarping dw, FaultCell[][] cab, FaultCell[][] clr) {
-    findShifts(dw,true,cab,clr);
-  }
-  private static void findShiftsPM(
-      DynamicWarping dw, FaultCell[][] cab, FaultCell[][] clr) {
-    findShifts(dw,false,cab,clr);
-  }
-  private static void findShifts(
-      DynamicWarping dw, boolean mp, FaultCell[][] cab, FaultCell[][] clr) {
 
     // Arrays of arrays of errors, linked above and below.
+    int iabmax = -1;
+    int mabmax = 0;
     int nab = cab.length;
     float[][][] eab = new float[nab][][];
     for (int iab=0; iab<nab; ++iab) {
       int mab = cab[iab].length;
+      if (mab>mabmax) {
+        iabmax = iab;
+        mabmax = mab;
+      }
       eab[iab] = new float[mab][];
       for (int jab=0; jab<mab; ++jab) {
         FaultCell c = cab[iab][jab];
-        eab[iab][jab] = mp?c.emp:c.epm;
+        eab[iab][jab] = c.emp;
       }
     }
 
@@ -277,15 +284,17 @@ public class FaultSlipper {
       elr[ilr] = new float[mlr][];
       for (int jlr=0; jlr<mlr; ++jlr) {
         FaultCell c = clr[ilr][jlr];
-        elr[ilr][jlr] = mp?c.emp:c.epm;
+        elr[ilr][jlr] = c.emp;
       }
     }
 
+
     // Smooth alignment errors in above-below and left-right directions.
-    // Two smoothings in both directions has typically worked well.
-    for (int ismooth=0; ismooth<2; ++ismooth) {
+    //edu.mines.jtk.mosaic.SimplePlot.asPixels(pow(eab[iabmax],1.00f));
+    for (int ismooth=0; ismooth<1; ++ismooth) {
       dw.smoothErrors1(eab,eab);
       dw.smoothErrors1(elr,elr);
+      //edu.mines.jtk.mosaic.SimplePlot.asPixels(pow(eab[iabmax],1.00f));
     }
 
     // Find shifts by accumulating once more and then backtracking.
@@ -295,24 +304,19 @@ public class FaultSlipper {
       int mab = s.length;
       for (int jab=0; jab<mab; ++jab) {
         FaultCell c = cab[iab][jab];
-        if (mp) {
-          c.smp += s[jab];
-        } else {
-          c.spm += s[jab];
-        }
+        c.smp = s[jab];
       }
     }
   }
 
-  // Smooths shifts by replacing shifts in each cell with a weighted average
-  // of that cell's shifts and those of its cell nabors.
+  // Smooths shifts by replacing shifts in each cell with an average of that
+  // cell's shifts and those of its cell nabors.
   private static void smoothShifts(FaultSkin skin) {
-    FaultCell[] cellNabors = new FaultCell[4];
     FaultCell[] cells = skin.getCells();
     int ncell = cells.length;
     float[] smps = new float[ncell];
-    float[] spms = new float[ncell];
-    float[] csss = new float[ncell];
+    float[] cnts = new float[ncell];
+    FaultCell[] cellNabors = new FaultCell[4];
     for (int icell=0; icell<ncell; ++icell) {
       FaultCell cell = cells[icell];
       cellNabors[0] = cell.ca;
@@ -322,36 +326,14 @@ public class FaultSlipper {
       for (FaultCell cellNabor:cellNabors) {
         if (cellNabor!=null) {
           smps[icell] += cell.smp+cellNabor.smp;
-          spms[icell] += cell.spm+cellNabor.spm;
-          csss[icell] += 2.0f;
+          cnts[icell] += 2.0f;
         }
       }
     }
     for (int icell=0; icell<ncell; ++icell) {
       FaultCell cell = cells[icell];
-      float cssi = csss[icell];
-      float scli = cssi>0.0f?1.0f/cssi:1.0f;
-      cell.smp = smps[icell]*scli;
-      cell.spm = spms[icell]*scli;
-    }
-  }
-
-  // Minus-plus and plus-minus shifts need not have equal magnitudes, but they
-  // should have opposite signs. If they have the same sign, we get suspicous,
-  // and assume a normal fault with positive smp and negative spm.
-  // TODO: can we do better than this?
-  private static void cleanShifts(FaultSkin skin) {
-    for (FaultCell cell:skin) {
-      float smp = cell.smp;
-      float spm = cell.spm;
-      if (smp*spm>0.0f) {
-        if (spm>0.0f)
-          spm = -smp;
-        if (smp<0.0f)
-          smp = -spm;
-        cell.smp = smp;
-        cell.spm = spm;
-      }
+      float cnti = cnts[icell];
+      cell.smp = smps[icell]/(cnti>0.0f?cnti:1.0f);
     }
   }
 
@@ -360,41 +342,95 @@ public class FaultSlipper {
 
     // For all cells in the skin, ...
     for (FaultCell cell:skin) {
+      FaultCell cellBegin = cell;
 
-      // Use only the minus-plus shift (the fault throw).
-      // TODO: ignore spm?
+      // Cell coordinates, dip vector, and shift.
+      float x1 = cell.x1;
+      float x2 = cell.x2;
+      float x3 = cell.x3;
+      float u1 = cell.u1;
+      float u2 = cell.u2;
+      float u3 = cell.u3;
       float smp = cell.smp;
 
+      // Offset vector d.
+      float d1 = 0.0f;
+      float d2 =  _offset*cell.v3;
+      float d3 = -_offset*cell.v2;
+
+      // Reflector slopes at point x-d.
+      float p2 = imageValueAt(x1-d1,x2-d2,x3-d3,_p2);
+      float p3 = imageValueAt(x1-d1,x2-d2,x3-d3,_p3);
+
+      // Unit-vector a normal to reflector.
+      float a1 = 1.0f/sqrt(1.0f+p2*p2+p3*p3);
+      float a2 = -p2*a1;
+      float a3 = -p3*a1;
+
+      // Slip adjustment for reflector slope on minus side.
+      float am = (a1*d1+a2*d2+a3*d3)/(a1*u1+a2*u2+a3*u3);
+      float u1m = am*u1;
+      float u2m = am*u2;
+      float u3m = am*u3;
+
       // Begin at cell location.
-      float[] p = {cell.x1,cell.x2,cell.x3};
+      float[] y = {cell.x1,cell.x2,cell.x3};
 
       // Walk down-dip (for normal fault) or up-dip (for reverse fault).
       if (smp>0.0f) {
         for (; smp>=1.0f; smp-=1.0f)
-          cell = cell.walkDownDipFrom(p);
+          cell = cell.walkDownDipFrom(y);
       } else {
         for (; smp<=-1.0f; smp+=1.0f)
-          cell = cell.walkUpDipFrom(p);
+          cell = cell.walkUpDipFrom(y);
       }
 
-      // Account for any remaining shift.
-      float p1 = p[0], p2 = p[1], p3 = p[2];
-      p1 += smp;
-      p2 += smp*cell.us*cell.u2;
-      p3 += smp*cell.us*cell.u3;
+      // Account for any remaining fractional shift.
+      float y1 = y[0], y2 = y[1], y3 = y[2];
+      y1 += smp;
+      y2 += smp*cell.us*cell.u2;
+      y3 += smp*cell.us*cell.u3;
 
-      // Compute dip slip.
-      cell.s1 = p1-cell.x1;
-      cell.s2 = p2-cell.x2;
-      cell.s3 = p3-cell.x3;
+      // Unit dip vector.
+      u1 = cell.u1;
+      u2 = cell.u2;
+      u3 = cell.u3;
+
+      // Offset vector d.
+      d1 = 0.0f;
+      d2 =  _offset*cell.v3;
+      d3 = -_offset*cell.v2;
+
+      // Reflector slopes at point y+d.
+      p2 = imageValueAt(y1+d1,y2+d2,y3+d3,_p2);
+      p3 = imageValueAt(y1+d1,y2+d2,y3+d3,_p3);
+
+      // Unit-vector a normal to reflector.
+      a1 = 1.0f/sqrt(1.0f+p2*p2+p3*p3);
+      a2 = -p2*a1;
+      a3 = -p3*a1;
+
+      // Slip adjustment for reflector slope on plus side.
+      float ap = (a1*d1+a2*d2+a3*d3)/(a1*u1+a2*u2+a3*u3);
+      float u1p = ap*u1;
+      float u2p = ap*u2;
+      float u3p = ap*u3;
+
+      // Record total dip slip in cell at which we began the walk.
+      cellBegin.s1 = y1-x1;//+u1m+u1p;
+      cellBegin.s2 = y2-x2;//+u2m+u2p;
+      cellBegin.s3 = y3-x3;//+u3m+u3p;
+      if (!_zeroSlope) {
+        cellBegin.s1 += u1m+u1p;
+        cellBegin.s2 += u2m+u2p;
+        cellBegin.s3 += u3m+u3p;
+      }
     }
   }
 
   private static void clearErrors(FaultSkin skin) {
-    for (FaultCell cell:skin) {
+    for (FaultCell cell:skin)
       cell.emp = null;
-      cell.epm = null;
-    }
   }
 
   private static float alignmentError(float f, float g) {
@@ -416,4 +452,7 @@ public class FaultSlipper {
   private static void trace(String s) {
     System.out.println(s);
   }
+
+  ///////////////////////////////////////////////////////////////////////////
+  // junk
 }

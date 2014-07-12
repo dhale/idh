@@ -41,15 +41,16 @@ def main(args):
   goSlip(nskin)
 
 def goFakeData():
+  #sequence = 'A' # 1 episode of faulting only
   sequence = 'OA' # 1 episode of folding, followed by one episode of faulting
   #sequence = 'OOOOOAAAAA' # 5 episodes of folding, then 5 of faulting
   #sequence = 'OAOAOAOAOA' # 5 interleaved episodes of folding and faulting
-  nplanar = 3
+  nplanar = 0
   conjugate = True
-  conical = False
+  conical = True
   impedance = False
   wavelet = True
-  noise = 0.5
+  noise = 0.0
   gx,p2,p3 = FakeData.seismicAndSlopes3d2014A(
       sequence,nplanar,conjugate,conical,impedance,wavelet,noise)
   writeImage(gxfile,gx)
@@ -172,16 +173,16 @@ def goSlip(nskin):
   p2 = readImage(p2file)
   p3 = readImage(p3file)
   fs = FaultSlipper(gsx,p2,p3)
+  fs.setZeroSlope(False)
   skins = []
   for iskin in range(nskin):
     skinName = "skin"+str(iskin)
     skin = readObject(skinName)
     print "number of cells in skin",iskin,"=",skin.size()
-    fs.computeShifts(skin,20.0)
+    fs.computeDipSlips(skin,0.0,20.0)
     writeObject(skinName,skin)
     skins.append(skin)
-  plot3(gx,skins=skins,smax=-10.0)
-  plot3(gx,skins=skins,smax=10.0)
+  plot3(gsx,skins=skins,smax=10.0)
   
 def goDisplay(what):
   def show2(g1,g2):
@@ -314,8 +315,6 @@ def plot3(f,g=None,cmin=None,cmax=None,cmap=None,
     for skin in skins:
       if smax>0.0:
         cmap = ColorMap(0.0,smax,ColorMap.JET) # shifts smp
-      elif smax<0.0:
-        cmap = ColorMap(smax,0.0,ColorMap.JET) # shifts spm
       else:
         cmap = ColorMap(0.0,1.0,ColorMap.JET) # fault likelihoods
       xyz,uvw,rgb = skin.getCellXyzUvwRgb(size,smax,cmap)

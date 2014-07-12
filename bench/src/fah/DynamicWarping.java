@@ -989,8 +989,8 @@ public class DynamicWarping {
    * @param e input/output array of alignment errors.
    */
   public static void normalizeErrors(float[][][] e) {
-    final int n2 = e.length;
     final float[][][] ef = e;
+    int n2 = e.length;
     MinMax mm = Parallel.reduce(n2,new Parallel.ReduceInt<MinMax>() {
     public MinMax compute(int i2) {
       int nl = ef[i2][0].length;

@@ -187,12 +187,7 @@ public class FaultCell implements Serializable {
       uvw.add(w3); uvw.add(w2); uvw.add(w1);
       uvw.add(w3); uvw.add(w2); uvw.add(w1);
       uvw.add(w3); uvw.add(w2); uvw.add(w1);
-      float fc = cell.fl;
-      if (smax<0.0f) {
-        fc = cell.spm;
-      } else if (smax>0.0f) {
-        fc = cell.smp;
-      }
+      float fc = (smax>0.0f)?cell.s1:cell.fl;
       fcl.add(fc);
       fcl.add(fc);
       fcl.add(fc);
@@ -216,10 +211,8 @@ public class FaultCell implements Serializable {
   FaultSkin skin; // if not null, the skin to which this cell belongs
   int i2m,i2p; // sample indices i2 for minus and plus sides of cell
   int i3m,i3p; // sample indices i3 for minus and plus sides of cell
-  float[] emp; // array of alignment errors minus-plus
-  float[] epm; // array of alignment errors plus-minus
+  float[] emp; // array of minus-plus alignment errors
   float smp; // shift from minus side to plus side of cell
-  float spm; // shift from plus side to minus side of cell
   float s1,s2,s3; // fault dip-slip vector
 
   FaultCell(float x1, float x2, float x3, float fl, float fp, float ft) {
