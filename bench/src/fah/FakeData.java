@@ -255,7 +255,7 @@ public class FakeData {
   private static float[][] addNoise(double nrms, float[][] f) {
     int n1 = f[0].length;
     int n2 = f.length;
-    Random r = new Random(31415);
+    Random r = new Random(1);
     float[][] g = mul(2.0f,sub(randfloat(r,n1,n2),0.5f));
     RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(2.0);
     rgf.apply10(g,g); // 1st derivative enhances high-frequencies
@@ -267,7 +267,7 @@ public class FakeData {
     int n1 = f[0][0].length;
     int n2 = f[0].length;
     int n3 = f.length;
-    Random r = new Random(31415);
+    Random r = new Random(1); // 31415
     float[][][] g = mul(2.0f,sub(randfloat(r,n1,n2,n3),0.5f));
     RecursiveGaussianFilter rgf = new RecursiveGaussianFilter(1.0);
     rgf.apply100(g,g); // 1st derivative enhances high-frequencies

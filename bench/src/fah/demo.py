@@ -32,11 +32,11 @@ fs3file = "fs3" # fault slip (3rd component)
 # Processing begins here. When experimenting with one part of this demo, we
 # can disable other parts that have already written results to files.
 def main(args):
-  #goFakeData()
-  #goSlopes()
-  #goScan()
-  #goThin()
-  #goSmooth()
+  goFakeData()
+  goSlopes()
+  goScan()
+  goThin()
+  goSmooth()
   nskin = goSkin()
   goSlip(nskin)
 
@@ -50,7 +50,7 @@ def goFakeData():
   conical = False
   impedance = False
   wavelet = True
-  noise = 0.0
+  noise = 0.5
   gx,p2,p3 = FakeData.seismicAndSlopes3d2014A(
       sequence,nplanar,conjugate,conical,impedance,wavelet,noise)
   writeImage(gxfile,gx)
@@ -153,6 +153,8 @@ def goSkin():
   fs.setMinSkinSize(4000)
   cells = fs.findCells()
   skins = fs.findSkins(cells)
+  for skin in skins:
+    skin.smoothCellNormals(4)
   print "total number of cells =",len(cells)
   print "total number of skins =",len(skins)
   nskin = len(skins)
@@ -291,7 +293,7 @@ def plot3(f,g=None,cmin=None,cmax=None,cmap=None,
     ms.setEmissiveBack(Color(0.0,0.0,0.5))
     ss.add(ms)
     cmap = ColorMap(0.0,1.0,ColorMap.JET)
-    xyz,uvw,rgb = FaultCell.getXyzUvwRgb(0.5,0.0,cmap,cells)
+    xyz,uvw,rgb = FaultCell.getXyzUvwRgbForLikelihood(0.5,cmap,cells)
     qg = QuadGroup(xyz,uvw,rgb)
     qg.setStates(ss)
     sf.world.addChild(qg)
@@ -313,11 +315,12 @@ def plot3(f,g=None,cmin=None,cmax=None,cmap=None,
     if links:
       size = 0.5 
     for skin in skins:
-      if smax>0.0:
-        cmap = ColorMap(0.0,smax,ColorMap.JET) # shifts smp
-      else:
-        cmap = ColorMap(0.0,1.0,ColorMap.JET) # fault likelihoods
-      xyz,uvw,rgb = skin.getCellXyzUvwRgb(size,smax,cmap)
+      if smax>0.0: # show fault throws
+        cmap = ColorMap(0.0,smax,ColorMap.JET)
+        xyz,uvw,rgb = skin.getCellXyzUvwRgbForThrow(size,cmap)
+      else: # show fault likelihood
+        cmap = ColorMap(0.0,1.0,ColorMap.JET)
+        xyz,uvw,rgb = skin.getCellXyzUvwRgbForLikelihood(size,cmap)
       qg = QuadGroup(xyz,uvw,rgb)
       qg.setStates(None)
       sg.addChild(qg)

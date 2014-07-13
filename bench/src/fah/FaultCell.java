@@ -139,63 +139,33 @@ public class FaultCell implements Serializable {
   /**
    * Gets arrays {xyz,uvw,rgb} of cell coordinates, normals and colors. In
    * these arrays, the specified cells are represented by quads with specified
-   * size, and colors corresponding to fault likelihoods or shifts.
+   * size, and colors corresponding to fault throws.
    * @param size the size (in samples) of the quads.
-   * @param smax if zero, colors correspond to fault likelihoods with a
-   * maximum value of 1. If positive, colors correspond to minus-plus shifts
-   * with the specified maximum shift. If negative, colors correspond to
-   * plus-minus shifts with minimum equal to the specified shift.
    * @param cmap the colormap used to compute rgb colors from floats.
-   * @param cells the cells for which to compute quads.
+   * @param cells the cells for which to return the arrays.
+   * @return arrays {xyz,uvw,rgb}.
    */
-  public static float[][] getXyzUvwRgb(
-      float size, float smax, ColorMap cmap, FaultCell[] cells) {
-    FloatList xyz = new FloatList();
-    FloatList uvw = new FloatList();
-    FloatList fcl = new FloatList();
-    size *= 0.5f;
-    float[] qa = {0.0f,-size,-size};
-    float[] qb = {0.0f, size,-size};
-    float[] qc = {0.0f, size, size};
-    float[] qd = {0.0f,-size, size};
-    for (FaultCell cell:cells) {
-      float x1 = cell.x1;
-      float x2 = cell.x2;
-      float x3 = cell.x3;
-      float w1 = cell.w1;
-      float w2 = cell.w2;
-      float w3 = cell.w3;
-      float fp = toRadians(cell.fp);
-      float ft = toRadians(cell.ft);
-      float cp = cos(fp);
-      float sp = sin(fp);
-      float ct = cos(ft);
-      float st = sin(ft);
-      float[] ra = rotatePoint(cp,sp,ct,st,qa);
-      float[] rb = rotatePoint(cp,sp,ct,st,qb);
-      float[] rc = rotatePoint(cp,sp,ct,st,qc);
-      float[] rd = rotatePoint(cp,sp,ct,st,qd);
-      float a1 = x1+ra[0], a2 = x2+ra[1], a3 = x3+ra[2];
-      float b1 = x1+rb[0], b2 = x2+rb[1], b3 = x3+rb[2];
-      float c1 = x1+rc[0], c2 = x2+rc[1], c3 = x3+rc[2];
-      float d1 = x1+rd[0], d2 = x2+rd[1], d3 = x3+rd[2];
-      xyz.add(a3); xyz.add(a2); xyz.add(a1);
-      xyz.add(b3); xyz.add(b2); xyz.add(b1);
-      xyz.add(c3); xyz.add(c2); xyz.add(c1);
-      xyz.add(d3); xyz.add(d2); xyz.add(d1);
-      uvw.add(w3); uvw.add(w2); uvw.add(w1);
-      uvw.add(w3); uvw.add(w2); uvw.add(w1);
-      uvw.add(w3); uvw.add(w2); uvw.add(w1);
-      uvw.add(w3); uvw.add(w2); uvw.add(w1);
-      float fc = (smax>0.0f)?cell.s1:cell.fl;
-      fcl.add(fc);
-      fcl.add(fc);
-      fcl.add(fc);
-      fcl.add(fc);
-    }
-    float[] fc = fcl.trim();
-    float[] rgb = cmap.getRgbFloats(fc);
-    return new float[][]{xyz.trim(),uvw.trim(),rgb};
+  public static float[][] getXyzUvwRgbForThrow(
+      float size, ColorMap cmap, FaultCell[] cells) {
+    return getXyzUvwRgb(size,cmap,cells,new Get1() {
+      public float get(FaultCell cell) { return cell.s1; }
+    });
+  }
+
+  /**
+   * Gets arrays {xyz,uvw,rgb} of cell coordinates, normals and colors. In
+   * these arrays, the specified cells are represented by quads with specified
+   * size, and colors corresponding to fault likelihoods.
+   * @param size the size (in samples) of the quads.
+   * @param cmap the colormap used to compute rgb colors from floats.
+   * @param cells the cells for which to return the arrays.
+   * @return arrays {xyz,uvw,rgb}.
+   */
+  public static float[][] getXyzUvwRgbForLikelihood(
+      float size, ColorMap cmap, FaultCell[] cells) {
+    return getXyzUvwRgb(size,cmap,cells,new Get1() {
+      public float get(FaultCell cell) { return cell.fl; }
+    });
   }
 
   /////////////////////////////////////////////////////////////////////////
@@ -215,47 +185,23 @@ public class FaultCell implements Serializable {
   float smp; // shift from minus side to plus side of cell
   float s1,s2,s3; // fault dip-slip vector
 
-  FaultCell(float x1, float x2, float x3, float fl, float fp, float ft) {
-    this.x1 = x1; 
-    this.x2 = x2; 
-    this.x3 = x3;
-    this.fl = fl; 
-    this.fp = fp; 
-    this.ft = ft;
-    i1 = round(x1);
-    i2 = round(x2);
-    i3 = round(x3);
-    float[] u = faultDipVectorFromStrikeAndDip(fp,ft);
-    float[] v = faultStrikeVectorFromStrikeAndDip(fp,ft);
-    float[] w = faultNormalVectorFromStrikeAndDip(fp,ft);
-    u1 = u[0]; u2 = u[1]; u3 = u[2]; us = 1.0f/u1;
-    v1 = v[0]; v2 = v[1]; v3 = v[2];
-    w1 = w[0]; w2 = w[1]; w3 = w[2];
+  interface Get1 { public float get(FaultCell cell); }
+  interface GetN { public float[] get(FaultCell cell); }
+  interface Set1 { public void set(FaultCell cell, float value); }
+  interface SetN { public void set(FaultCell cell, float[] values); }
 
-    // Indices (i2m,i2p) and (i3m,i3p) for minus-plus pairs of samples.
-    // Cell normal vector w points from the minus side to the plus side.
-    i2m = i2p = i2;
-    i3m = i3p = i3;
-    if (x2>i2) {
-      ++i2p;
-    } else if (x2<i2) {
-      --i2m;
-    }
-    if (x3>i3) {
-      ++i3p;
-    } else if (x3<i3) {
-      --i3m;
-    }
-    if ((i2p-i2m)*w2<0.0f) {
-      int i2t = i2m; 
-      i2m = i2p; 
-      i2p = i2t;
-    }
-    if ((i3p-i3m)*w3<0.0f) {
-      int i3t = i3m; 
-      i3m = i3p; 
-      i3p = i3t;
-    }
+  FaultCell(float x1, float x2, float x3, float fl, float fp, float ft) {
+    set(x1,x2,x3,fl,fp,ft);
+  }
+
+  /**
+   * Sets the normal vector for this cell. Also modifies all other cell
+   * properties related to the normal vector, such as fault strike and dip.
+   */
+  void setNormalVector(float w1, float w2, float w3) {
+    float fp = faultStrikeFromNormalVector(w1,w2,w3);
+    float ft = faultDipFromNormalVector(w1,w2,w3);
+    set(x1,x2,x3,fl,fp,ft);
   }
 
   /**
@@ -403,6 +349,51 @@ public class FaultCell implements Serializable {
   /////////////////////////////////////////////////////////////////////////
   // private
 
+  private void set(
+      float x1, float x2, float x3, 
+      float fl, float fp, float ft) {
+    this.x1 = x1; 
+    this.x2 = x2; 
+    this.x3 = x3;
+    this.fl = fl; 
+    this.fp = fp; 
+    this.ft = ft;
+    i1 = round(x1);
+    i2 = round(x2);
+    i3 = round(x3);
+    float[] u = faultDipVectorFromStrikeAndDip(fp,ft);
+    float[] v = faultStrikeVectorFromStrikeAndDip(fp,ft);
+    float[] w = faultNormalVectorFromStrikeAndDip(fp,ft);
+    u1 = u[0]; u2 = u[1]; u3 = u[2]; us = 1.0f/u1;
+    v1 = v[0]; v2 = v[1]; v3 = v[2];
+    w1 = w[0]; w2 = w[1]; w3 = w[2];
+
+    // Indices (i2m,i2p) and (i3m,i3p) for minus-plus pairs of samples.
+    // Cell normal vector w points from the minus side to the plus side.
+    i2m = i2p = i2;
+    i3m = i3p = i3;
+    if (x2>i2) {
+      ++i2p;
+    } else if (x2<i2) {
+      --i2m;
+    }
+    if (x3>i3) {
+      ++i3p;
+    } else if (x3<i3) {
+      --i3m;
+    }
+    if ((i2p-i2m)*w2<0.0f) {
+      int i2t = i2m; 
+      i2m = i2p; 
+      i2p = i2t;
+    }
+    if ((i3p-i3m)*w3<0.0f) {
+      int i3t = i3m; 
+      i3m = i3p; 
+      i3p = i3t;
+    }
+  }
+
   private static FaultCell nearestCell(
       FaultCell c1, FaultCell c2, FaultCell c3, 
       float p1, float p2, float p3) 
@@ -440,6 +431,66 @@ public class FaultCell implements Serializable {
     float y2 = -cp*st*x1+cp*ct*x2+sp*x3;
     float y3 =  sp*st*x1-sp*ct*x2+cp*x3;
     return new float[]{y1,y2,y3};
+  }
+
+  /**
+   * Gets arrays {xyz,uvw,rgb} of cell coordinates, normals and colors. In
+   * these arrays, the specified cells are represented by quads with specified
+   * size, and colors corresponding to a property gotten from each cell.
+   * @param size the size (in samples) of the quads.
+   * @param cmap the colormap used to compute rgb colors from floats.
+   * @param cells the cells for which to compute quads.
+   * @param get1 used to get the float from a cell to be colormapped.
+   * @return arrays {xyz,uvw,rgb}.
+   */
+  private static float[][] getXyzUvwRgb(
+      float size, ColorMap cmap, FaultCell[] cells, Get1 get1) {
+    FloatList xyz = new FloatList();
+    FloatList uvw = new FloatList();
+    FloatList fcl = new FloatList();
+    size *= 0.5f;
+    float[] qa = {0.0f,-size,-size};
+    float[] qb = {0.0f, size,-size};
+    float[] qc = {0.0f, size, size};
+    float[] qd = {0.0f,-size, size};
+    for (FaultCell cell:cells) {
+      float x1 = cell.x1;
+      float x2 = cell.x2;
+      float x3 = cell.x3;
+      float w1 = cell.w1;
+      float w2 = cell.w2;
+      float w3 = cell.w3;
+      float fp = toRadians(cell.fp);
+      float ft = toRadians(cell.ft);
+      float cp = cos(fp);
+      float sp = sin(fp);
+      float ct = cos(ft);
+      float st = sin(ft);
+      float[] ra = rotatePoint(cp,sp,ct,st,qa);
+      float[] rb = rotatePoint(cp,sp,ct,st,qb);
+      float[] rc = rotatePoint(cp,sp,ct,st,qc);
+      float[] rd = rotatePoint(cp,sp,ct,st,qd);
+      float a1 = x1+ra[0], a2 = x2+ra[1], a3 = x3+ra[2];
+      float b1 = x1+rb[0], b2 = x2+rb[1], b3 = x3+rb[2];
+      float c1 = x1+rc[0], c2 = x2+rc[1], c3 = x3+rc[2];
+      float d1 = x1+rd[0], d2 = x2+rd[1], d3 = x3+rd[2];
+      xyz.add(a3); xyz.add(a2); xyz.add(a1);
+      xyz.add(b3); xyz.add(b2); xyz.add(b1);
+      xyz.add(c3); xyz.add(c2); xyz.add(c1);
+      xyz.add(d3); xyz.add(d2); xyz.add(d1);
+      uvw.add(w3); uvw.add(w2); uvw.add(w1);
+      uvw.add(w3); uvw.add(w2); uvw.add(w1);
+      uvw.add(w3); uvw.add(w2); uvw.add(w1);
+      uvw.add(w3); uvw.add(w2); uvw.add(w1);
+      float fc = get1.get(cell);
+      fcl.add(fc);
+      fcl.add(fc);
+      fcl.add(fc);
+      fcl.add(fc);
+    }
+    float[] fc = fcl.trim();
+    float[] rgb = cmap.getRgbFloats(fc);
+    return new float[][]{xyz.trim(),uvw.trim(),rgb};
   }
 
   private static class FloatList {

@@ -342,33 +342,16 @@ public class FaultSlipper {
   }
 
   /**
-   * Smooths shifts in the specified skin. Replaces shifts in each cell 
-   * with an average of that cell's shifts and those of its cell nabors.
+   * Smooths shifts in the specified skin.
    */
   private static void smoothShifts(FaultSkin skin) {
-    FaultCell[] cells = skin.getCells();
-    int ncell = cells.length;
-    float[] smps = new float[ncell];
-    float[] cnts = new float[ncell];
-    FaultCell[] cellNabors = new FaultCell[4];
-    for (int icell=0; icell<ncell; ++icell) {
-      FaultCell cell = cells[icell];
-      cellNabors[0] = cell.ca;
-      cellNabors[1] = cell.cb;
-      cellNabors[2] = cell.cl;
-      cellNabors[3] = cell.cr;
-      for (FaultCell cellNabor:cellNabors) {
-        if (cellNabor!=null) {
-          smps[icell] += cell.smp+cellNabor.smp;
-          cnts[icell] += 2.0f;
-        }
-      }
-    }
-    for (int icell=0; icell<ncell; ++icell) {
-      FaultCell cell = cells[icell];
-      float cnti = cnts[icell];
-      cell.smp = smps[icell]/(cnti>0.0f?cnti:1.0f);
-    }
+    FaultCell.Get1 getter = new FaultCell.Get1() { 
+      public float get(FaultCell cell) { return cell.smp; }
+    };
+    FaultCell.Set1 setter = new FaultCell.Set1() { 
+      public void set(FaultCell cell, float smp) { cell.smp = smp; }
+    };
+    skin.smooth1(getter,setter);
   }
 
   /**

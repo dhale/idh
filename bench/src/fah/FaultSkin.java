@@ -142,6 +142,32 @@ public class FaultSkin implements Iterable<FaultCell>,Serializable {
   }
 
   /**
+   * Smooths the normal vectors of cells in this skin.
+   * @param nsmooth the number of smoothings.
+   */
+  public void smoothCellNormals(int nsmooth) {
+    FaultCell.GetN getter = new FaultCell.GetN() {
+      public float[] get(FaultCell cell) {
+        return new float[]{cell.w1,cell.w2,cell.w3};
+      }
+    };
+    FaultCell.SetN setter = new FaultCell.SetN() {
+      public void set(FaultCell cell, float[] w) {
+        float w1 = w[0]; 
+        float w2 = w[1]; 
+        float w3 = w[2];
+        float ws = 1.0f/sqrt(w1*w1+w2*w2+w3*w3);
+        w1 *= ws;
+        w2 *= ws;
+        w3 *= ws;
+        cell.setNormalVector(w1,w2,w3);
+      }
+    };
+    for (int ismooth=0; ismooth<nsmooth; ++ismooth)
+      smoothN(getter,setter);
+  }
+
+  /**
    * Gets a cell nearest the centroid of this skin.
    * In illustrations, this cell is often a good representative.
    * @return the cell nearest the centroid.
@@ -175,16 +201,23 @@ public class FaultSkin implements Iterable<FaultCell>,Serializable {
   /**
    * Gets arrays {xyz,uvw,rgb} of cell coordinates, normals and colors. In
    * these arrays, cells in this skin are represented by quads with specified
-   * size, and colors corresponding to fault likelihoods or shifts.
+   * size, and colors corresponding to fault likelihoods.
    * @param size size (in samples) of the quads.
-   * @param smax if zero, colors correspond to fault likelihoods with a
-   * maximum value of 1. If positive, colors correspond to minus-plus shifts
-   * with the specified maximum shift. If negative, colors correspond to
-   * plus-minus shifts with minimum equal to the specified shift.
    * @param cmap colormap used to compute rgb colors from cell properties.
    */
-  public float[][] getCellXyzUvwRgb(float size, float smax, ColorMap cmap) {
-    return FaultCell.getXyzUvwRgb(size,smax,cmap,getCells());
+  public float[][] getCellXyzUvwRgbForLikelihood(float size, ColorMap cmap) {
+    return FaultCell.getXyzUvwRgbForLikelihood(size,cmap,getCells());
+  }
+
+  /**
+   * Gets arrays {xyz,uvw,rgb} of cell coordinates, normals and colors. In
+   * these arrays, cells in this skin are represented by quads with specified
+   * size, and colors corresponding to fault throws.
+   * @param size size (in samples) of the quads.
+   * @param cmap colormap used to compute rgb colors from cell properties.
+   */
+  public float[][] getCellXyzUvwRgbForThrow(float size, ColorMap cmap) {
+    return FaultCell.getXyzUvwRgbForThrow(size,cmap,getCells());
   }
 
   /**
@@ -241,6 +274,76 @@ public class FaultSkin implements Iterable<FaultCell>,Serializable {
     _cellList.add(cell);
     _cellsAB = null;
     _cellsLR = null;
+  }
+
+  /**
+   * Smooths one value stored in the cells of this skin. The value smoothed is
+   * that accessed by the specified getter and setter. Each smoothed value is
+   * an average of the values in a cell and its cell nabors. 
+   */
+  void smooth1(FaultCell.Get1 getter, FaultCell.Set1 setter) {
+    int ncell = size();
+    float[] vals = new float[ncell];
+    float[] cnts = new float[ncell];
+    FaultCell[] cellNabors = new FaultCell[4];
+    for (int icell=0; icell<ncell; ++icell) {
+      FaultCell cell = _cellList.get(icell);
+      float valCell = getter.get(cell);
+      cellNabors[0] = cell.ca;
+      cellNabors[1] = cell.cb;
+      cellNabors[2] = cell.cl;
+      cellNabors[3] = cell.cr;
+      for (FaultCell cellNabor:cellNabors) {
+        if (cellNabor!=null) {
+          float valNabor = getter.get(cellNabor);
+          vals[icell] += valCell+valNabor;
+          cnts[icell] += 2.0f;
+        }
+      }
+    }
+    for (int icell=0; icell<ncell; ++icell) {
+      FaultCell cell = _cellList.get(icell);
+      float cnti = cnts[icell];
+      float vali = vals[icell]/(cnti>0.0f?cnti:1.0f);
+      setter.set(cell,vali);
+    }
+  }
+
+  /**
+   * Smooths multiple values stored in the cells of this skin. The values
+   * smoothed are those accessed by the specified getter and setter. Each
+   * smoothed value is an average of the values in a cell and its cell nabors. 
+   */
+  void smoothN(FaultCell.GetN getter, FaultCell.SetN setter) {
+    int ncell = size();
+    int nval = getter.get(_seed).length;
+    float[][] vals = new float[ncell][nval];
+    float[] cnts = new float[ncell];
+    FaultCell[] cellNabors = new FaultCell[4];
+    for (int icell=0; icell<ncell; ++icell) {
+      FaultCell cell = _cellList.get(icell);
+      float[] valsCell = getter.get(cell);
+      cellNabors[0] = cell.ca;
+      cellNabors[1] = cell.cb;
+      cellNabors[2] = cell.cl;
+      cellNabors[3] = cell.cr;
+      for (FaultCell cellNabor:cellNabors) {
+        if (cellNabor!=null) {
+          float[] valsNabor = getter.get(cellNabor);
+          for (int ival=0; ival<nval; ++ival)
+            vals[icell][ival] += valsCell[ival]+valsNabor[ival];
+          cnts[icell] += 2.0f;
+        }
+      }
+    }
+    for (int icell=0; icell<ncell; ++icell) {
+      FaultCell cell = _cellList.get(icell);
+      float cnti = cnts[icell];
+      float scli = 1.0f/(cnti>0.0f?cnti:1.0f);
+      for (int ival=0; ival<nval; ++ival)
+        vals[icell][ival] *= scli;
+      setter.set(cell,vals[icell]);
+    }
   }
 
   /////////////////////////////////////////////////////////////////////////
