@@ -587,6 +587,36 @@ public class FaultSkinner {
     return new float[]{y1,y2,y3};
   }
 
+  // Smooths normal vectors for each cell using an average of that
+  // cell's normal vector and those of its cell nabors.
+  private static void smoothNormals(FaultSkin skin) {
+    /* copied from FaultSlipper
+    FaultCell[] cells = skin.getCells();
+    int ncell = cells.length;
+    float[] smps = new float[ncell];
+    float[] cnts = new float[ncell];
+    FaultCell[] cellNabors = new FaultCell[4];
+    for (int icell=0; icell<ncell; ++icell) {
+      FaultCell cell = cells[icell];
+      cellNabors[0] = cell.ca;
+      cellNabors[1] = cell.cb;
+      cellNabors[2] = cell.cl;
+      cellNabors[3] = cell.cr;
+      for (FaultCell cellNabor:cellNabors) {
+        if (cellNabor!=null) {
+          smps[icell] += cell.smp+cellNabor.smp;
+          cnts[icell] += 2.0f;
+        }
+      }
+    }
+    for (int icell=0; icell<ncell; ++icell) {
+      FaultCell cell = cells[icell];
+      float cnti = cnts[icell];
+      cell.smp = smps[icell]/(cnti>0.0f?cnti:1.0f);
+    }
+    */
+  }
+
   private static void trace(String s) {
     System.out.println(s);
   }

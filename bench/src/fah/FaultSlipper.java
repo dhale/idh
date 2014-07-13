@@ -30,7 +30,7 @@ import static fah.FaultGeometry.*;
  * estimates of reflector slopes and smoothing filter artifacts. Therefore,
  * image samples at some small horizontal distance (e.g., two samples away)
  * from fault skins are used to estimate slips. Specified reflector slopes are
- * then used to compensate for this small offset.
+ * then used to account for this small offset when computing fault slips.
  *
  * @author Dave Hale, Colorado School of Mines
  * @version 2014.07.05
@@ -259,16 +259,20 @@ public class FaultSlipper {
       DynamicWarping dw, FaultCell[][] cab, FaultCell[][] clr) {
 
     // Arrays of arrays of errors, linked above and below.
+    // TESTING ...
     int iabmax = -1;
     int mabmax = 0;
+    // ... TESTING
     int nab = cab.length;
     float[][][] eab = new float[nab][][];
     for (int iab=0; iab<nab; ++iab) {
       int mab = cab[iab].length;
+      // TESTING ...
       if (mab>mabmax) {
         iabmax = iab;
         mabmax = mab;
       }
+      // ... TESTING
       eab[iab] = new float[mab][];
       for (int jab=0; jab<mab; ++jab) {
         FaultCell c = cab[iab][jab];
@@ -290,11 +294,17 @@ public class FaultSlipper {
 
 
     // Smooth alignment errors in above-below and left-right directions.
-    //edu.mines.jtk.mosaic.SimplePlot.asPixels(pow(eab[iabmax],1.00f));
+    // TESTING ...
+    //edu.mines.jtk.mosaic.SimplePlot.asPixels(pow(eab[iabmax],0.1f));
+    // ... TESTING
     for (int ismooth=0; ismooth<1; ++ismooth) {
       dw.smoothErrors1(eab,eab);
+      normalizeErrors(eab);
       dw.smoothErrors1(elr,elr);
-      //edu.mines.jtk.mosaic.SimplePlot.asPixels(pow(eab[iabmax],1.00f));
+      normalizeErrors(elr);
+      // TESTING ...
+      //edu.mines.jtk.mosaic.SimplePlot.asPixels(pow(eab[iabmax],0.1f));
+      // ... TESTING
     }
 
     // Find shifts by accumulating once more and then backtracking.
@@ -308,9 +318,33 @@ public class FaultSlipper {
       }
     }
   }
+  
+  /**
+   * Normalizes errors to account for varying lengths of arrays of cells.
+   * This normalization is different from that performed by dynamic warping
+   * when smoothing alignment errors, because that normalization assumes that
+   * all arrays in the array of arrays of alignment errors have the same
+   * length. This assumption is false for the arrays cellsAB and cellsLR in
+   * fault skins.
+   */
+  private static void normalizeErrors(float[][][] e) {
+    int n2 = e.length;
+    for (int i2=0; i2<n2; ++i2) {
+      int n1 = e[i2].length;
+      float scale = 1.0f/n1;
+      for (int i1=0; i1<n1; ++i1) {
+        float[] ei = e[i2][i1];
+        int nlag = ei.length;
+        for (int ilag=0; ilag<nlag; ++ilag)
+          ei[ilag] *= scale;
+      }
+    }
+  }
 
-  // Smooths shifts by replacing shifts in each cell with an average of that
-  // cell's shifts and those of its cell nabors.
+  /**
+   * Smooths shifts in the specified skin. Replaces shifts in each cell 
+   * with an average of that cell's shifts and those of its cell nabors.
+   */
   private static void smoothShifts(FaultSkin skin) {
     FaultCell[] cells = skin.getCells();
     int ncell = cells.length;
@@ -337,7 +371,9 @@ public class FaultSlipper {
     }
   }
 
-  // Computes dip-slip vectors from vertical shifts for specified skin.
+  /**
+   * Computes dip-slip vectors from vertical shifts for specified skin.
+   */
   private void computeDipSlips(FaultSkin skin) {
 
     // For all cells in the skin, ...

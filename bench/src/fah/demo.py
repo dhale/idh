@@ -45,9 +45,9 @@ def goFakeData():
   sequence = 'OA' # 1 episode of folding, followed by one episode of faulting
   #sequence = 'OOOOOAAAAA' # 5 episodes of folding, then 5 of faulting
   #sequence = 'OAOAOAOAOA' # 5 interleaved episodes of folding and faulting
-  nplanar = 0
+  nplanar = 3
   conjugate = True
-  conical = True
+  conical = False
   impedance = False
   wavelet = True
   noise = 0.0

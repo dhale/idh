@@ -6,6 +6,11 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package fah;
 
+// NOTE: this class is a slightly modified version of that in
+// edu.mines.jtk.dsp. This version enables research of enhancements for
+// computing fault throws, but these enhancements will eventually be merged
+// back into the Mines JTK.
+
 import edu.mines.jtk.dsp.RecursiveExponentialFilter;
 import edu.mines.jtk.dsp.SincInterpolator;
 import edu.mines.jtk.util.*;
