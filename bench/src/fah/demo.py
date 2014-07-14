@@ -24,7 +24,6 @@ ftfile  = "ft" # fault dip (theta)
 fltfile = "flt" # fault likelihood thinned
 fptfile = "fpt" # fault strike thinned
 fttfile = "ftt" # fault dip thinned
-frsfile = "frs" # fault relative shifts
 fs1file = "fs1" # fault slip (1st component)
 fs2file = "fs2" # fault slip (2nd component)
 fs3file = "fs3" # fault slip (3rd component)
@@ -32,13 +31,13 @@ fs3file = "fs3" # fault slip (3rd component)
 # Processing begins here. When experimenting with one part of this demo, we
 # can disable other parts that have already written results to files.
 def main(args):
-  goFakeData()
-  goSlopes()
-  goScan()
-  goThin()
-  goSmooth()
-  nskin = goSkin()
-  goSlip(nskin)
+  #goFakeData()
+  #goSlopes()
+  #goScan()
+  #goThin()
+  #goSmooth()
+  goSkin()
+  goSlip()
 
 def goFakeData():
   #sequence = 'A' # 1 episode of faulting only
@@ -157,64 +156,26 @@ def goSkin():
     skin.smoothCellNormals(4)
   print "total number of cells =",len(cells)
   print "total number of skins =",len(skins)
-  nskin = len(skins)
+  removeAllSkinFiles("skin")
+  writeSkins("skin",skins)
   plot3(gx)
   plot3(gsx)
   plot3(gx,cells=cells)
-  for iskin,skin in enumerate(skins):
-    skinName = "skin"+str(iskin)
-    writeObject(skinName,skin)
-    print "number of cells in skin",iskin,"=",skin.size()
+  for skin in skins:
     plot3(gx,skins=[skin],links=True,curve=False,trace=False)
   plot3(gx,skins=skins,links=False,curve=True,trace=True)
-  return nskin
 
-def goSlip(nskin):
+def goSlip():
   gx = readImage(gxfile)
   gsx = readImage(gsxfile)
   p2 = readImage(p2file)
   p3 = readImage(p3file)
+  skins = readSkins("skin")
   fs = FaultSlipper(gsx,p2,p3)
   fs.setZeroSlope(False)
-  skins = []
-  for iskin in range(nskin):
-    skinName = "skin"+str(iskin)
-    skin = readObject(skinName)
-    print "number of cells in skin",iskin,"=",skin.size()
+  for skin in skins:
     fs.computeDipSlips(skin,0.0,20.0)
-    writeObject(skinName,skin)
-    skins.append(skin)
   plot3(gsx,skins=skins,smax=10.0)
-  
-def goDisplay(what):
-  def show2(g1,g2):
-    world = World()
-    addImageToWorld(world,g1).setClips(-0.5,0.5)
-    addImageToWorld(world,g2).setClips(-0.5,0.5)
-    makeFrame(world).setSize(1200,900)
-  if what=="gx":
-    g = readImage("gx")
-    plot3(g)
-  elif what=="gs":
-    gs = readImage("gs")
-    #plot3(gs)
-    g = readImage("g0")
-    show2(g,gs)
-  elif what=="gflt":
-    g = readImage("g0")
-    fl = readImage("flt")
-    fl = pow(fl,0.5) # for display only?
-    plot3(g,fl,cmin=0.0,cmax=1.0,cmap=jetRamp(1.0))
-  elif what=="gfrs":
-    g = readImage("g")
-    s = readImage("frs")
-    plot3(g,s,cmin=-5.0,cmax=5.0,cmap=bwrNotch(1.0))
-  elif what=="gfs1":
-    g = readImage("g")
-    fs1 = readImage("fs1")
-    plot3(g,fs1,cmin=0.0,cmax=1.0,cmap=jetRamp(1.0))
-  else:
-    print "do not know how to display ",what
 
 #############################################################################
 # graphics
@@ -343,9 +304,9 @@ def plot3(f,g=None,cmin=None,cmax=None,cmap=None,
   ipg.setSlices(95,5,95)
   sf.setSize(700,700)
   vc = sf.getViewCanvas()
-  ov = sf.getOrbitView()
   vc.setBackground(Color.WHITE)
   radius = 0.5*sqrt(n1*n1+n2*n2+n3*n3)
+  ov = sf.getOrbitView()
   ov.setWorldSphere(BoundingSphere(0.5*n1,0.5*n2,0.5*n3,radius))
   ov.setAzimuthAndElevation(-55.0,25.0)
   ov.setTranslate(Vector3(0.0241,0.0517,0.0103))

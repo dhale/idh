@@ -24,7 +24,7 @@ def getSeismicDir():
   return seismicDir
 
 #############################################################################
-# read/write files
+# read/write images
 
 def readImage(name):
   """ 
@@ -50,101 +50,67 @@ def writeImage(name,image):
   aos.close()
   return image
 
-def readSlice3(name):
-  fileName = seismicDir+name+".dat"
-  image = zerofloat(n1,n2)
-  ais = ArrayInputStream(fileName)
-  ais.readFloats(image)
-  ais.close()
-  return image
+#############################################################################
+# read/write fault skins
+
+def skinName(basename,index):
+  return basename+("%03i"%(index))
+def skinIndex(basename,fileName):
+  assert fileName.startswith(basename)
+  i = len(basename)
+  return int(fileName[i:i+3])
+
+def listAllSkinFiles(basename):
+  """ Lists all skins with specified basename, sorted by index. """
+  fileNames = []
+  for fileName in File(seismicDir).list():
+    if fileName.startswith(basename):
+      fileNames.append(fileName)
+  fileNames.sort()
+  return fileNames
+
+def removeAllSkinFiles(basename):
+  """ Removes all skins with specified basename. """
+  fileNames = listAllSkinFiles(basename)
+  for fileName in fileNames:
+    File(seismicDir+fileName).delete()
+
+def readSkin(basename,index):
+  """ Reads one skin with specified basename and index. """
+  return readObject(skinName(basename,index))
+
+def readSkins(basename):
+  """ Reads all skins with specified basename. """
+  fileNames = []
+  for fileName in File(seismicDir).list():
+    if fileName.startswith(basename):
+      fileNames.append(fileName)
+  fileNames.sort()
+  skins = []
+  for iskin,fileName in enumerate(fileNames):
+    index = skinIndex(basename,fileName)
+    skin = readSkin(basename,index)
+    skins.append(skin)
+  return skins
+
+def writeSkin(basename,index,skin):
+  """ Writes one skin with specified basename and index. """
+  writeObject(skinName(basename,index),skin)
+
+def writeSkins(basename,skins):
+  """ Writes all skins with specified basename. """
+  for index,skin in enumerate(skins):
+    writeSkin(basename,index,skin)
 
 from org.python.util import PythonObjectInputStream
 def readObject(name):
-  """
-  Reads an object from a file with specified basename.
-  """
   fis = FileInputStream(seismicDir+name+".dat")
   ois = PythonObjectInputStream(fis)
   obj = ois.readObject()
   ois.close()
   return obj
 def writeObject(name,obj):
-  """
-  Writes an object to a file with specified basename.
-  """
   fos = FileOutputStream(seismicDir+name+".dat")
   oos = ObjectOutputStream(fos)
   oos.writeObject(obj)
   oos.close()
-
-#############################################################################
-# graphics
-
-def addImageToWorld(world,image):
-  ipg = ImagePanelGroup(s1,s2,s3,image)
-  world.addChild(ipg)
-  return ipg
-
-def addImage2ToWorld(world,image1,image2):
-  ipg = ImagePanelGroup2(s1,s2,s3,image1,image2)
-  ipg.setColorModel1(ColorMap.getGray())
-  ipg.setColorModel2(ColorMap.getJet(0.3))
-  world.addChild(ipg)
-  return ipg
-
-def addTensorsInImage(ip,et,esize):
-  tp = TensorsPanel(s1,s2,s3,et)
-  tp.setEllipsoidSize(esize)
-  ip.getFrame().addChild(tp)
-  return tp
-
-def getHorizonColor(name):
-  return _horizonColors[name]
-
-def makeHorizonTriangles(horizon,color):
-  ijk = horizon.getIABC()
-  xyz = horizon.getX321()
-  tg = TriangleGroup(ijk,xyz)
-  tg.setColor(color)
-  return tg
-
-def addHorizonToWorld(world,name):
-  horizon = readHorizon(name)
-  color = getHorizonColor(name)
-  tg = makeHorizonTriangles(horizon,color)
-  world.addChild(tg)
-  return tg
-
-def addAllHorizonsToWorld(world):
-  for name in _horizonNames:
-    addHorizonToWorld(world,name)
-
-def makeFrame(world):
-  n1,n2,n3 = s1.count,s2.count,s3.count
-  d1,d2,d3 = s1.delta,s2.delta,s3.delta
-  f1,f2,f3 = s1.first,s2.first,s3.first
-  l1,l2,l3 = s1.last,s2.last,s3.last
-  frame = SimpleFrame(world,AxesOrientation.XRIGHT_YOUT_ZDOWN)
-  view = frame.getOrbitView()
-  zscale = 0.75*max(n2*d2,n3*d3)/(n1*d1)
-  view.setAxesScale(1.0,1.0,zscale)
-  view.setScale(1.3)
-  #view.setAzimuth(75.0)
-  #view.setAzimuth(-75.0)
-  view.setAzimuth(-65.0)
-  view.setWorldSphere(BoundingSphere(BoundingBox(f3,f2,f1,l3,l2,l1)))
-  frame.viewCanvas.setBackground(frame.getBackground())
-  frame.setSize(1250,900)
-  frame.setVisible(True)
-  return frame
-
-#############################################################################
-# Run the function main on the Swing thread
-import sys
-class _RunMain(Runnable):
-  def __init__(self,main):
-    self.main = main
-  def run(self):
-    self.main(sys.argv)
-def run(main):
-  SwingUtilities.invokeLater(_RunMain(main)) 

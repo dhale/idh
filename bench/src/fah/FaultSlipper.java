@@ -47,6 +47,9 @@ public class FaultSlipper {
     _gs = gs;
     _p2 = p2;
     _p3 = p3;
+    _n1 = gs[0][0].length;
+    _n2 = gs[0].length;
+    _n3 = gs.length;
   }
 
   /**
@@ -69,8 +72,12 @@ public class FaultSlipper {
   }
 
   /**
-   * Computes fault dip slips for all cells in the specified skins.
-   * @param skins array of skins for which to compute shifts.
+   * Computes fault dip slips for the specified skins.
+   * Specified bounds on throw are used to reduce unnecessary computation.
+   * These bounds need not be precise, and are not enforced. If the fault
+   * skins represent reverse faults (with negative throws), the specified
+   * estimate for minimum fault throw should be negative.
+   * @param skins array of skins for which to compute dip slips.
    * @param smin an estimate for minimum fault throw, in samples.
    * @param smax an estimate for maximum fault throw, in samples.
    */
@@ -81,6 +88,10 @@ public class FaultSlipper {
 
   /**
    * Computes fault dip slips for all cells in the specified skin.
+   * Specified bounds on throw are used to reduce unnecessary computation.
+   * These bounds need not be precise, and are not enforced. If the fault
+   * skins represent reverse faults (with negative throws), the specified
+   * estimate for minimum fault throw should be negative.
    * @param skin the skin for which to compute shifts.
    * @param smin an estimate for minimum fault throw, in samples.
    * @param smax an estimate for maximum fault throw, in samples.
@@ -102,12 +113,92 @@ public class FaultSlipper {
     computeDipSlips(skin);
   }
 
+  /**
+   * Gets images of fault dip-slip vectors for an array of fault skins.
+   * Assumes that dip-slip vectors have already been computed and stored
+   * in all skin cells.
+   * <p>
+   * Dip-slip vectors are non-zero for only the hanging wall (plus side)
+   * of faults. Slips on the footwall (minus side) are zero. Image samples
+   * not adjacent to faults are marked using a specified value.
+   * @param skins array of fault skins.
+   * @param smark the mark for slips not adjacent to a fault.
+   * @return array {s1,s2,s3} of components of dip slips.
+   */
+  public float[][][][] getDipSlips(FaultSkin[] skins, float smark) {
+    int n1 = _n1, n2 = _n2, n3 = _n3;
+    float[][][] s1 = new float[n3][n2][n1];
+    float[][][] s2 = new float[n3][n2][n1];
+    float[][][] s3 = new float[n3][n2][n1];
+    float[][][] ss = new float[n3][n2][n1];
+
+    // Initially set all slip vectors to the specified mark.
+    for (int i3=0; i3<n3; ++i3) {
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          s1[i3][i2][i1] = smark;
+          s2[i3][i2][i1] = smark;
+          s3[i3][i2][i1] = smark;
+        }
+      }
+    }
+
+    // For all cells in all skins, ...
+    for (FaultSkin skin:skins) {
+      for (FaultCell cell:skin) {
+
+        // Get sample indices for the minus and plus sides of the cell.
+        int i1 = cell.i1;
+        int i2m = cell.i2m;
+        int i3m = cell.i3m;
+        int i2p = cell.i2p;
+        int i3p = cell.i3p;
+
+        // If slip on the minus side has not been set, zero it.
+        if (s1[i3m][i2m][i1]==smark) {
+          s1[i3m][i2m][i1] = 0.0f;
+          s2[i3m][i2m][i1] = 0.0f;
+          s3[i3m][i2m][i1] = 0.0f;
+        }
+
+        // Set or accumulate slip on the plus side.
+        if (s1[i3p][i2p][i1]==smark) {
+          s1[i3p][i2p][i1]  = cell.s1;
+          s2[i3p][i2p][i1]  = cell.s2;
+          s3[i3p][i2p][i1]  = cell.s3;
+          ss[i3p][i2p][i1]  = 1.0f;
+        } else {
+          s1[i3p][i2p][i1] += cell.s1;
+          s2[i3p][i2p][i1] += cell.s2;
+          s3[i3p][i2p][i1] += cell.s3;
+          ss[i3p][i2p][i1] += 1.0f;
+        }
+      }
+    }
+
+    // Where more than one slip was accumulated, compute the average.
+    for (int i3=0; i3<n3; ++i3) {
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          if (ss[i3][i2][i1]>1.0f) {
+            float si = 1.0f/ss[i3][i2][i1];
+            s1[i3][i2][i1] *= si;
+            s2[i3][i2][i1] *= si;
+            s3[i3][i2][i1] *= si;
+          }
+        }
+      }
+    }
+    return new float[][][][]{s1,s2,s3};
+  }
+
   ///////////////////////////////////////////////////////////////////////////
   // private
 
   private float[][][] _gs,_p2,_p3; // seismic image (smoothed) and slopes
+  private int _n1,_n2,_n3; // image dimensions
   private float _offset = 2.0f; // horizontal offset (distance to faults)
-  private boolean _zeroSlope; // false, to assume reflector slopes = 0
+  private boolean _zeroSlope; // if true, assume reflectors have zero slope
 
   /**
    * Computes alignment errors and initializes shifts for specified skin.
@@ -260,18 +351,18 @@ public class FaultSlipper {
 
     // Arrays of arrays of errors, linked above and below.
     // TESTING ...
-    int iabmax = -1;
-    int mabmax = 0;
+    //int iabmax = -1;
+    //int mabmax = 0;
     // ... TESTING
     int nab = cab.length;
     float[][][] eab = new float[nab][][];
     for (int iab=0; iab<nab; ++iab) {
       int mab = cab[iab].length;
       // TESTING ...
-      if (mab>mabmax) {
-        iabmax = iab;
-        mabmax = mab;
-      }
+      //if (mab>mabmax) {
+      //  iabmax = iab;
+      //  mabmax = mab;
+      //}
       // ... TESTING
       eab[iab] = new float[mab][];
       for (int jab=0; jab<mab; ++jab) {
@@ -436,9 +527,9 @@ public class FaultSlipper {
       float u3p = ap*u3;
 
       // Record total dip slip in cell at which we began the walk.
-      cellBegin.s1 = y1-x1;//+u1m+u1p;
-      cellBegin.s2 = y2-x2;//+u2m+u2p;
-      cellBegin.s3 = y3-x3;//+u3m+u3p;
+      cellBegin.s1 = y1-x1;
+      cellBegin.s2 = y2-x2;
+      cellBegin.s3 = y3-x3;
       if (!_zeroSlope) {
         cellBegin.s1 += u1m+u1p;
         cellBegin.s2 += u2m+u2p;
@@ -471,7 +562,4 @@ public class FaultSlipper {
   private static void trace(String s) {
     System.out.println(s);
   }
-
-  ///////////////////////////////////////////////////////////////////////////
-  // junk
 }
