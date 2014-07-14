@@ -4,7 +4,8 @@ Author: Dave Hale, Colorado School of Mines
 Version: 2014.06.17
 """
 
-from fakeutils import *
+from schutils import *
+setupForSubset("s2")
 s1,s2,s3 = getSamplings()
 n1,n2,n3 = s1.count,s2.count,s3.count
 
@@ -13,8 +14,6 @@ gxfile  = "gx" # input image (maybe after bilateral filtering)
 gsxfile = "gsx" # image after lsf with fault likelihoods
 p2file  = "p2" # inline slopes
 p3file  = "p3" # crossline slopes
-p2kfile = "p2k" # inline slopes (known)
-p3kfile = "p3k" # crossline slopes (known)
 epfile  = "ep" # eigenvalue-derived planarity
 snfile  = "sn" # semblance numerators
 sdfile  = "sd" # semblance denominators
@@ -31,60 +30,29 @@ fs3file = "fs3" # fault slip (3rd component)
 # Processing begins here. When experimenting with one part of this demo, we
 # can disable other parts that have already written results to files.
 def main(args):
-  #goFakeData()
-  #goSlopes()
+  goSlopes()
   #goScan()
   #goThin()
   #goSmooth()
-  goSkin()
-  goSlip()
-
-def goFakeData():
-  #sequence = 'A' # 1 episode of faulting only
-  sequence = 'OA' # 1 episode of folding, followed by one episode of faulting
-  #sequence = 'OOOOOAAAAA' # 5 episodes of folding, then 5 of faulting
-  #sequence = 'OAOAOAOAOA' # 5 interleaved episodes of folding and faulting
-  nplanar = 3
-  conjugate = True
-  conical = False
-  impedance = False
-  wavelet = True
-  noise = 0.5
-  gx,p2,p3 = FakeData.seismicAndSlopes3d2014A(
-      sequence,nplanar,conjugate,conical,impedance,wavelet,noise)
-  writeImage(gxfile,gx)
-  writeImage(p2kfile,p2)
-  writeImage(p3kfile,p3)
-  print "gx min =",min(gx)," max =",max(gx)
-  print "p2 min =",min(p2)," max =",max(p2)
-  print "p3 min =",min(p3)," max =",max(p3)
-  gmin,gmax,gmap = -3.0,3.0,ColorMap.GRAY
-  if impedance:
-    gmin,gmax,gmap = 0.0,1.4,ColorMap.JET
-  plot3(gx,cmin=gmin,cmax=gmax,cmap=gmap)
-  #plot3(gx,p2,cmap=bwrNotch(1.0))
-  #plot3(gx,p3,cmap=bwrNotch(1.0))
+  #goSkin()
+  #goSlip()
 
 def goSlopes():
   print "goSlopes ..."
   gx = readImage(gxfile)
-  sigma1,sigma2,sigma3,pmax = 16.0,1.0,1.0,5.0
+  sigma1,sigma2,sigma3,pmax = 32.0,1.0,1.0,5.0
   p2,p3,ep = FaultScanner.slopes(sigma1,sigma2,sigma3,pmax,gx)
   writeImage(p2file,p2)
   writeImage(p3file,p3)
   writeImage(epfile,ep)
-  p2k = readImage(p2kfile)
-  p3k = readImage(p3kfile)
   print "p2  min =",min(p2)," max =",max(p2)
   print "p2k min =",min(p2k)," max =",max(p2k)
   print "p3  min =",min(p3)," max =",max(p3)
   print "p3k min =",min(p3k)," max =",max(p3k)
   print "ep min =",min(ep)," max =",max(ep)
-  #plot3(gx,p2, cmin=-1,cmax=1,cmap=bwrNotch(1.0))
-  #plot3(gx,p2k,cmin=-1,cmax=1,cmap=bwrNotch(1.0))
-  #plot3(gx,p3, cmin=-1,cmax=1,cmap=bwrNotch(1.0))
-  #plot3(gx,p3k,cmin=-1,cmax=1,cmap=bwrNotch(1.0))
-  #plot3(gx,sub(1,ep),cmin=0,cmax=1,cmap=jetRamp(1.0))
+  plot3(gx,p2, cmin=-1,cmax=1,cmap=bwrNotch(1.0))
+  plot3(gx,p3, cmin=-1,cmax=1,cmap=bwrNotch(1.0))
+  plot3(gx,sub(1,ep),cmin=0,cmax=1,cmap=jetRamp(1.0))
 
 def goScan():
   print "goScan ..."
@@ -92,7 +60,8 @@ def goScan():
   p3 = readImage(p3file)
   gx = readImage(gxfile)
   gx = FaultScanner.taper(10,0,0,gx);
-  sigmaPhi,sigmaTheta = 4,20
+  #sigmaPhi,sigmaTheta = 4,20 # typical values
+  sigmaPhi,sigmaTheta = 8,40 # because sampling intervals are small
   minPhi,maxPhi = 0,360
   minTheta,maxTheta = 65,85
   fsc = FaultScanner(sigmaPhi,sigmaTheta)
