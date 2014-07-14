@@ -77,7 +77,7 @@ def removeAllSkinFiles(basename):
 
 def readSkin(basename,index):
   """ Reads one skin with specified basename and index. """
-  return readObject(skinName(basename,index))
+  return FaultSkin.readFromFile(seismicDir+skinName(basename,index)+".dat")
 
 def readSkins(basename):
   """ Reads all skins with specified basename. """
@@ -95,7 +95,7 @@ def readSkins(basename):
 
 def writeSkin(basename,index,skin):
   """ Writes one skin with specified basename and index. """
-  writeObject(skinName(basename,index),skin)
+  FaultSkin.writeToFile(seismicDir+skinName(basename,index)+".dat",skin)
 
 def writeSkins(basename,skins):
   """ Writes all skins with specified basename. """

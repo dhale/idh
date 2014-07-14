@@ -7,7 +7,7 @@ available at http://www.eclipse.org/legal/cpl-v10.html
 ****************************************************************************/
 package fah;
 
-import java.io.Serializable;
+import java.io.*;
 import java.util.*;
 
 import edu.mines.jtk.awt.ColorMap;
@@ -250,6 +250,29 @@ public class FaultSkin implements Iterable<FaultCell>,Serializable {
       xyz[is] = xyzi;
     }
     return xyz;
+  }
+
+  public static FaultSkin readFromFile(String fileName) {
+    try {
+      FileInputStream fis = new FileInputStream(fileName);
+      ObjectInputStream ois = new ObjectInputStream(fis);
+      FaultSkin skin = (FaultSkin)ois.readObject();
+      ois.close();
+      return skin;
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  public static void writeToFile(String fileName, FaultSkin skin) {
+    try {
+      FileOutputStream fos = new FileOutputStream(fileName);
+      ObjectOutputStream oos = new ObjectOutputStream(fos);
+      oos.writeObject(skin);
+      oos.close();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 
   /////////////////////////////////////////////////////////////////////////
