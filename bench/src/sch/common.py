@@ -17,9 +17,12 @@ from edu.mines.jtk.sgl import *
 from edu.mines.jtk.util import *
 from edu.mines.jtk.util.ArrayMath import *
 
+from fah import *
+
 #############################################################################
 # Run the function main on the Swing thread
 import sys
+sys.setrecursionlimit(20000)
 class _RunMain(Runnable):
   def __init__(self,main):
     self.main = main
@@ -27,4 +30,3 @@ class _RunMain(Runnable):
     self.main(sys.argv)
 def run(main):
   SwingUtilities.invokeLater(_RunMain(main)) 
-
