@@ -5,13 +5,14 @@ Version: 2014.06.17
 """
 
 from schutils import *
-setupForSubset("s2")
+setupForSubset("s2a")
 s1,s2,s3 = getSamplings()
 n1,n2,n3 = s1.count,s2.count,s3.count
 
 # Names and descriptions of image files used below.
-gxfile  = "gx" # input image (maybe after bilateral filtering)
-gsxfile = "gsx" # image after lsf with fault likelihoods
+g0file  = "g0" # raw input image
+gxfile  = "gx" # input image, after bilateral filtering
+gsxfile = "gsx" # image after lsf with sharp faults
 p2file  = "p2" # inline slopes
 p3file  = "p3" # crossline slopes
 epfile  = "ep" # eigenvalue-derived planarity
@@ -30,6 +31,7 @@ fs3file = "fs3" # fault slip (3rd component)
 # Processing begins here. When experimenting with one part of this demo, we
 # can disable other parts that have already written results to files.
 def main(args):
+  #goDisplay()
   #goSlopes()
   #goScan()
   #goThin()
@@ -37,10 +39,17 @@ def main(args):
   goSkin()
   #goSlip()
 
+def goDisplay():
+  print "goDisplay ..."
+  g0 = readImage(g0file)
+  gx = readImage(gxfile)
+  plot3(g0)
+  plot3(gx)
+
 def goSlopes():
   print "goSlopes ..."
   gx = readImage(gxfile)
-  sigma1,sigma2,sigma3,pmax = 32.0,1.0,1.0,5.0
+  sigma1,sigma2,sigma3,pmax = 16.0,2.0,2.0,2.0
   p2,p3,ep = FaultScanner.slopes(sigma1,sigma2,sigma3,pmax,gx)
   writeImage(p2file,p2)
   writeImage(p3file,p3)
@@ -48,9 +57,9 @@ def goSlopes():
   print "p2 min =",min(p2)," max =",max(p2)
   print "p3 min =",min(p3)," max =",max(p3)
   print "ep min =",min(ep)," max =",max(ep)
-  plot3(gx,p2, cmin=-1,cmax=1,cmap=bwrNotch(1.0))
-  plot3(gx,p3, cmin=-1,cmax=1,cmap=bwrNotch(1.0))
-  plot3(gx,sub(1,ep),cmin=0,cmax=1,cmap=jetRamp(1.0))
+  plot3(gx,p2,cmin=-1.0,cmax=1.0,cmap=bwrNotch(1.0))
+  plot3(gx,p3,cmin=-1.0,cmax=1.0,cmap=bwrNotch(1.0))
+  plot3(gx,sub(1,ep),cmin=0,cmax=0.5,cmap=jetRamp(1.0))
 
 def goScan():
   print "goScan ..."
@@ -63,19 +72,17 @@ def goScan():
   minPhi,maxPhi = 0,360
   minTheta,maxTheta = 65,85
   fsc = FaultScanner(sigmaPhi,sigmaTheta)
-  sw = Stopwatch()
-  sw.restart()
   fl,fp,ft = fsc.scan(minPhi,maxPhi,minTheta,maxTheta,p2,p3,gx)
-  sw.stop()
   print "fl min =",min(fl)," max =",max(fl)
   print "fp min =",min(fp)," max =",max(fp)
   print "ft min =",min(ft)," max =",max(ft)
-  print "time =",sw.time()
   writeImage(flfile,fl)
   writeImage(fpfile,fp)
   writeImage(ftfile,ft)
   plot3(gx)
-  plot3(gx,fl,cmin=0.25,cmax=1,cmap=jetRamp(1.0))
+  plot3(gx,fl,cmin=0.1,cmax=1,cmap=jetRamp(1.0))
+  plot3(gx,fp,cmin=0,cmax=360,cmap=hueFill(0.3))
+  plot3(gx,ft,cmin=60,cmax=90,cmap=jetFill(0.3))
 
 def goThin():
   print "goThin ..."
@@ -88,9 +95,9 @@ def goThin():
   writeImage(fptfile,fpt)
   writeImage(fttfile,ftt)
   plot3(gx)
-  plot3(gx,fl,cmin=0.25,cmax=1.0,cmap=jetRamp(1.0))
-  plot3(gx,flt,cmin=0.25,cmax=1.0,cmap=jetFillExceptMin(1.0))
-  plot3(gx,fpt,cmin=0,cmax=360,cmap=hueFillExceptMin(1.0))
+  plot3(gx,fl,cmin=0.1,cmax=1.0,cmap=jetRamp(1.0))
+  plot3(gx,flt,cmin=0.1,cmax=1.0,cmap=jetFillExceptMin(1.0))
+  plot3(gx,fpt,cmin=-0.5,cmax=360,cmap=hueFillExceptMin(1.0))
   plot3(gx,ftt,cmin=60,cmax=90,cmap=jetFillExceptMin(1.0))
 
 def goSmooth():
@@ -107,30 +114,33 @@ def goSmooth():
   plot3(gsx)
 
 def goSkin():
+  displayOnly = True
   gx = readImage(gxfile)
   gsx = readImage(gsxfile)
-  p2 = readImage(p2file)
-  p3 = readImage(p3file)
-  fl = readImage(flfile)
-  fp = readImage(fpfile)
-  ft = readImage(ftfile)
-  fs = FaultSkinner([fl,fp,ft])
-  fs.setGrowLikelihoods(0.2,0.5)
-  fs.setMinSkinSize(16000)
-  cells = fs.findCells()
-  skins = fs.findSkins(cells)
-  for skin in skins:
-    skin.smoothCellNormals(4)
-  print "total number of cells =",len(cells)
-  print "total number of skins =",len(skins)
-  removeAllSkinFiles("skin")
-  writeSkins("skin",skins)
+  if not displayOnly:
+    p2 = readImage(p2file)
+    p3 = readImage(p3file)
+    fl = readImage(flfile)
+    fp = readImage(fpfile)
+    ft = readImage(ftfile)
+    fs = FaultSkinner([fl,fp,ft])
+    fs.setGrowLikelihoods(0.1,0.5)
+    fs.setMinSkinSize(40000)
+    cells = fs.findCells()
+    skins = fs.findSkins(cells)
+    for skin in skins:
+      skin.smoothCellNormals(4)
+    print "total number of cells =",len(cells)
+    print "total number of skins =",len(skins)
+    removeAllSkinFiles("skin")
+    writeSkins("skin",skins)
+  skins = readSkins("skin")
   plot3(gx)
   plot3(gsx)
-  plot3(gx,cells=cells)
+  #plot3(gx,cells=cells)
   for skin in skins:
-    plot3(gx,skins=[skin],links=True,curve=False,trace=False)
-  plot3(gx,skins=skins,links=False,curve=True,trace=True)
+    plot3(gx,skins=[skin],links=True)
+  plot3(gx,skins=skins)
 
 def goSlip():
   gx = readImage(gxfile)
@@ -140,14 +150,13 @@ def goSlip():
   skins = readSkins("skin")
   fs = FaultSlipper(gsx,p2,p3)
   fs.setZeroSlope(False)
-  for skin in skins:
-    fs.computeDipSlips(skin,0.0,20.0)
+  fs.computeDipSlips(skins,0.0,40.0)
   s1,s2,s3 = fs.getDipSlips(skins,-0.123)
   writeImage(fs1file,s1)
   writeImage(fs2file,s2)
   writeImage(fs3file,s3)
-  plot3(gsx,skins=skins,smax=10.0)
-  plot3(gx,s1,cmin=-0.1,cmax=10.0,cmap=jetFillExceptMin(1.0))
+  plot3(gsx,skins=skins,smax=20.0)
+  plot3(gx,s1,cmin=-0.1,cmax=20.0,cmap=jetFillExceptMin(1.0))
 
 #############################################################################
 # graphics
@@ -191,10 +200,10 @@ def plot3(f,g=None,cmin=None,cmax=None,cmap=None,
     if cmin!=None and cmax!=None:
       ipg.setClips(cmin,cmax)
     else:
-      ipg.setClips(-3.0,3.0)
+      ipg.setClips(-1.0,1.0)
   else:
     ipg = ImagePanelGroup2(s1,s2,s3,f,g)
-    ipg.setClips1(-3.0,3.0)
+    ipg.setClips1(-1.0,1.0)
     if cmin!=None and cmax!=None:
       ipg.setClips2(cmin,cmax)
     if cmap==None:
@@ -273,17 +282,17 @@ def plot3(f,g=None,cmin=None,cmax=None,cmap=None,
         sg.addChild(lg)
     sf.world.addChild(sg)
   #ipg.setSlices(95,21,51)
-  ipg.setSlices(95,5,95)
-  sf.setSize(700,700)
+  #ipg.setSlices(95,5,95)
+  sf.setSize(1400,900)
   vc = sf.getViewCanvas()
   vc.setBackground(Color.WHITE)
-  return
-  radius = 0.5*sqrt(n1*n1+n2*n2+n3*n3)
   ov = sf.getOrbitView()
-  ov.setWorldSphere(BoundingSphere(0.5*n1,0.5*n2,0.5*n3,radius))
-  ov.setAzimuthAndElevation(-55.0,25.0)
-  ov.setTranslate(Vector3(0.0241,0.0517,0.0103))
-  ov.setScale(1.2)
+  #ov.setAxesScale(1.0,1.0,4.0)
+  ov.setScale(2.5)
+  #radius = 0.5*sqrt(n1*n1+n2*n2+n3*n3)
+  #ov.setWorldSphere(BoundingSphere(0.5*n1,0.5*n2,0.5*n3,radius))
+  #ov.setAzimuthAndElevation(-55.0,25.0)
+  #ov.setTranslate(Vector3(0.0241,0.0517,0.0103))
 
 #############################################################################
 run(main)

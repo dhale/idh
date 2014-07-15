@@ -334,7 +334,12 @@ public class FaultScanner {
     sw.start();
     for (int ip=0; ip<np; ++ip) {
       final float phi = (float)phiSampling.getValue(ip);
-      trace("FaultScanner.scan: ip/np="+ip+"/"+np+" time="+sw.time());
+      if (ip>0) {
+        double timeUsed = sw.time();
+        double timeLeft = ((double)np/(double)ip-1.0)*timeUsed;
+        int timeLeftSec = 1+(int)timeLeft;
+        trace("FaultScanner.scan: done in "+timeLeftSec+" seconds");
+      }
       Rotator r = new Rotator(phi,n1,n2,n3);
       float[][][][] rsnd = r.rotate(snd);
       smooth2(rsnd);
@@ -368,6 +373,7 @@ public class FaultScanner {
       }});
     }
     sw.stop();
+    trace("FaultScanner.scan: done");
     return new float[][][][]{f,p,t};
   }
 

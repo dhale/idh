@@ -445,9 +445,9 @@ def goSch():
   showImage = True # displays the image
   basedir = "/data/dhale/sch/"
   sgyfile = basedir+"sgy/pack_0.sgy"
-  #datfile = basedir+"dat/sch0.dat"
-  datfile = basedir+"dat/sch0b.dat"
+  #datfile = basedir+"dat/s1/g0.dat" # subset 1
   #i1min,i1max,i2min,i2max,i3min,i3max = 0,900,1000,1550,1220,1646
+  datfile = basedir+"dat/s2/g0.dat" # subset 2
   i1min,i1max,i2min,i2max,i3min,i3max = 0,900,1000,1375,1100,1646
   n1,n2,n3 = 1+i1max-i1min,1+i2max-i2min,1+i3max-i3min
   si = SegyImage(sgyfile)
