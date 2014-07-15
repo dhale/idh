@@ -11,6 +11,7 @@ import java.io.*;
 import java.util.*;
 
 import edu.mines.jtk.awt.ColorMap;
+import edu.mines.jtk.io.*;
 import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
@@ -252,7 +253,123 @@ public class FaultSkin implements Iterable<FaultCell>,Serializable {
     return xyz;
   }
 
+  /**
+   * Returns a fault skin read from a file with specified name.
+   * @param fileName the fault skin file name.
+   * @return the fault skin.
+   */
   public static FaultSkin readFromFile(String fileName) {
+    FaultSkin skin = new FaultSkin();
+    try {
+      ArrayInputStream ais = new ArrayInputStream(fileName);
+      int ncell = ais.readInt();
+      int i1seed = ais.readShort();
+      int i2seed = ais.readShort();
+      int i3seed = ais.readShort();
+      int i1min = Integer.MAX_VALUE;
+      int i2min = Integer.MAX_VALUE;
+      int i3min = Integer.MAX_VALUE;
+      int i1max = -i1min;
+      int i2max = -i2min;
+      int i3max = -i3min;
+      ArrayList<FaultCell> cellList = new ArrayList<FaultCell>(ncell);
+      for (int icell=0; icell<ncell; ++icell) {
+        float x1 = ais.readFloat();
+        float x2 = ais.readFloat();
+        float x3 = ais.readFloat();
+        float fl = ais.readFloat();
+        float fp = ais.readFloat();
+        float ft = ais.readFloat();
+        FaultCell cell = new FaultCell(x1,x2,x3,fl,fp,ft);
+        cell.skin = skin;
+        cellList.add(cell);
+        cell.s1 = ais.readFloat();
+        cell.s2 = ais.readFloat();
+        cell.s3 = ais.readFloat();
+        if (cell.i1<i1min) i1min = cell.i1;
+        if (cell.i2<i2min) i2min = cell.i2;
+        if (cell.i3<i3min) i3min = cell.i3;
+        if (cell.i1>i1max) i1max = cell.i1;
+        if (cell.i2>i2max) i2max = cell.i2;
+        if (cell.i3>i3max) i3max = cell.i3;
+      }
+      int n1 = 1+i1max-i1min;
+      int n2 = 1+i2max-i2min;
+      int n3 = 1+i3max-i3min;
+      FaultCellGrid fcg = new FaultCellGrid(n1,n2,n3);
+      for (FaultCell cell:cellList)
+        fcg.set(cell.i1-i1min,cell.i2-i2min,cell.i3-i3min,cell);
+      for (FaultCell cell:cellList) {
+        int i1a = ais.readShort();
+        int i2a = ais.readShort();
+        int i3a = ais.readShort();
+        if (i1a>=0) cell.ca = fcg.get(i1a-i1min,i2a-i2min,i3a-i3min);
+        int i1b = ais.readShort();
+        int i2b = ais.readShort();
+        int i3b = ais.readShort();
+        if (i1b>=0) cell.cb = fcg.get(i1b-i1min,i2b-i2min,i3b-i3min);
+        int i1l = ais.readShort();
+        int i2l = ais.readShort();
+        int i3l = ais.readShort();
+        if (i1l>=0) cell.cl = fcg.get(i1l-i1min,i2l-i2min,i3l-i3min);
+        int i1r = ais.readShort();
+        int i2r = ais.readShort();
+        int i3r = ais.readShort();
+        if (i1r>=0) cell.cr = fcg.get(i1r-i1min,i2r-i2min,i3r-i3min);
+      }
+      ais.close();
+      skin._seed = fcg.get(i1seed-i1min,i2seed-i2min,i3seed-i3min);
+      skin._cellList = cellList;
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+    return skin;
+  }
+
+  /**
+   * Writes a fault skin to a file with specified name.
+   * @param fileName the fault skin file name.
+   * @param skin the fault skin.
+   */
+  public static void writeToFile(String fileName, FaultSkin skin) {
+    try {
+      ArrayOutputStream aos = new ArrayOutputStream(fileName);
+      aos.writeInt(skin.size());
+      aos.writeShort(skin._seed.i1);
+      aos.writeShort(skin._seed.i2);
+      aos.writeShort(skin._seed.i3);
+      for (FaultCell cell:skin) {
+        aos.writeFloat(cell.x1); 
+        aos.writeFloat(cell.x2); 
+        aos.writeFloat(cell.x3);
+        aos.writeFloat(cell.fl); 
+        aos.writeFloat(cell.fp); 
+        aos.writeFloat(cell.ft);
+        aos.writeFloat(cell.s1); 
+        aos.writeFloat(cell.s2); 
+        aos.writeFloat(cell.s3);
+      }
+      for (FaultCell cell:skin) {
+        FaultCell[] nabors = new FaultCell[]{cell.ca,cell.cb,cell.cl,cell.cr};
+        for (FaultCell nabor:nabors) {
+          if (nabor!=null) {
+            aos.writeShort(nabor.i1);
+            aos.writeShort(nabor.i2);
+            aos.writeShort(nabor.i3);
+          } else {
+            aos.writeShort(-1);
+            aos.writeShort(-1);
+            aos.writeShort(-1);
+          }
+        }
+      }
+      aos.close();
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  public static FaultSkin readFromFileSlow(String fileName) {
     try {
       FileInputStream fis = new FileInputStream(fileName);
       ObjectInputStream ois = new ObjectInputStream(fis);
@@ -264,7 +381,7 @@ public class FaultSkin implements Iterable<FaultCell>,Serializable {
     }
   }
 
-  public static void writeToFile(String fileName, FaultSkin skin) {
+  public static void writeToFileSlow(String fileName, FaultSkin skin) {
     try {
       FileOutputStream fos = new FileOutputStream(fileName);
       ObjectOutputStream oos = new ObjectOutputStream(fos);

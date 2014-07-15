@@ -173,8 +173,7 @@ def goSlip():
   skins = readSkins("skin")
   fs = FaultSlipper(gsx,p2,p3)
   fs.setZeroSlope(False)
-  for skin in skins:
-    fs.computeDipSlips(skin,0.0,20.0)
+  fs.computeDipSlips(skins,0.0,20.0)
   s1,s2,s3 = fs.getDipSlips(skins,-0.123)
   writeImage(fs1file,s1)
   writeImage(fs2file,s2)
