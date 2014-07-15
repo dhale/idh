@@ -91,7 +91,7 @@ def goScan():
   p2 = readImage(p2file)
   p3 = readImage(p3file)
   gx = readImage(gxfile)
-  gx = FaultScanner.taper(10,0,0,gx);
+  gx = FaultScanner.taper(10,0,0,gx)
   sigmaPhi,sigmaTheta = 4,20
   minPhi,maxPhi = 0,360
   minTheta,maxTheta = 65,85
@@ -174,7 +174,7 @@ def goSlip():
   fs = FaultSlipper(gsx,p2,p3)
   fs.setZeroSlope(False) # True only if we want to show the error
   fs.computeDipSlips(skins,0.0,20.0)
-  smark = -1000.0;
+  smark = -1000.0
   s1,s2,s3 = fs.getDipSlips(skins,smark)
   writeImage(fs1file,s1)
   writeImage(fs2file,s2)
