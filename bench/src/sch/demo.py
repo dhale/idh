@@ -30,11 +30,11 @@ fs3file = "fs3" # fault slip (3rd component)
 # Processing begins here. When experimenting with one part of this demo, we
 # can disable other parts that have already written results to files.
 def main(args):
-  goSlopes()
+  #goSlopes()
   #goScan()
   #goThin()
   #goSmooth()
-  #goSkin()
+  goSkin()
   #goSlip()
 
 def goSlopes():
@@ -45,10 +45,8 @@ def goSlopes():
   writeImage(p2file,p2)
   writeImage(p3file,p3)
   writeImage(epfile,ep)
-  print "p2  min =",min(p2)," max =",max(p2)
-  print "p2k min =",min(p2k)," max =",max(p2k)
-  print "p3  min =",min(p3)," max =",max(p3)
-  print "p3k min =",min(p3k)," max =",max(p3k)
+  print "p2 min =",min(p2)," max =",max(p2)
+  print "p3 min =",min(p3)," max =",max(p3)
   print "ep min =",min(ep)," max =",max(ep)
   plot3(gx,p2, cmin=-1,cmax=1,cmap=bwrNotch(1.0))
   plot3(gx,p3, cmin=-1,cmax=1,cmap=bwrNotch(1.0))
@@ -59,7 +57,7 @@ def goScan():
   p2 = readImage(p2file)
   p3 = readImage(p3file)
   gx = readImage(gxfile)
-  gx = FaultScanner.taper(10,0,0,gx);
+  gx = FaultScanner.taper(50,0,0,gx);
   #sigmaPhi,sigmaTheta = 4,20 # typical values
   sigmaPhi,sigmaTheta = 8,40 # because sampling intervals are small
   minPhi,maxPhi = 0,360
@@ -118,7 +116,7 @@ def goSkin():
   ft = readImage(ftfile)
   fs = FaultSkinner([fl,fp,ft])
   fs.setGrowLikelihoods(0.2,0.5)
-  fs.setMinSkinSize(4000)
+  fs.setMinSkinSize(16000)
   cells = fs.findCells()
   skins = fs.findSkins(cells)
   for skin in skins:
@@ -279,6 +277,7 @@ def plot3(f,g=None,cmin=None,cmax=None,cmap=None,
   sf.setSize(700,700)
   vc = sf.getViewCanvas()
   vc.setBackground(Color.WHITE)
+  return
   radius = 0.5*sqrt(n1*n1+n2*n2+n3*n3)
   ov = sf.getOrbitView()
   ov.setWorldSphere(BoundingSphere(0.5*n1,0.5*n2,0.5*n3,radius))

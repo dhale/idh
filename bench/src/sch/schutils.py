@@ -3,13 +3,12 @@ Jython utilities for Schoonebeek 3D.
 Author: Dave Hale, Colorado School of Mines
 Version: 2014.05.30
 """
-from imports import *
+from common import *
 
 #############################################################################
 # Internal constants
 
-_datdir = "/data/dhale/sch/dat/"
-#_datdir = "/data/seis/sch/dat/"
+_datdir = "/data/seis/sch/dat/"
 
 #############################################################################
 # Setup
@@ -23,6 +22,7 @@ def setupForSubset(name):
   """
   global seismicDir
   global s1,s2,s3
+  global n1,n2,n3
   if name=="s1":
     """ subset good for fault processing """
     print "setupForSubset: s1"
@@ -58,18 +58,18 @@ def readImage(basename):
   """ 
   Reads an image from a file with specified basename
   """
-  fileName = seismicDir+name+".dat"
+  fileName = seismicDir+basename+".dat"
   image = zerofloat(n1,n2,n3)
   ais = ArrayInputStream(fileName)
   ais.readFloats(image)
   ais.close()
   return image
 
-def writeImage(name,image):
+def writeImage(basename,image):
   """ 
   Writes an image to a file with specified basename
   """
-  fileName = seismicDir+name+".dat"
+  fileName = seismicDir+basename+".dat"
   aos = ArrayOutputStream(fileName)
   aos.writeFloats(image)
   aos.close()
@@ -102,7 +102,7 @@ def removeAllSkinFiles(basename):
 
 def readSkin(basename,index):
   """ Reads one skin with specified basename and index. """
-  return readObject(skinName(basename,index))
+  return FaultSkin.readFromFile(seismicDir+skinName(basename,index)+".dat")
 
 def readSkins(basename):
   """ Reads all skins with specified basename. """
@@ -120,7 +120,7 @@ def readSkins(basename):
 
 def writeSkin(basename,index,skin):
   """ Writes one skin with specified basename and index. """
-  writeObject(skinName(basename,index),skin)
+  FaultSkin.writeToFile(seismicDir+skinName(basename,index)+".dat",skin)
 
 def writeSkins(basename,skins):
   """ Writes all skins with specified basename. """
