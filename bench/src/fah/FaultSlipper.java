@@ -238,17 +238,17 @@ public class FaultSlipper {
    * @param g image to be unfaulted.
    * @return unfaulted image.
    */
-  public float[][][] unfault(float[][][][] s, float[][][] g) {
-    int n1 = g[0][0].length;
-    int n2 = g[0].length;
-    int n3 = g.length;
-    float[][][] s1 = s[0];
-    float[][][] s2 = s[1];
-    float[][][] s3 = s[2];
-    float[][][] gs = new float[n3][n2][n1];
-    SincInterpolator si = new SincInterpolator();
+  public float[][][] unfault(float[][][][] s, final float[][][] g) {
+    final int n1 = g[0][0].length;
+    final int n2 = g[0].length;
+    final int n3 = g.length;
+    final float[][][] s1 = s[0];
+    final float[][][] s2 = s[1];
+    final float[][][] s3 = s[2];
+    final float[][][] gs = new float[n3][n2][n1];
+    final SincInterpolator si = new SincInterpolator();
     Parallel.loop(n3,new Parallel.LoopInt() {
-      public void compute(int i3) {
+    public void compute(int i3) {
       for (int i2=0; i2<n2; ++i2) {
         for (int i1=0; i1<n1; ++i1) {
           float x1 = i1+s1[i3][i2][i1];
@@ -260,8 +260,8 @@ public class FaultSlipper {
               n3,1.0,0.0,
               g,x1,x2,x3);
         }
-      }});
-    }
+      }
+    }});
     return gs;
   }
 
