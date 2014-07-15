@@ -194,7 +194,10 @@ public class FaultSlipper {
   }
 
   /**
-   *
+   * Interpolates specified dip-slip vectors.
+   * @param s array {s1,s2,s3} of dip-slip vectors.
+   * @param smark the mark for slips not adjacent to a fault.
+   * @return interpolated dip-slip vectors.
    */
   public float[][][][] interpolateDipSlips(float[][][][] s, float smark) {
     int n1 = s[0][0][0].length;
@@ -230,7 +233,10 @@ public class FaultSlipper {
   }
 
   /**
-   *
+   * Unfaults an image using interpolated dip-slip vectors.
+   * @param s array {s1,s2,s3} of interpolated dip-slip vectors.
+   * @param g image to be unfaulted.
+   * @return unfaulted image.
    */
   public float[][][] unfault(float[][][][] s, float[][][] g) {
     int n1 = g[0][0].length;
@@ -241,7 +247,8 @@ public class FaultSlipper {
     float[][][] s3 = s[2];
     float[][][] gs = new float[n3][n2][n1];
     SincInterpolator si = new SincInterpolator();
-    for (int i3=0; i3<n3; ++i3) {
+    Parallel.loop(n3,new Parallel.LoopInt() {
+      public void compute(int i3) {
       for (int i2=0; i2<n2; ++i2) {
         for (int i1=0; i1<n1; ++i1) {
           float x1 = i1+s1[i3][i2][i1];
@@ -253,7 +260,7 @@ public class FaultSlipper {
               n3,1.0,0.0,
               g,x1,x2,x3);
         }
-      }
+      }});
     }
     return gs;
   }
