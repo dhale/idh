@@ -36,7 +36,7 @@ def main(args):
   #goScan()
   #goThin()
   #goSmooth()
-  goSkin()
+  #goSkin()
   goSlip()
 
 def goFakeData():
@@ -172,14 +172,20 @@ def goSlip():
   p3 = readImage(p3file)
   skins = readSkins("skin")
   fs = FaultSlipper(gsx,p2,p3)
-  fs.setZeroSlope(False)
+  fs.setZeroSlope(False) # True only if we want to show the error
   fs.computeDipSlips(skins,0.0,20.0)
-  s1,s2,s3 = fs.getDipSlips(skins,-0.123)
+  smark = -1000.0;
+  s1,s2,s3 = fs.getDipSlips(skins,smark)
   writeImage(fs1file,s1)
   writeImage(fs2file,s2)
   writeImage(fs3file,s3)
   plot3(gsx,skins=skins,smax=10.0)
-  plot3(gx,s1,cmin=-0.1,cmax=10.0,cmap=jetFillExceptMin(1.0))
+  plot3(gx,s1,cmin=-0.01,cmax=10.0,cmap=jetFillExceptMin(1.0))
+  s1,s2,s3 = fs.interpolateDipSlips([s1,s2,s3],smark)
+  plot3(gx,s1,cmin=0.0,cmax=10.0,cmap=jetFill(0.3))
+  gw = fs.unfault([s1,s2,s3],gx)
+  plot3(gw)
+  plot3(gx)
 
 #############################################################################
 # graphics
@@ -304,8 +310,8 @@ def plot3(f,g=None,cmin=None,cmax=None,cmap=None,
         lg = LineGroup(xyz)
         sg.addChild(lg)
     sf.world.addChild(sg)
-  #ipg.setSlices(95,21,51)
-  ipg.setSlices(95,5,95)
+  ipg.setSlices(95,5,51)
+  #ipg.setSlices(95,5,95)
   sf.setSize(700,700)
   vc = sf.getViewCanvas()
   vc.setBackground(Color.WHITE)

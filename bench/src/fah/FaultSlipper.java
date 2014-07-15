@@ -10,6 +10,7 @@ import java.util.*;
 
 import edu.mines.jtk.awt.*;
 import edu.mines.jtk.dsp.*;
+import edu.mines.jtk.interp.*;
 import edu.mines.jtk.util.*;
 
 import static edu.mines.jtk.util.ArrayMath.*;
@@ -190,6 +191,71 @@ public class FaultSlipper {
       }
     }
     return new float[][][][]{s1,s2,s3};
+  }
+
+  /**
+   *
+   */
+  public float[][][][] interpolateDipSlips(float[][][][] s, float smark) {
+    int n1 = s[0][0][0].length;
+    int n2 = s[0][0].length;
+    int n3 = s[0].length;
+    float[][][] p = new float[n3][n2][n1];
+    float[][][] t = new float[n3][n2][n1];
+    short[][][] k1 = new short[n3][n2][n1];
+    short[][][] k2 = new short[n3][n2][n1];
+    short[][][] k3 = new short[n3][n2][n1];
+    float[][][][] sq = new float[3][n3][n2][n1];
+    ClosestPointTransform cpt = new ClosestPointTransform();
+    cpt.apply(smark,s[0],t,k1,k2,k3);
+    LocalDiffusionKernel.Stencil stencil = LocalDiffusionKernel.Stencil.D21;
+    LocalDiffusionKernel ldk = new LocalDiffusionKernel(stencil);
+    BlendedGridder3 bg = new BlendedGridder3();
+    bg.setBlendingKernel(ldk);
+    for (int is=0; is<3; ++is) {
+      float[][][] si = s[is];
+      for (int i3=0; i3<n3; ++i3) {
+        for (int i2=0; i2<n2; ++i2) {
+          for (int i1=0; i1<n1; ++i1) {
+            int j1 = k1[i3][i2][i1];
+            int j2 = k2[i3][i2][i1];
+            int j3 = k3[i3][i2][i1];
+            p[i3][i2][i1] = si[j3][j2][j1];
+          }
+        }
+      }
+      bg.gridBlended(t,p,sq[is]);
+    }
+    return sq;
+  }
+
+  /**
+   *
+   */
+  public float[][][] unfault(float[][][][] s, float[][][] g) {
+    int n1 = g[0][0].length;
+    int n2 = g[0].length;
+    int n3 = g.length;
+    float[][][] s1 = s[0];
+    float[][][] s2 = s[1];
+    float[][][] s3 = s[2];
+    float[][][] gs = new float[n3][n2][n1];
+    SincInterpolator si = new SincInterpolator();
+    for (int i3=0; i3<n3; ++i3) {
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          float x1 = i1+s1[i3][i2][i1];
+          float x2 = i2+s2[i3][i2][i1];
+          float x3 = i3+s3[i3][i2][i1];
+          gs[i3][i2][i1] = si.interpolate(
+              n1,1.0,0.0,
+              n2,1.0,0.0,
+              n3,1.0,0.0,
+              g,x1,x2,x3);
+        }
+      }
+    }
+    return gs;
   }
 
   ///////////////////////////////////////////////////////////////////////////
