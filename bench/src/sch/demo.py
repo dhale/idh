@@ -13,6 +13,7 @@ n1,n2,n3 = s1.count,s2.count,s3.count
 g0file  = "g0" # raw input image
 gxfile  = "gx" # input image, after bilateral filtering
 gsxfile = "gsx" # image after lsf with sharp faults
+gwfile  = "gw" # image after unfaulting
 p2file  = "p2" # inline slopes
 p3file  = "p3" # crossline slopes
 epfile  = "ep" # eigenvalue-derived planarity
@@ -30,14 +31,16 @@ fs3file = "fs3" # fault slip (3rd component)
 
 # Processing begins here. When experimenting with one part of this demo, we
 # can disable other parts that have already written results to files.
+displayOnly = False
 def main(args):
   #goDisplay()
   #goSlopes()
   #goScan()
   #goThin()
   #goSmooth()
-  goSkin()
+  #goSkin()
   #goSlip()
+  goUnfault()
 
 def goDisplay():
   print "goDisplay ..."
@@ -102,19 +105,23 @@ def goThin():
 
 def goSmooth():
   print "goSmooth ..."
-  flstop = 0.1
-  fsigma = 8.0
   gx = readImage(gxfile)
-  flt = readImage(fltfile)
-  p2 = readImage(p2file)
-  p3 = readImage(p3file)
-  gsx = FaultScanner.smooth(flstop,fsigma,p2,p3,flt,gx)
-  writeImage(gsxfile,gsx)
+  if not displayOnly:
+    flstop = 0.1
+    fsigma = 8.0
+    gx = readImage(gxfile)
+    flt = readImage(fltfile)
+    p2 = readImage(p2file)
+    p3 = readImage(p3file)
+    gsx = FaultScanner.smooth(flstop,fsigma,p2,p3,flt,gx)
+    writeImage(gsxfile,gsx)
+  else:
+    gsx = readImage(gsxfile)
   plot3(gx)
   plot3(gsx)
 
 def goSkin():
-  displayOnly = True
+  print "goSkin ..."
   gx = readImage(gxfile)
   gsx = readImage(gsxfile)
   if not displayOnly:
@@ -134,29 +141,48 @@ def goSkin():
     print "total number of skins =",len(skins)
     removeAllSkinFiles("skin")
     writeSkins("skin",skins)
-  skins = readSkins("skin")
-  plot3(gx)
-  plot3(gsx)
-  #plot3(gx,cells=cells)
-  for skin in skins:
-    plot3(gx,skins=[skin],links=True)
+    plot3(gx,cells=cells)
+  else:
+    skins = readSkins("skin")
   plot3(gx,skins=skins)
+  #for skin in skins:
+  #  plot3(gx,skins=[skin],links=True)
 
 def goSlip():
+  print "goSlip ..."
   gx = readImage(gxfile)
-  gsx = readImage(gsxfile)
-  p2 = readImage(p2file)
-  p3 = readImage(p3file)
   skins = readSkins("skin")
-  fs = FaultSlipper(gsx,p2,p3)
-  fs.setZeroSlope(False)
-  fs.computeDipSlips(skins,0.0,40.0)
-  s1,s2,s3 = fs.getDipSlips(skins,-0.123)
-  writeImage(fs1file,s1)
-  writeImage(fs2file,s2)
-  writeImage(fs3file,s3)
-  plot3(gsx,skins=skins,smax=20.0)
-  plot3(gx,s1,cmin=-0.1,cmax=20.0,cmap=jetFillExceptMin(1.0))
+  if not displayOnly:
+    gsx = readImage(gsxfile)
+    p2 = readImage(p2file)
+    p3 = readImage(p3file)
+    fs = FaultSlipper(gsx,p2,p3)
+    fs.setZeroSlope(False)
+    fs.computeDipSlips(skins,0.0,20.0)
+    smark = -1000.0
+    s1,s2,s3 = fs.getDipSlips(skins,smark)
+    s1,s2,s3 = fs.interpolateDipSlips([s1,s2,s3],smark)
+    writeImage(fs1file,s1)
+    writeImage(fs2file,s2)
+    writeImage(fs3file,s3)
+  else:
+    s1 = readImage(fs1file)
+  plot3(gx,skins=skins,smax=20.0)
+  plot3(gx,s1,cmin=0.0,cmax=20.0,cmap=jetFill(0.3))
+
+def goUnfault():
+  print "goUnfault ..."
+  gx = readImage(gxfile)
+  if not displayOnly:
+    s1 = readImage(fs1file)
+    s2 = readImage(fs2file)
+    s3 = readImage(fs3file)
+    gw = FaultSlipper.unfault([s1,s2,s3],gx)
+    writeImage(gwfile,gw)
+  else:
+    gw = readImage(gwfile)
+  plot3(gw)
+  plot3(gx)
 
 #############################################################################
 # graphics

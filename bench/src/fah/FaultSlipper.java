@@ -199,7 +199,8 @@ public class FaultSlipper {
    * @param smark the mark for slips not adjacent to a fault.
    * @return interpolated dip-slip vectors.
    */
-  public float[][][][] interpolateDipSlips(float[][][][] s, float smark) {
+  public static float[][][][] interpolateDipSlips(
+      float[][][][] s, float smark) {
     int n1 = s[0][0][0].length;
     int n2 = s[0][0].length;
     int n3 = s[0].length;
@@ -238,7 +239,7 @@ public class FaultSlipper {
    * @param g image to be unfaulted.
    * @return unfaulted image.
    */
-  public float[][][] unfault(float[][][][] s, final float[][][] g) {
+  public static float[][][] unfault(float[][][][] s, final float[][][] g) {
     final int n1 = g[0][0].length;
     final int n2 = g[0].length;
     final int n3 = g.length;
