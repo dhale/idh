@@ -11,13 +11,11 @@ n1,n2,n3 = s1.count,s2.count,s3.count
 # Names and descriptions of image files used below.
 gxfile  = "gx" # input image (maybe after bilateral filtering)
 gsxfile = "gsx" # image after lsf with fault likelihoods
+epfile  = "ep" # eigenvalue-derived planarity
 p2file  = "p2" # inline slopes
 p3file  = "p3" # crossline slopes
 p2kfile = "p2k" # inline slopes (known)
 p3kfile = "p3k" # crossline slopes (known)
-epfile  = "ep" # eigenvalue-derived planarity
-snfile  = "sn" # semblance numerators
-sdfile  = "sd" # semblance denominators
 flfile  = "fl" # fault likelihood
 fpfile  = "fp" # fault strike (phi)
 ftfile  = "ft" # fault dip (theta)
