@@ -216,6 +216,7 @@ public class FaultSlipper {
     LocalDiffusionKernel ldk = new LocalDiffusionKernel(stencil);
     BlendedGridder3 bg = new BlendedGridder3();
     bg.setBlendingKernel(ldk);
+    bg.setTimeMax(100.0);
     for (int is=0; is<3; ++is) {
       float[][][] si = s[is];
       for (int i3=0; i3<n3; ++i3) {

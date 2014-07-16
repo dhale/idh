@@ -14,11 +14,9 @@ g0file  = "g0" # raw input image
 gxfile  = "gx" # input image, after bilateral filtering
 gsxfile = "gsx" # image after lsf with sharp faults
 gwfile  = "gw" # image after unfaulting
+epfile  = "ep" # eigenvalue-derived planarity
 p2file  = "p2" # inline slopes
 p3file  = "p3" # crossline slopes
-epfile  = "ep" # eigenvalue-derived planarity
-snfile  = "sn" # semblance numerators
-sdfile  = "sd" # semblance denominators
 flfile  = "fl" # fault likelihood
 fpfile  = "fp" # fault strike (phi)
 ftfile  = "ft" # fault dip (theta)
@@ -32,15 +30,17 @@ fs3file = "fs3" # fault slip (3rd component)
 # Processing begins here. When experimenting with one part of this demo, we
 # can disable other parts that have already written results to files.
 displayOnly = False
+scanName = ""
 def main(args):
   #goDisplay()
   #goSlopes()
-  #goScan()
-  #goThin()
-  #goSmooth()
-  #goSkin()
-  #goSlip()
-  goUnfault()
+  #for scanName in ["000"]:
+  #  goScan()
+  #  goThin()
+  #  goSmooth()
+  #  goSkin()
+  #  goSlip()
+  #goUnfault()
 
 def goDisplay():
   print "goDisplay ..."
@@ -52,11 +52,16 @@ def goDisplay():
 def goSlopes():
   print "goSlopes ..."
   gx = readImage(gxfile)
-  sigma1,sigma2,sigma3,pmax = 16.0,2.0,2.0,2.0
-  p2,p3,ep = FaultScanner.slopes(sigma1,sigma2,sigma3,pmax,gx)
-  writeImage(p2file,p2)
-  writeImage(p3file,p3)
-  writeImage(epfile,ep)
+  if not displayOnly:
+    sigma1,sigma2,sigma3,pmax = 16.0,2.0,2.0,2.0
+    p2,p3,ep = FaultScanner.slopes(sigma1,sigma2,sigma3,pmax,gx)
+    writeImage(p2file,p2)
+    writeImage(p3file,p3)
+    writeImage(epfile,ep)
+  else:
+    p2 = readImage(p2file)
+    p3 = readImage(p3file)
+    ep = readImage(epfile)
   print "p2 min =",min(p2)," max =",max(p2)
   print "p3 min =",min(p3)," max =",max(p3)
   print "ep min =",min(ep)," max =",max(ep)
@@ -69,20 +74,24 @@ def goScan():
   p2 = readImage(p2file)
   p3 = readImage(p3file)
   gx = readImage(gxfile)
-  gx = FaultScanner.taper(50,0,0,gx);
-  #sigmaPhi,sigmaTheta = 4,20 # typical values
-  sigmaPhi,sigmaTheta = 8,40 # because sampling intervals are small
-  minPhi,maxPhi = 0,360
-  minTheta,maxTheta = 65,85
-  fsc = FaultScanner(sigmaPhi,sigmaTheta)
-  fl,fp,ft = fsc.scan(minPhi,maxPhi,minTheta,maxTheta,p2,p3,gx)
+  if not displayOnly:
+    gtx = FaultScanner.taper(50,0,0,gx);
+    #sigmaPhi,sigmaTheta = 4,20 # typical values
+    sigmaPhi,sigmaTheta = 8,40 # because sampling intervals are small
+    minPhi,maxPhi = 0,360
+    minTheta,maxTheta = 65,85
+    fsc = FaultScanner(sigmaPhi,sigmaTheta)
+    fl,fp,ft = fsc.scan(minPhi,maxPhi,minTheta,maxTheta,p2,p3,gtx)
+    writeImage(flfile,fl)
+    writeImage(fpfile,fp)
+    writeImage(ftfile,ft)
+  else:
+    fl = readImage(flfile)
+    fp = readImage(fpfile)
+    ft = readImage(ftfile)
   print "fl min =",min(fl)," max =",max(fl)
   print "fp min =",min(fp)," max =",max(fp)
   print "ft min =",min(ft)," max =",max(ft)
-  writeImage(flfile,fl)
-  writeImage(fpfile,fp)
-  writeImage(ftfile,ft)
-  plot3(gx)
   plot3(gx,fl,cmin=0.1,cmax=1,cmap=jetRamp(1.0))
   plot3(gx,fp,cmin=0,cmax=360,cmap=hueFill(0.3))
   plot3(gx,ft,cmin=60,cmax=90,cmap=jetFill(0.3))
@@ -90,17 +99,20 @@ def goScan():
 def goThin():
   print "goThin ..."
   gx = readImage(gxfile)
-  fl = readImage(flfile)
-  fp = readImage(fpfile)
-  ft = readImage(ftfile)
-  flt,fpt,ftt = FaultScanner.thin([fl,fp,ft])
-  writeImage(fltfile,flt)
-  writeImage(fptfile,fpt)
-  writeImage(fttfile,ftt)
-  plot3(gx)
-  plot3(gx,fl,cmin=0.1,cmax=1.0,cmap=jetRamp(1.0))
+  if not displayOnly:
+    fl = readImage(flfile)
+    fp = readImage(fpfile)
+    ft = readImage(ftfile)
+    flt,fpt,ftt = FaultScanner.thin([fl,fp,ft])
+    writeImage(fltfile,flt)
+    writeImage(fptfile,fpt)
+    writeImage(fttfile,ftt)
+  else:
+    flt = readImage(fltfile)
+    fpt = readImage(fptfile)
+    ftt = readImage(fttfile)
   plot3(gx,flt,cmin=0.1,cmax=1.0,cmap=jetFillExceptMin(1.0))
-  plot3(gx,fpt,cmin=-0.5,cmax=360,cmap=hueFillExceptMin(1.0))
+  plot3(gx,fpt,cmin=-1.5,cmax=360,cmap=hueFillExceptMin(1.0))
   plot3(gx,ftt,cmin=60,cmax=90,cmap=jetFillExceptMin(1.0))
 
 def goSmooth():

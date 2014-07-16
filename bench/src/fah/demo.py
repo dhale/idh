@@ -29,12 +29,12 @@ fs3file = "fs3" # fault slip (3rd component)
 # Processing begins here. When experimenting with one part of this demo, we
 # can disable other parts that have already written results to files.
 def main(args):
-  goFakeData()
-  goSlopes()
-  goScan()
-  goThin()
-  goSmooth()
-  goSkin()
+  #goFakeData()
+  #goSlopes()
+  #goScan()
+  #goThin()
+  #goSmooth()
+  #goSkin()
   goSlip()
 
 def goFakeData():
