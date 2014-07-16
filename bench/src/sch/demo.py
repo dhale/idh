@@ -9,7 +9,7 @@ setupForSubset("s2a")
 s1,s2,s3 = getSamplings()
 n1,n2,n3 = s1.count,s2.count,s3.count
 
-# Names and descriptions of image files used below.
+# Names and descriptions of files.
 g0file  = "g0" # raw input image
 gxfile  = "gx" # input image, after bilateral filtering
 gsxfile = "gsx" # image after lsf with sharp faults
@@ -26,23 +26,57 @@ fttfile = "ftt" # fault dip thinned
 fs1file = "fs1" # fault slip (1st component)
 fs2file = "fs2" # fault slip (2nd component)
 fs3file = "fs3" # fault slip (3rd component)
+fskbase = "fsk" # fault skin (basename only)
 
 # These variables control the scan over fault strikes and dips.
+#sigmaPhi,sigmaTheta = 8,40
+#minPhi,maxPhi = 0,360
+#minTheta,maxTheta = 65,85
+#scanName = ""
 sigmaPhi,sigmaTheta = 8,40
-minPhi,maxPhi = 0,360
 minTheta,maxTheta = 65,85
+minPhi,maxPhi = 105,135 # centered at 120
+#minPhi,maxPhi = 285,315 # conjugate at 300
+#minPhi,maxPhi = -15, 15 # centered at 0
+#minPhi,maxPhi = 165,195 # conjugate at 180
+#minPhi,maxPhi =  75,105 # centered at 90
+#minPhi,maxPhi = 255,285 # conjugate at 270
+scanName = "_120"
+
+gwfile += scanName # just for testing
+flfile += scanName
+fpfile += scanName
+ftfile += scanName
+fltfile += scanName
+fptfile += scanName
+fttfile += scanName
+fs1file += scanName
+fs2file += scanName
+fs3file += scanName
+fskbase += scanName
 
 # Processing begins here. When experimenting with one part of this demo, we
 # can disable other parts that have already written results to files.
 displayOnly = False
-scanName = ""
 def main(args):
-  goDisplay()
+  #goFirst()
+  goSecond()
+
+def goSecond():
+  #goScan()
+  #goThin()
+  #goSmooth()
+  #goSkin()
+  goSlip()
+  goUnfault()
+
+def goFirst():
+  #goDisplay()
   #goSlopes()
   #goScan()
   #goThin()
   goStat()
-  #goSmooth()
+  goSmooth()
   #goSkin()
   #goSlip()
   #goUnfault()
@@ -122,14 +156,14 @@ def goStat():
     sp.setVLimits(0.0,max(f))
     sp.setVLabel("Frequency")
     sp.setHLabel(slabel)
-  fl = readImage(fltfile)
-  fp = readImage(fptfile)
-  ft = readImage(fttfile)
+  fl = readImage(flfile)
+  fp = readImage(fpfile)
+  ft = readImage(ftfile)
   fs = FaultScanner(sigmaPhi,sigmaTheta)
   sp = fs.getPhiSampling(minPhi,maxPhi)
   st = fs.getThetaSampling(minTheta,maxTheta)
-  pfl = fs.getFrequencies(sp,fp,fl)
-  tfl = fs.getFrequencies(st,ft,fl)
+  pfl = fs.getFrequencies(sp,fp,None)
+  tfl = fs.getFrequencies(st,ft,None)
   plotStat(sp,pfl,"Fault strike (degrees)")
   plotStat(st,tfl,"Fault dip (degrees)")
 
@@ -169,11 +203,11 @@ def goSkin():
       skin.smoothCellNormals(4)
     print "total number of cells =",len(cells)
     print "total number of skins =",len(skins)
-    removeAllSkinFiles("skin")
-    writeSkins("skin",skins)
+    removeAllSkinFiles(fskbase)
+    writeSkins(fskbase,skins)
     plot3(gx,cells=cells)
   else:
-    skins = readSkins("skin")
+    skins = readSkins(fskbase)
   plot3(gx,skins=skins)
   #for skin in skins:
   #  plot3(gx,skins=[skin],links=True)
@@ -181,7 +215,7 @@ def goSkin():
 def goSlip():
   print "goSlip ..."
   gx = readImage(gxfile)
-  skins = readSkins("skin")
+  skins = readSkins(fskbase)
   if not displayOnly:
     gsx = readImage(gsxfile)
     p2 = readImage(p2file)
@@ -204,15 +238,22 @@ def goUnfault():
   print "goUnfault ..."
   gx = readImage(gxfile)
   if not displayOnly:
-    s1 = readImage(fs1file)
-    s2 = readImage(fs2file)
-    s3 = readImage(fs3file)
-    gw = FaultSlipper.unfault([s1,s2,s3],gx)
+    fs1 = readImage(fs1file)
+    fs2 = readImage(fs2file)
+    fs3 = readImage(fs3file)
+    gw = FaultSlipper.unfault([fs1,fs2,fs3],gx)
     writeImage(gwfile,gw)
   else:
     gw = readImage(gwfile)
-  plot3(gw)
-  plot3(gx)
+  #plot3(gw)
+  #plot3(gx)
+  sf = SimpleFrame(AxesOrientation.XRIGHT_YOUT_ZDOWN)
+  ipgw = sf.addImagePanels(s1,s2,s3,gw)
+  ipgx = sf.addImagePanels(s1,s2,s3,gx)
+  ipgw.setClips(-1.0,1.0)
+  ipgx.setClips(-1.0,1.0)
+  ov = sf.getOrbitView()
+  ov.setScale(2.5)
 
 #############################################################################
 # graphics

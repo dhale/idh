@@ -216,6 +216,7 @@ public class FaultSlipper {
     LocalDiffusionKernel ldk = new LocalDiffusionKernel(stencil);
     BlendedGridder3 bg = new BlendedGridder3();
     bg.setBlendingKernel(ldk);
+    bg.setSmoothness(0.5);
     bg.setTimeMax(100.0);
     for (int is=0; is<3; ++is) {
       float[][][] si = s[is];
@@ -465,9 +466,9 @@ public class FaultSlipper {
     // ... TESTING
     for (int ismooth=0; ismooth<1; ++ismooth) {
       dw.smoothErrors1(eab,eab);
-      normalizeErrors(eab);
+      //normalizeErrors(eab);
       dw.smoothErrors1(elr,elr);
-      normalizeErrors(elr);
+      //normalizeErrors(elr);
       // TESTING ...
       //edu.mines.jtk.mosaic.SimplePlot.asPixels(pow(eab[iabmax],0.1f));
       // ... TESTING

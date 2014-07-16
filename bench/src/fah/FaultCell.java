@@ -43,6 +43,78 @@ public class FaultCell implements Serializable {
   private static final long serialVersionUID = 1L;
 
   /**
+   * Gets the fault likelihood for this cell.
+   * @return the fault likelihood.
+   */
+  public float getFl() {
+    return fl;
+  }
+
+  /**
+   * Gets the coordinates (x1,x2,x3) of the location for this cell.
+   * @return array {x1,x2,x3} of coordinates.
+   */
+  public float[] getX() {
+    return new float[]{x1,x2,x3};
+  }
+
+  /**
+   * Gets the 1st coordinate of the location for this cell.
+   * @return the 1st coordinate.
+   */
+  public float getX1() {
+    return x1;
+  }
+
+  /**
+   * Gets the 2nd coordinate of the location for this cell.
+   * @return the 2nd coordinate.
+   */
+  public float getX2() {
+    return x2;
+  }
+
+  /**
+   * Gets the 3rd coordinate of the location for this cell.
+   * @return the 3rd coordinate.
+   */
+  public float getX3() {
+    return x3;
+  }
+
+  /**
+   * Gets the components (w1,w2,w3) of the normal vector for this cell.
+   * @return array {w1,w2,w3} of coordinates.
+   */
+  public float[] getW() {
+    return new float[]{w1,w2,w3};
+  }
+
+  /**
+   * Gets the 1st component of the normal vector for this cell.
+   * @return the 1st component.
+   */
+  public float getW1() {
+    return w1;
+  }
+
+  /**
+   * Gets the 2nd component of the normal vector for this cell.
+   * @return the 2nd component.
+   */
+  public float getW2() {
+    return w2;
+  }
+
+  /**
+   * Gets the 3rd component of the normal vector for this cell.
+   * @return the 3rd component.
+   */
+  public float getW3() {
+    return w3;
+  }
+
+  /**
    * Returns an array of packed (x,y,z) coordinates for a fault curve.
    * The fault curve is everywhere tangent to fault dip, and contains the
    * point for this cell. Returned coordinates are in above-to-below order.
