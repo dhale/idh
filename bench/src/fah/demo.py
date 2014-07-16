@@ -26,16 +26,23 @@ fs1file = "fs1" # fault slip (1st component)
 fs2file = "fs2" # fault slip (2nd component)
 fs3file = "fs3" # fault slip (3rd component)
 
+# These variables control the scan over fault strikes and dips.
+# See the class FaultScanner for more information.
+sigmaPhi,sigmaTheta = 4,20
+minPhi,maxPhi = 0,360
+minTheta,maxTheta = 65,85
+
 # Processing begins here. When experimenting with one part of this demo, we
 # can disable other parts that have already written results to files.
 def main(args):
-  #goFakeData()
-  #goSlopes()
-  #goScan()
-  #goThin()
+  goFakeData()
+  goSlopes()
+  goScan()
+  goThin()
+  goStat()
   #goSmooth()
   #goSkin()
-  goSlip()
+  #goSlip()
 
 def goFakeData():
   #sequence = 'A' # 1 episode of faulting only
@@ -90,18 +97,11 @@ def goScan():
   p3 = readImage(p3file)
   gx = readImage(gxfile)
   gx = FaultScanner.taper(10,0,0,gx)
-  sigmaPhi,sigmaTheta = 4,20
-  minPhi,maxPhi = 0,360
-  minTheta,maxTheta = 65,85
-  fsc = FaultScanner(sigmaPhi,sigmaTheta)
-  sw = Stopwatch()
-  sw.restart()
-  fl,fp,ft = fsc.scan(minPhi,maxPhi,minTheta,maxTheta,p2,p3,gx)
-  sw.stop()
+  fs = FaultScanner(sigmaPhi,sigmaTheta)
+  fl,fp,ft = fs.scan(minPhi,maxPhi,minTheta,maxTheta,p2,p3,gx)
   print "fl min =",min(fl)," max =",max(fl)
   print "fp min =",min(fp)," max =",max(fp)
   print "ft min =",min(ft)," max =",max(ft)
-  print "time =",sw.time()
   writeImage(flfile,fl)
   writeImage(fpfile,fp)
   writeImage(ftfile,ft)
@@ -123,6 +123,24 @@ def goThin():
   plot3(gx,flt,cmin=0.25,cmax=1.0,cmap=jetFillExceptMin(1.0))
   plot3(gx,fpt,cmin=0,cmax=360,cmap=hueFillExceptMin(1.0))
   plot3(gx,ftt,cmin=60,cmax=90,cmap=jetFillExceptMin(1.0))
+
+def goStat():
+  def plotStat(s,f,slabel=None):
+    sp = SimplePlot.asPoints(s,f)
+    sp.setVLimits(0.0,max(f))
+    sp.setVLabel("Frequency")
+    if slabel:
+      sp.setHLabel(slabel)
+  fl = readImage(fltfile)
+  fp = readImage(fptfile)
+  ft = readImage(fttfile)
+  fs = FaultScanner(sigmaPhi,sigmaTheta)
+  sp = fs.getPhiSampling(minPhi,maxPhi)
+  st = fs.getThetaSampling(minTheta,maxTheta)
+  pfl = fs.getFrequencies(sp,fp,fl)
+  tfl = fs.getFrequencies(st,ft,fl)
+  plotStat(sp,pfl,"Fault strike (degrees)")
+  plotStat(st,tfl,"Fault dip (degrees)")
 
 def goSmooth():
   print "goSmooth ..."

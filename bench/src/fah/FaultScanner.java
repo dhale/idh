@@ -38,6 +38,61 @@ public class FaultScanner {
   }
 
   /**
+   * Gets a sampling of fault strike phi appropriate for this scanner.
+   * @param phiMin minimum fault strike, in degrees.
+   * @param phiMax maximum fault strike, in degrees.
+   */
+  public Sampling getPhiSampling(double phiMin, double phiMax) {
+    return angleSampling(_sigmaPhi,phiMin,phiMax);
+  }
+
+  /**
+   * Gets a sampling of fault dip theta appropriate for this scanner.
+   * @param thetaMin minimum fault dip, in degrees.
+   * @param thetaMax maximum fault dip, in degrees.
+   */
+  public Sampling getThetaSampling(double thetaMin, double thetaMax) {
+    return angleSampling(_sigmaTheta,thetaMin,thetaMax);
+  }
+
+  /**
+   * Gets the frequencies of fault values (e.g., strikes or dips) in an array.
+   * Each element of the returned array corresponds to a sampled value, and
+   * contains the fraction of values in the specified array that are nearest
+   * to that sampled value. In other words, the returned array is like a
+   * histogram, but normalized so that the sum of all frequencies is one.
+   * <p>
+   * Fault likelihoods, if specified by a non-null array, may be used to
+   * weight the counting of values in the array of values to be counted.
+   * @param sv sampling of fault values in the returned array.
+   * @param fv array of fault values to be counted.
+   * @param fl array of fault likelihoods; null, for no weighting.
+   * @param array of frequencies of fault values.
+   */
+  public static float[] getFrequencies(
+    Sampling sv, float[][][] fv, float[][][] fl) {
+    int n1 = fv[0][0].length;
+    int n2 = fv[0].length;
+    int n3 = fv.length;
+    int nv = sv.getCount();
+    float[] vf = new float[nv];
+    for (int i3=0; i3<n3; ++i3) {
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          float fvi = fv[i3][i2][i1];
+          float fli = (fl!=null)?fl[i3][i2][i1]:1.0f;
+          int iv = sv.indexOfNearest(fvi);
+          if (iv>=0 && iv<nv)
+            vf[iv] += fli;
+        }
+      }
+    }
+    float vfsum = sum(vf);
+    float vfscl = (vfsum>0.0f)?1.0f/vfsum:1.0f;
+    return mul(vf,vfscl);
+  }
+
+  /**
    * Returns slopes and planarities of features in a specified image.
    * Image features are assumed to be locally planar, with slopes that may
    * vary throughout the image. Smoothing parameters control the extents of

@@ -27,19 +27,24 @@ fs1file = "fs1" # fault slip (1st component)
 fs2file = "fs2" # fault slip (2nd component)
 fs3file = "fs3" # fault slip (3rd component)
 
+# These variables control the scan over fault strikes and dips.
+sigmaPhi,sigmaTheta = 8,40
+minPhi,maxPhi = 0,360
+minTheta,maxTheta = 65,85
+
 # Processing begins here. When experimenting with one part of this demo, we
 # can disable other parts that have already written results to files.
 displayOnly = False
 scanName = ""
 def main(args):
-  #goDisplay()
+  goDisplay()
   #goSlopes()
-  #for scanName in ["000"]:
-  #  goScan()
-  #  goThin()
-  #  goSmooth()
-  #  goSkin()
-  #  goSlip()
+  #goScan()
+  #goThin()
+  goStat()
+  #goSmooth()
+  #goSkin()
+  #goSlip()
   #goUnfault()
 
 def goDisplay():
@@ -76,10 +81,6 @@ def goScan():
   gx = readImage(gxfile)
   if not displayOnly:
     gtx = FaultScanner.taper(50,0,0,gx);
-    #sigmaPhi,sigmaTheta = 4,20 # typical values
-    sigmaPhi,sigmaTheta = 8,40 # because sampling intervals are small
-    minPhi,maxPhi = 0,360
-    minTheta,maxTheta = 65,85
     fsc = FaultScanner(sigmaPhi,sigmaTheta)
     fl,fp,ft = fsc.scan(minPhi,maxPhi,minTheta,maxTheta,p2,p3,gtx)
     writeImage(flfile,fl)
@@ -114,6 +115,23 @@ def goThin():
   plot3(gx,flt,cmin=0.1,cmax=1.0,cmap=jetFillExceptMin(1.0))
   plot3(gx,fpt,cmin=-1.5,cmax=360,cmap=hueFillExceptMin(1.0))
   plot3(gx,ftt,cmin=60,cmax=90,cmap=jetFillExceptMin(1.0))
+
+def goStat():
+  def plotStat(s,f,slabel):
+    sp = SimplePlot.asPoints(s,f)
+    sp.setVLimits(0.0,max(f))
+    sp.setVLabel("Frequency")
+    sp.setHLabel(slabel)
+  fl = readImage(fltfile)
+  fp = readImage(fptfile)
+  ft = readImage(fttfile)
+  fs = FaultScanner(sigmaPhi,sigmaTheta)
+  sp = fs.getPhiSampling(minPhi,maxPhi)
+  st = fs.getThetaSampling(minTheta,maxTheta)
+  pfl = fs.getFrequencies(sp,fp,fl)
+  tfl = fs.getFrequencies(st,ft,fl)
+  plotStat(sp,pfl,"Fault strike (degrees)")
+  plotStat(st,tfl,"Fault dip (degrees)")
 
 def goSmooth():
   print "goSmooth ..."
