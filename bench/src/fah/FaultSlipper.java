@@ -104,12 +104,12 @@ public class FaultSlipper {
     int lmin = round((float)smin-2*_offset); // because shifts != throws
     int lmax = round((float)smax+2*_offset); // TODO: use pmax*_offset?
     DynamicWarping dw = new DynamicWarping(lmin,lmax);
-    dw.setStrainMax(0.25,0.25); // TODO: always 0.25?
+    dw.setStrainMax(0.25,0.25); // TODO: always 0.25? goes with 4 below?
     computeAlignmentErrors(skin,lmin,lmax,_offset,_gs);
     extrapolateAlignmentErrors(lmin,lmax,cab);
     computeShifts(dw,cab,clr);
     clearErrors(skin);
-    for (int nsmooth=0; nsmooth<4; ++nsmooth) // TODO: always 4?
+    for (int nsmooth=0; nsmooth<2; ++nsmooth) // TODO: 2?
       smoothShifts(skin);
     computeDipSlips(skin);
   }
@@ -424,22 +424,12 @@ public class FaultSlipper {
    */
   private static void computeShifts(
       DynamicWarping dw, FaultCell[][] cab, FaultCell[][] clr) {
-
+    
     // Arrays of arrays of errors, linked above and below.
-    // TESTING ...
-    //int iabmax = -1;
-    //int mabmax = 0;
-    // ... TESTING
     int nab = cab.length;
     float[][][] eab = new float[nab][][];
     for (int iab=0; iab<nab; ++iab) {
       int mab = cab[iab].length;
-      // TESTING ...
-      //if (mab>mabmax) {
-      //  iabmax = iab;
-      //  mabmax = mab;
-      //}
-      // ... TESTING
       eab[iab] = new float[mab][];
       for (int jab=0; jab<mab; ++jab) {
         FaultCell c = cab[iab][jab];
@@ -461,17 +451,11 @@ public class FaultSlipper {
 
 
     // Smooth alignment errors in above-below and left-right directions.
-    // TESTING ...
-    //edu.mines.jtk.mosaic.SimplePlot.asPixels(pow(eab[iabmax],0.1f));
-    // ... TESTING
-    for (int ismooth=0; ismooth<1; ++ismooth) {
+    for (int ismooth=0; ismooth<2; ++ismooth) { // TODO: how many?
       dw.smoothErrors1(eab,eab);
-      //normalizeErrors(eab);
+      normalizeErrors(eab); // TODO: helpful?
       dw.smoothErrors1(elr,elr);
-      //normalizeErrors(elr);
-      // TESTING ...
-      //edu.mines.jtk.mosaic.SimplePlot.asPixels(pow(eab[iabmax],0.1f));
-      // ... TESTING
+      normalizeErrors(elr); // TODO: helpful?
     }
 
     // Find shifts by accumulating once more and then backtracking.

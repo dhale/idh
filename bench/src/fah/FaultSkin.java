@@ -263,15 +263,9 @@ public class FaultSkin implements Iterable<FaultCell>,Serializable {
     try {
       ArrayInputStream ais = new ArrayInputStream(fileName);
       int ncell = ais.readInt();
-      int i1seed = ais.readShort();
-      int i2seed = ais.readShort();
-      int i3seed = ais.readShort();
-      int i1min = Integer.MAX_VALUE;
-      int i2min = Integer.MAX_VALUE;
-      int i3min = Integer.MAX_VALUE;
-      int i1max = -i1min;
-      int i2max = -i2min;
-      int i3max = -i3min;
+      int i1seed = ais.readInt();
+      int i2seed = ais.readInt();
+      int i3seed = ais.readInt();
       ArrayList<FaultCell> cellList = new ArrayList<FaultCell>(ncell);
       for (int icell=0; icell<ncell; ++icell) {
         float x1 = ais.readFloat();
@@ -286,39 +280,33 @@ public class FaultSkin implements Iterable<FaultCell>,Serializable {
         cell.s1 = ais.readFloat();
         cell.s2 = ais.readFloat();
         cell.s3 = ais.readFloat();
-        if (cell.i1<i1min) i1min = cell.i1;
-        if (cell.i2<i2min) i2min = cell.i2;
-        if (cell.i3<i3min) i3min = cell.i3;
-        if (cell.i1>i1max) i1max = cell.i1;
-        if (cell.i2>i2max) i2max = cell.i2;
-        if (cell.i3>i3max) i3max = cell.i3;
       }
-      int n1 = 1+i1max-i1min;
-      int n2 = 1+i2max-i2min;
-      int n3 = 1+i3max-i3min;
-      FaultCellGrid fcg = new FaultCellGrid(n1,n2,n3);
-      for (FaultCell cell:cellList)
-        fcg.set(cell.i1-i1min,cell.i2-i2min,cell.i3-i3min,cell);
+      FaultCell[] cells = cellList.toArray(new FaultCell[0]);
+      FaultCellGrid fcg = new FaultCellGrid(cells);
       for (FaultCell cell:cellList) {
-        int i1a = ais.readShort();
-        int i2a = ais.readShort();
-        int i3a = ais.readShort();
-        if (i1a>=0) cell.ca = fcg.get(i1a-i1min,i2a-i2min,i3a-i3min);
-        int i1b = ais.readShort();
-        int i2b = ais.readShort();
-        int i3b = ais.readShort();
-        if (i1b>=0) cell.cb = fcg.get(i1b-i1min,i2b-i2min,i3b-i3min);
-        int i1l = ais.readShort();
-        int i2l = ais.readShort();
-        int i3l = ais.readShort();
-        if (i1l>=0) cell.cl = fcg.get(i1l-i1min,i2l-i2min,i3l-i3min);
-        int i1r = ais.readShort();
-        int i2r = ais.readShort();
-        int i3r = ais.readShort();
-        if (i1r>=0) cell.cr = fcg.get(i1r-i1min,i2r-i2min,i3r-i3min);
+        int i1a = ais.readInt();
+        int i2a = ais.readInt();
+        int i3a = ais.readInt();
+        int i1b = ais.readInt();
+        int i2b = ais.readInt();
+        int i3b = ais.readInt();
+        int i1l = ais.readInt();
+        int i2l = ais.readInt();
+        int i3l = ais.readInt();
+        int i1r = ais.readInt();
+        int i2r = ais.readInt();
+        int i3r = ais.readInt();
+        if (i1a!=INULL) 
+          cell.ca = fcg.get(i1a,i2a,i3a);
+        if (i1b!=INULL) 
+          cell.cb = fcg.get(i1b,i2b,i3b);
+        if (i1l!=INULL) 
+          cell.cl = fcg.get(i1l,i2l,i3l);
+        if (i1r!=INULL) 
+          cell.cr = fcg.get(i1r,i2r,i3r);
       }
       ais.close();
-      skin._seed = fcg.get(i1seed-i1min,i2seed-i2min,i3seed-i3min);
+      skin._seed = fcg.get(i1seed,i2seed,i3seed);
       skin._cellList = cellList;
     } catch (Exception e) {
       throw new RuntimeException(e);
@@ -335,9 +323,9 @@ public class FaultSkin implements Iterable<FaultCell>,Serializable {
     try {
       ArrayOutputStream aos = new ArrayOutputStream(fileName);
       aos.writeInt(skin.size());
-      aos.writeShort(skin._seed.i1);
-      aos.writeShort(skin._seed.i2);
-      aos.writeShort(skin._seed.i3);
+      aos.writeInt(skin._seed.i1);
+      aos.writeInt(skin._seed.i2);
+      aos.writeInt(skin._seed.i3);
       for (FaultCell cell:skin) {
         aos.writeFloat(cell.x1); 
         aos.writeFloat(cell.x2); 
@@ -353,13 +341,13 @@ public class FaultSkin implements Iterable<FaultCell>,Serializable {
         FaultCell[] nabors = new FaultCell[]{cell.ca,cell.cb,cell.cl,cell.cr};
         for (FaultCell nabor:nabors) {
           if (nabor!=null) {
-            aos.writeShort(nabor.i1);
-            aos.writeShort(nabor.i2);
-            aos.writeShort(nabor.i3);
+            aos.writeInt(nabor.i1);
+            aos.writeInt(nabor.i2);
+            aos.writeInt(nabor.i3);
           } else {
-            aos.writeShort(-1);
-            aos.writeShort(-1);
-            aos.writeShort(-1);
+            aos.writeInt(INULL);
+            aos.writeInt(INULL);
+            aos.writeInt(INULL);
           }
         }
       }
@@ -488,6 +476,8 @@ public class FaultSkin implements Iterable<FaultCell>,Serializable {
 
   /////////////////////////////////////////////////////////////////////////
   // private
+
+  private static final int INULL = -Integer.MAX_VALUE; // null index
 
   private FaultCell _seed; // cell in this skin with highest fl; null, if empty
   private ArrayList<FaultCell> _cellList; // list of cells in this skin

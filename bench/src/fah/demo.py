@@ -1,7 +1,7 @@
 """
 Demonstrate 3D seismic image processing for faults and horizons
 Author: Dave Hale, Colorado School of Mines
-Version: 2014.06.17
+Version: 2014.07.17
 """
 
 from fakeutils import *
@@ -25,24 +25,36 @@ fttfile = "ftt" # fault dip thinned
 fs1file = "fs1" # fault slip (1st component)
 fs2file = "fs2" # fault slip (2nd component)
 fs3file = "fs3" # fault slip (3rd component)
+fskbase = "fsk" # fault skin (basename)
 
-# These variables control the scan over fault strikes and dips.
+# These parameters control the scan over fault strikes and dips.
 # See the class FaultScanner for more information.
-sigmaPhi,sigmaTheta = 4,20
 minPhi,maxPhi = 0,360
 minTheta,maxTheta = 65,85
+sigmaPhi,sigmaTheta = 4,20
+
+# These parameters control the construction of fault skins.
+# See the class FaultSkinner for more information.
+lowerLikelihood = 0.2
+upperLikelihood = 0.5
+minSkinSize = 3000
+
+# These parameters control the computation of fault dip slips.
+# See the class FaultSlipper for more information.
+minThrow = 0.01
+maxThrow = 15.0
 
 # Processing begins here. When experimenting with one part of this demo, we
-# can disable other parts that have already written results to files.
+# can comment out earlier parts that have already written results to files.
 def main(args):
   goFakeData()
   goSlopes()
   goScan()
   goThin()
   goStat()
-  #goSmooth()
-  #goSkin()
-  #goSlip()
+  goSmooth()
+  goSkin()
+  goSlip()
 
 def goFakeData():
   #sequence = 'A' # 1 episode of faulting only
@@ -137,7 +149,7 @@ def goStat():
   fs = FaultScanner(sigmaPhi,sigmaTheta)
   sp = fs.getPhiSampling(minPhi,maxPhi)
   st = fs.getThetaSampling(minTheta,maxTheta)
-  pfl = fs.getFrequencies(sp,fp,fl)
+  pfl = fs.getFrequencies(sp,fp,fl); pfl[-1] = pfl[0] # 360 deg = 0 deg
   tfl = fs.getFrequencies(st,ft,fl)
   plotStat(sp,pfl,"Fault strike (degrees)")
   plotStat(st,tfl,"Fault dip (degrees)")
@@ -156,6 +168,7 @@ def goSmooth():
   plot3(gsx)
 
 def goSkin():
+  print "goSkin ..."
   gx = readImage(gxfile)
   gsx = readImage(gsxfile)
   p2 = readImage(p2file)
@@ -163,43 +176,52 @@ def goSkin():
   fl = readImage(flfile)
   fp = readImage(fpfile)
   ft = readImage(ftfile)
-  fs = FaultSkinner([fl,fp,ft])
-  fs.setGrowLikelihoods(0.2,0.5)
-  fs.setMinSkinSize(4000)
-  cells = fs.findCells()
+  fs = FaultSkinner()
+  fs.setGrowLikelihoods(lowerLikelihood,upperLikelihood)
+  fs.setMinSkinSize(minSkinSize)
+  cells = fs.findCells([fl,fp,ft])
   skins = fs.findSkins(cells)
   for skin in skins:
     skin.smoothCellNormals(4)
   print "total number of cells =",len(cells)
   print "total number of skins =",len(skins)
-  removeAllSkinFiles("skin")
-  writeSkins("skin",skins)
-  plot3(gx)
-  plot3(gsx)
+  removeAllSkinFiles(fskbase)
+  writeSkins(fskbase,skins)
   plot3(gx,cells=cells)
+  plot3(gx,skins=skins)
   for skin in skins:
     plot3(gx,skins=[skin],links=True,curve=False,trace=False)
-  plot3(gx,skins=skins,links=False,curve=True,trace=True)
 
 def goSlip():
+  print "goSkin ..."
   gx = readImage(gxfile)
   gsx = readImage(gsxfile)
   p2 = readImage(p2file)
   p3 = readImage(p3file)
-  skins = readSkins("skin")
-  fs = FaultSlipper(gsx,p2,p3)
-  fs.setZeroSlope(False) # True only if we want to show the error
-  fs.computeDipSlips(skins,0.0,20.0)
+  skins = readSkins(fskbase)
+  fsl = FaultSlipper(gsx,p2,p3)
+  fsl.setZeroSlope(False) # True only if we want to show the error
+  fsl.computeDipSlips(skins,minThrow,maxThrow)
+  print "  dip slips computed, now reskinning ..."
+  print "  number of skins before =",len(skins),
+  fsk = FaultSkinner() # as in goSkin
+  fsk.setGrowLikelihoods(lowerLikelihood,upperLikelihood)
+  fsk.setMinSkinSize(minSkinSize)
+  fsk.setMinMaxThrow(minThrow,maxThrow)
+  skins = fsk.reskin(skins)
+  print ", after =",len(skins)
+  removeAllSkinFiles(fskbase)
+  writeSkins(fskbase,skins)
   smark = -1000.0
-  s1,s2,s3 = fs.getDipSlips(skins,smark)
+  s1,s2,s3 = fsl.getDipSlips(skins,smark)
   writeImage(fs1file,s1)
   writeImage(fs2file,s2)
   writeImage(fs3file,s3)
-  plot3(gsx,skins=skins,smax=10.0)
+  plot3(gx,skins=skins,smax=10.0)
   plot3(gx,s1,cmin=-0.01,cmax=10.0,cmap=jetFillExceptMin(1.0))
-  s1,s2,s3 = fs.interpolateDipSlips([s1,s2,s3],smark)
+  s1,s2,s3 = fsl.interpolateDipSlips([s1,s2,s3],smark)
   plot3(gx,s1,cmin=0.0,cmax=10.0,cmap=jetFill(0.3))
-  gw = fs.unfault([s1,s2,s3],gx)
+  gw = fsl.unfault([s1,s2,s3],gx)
   plot3(gw)
   plot3(gx)
 

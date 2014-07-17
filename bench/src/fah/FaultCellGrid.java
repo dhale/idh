@@ -20,6 +20,10 @@ import static fah.FaultGeometry.*;
  * contains either one fault cell or null. The grid facilitates searches for
  * cell nabors in skins and fast iterations along fault traces tangent to
  * fault strike and fault curves tangent to fault dip.
+ * <p> 
+ * Grid indices need not (and typically do not) begin at zero. Index bounds
+ * for a fault cell grid are determined by the minima and maxima of indices of
+ * cells used to construct the grid.
  *
  * @author Dave Hale, Colorado School of Mines
  * @version 2014.07.06
@@ -27,33 +31,106 @@ import static fah.FaultGeometry.*;
 public class FaultCellGrid {
 
   /**
-   * Constructs an empty fault grid with specified dimensions.
-   * @param n1 number of samples in 1st dimension.
-   * @param n2 number of samples in 2nd dimension.
-   * @param n3 number of samples in 3rd dimension.
+   * Constructs a fault grid for specified cells. Grid index bounds are
+   * determined by the minimum and maximum indices of the specified cells.
+   * @param cells array of cells to be included in the grid.
    */
-  public FaultCellGrid(int n1, int n2, int n3) {
-    this(n1,n2,n3,null);
+  public FaultCellGrid(FaultCell[] cells) {
+    int i1min = Integer.MAX_VALUE;
+    int i2min = Integer.MAX_VALUE;
+    int i3min = Integer.MAX_VALUE;
+    int i1max = -i1min;
+    int i2max = -i2min;
+    int i3max = -i3min;
+    for (FaultCell cell:cells) {
+      if (cell.i1<i1min) i1min = cell.i1;
+      if (cell.i2<i2min) i2min = cell.i2;
+      if (cell.i3<i3min) i3min = cell.i3;
+      if (cell.i1>i1max) i1max = cell.i1;
+      if (cell.i2>i2max) i2max = cell.i2;
+      if (cell.i3>i3max) i3max = cell.i3;
+    }
+    _j1 = i1min;
+    _j2 = i2min;
+    _j3 = i3min;
+    _n1 = 1+i1max-i1min;
+    _n2 = 1+i2max-i2min;
+    _n3 = 1+i3max-i3min;
+    _cells = new FaultCell[_n3][_n2][_n1];
+    for (FaultCell cell:cells)
+      set(cell);
   }
 
   /**
-   * Constructs a fault grid with specified dimensions and cells.
-   * @param n1 number of samples in 1st dimension.
-   * @param n2 number of samples in 2nd dimension.
-   * @param n3 number of samples in 3rd dimension.
-   * @param cells array of cells to be included in the grid.
+   * Gets the number of cells in the 1st dimension.
+   * @return the number of cells.
    */
-  public FaultCellGrid(int n1, int n2, int n3, FaultCell[] cells) {
-    _n1 = n1; _n2 = n2; _n3 = n3;
-    _cells = new FaultCell[n3][n2][n1];
-    if (cells!=null) {
-      for (FaultCell cell:cells) {
-        int i1 = cell.i1;
-        int i2 = cell.i2;
-        int i3 = cell.i3;
-        _cells[i3][i2][i1] = cell;
-      }
-    }
+  public int getN1() {
+    return _n1;
+  }
+
+  /**
+   * Gets the number of cells in the 2nd dimension.
+   * @return the number of cells.
+   */
+  public int getN2() {
+    return _n2;
+  }
+
+  /**
+   * Gets the number of cells in the 3rd dimension.
+   * @return the number of cells.
+   */
+  public int getN3() {
+    return _n3;
+  }
+
+  /**
+   * Gets the lower bound on grid indices in the 1st dimension.
+   * @return the lower bound.
+   */
+  public int getI1Min() {
+    return _j1;
+  }
+
+  /**
+   * Gets the lower bound on grid indices in the 2nd dimension.
+   * @return the lower bound.
+   */
+  public int getI2Min() {
+    return _j2;
+  }
+
+  /**
+   * Gets the lower bound on grid indices in the 3rd dimension.
+   * @return the lower bound.
+   */
+  public int getI3Min() {
+    return _j3;
+  }
+
+  /**
+   * Gets the upper bound on grid indices in the 1st dimension.
+   * @return the upper bound.
+   */
+  public int getI1Max() {
+    return _j1+_n1-1;
+  }
+
+  /**
+   * Gets the upper bound on grid indices in the 2nd dimension.
+   * @return the upper bound.
+   */
+  public int getI2Max() {
+    return _j2+_n2-1;
+  }
+
+  /**
+   * Gets the upper bound on grid indices in the 3rd dimension.
+   * @return the upper bound.
+   */
+  public int getI3Max() {
+    return _j3+_n3-1;
   }
 
   /**
@@ -64,7 +141,12 @@ public class FaultCellGrid {
    * @return the fault cell; null, if none or if indices are out of bounds.
    */
   public FaultCell get(int i1, int i2, int i3) {
-    if (0<=i1 && i1<_n1 && 0<=i2 && i2<_n2 && 0<=i3 && i3<_n3) {
+    i1 -= _j1; 
+    i2 -= _j2; 
+    i3 -= _j3;
+    if (0<=i1 && i1<_n1 && 
+        0<=i2 && i2<_n2 && 
+        0<=i3 && i3<_n3) {
       return _cells[i3][i2][i1];
     } else {
       return null;
@@ -78,7 +160,10 @@ public class FaultCellGrid {
    * @param i3 sample index in 3rd dimension.
    * @param cell the fault cell.
    */
-  public void set(int i1, int i2, int i3, FaultCell cell) {
+  public void set(FaultCell cell) {
+    int i1 = cell.i1-_j1;
+    int i2 = cell.i2-_j2;
+    int i3 = cell.i3-_j3;
     _cells[i3][i2][i1] = cell;
   }
 
@@ -142,8 +227,20 @@ public class FaultCellGrid {
   ///////////////////////////////////////////////////////////////////////////
   // private
 
-  private int _n1,_n2,_n3;
-  private FaultCell[][][] _cells;
+  private int _j1,_j2,_j3; // min cell indices
+  private int _n1,_n2,_n3; // numbers of cells
+  private FaultCell[][][] _cells; // array of cells
+
+  private void init(FaultCell[] cells) {
+    if (cells!=null) {
+      for (FaultCell cell:cells) {
+        int i1 = cell.i1;
+        int i2 = cell.i2;
+        int i3 = cell.i3;
+        _cells[i3-_j3][i2-_j2][i1-_j1] = cell;
+      }
+    }
+  }
 
   private FaultCell findCellAboveBelow(boolean above, FaultCell cell) {
     int i1 = cell.i1;

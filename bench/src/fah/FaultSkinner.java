@@ -44,23 +44,44 @@ import static fah.FaultGeometry.*;
 public class FaultSkinner {
 
   /**
-   * Constructs a fault skinner for specified likelihoods and orientations.
-   * @param flpt array {fl,fp,ft} of fault likelihoods, strikes and dips.
+   * Constructs a fault skinner with default parameters.
    */
-  public FaultSkinner(float[][][][] flpt) {
-    _fl = flpt[0];
-    _fp = flpt[1];
-    _ft = flpt[2];
-    _n1 = _fl[0][0].length;
-    _n2 = _fl[0].length;
-    _n3 = _fl.length;
+  public FaultSkinner() {
+    _fs1min = -Float.MAX_VALUE;
+    _fs1max =  Float.MAX_VALUE;
     _fllo = 0.2f;
     _flhi = 0.8f;
     _dflmax = 0.2f;
     _dfpmax = 30.0f;
     _dftmax = 10.0f;
     _dnpmax = 0.5f;
+    _ds1max = 1.0f;
     _ncsmin = 400;
+  }
+
+  /**
+   * Sets the minimum number of cells in a skin. Skins smaller than this will
+   * be discarded.
+   * <p>
+   * The default minimum skin size is 400.
+   */
+  public void setMinSkinSize(int minSize) {
+    _ncsmin = minSize;
+  }
+
+  /**
+   * Sets lower and upper bounds on fault throw for cells in a skin.
+   * These bounds should be set only after fault dip slips have been 
+   * computed for all cells used to grow skins.
+   * <p>
+   * The default bounds are huge, so that throws are unrestricted.
+   * @param minThrow the lower bound.
+   * @param maxThrow the upper bound.
+   */
+  public void setMinMaxThrow(double minThrow, double maxThrow) {
+    Check.argument(minThrow<=maxThrow,"minThrow does not exceed maxThrow");
+    _fs1min = (float)minThrow;
+    _fs1max = (float)maxThrow;
   }
 
   /**
@@ -83,21 +104,43 @@ public class FaultSkinner {
   }
 
   /**
-   * Sets thresholds for variations in fault likelihood, strike and dip. A
-   * cell and its nabors should have similar fault properties. The specified
-   * thresholds are maximum differences permitted between a cell and its
-   * nabors.
+   * Sets the maximum difference in fault likelihood for a cell and its nabors.
    * <p>
-   * The default limits are 0.2, 30 degrees, and 10 degrees, respectively.
-   * @param maxDeltaLikelihood upper bound on changes in fault likelihood.
-   * @param maxDeltaStrike upper bound for changes in fault strike, in degrees.
-   * @param maxDeltaDip upper bound for changes in fault dip, in degrees.
+   * The default maximum difference is 0.2.
+   * @param maxDeltaLikelihood upper bound on difference in fault likelihood.
    */
-  public void setMaxDeltas(
-      double maxDeltaLikelihood, double maxDeltaStrike, double maxDeltaDip) {
+  public void setMaxDeltaLikelihood(double maxDeltaLikelihood) {
     _dflmax = (float)maxDeltaLikelihood;
+  }
+
+  /**
+   * Sets the maximum difference in fault strike for a cell and its nabors.
+   * @param maxDeltaStrike upper bound on difference in fault strike.
+   * <p>
+   * The default maximum difference is 30 degrees.
+   */
+  public void setMaxDeltaStrike(double maxDeltaStrike) {
     _dfpmax = (float)maxDeltaStrike;
+  }
+
+  /**
+   * Sets the maximum difference in fault dip for a cell and its nabors.
+   * @param maxDeltaDip upper bound on difference in fault dip.
+   * <p>
+   * The default maximum difference is 10 degrees.
+   */
+  public void setMaxDeltaDip(double maxDeltaDip) {
     _dftmax = (float)maxDeltaDip;
+  }
+
+  /**
+   * Sets the maximum difference in fault throw for a cell and its nabors.
+   * @param maxDeltaThrow upper bound on difference in fault throw.
+   * <p>
+   * The default maximum difference is 1.0 samples.
+   */
+  public void setMaxDeltaThrow(double maxDeltaThrow) {
+    _ds1max = (float)maxDeltaThrow;
   }
 
   /**
@@ -113,20 +156,12 @@ public class FaultSkinner {
   }
 
   /**
-   * Sets the minimum number of cells in a skin.
-   * <p>
-   * The default minimum skin size is 400.
-   */
-  public void setMinSkinSize(int minSize) {
-    _ncsmin = minSize;
-  }
-
-  /**
    * Returns array of cells in ridge surfaces of fault likelihood.
+   * @param flpt array {fl,fp,ft} of fault likelihoods, strikes and dips.
    * @return array of cells.
    */
-  public FaultCell[] findCells() {
-    return cells();
+  public FaultCell[] findCells(float[][][][] flpt) {
+    return cells(flpt);
   }
 
   /**
@@ -139,6 +174,26 @@ public class FaultSkinner {
    */
   public FaultSkin[] findSkins(FaultCell[] cells) {
     return skins(cells);
+  }
+
+  /**
+   * Returns an array of new skins with cells from specified skins. The
+   * returned skins may differ from those specified if either cell properties
+   * or parameters for this skinner have changed since the cells were last
+   * skinned.
+   * @param skins array of skins.
+   * @return array of new skins.
+   */
+  public FaultSkin[] reskin(FaultSkin[] skins) {
+    ArrayList<FaultCell> cellList = new ArrayList<FaultCell>();
+    for (FaultSkin skin:skins) {
+      for (FaultCell cell:skin) {
+        cell.skin = null;
+        cellList.add(cell);
+      }
+    }
+    FaultCell[] cells = cellList.toArray(new FaultCell[0]);
+    return findSkins(cells);
   }
 
   /**
@@ -198,20 +253,25 @@ public class FaultSkinner {
   ///////////////////////////////////////////////////////////////////////////
   // private
 
-  private int _n1,_n2,_n3; // dimensions of fault images fl, fp and ft
-  private float[][][] _fl,_fp,_ft; // fault likelihoods, strikes and dips
   private float _fllo; // lower threshold on fault likelihoods
   private float _flhi; // higher threshold on fault likelihoods
+  private float _fs1min; // min fault throw
+  private float _fs1max; // max fault throw
   private float _dflmax; // max difference between likelihoods of nabors
   private float _dfpmax; // max difference between strikes of nabors
   private float _dftmax; // max difference between dips of nabors
+  private float _ds1max; // max difference between throws of nabors
   private float _dnpmax; // max distance to planes of nabors
   private int _ncsmin; // min number of cells that form a skin
 
   // Uses fault images to find cells, oriented points located on ridges.
-  private FaultCell[] cells() {
-    int n1 = _n1, n2 = _n2, n3 = _n3;
-    float[][][] f = _fl, p = _fp, t = _ft;
+  private FaultCell[] cells(float[][][][] flpt) {
+    float[][][] f = flpt[0];
+    float[][][] p = flpt[1];
+    float[][][] t = flpt[2];
+    int n1 = f[0][0].length;
+    int n2 = f[0].length;
+    int n3 = f.length;
 
     // Smooth fault likelihoods in 2nd and 3rd dimensions. This helps to
     // eliminate spurious ridges, and improves the accuracy of 2nd-order
@@ -284,7 +344,7 @@ public class FaultSkinner {
             if (fr>=_fllo) {
               float[] w = faultNormalVectorFromStrikeAndDip(piii,tiii);
               float w1 = w[0], w2 = w[1], w3 = w[2];
-              if (imax<=i2 && i2<_n2-imax || w2*w2<=wwmax) {
+              if (imax<=i2 && i2<n2-imax || w2*w2<=wwmax) {
                 fl += fr;
                 d2 += dr;
                 nr += 1;
@@ -303,8 +363,8 @@ public class FaultSkinner {
             if (fr>=_fllo) {
               float[] w = faultNormalVectorFromStrikeAndDip(piii,tiii);
               float w1 = w[0], w2 = w[1], w3 = w[2];
-              if ((imax<=i2 && i2<_n2-imax || w2*w2<=wwmax) &&
-                  (imax<=i3 && i3<_n3-imax || w3*w3<=wwmax)) {
+              if ((imax<=i2 && i2<n2-imax || w2*w2<=wwmax) &&
+                  (imax<=i3 && i3<n3-imax || w3*w3<=wwmax)) {
                 fl += fr;
                 d2 += dr;
                 d3 -= dr;
@@ -324,7 +384,7 @@ public class FaultSkinner {
             if (fr>=_fllo) {
               float[] w = faultNormalVectorFromStrikeAndDip(piii,tiii);
               float w1 = w[0], w2 = w[1], w3 = w[2];
-              if (imax<=i3 && i3<_n3-imax || w3*w3<=wwmax) {
+              if (imax<=i3 && i3<n3-imax || w3*w3<=wwmax) {
                 fl += fr;
                 d3 += dr;
                 nr += 1;
@@ -343,8 +403,8 @@ public class FaultSkinner {
             if (fr>=_fllo) {
               float[] w = faultNormalVectorFromStrikeAndDip(piii,tiii);
               float w1 = w[0], w2 = w[1], w3 = w[2];
-              if ((imax<=i2 && i2<_n2-imax || w2*w2<=wwmax) &&
-                  (imax<=i3 && i3<_n3-imax || w3*w3<=wwmax)) {
+              if ((imax<=i2 && i2<n2-imax || w2*w2<=wwmax) &&
+                  (imax<=i3 && i3<n3-imax || w3*w3<=wwmax)) {
                 fl += fr;
                 d2 += dr;
                 d3 += dr;
@@ -372,7 +432,7 @@ public class FaultSkinner {
     int ncell = cells.length;
 
     // Grid of cells used to quickly find cell nabors.
-    FaultCellGrid cellGrid = new FaultCellGrid(_n1,_n2,_n3,cells);
+    FaultCellGrid cellGrid = new FaultCellGrid(cells);
 
     // Empty list of skins.
     ArrayList<FaultSkin> skinList = new ArrayList<FaultSkin>();
@@ -393,7 +453,7 @@ public class FaultSkinner {
     ArrayList<FaultCell> seedList = new ArrayList<FaultCell>();
     for (int icell=0; icell<ncell; ++icell) {
       FaultCell cell = cells[icell];
-      if (cell.fl>=_flhi)
+      if (cell.fl>=_flhi && cell.s1>=_fs1min && cell.s1<=_fs1max)
         seedList.add(cell);
     }
     int nseed = seedList.size();
@@ -535,11 +595,17 @@ public class FaultSkinner {
       can = false;
     } else if (minFl(ca,cb)<_fllo) {
       can = false;
+    } else if (minS1(ca,cb)<_fs1min) {
+      can = false;
+    } else if (maxS1(ca,cb)>_fs1max) {
+      can = false;
     } else if (absDeltaFl(ca,cb)>_dflmax) {
       can = false;
     } else if (absDeltaFp(ca,cb)>_dfpmax) {
       can = false;
     } else if (absDeltaFt(ca,cb)>_dftmax) {
+      can = false;
+    } else if (absDeltaS1(ca,cb)>_ds1max) {
       can = false;
     } else if (maxDistanceToPlane(ca,cb)>_dnpmax) {
       can = false;
@@ -548,6 +614,12 @@ public class FaultSkinner {
   }
   private static float minFl(FaultCell ca, FaultCell cb) {
     return min(ca.fl,cb.fl);
+  }
+  private static float minS1(FaultCell ca, FaultCell cb) {
+    return min(ca.s1,cb.s1);
+  }
+  private static float maxS1(FaultCell ca, FaultCell cb) {
+    return max(ca.s1,cb.s1);
   }
   private static float absDeltaFl(FaultCell ca, FaultCell cb) {
     return abs(ca.fl-cb.fl);
@@ -558,6 +630,9 @@ public class FaultSkinner {
   }
   private static float absDeltaFt(FaultCell ca, FaultCell cb) {
     return abs(ca.ft-cb.ft);
+  }
+  private static float absDeltaS1(FaultCell ca, FaultCell cb) {
+    return abs(ca.s1-cb.s1);
   }
   private static float maxDistanceToPlane(FaultCell ca, FaultCell cb) {
     float aw1 = ca.w1, aw2 = ca.w2, aw3 = ca.w3;
@@ -585,36 +660,6 @@ public class FaultSkinner {
     float y2 = -cp*st*x1+cp*ct*x2+sp*x3;
     float y3 =  sp*st*x1-sp*ct*x2+cp*x3;
     return new float[]{y1,y2,y3};
-  }
-
-  // Smooths normal vectors for each cell using an average of that
-  // cell's normal vector and those of its cell nabors.
-  private static void smoothNormals(FaultSkin skin) {
-    /* copied from FaultSlipper
-    FaultCell[] cells = skin.getCells();
-    int ncell = cells.length;
-    float[] smps = new float[ncell];
-    float[] cnts = new float[ncell];
-    FaultCell[] cellNabors = new FaultCell[4];
-    for (int icell=0; icell<ncell; ++icell) {
-      FaultCell cell = cells[icell];
-      cellNabors[0] = cell.ca;
-      cellNabors[1] = cell.cb;
-      cellNabors[2] = cell.cl;
-      cellNabors[3] = cell.cr;
-      for (FaultCell cellNabor:cellNabors) {
-        if (cellNabor!=null) {
-          smps[icell] += cell.smp+cellNabor.smp;
-          cnts[icell] += 2.0f;
-        }
-      }
-    }
-    for (int icell=0; icell<ncell; ++icell) {
-      FaultCell cell = cells[icell];
-      float cnti = cnts[icell];
-      cell.smp = smps[icell]/(cnti>0.0f?cnti:1.0f);
-    }
-    */
   }
 
   private static void trace(String s) {
