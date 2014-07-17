@@ -28,11 +28,12 @@ fs2file = "fs2" # fault slip (2nd component)
 fs3file = "fs3" # fault slip (3rd component)
 fskbase = "fsk" # fault skin (basename only)
 
-# These variables control the scan over fault strikes and dips.
-#sigmaPhi,sigmaTheta = 8,40
-#minPhi,maxPhi = 0,360
-#minTheta,maxTheta = 65,85
-#scanName = ""
+# These parameters control the scan over fault strikes and dips.
+sigmaPhi,sigmaTheta = 8,40
+minPhi,maxPhi = 0,360
+minTheta,maxTheta = 65,85
+scanName = ""
+"""
 sigmaPhi,sigmaTheta = 8,40
 minTheta,maxTheta = 65,85
 minPhi,maxPhi = 105,135 # centered at 120
@@ -42,6 +43,17 @@ minPhi,maxPhi = 105,135 # centered at 120
 #minPhi,maxPhi =  75,105 # centered at 90
 #minPhi,maxPhi = 255,285 # conjugate at 270
 scanName = "_120"
+print "scan tuned for fault strikes near ",scanName[1:],"degrees"
+"""
+
+# These parameters control the construction of fault skins.
+lowerLikelihood = 0.1
+upperLikelihood = 0.5
+minSkinSize = 40000
+
+# These parameters control the computation of fault dip slips.
+minThrow = 0.01
+maxThrow = 20.0
 
 gwfile += scanName # just for testing
 flfile += scanName
@@ -66,7 +78,7 @@ def goSecond():
   #goScan()
   #goThin()
   #goSmooth()
-  #goSkin()
+  goSkin()
   goSlip()
   goUnfault()
 
@@ -194,10 +206,10 @@ def goSkin():
     fl = readImage(flfile)
     fp = readImage(fpfile)
     ft = readImage(ftfile)
-    fs = FaultSkinner([fl,fp,ft])
-    fs.setGrowLikelihoods(0.1,0.5)
-    fs.setMinSkinSize(40000)
-    cells = fs.findCells()
+    fs = FaultSkinner()
+    fs.setGrowLikelihoods(lowerLikelihood,upperLikelihood)
+    fs.setMinSkinSize(minSkinSize)
+    cells = fs.findCells([fl,fp,ft])
     skins = fs.findSkins(cells)
     for skin in skins:
       skin.smoothCellNormals(4)
@@ -222,7 +234,17 @@ def goSlip():
     p3 = readImage(p3file)
     fs = FaultSlipper(gsx,p2,p3)
     fs.setZeroSlope(False)
-    fs.computeDipSlips(skins,0.0,20.0)
+    fs.computeDipSlips(skins,minThrow,maxThrow)
+    print "  dip slips computed, now reskinning ..."
+    print "  number of skins before =",len(skins),
+    fsk = FaultSkinner() # as in goSkin
+    fsk.setGrowLikelihoods(lowerLikelihood,upperLikelihood)
+    fsk.setMinSkinSize(minSkinSize)
+    fsk.setMinMaxThrow(minThrow,maxThrow)
+    skins = fsk.reskin(skins)
+    print ", after =",len(skins)
+    removeAllSkinFiles(fskbase)
+    writeSkins(fskbase,skins)
     smark = -1000.0
     s1,s2,s3 = fs.getDipSlips(skins,smark)
     s1,s2,s3 = fs.interpolateDipSlips([s1,s2,s3],smark)
