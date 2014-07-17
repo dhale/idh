@@ -212,12 +212,12 @@ public class FaultSlipper {
     float[][][][] sq = new float[3][n3][n2][n1];
     ClosestPointTransform cpt = new ClosestPointTransform();
     cpt.apply(smark,s[0],t,k1,k2,k3);
+    clip(0.0f,100.0f,t,t);
     LocalDiffusionKernel.Stencil stencil = LocalDiffusionKernel.Stencil.D21;
     LocalDiffusionKernel ldk = new LocalDiffusionKernel(stencil);
     BlendedGridder3 bg = new BlendedGridder3();
     bg.setBlendingKernel(ldk);
     bg.setSmoothness(0.5);
-    bg.setTimeMax(100.0);
     for (int is=0; is<3; ++is) {
       float[][][] si = s[is];
       for (int i3=0; i3<n3; ++i3) {
