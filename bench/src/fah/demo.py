@@ -61,12 +61,12 @@ def goFakeData():
   sequence = 'OA' # 1 episode of folding, followed by one episode of faulting
   #sequence = 'OOOOOAAAAA' # 5 episodes of folding, then 5 of faulting
   #sequence = 'OAOAOAOAOA' # 5 interleaved episodes of folding and faulting
-  nplanar = 3
-  conjugate = True
-  conical = False
-  impedance = False
-  wavelet = True
-  noise = 0.5
+  nplanar = 3 # number of planar faults
+  conjugate = True # if True, two large planar faults will intersect
+  conical = False # if True, may want to set nplanar to 0 (or not!)
+  impedance = False # if True, data = impedance model
+  wavelet = True # if False, no wavelet will be used
+  noise = 0.5 # (rms noise)/(rms signal) ratio
   gx,p2,p3 = FakeData.seismicAndSlopes3d2014A(
       sequence,nplanar,conjugate,conical,impedance,wavelet,noise)
   writeImage(gxfile,gx)
@@ -193,7 +193,7 @@ def goSkin():
     plot3(gx,skins=[skin],links=True,curve=False,trace=False)
 
 def goSlip():
-  print "goSkin ..."
+  print "goSlip ..."
   gx = readImage(gxfile)
   gsx = readImage(gsxfile)
   p2 = readImage(p2file)
