@@ -311,7 +311,7 @@ public class FaultScanner {
    * Applies structure-oriented smoothing limited by fault likelihoods.
    * For this method, faults are assumed to exist and smoothing stops
    * at samples where fault likelihood exceeds a specified value.
-   * This methods is usually applied using thinned fault likelihoods.
+   * This method is usually applied using thinned fault likelihoods.
    * @param flstop smoothing stops where fault likelihood &gt; this value.
    * @param sigma smoothing radius (except near faults).
    * @param p2 array of slopes in 2nd dimension.
@@ -351,6 +351,35 @@ public class FaultScanner {
     LocalSmoothingFilter lsf = new LocalSmoothingFilter();
     lsf.apply(d,c,s,g,h);
     return h;
+  }
+
+  /**
+   * Adjusts dips for a specified aspect ratio dz/dx. A fault scanner computes
+   * fault dips in degrees measured in sample coordinates. Because vertical
+   * image sampling intervals are often less than horizontal sampling
+   * intervals, fault dips measured in sample coordinates tend to be greater
+   * than those in physical coordinates. This method converts fault dips to
+   * degrees measured in physical coordinates, using the specified ratio of
+   * vertical-to-horizontal sampling intervals.
+   * @param dzdx ratio of vertical to horizontal sampling intervals.
+   * @param ft array of fault dips measured in sample coordinates.
+   * @return array of fault dips measured in physical coordinates.
+   */
+  public static float[][][] convertDips(double dzdx, float[][][] ft) {
+    float scale = (float)dzdx;
+    int n1 = ft[0][0].length;
+    int n2 = ft[0].length;
+    int n3 = ft.length;
+    float[][][] gt = new float[n3][n2][n1];
+    for (int i3=0; i3<n3; ++i3) {
+      for (int i2=0; i2<n2; ++i2) {
+        for (int i1=0; i1<n1; ++i1) {
+          float fti = ft[i3][i2][i1];
+          gt[i3][i2][i1] = toDegrees(atan(scale*tan(toRadians(fti))));
+        }
+      }
+    }
+    return gt;
   }
 
   ///////////////////////////////////////////////////////////////////////////

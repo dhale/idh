@@ -1,4 +1,3 @@
-
 /****************************************************************************
 Copyright (c) 2014, Colorado School of Mines and others. All rights reserved.
 This program and accompanying materials are made available under the terms of
@@ -45,6 +44,33 @@ public class FaultSkin implements Iterable<FaultCell>,Serializable {
    */
   public FaultCell[] getCells() {
     return _cellList.toArray(new FaultCell[0]);
+  }
+
+  /**
+   * Gets all cells in the specified skins.
+   * @param skins array of skins for which to get cells.
+   * @return array of cells.
+   */
+  public static FaultCell[] getCells(FaultSkin[] skins) {
+    int ncell = countCells(skins);
+    FaultCell[] cells = new FaultCell[ncell];
+    int icell = 0;
+    for (FaultSkin skin:skins)
+      for (FaultCell cell:skin)
+        cells[icell++] = cell;
+    return cells;
+  }
+
+  /**
+   * Returns the total number of cells in the specified skins.
+   * @param skins array of skins for which to count cells.
+   * @return the total number of cells.
+   */
+  public static int countCells(FaultSkin[] skins) {
+    int ncell = 0;
+    for (FaultSkin skin:skins)
+      ncell += skin.size();
+    return ncell;
   }
 
   /**

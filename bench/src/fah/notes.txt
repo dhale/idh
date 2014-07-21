@@ -1,4 +1,10 @@
 ---
+Random ideas
+  use random selection for alignment error extrapolation
+  implement smoothing in FaultSkinner
+    limit smoothing by a specified array of skins
+
+---
 Filling in the holes?
   apply distance transform to thinned fault likelihood
     fd = FDT(fl) + tiny random number

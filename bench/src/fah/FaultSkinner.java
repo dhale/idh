@@ -185,14 +185,9 @@ public class FaultSkinner {
    * @return array of new skins.
    */
   public FaultSkin[] reskin(FaultSkin[] skins) {
-    ArrayList<FaultCell> cellList = new ArrayList<FaultCell>();
-    for (FaultSkin skin:skins) {
-      for (FaultCell cell:skin) {
-        cell.skin = null;
-        cellList.add(cell);
-      }
-    }
-    FaultCell[] cells = cellList.toArray(new FaultCell[0]);
+    FaultCell[] cells = FaultSkin.getCells(skins);
+    for (FaultCell cell:cells)
+      cell.skin = null;
     return findSkins(cells);
   }
 
