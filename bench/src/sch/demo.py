@@ -44,8 +44,8 @@ maxThrow = 20.0
 
 # Directory for saved png images. If None, png images will not be saved;
 # otherwise, must create the specified directory before running this script.
-#pngDir = None
-pngDir = "./png/"
+pngDir = None
+#pngDir = "./png/"
 
 # Processing begins here. When experimenting with one part of this demo, we
 # can comment out other parts that have already written results to files.
@@ -58,8 +58,8 @@ def main(args):
   #goThin()
   #goSmooth()
   #goSkin()
-  #goSlip()
-  goUnfault()
+  goSlip()
+  #goUnfault()
 
 def goDisplay():
   print "goDisplay ..."
