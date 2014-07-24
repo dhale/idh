@@ -51,19 +51,20 @@ maxThrow = 20.0
 #pngDir = None
 pngDir = "./png/"
 
+# We can avoid most computations entirely be setting plotOnly to True.
+plotOnly = True
+
 # Processing begins here. When experimenting with one part of this demo, we
 # can comment out other parts that have already written results to files.
-# We can avoid most computations entirely be setting plotOnly to True.
-plotOnly = False
 def main(args):
   #goDisplay()
   #goSlopes()
   #goScan()
   #goThin()
   #goSmooth()
-  goSkin()
+  #goSkin()
   #goSlip()
-  #goUnfault()
+  goUnfault()
 
 def goDisplay():
   print "goDisplay ..."
@@ -259,6 +260,15 @@ def goUnfault():
     gw = readImage(gwfile)
   plot3(gx,clab="Amplitude")
   plot3(gw,clab="Amplitude",png="gw")
+  slices = (370,159,34)
+  plot3(gx,clab="Amplitude",slices=slices,png="gx159")
+  plot3(gw,clab="Amplitude",slices=slices,png="gw159")
+  slices = (370,208,34)
+  plot3(gx,clab="Amplitude",slices=slices,png="gx208")
+  plot3(gw,clab="Amplitude",slices=slices,png="gw208")
+  slices = (370,288,34)
+  plot3(gx,clab="Amplitude",slices=slices,png="gx288")
+  plot3(gw,clab="Amplitude",slices=slices,png="gw288")
   """
   sf = SimpleFrame(AxesOrientation.XRIGHT_YOUT_ZDOWN)
   ipgw = sf.addImagePanels(s1,s2,s3,gw)
@@ -314,7 +324,7 @@ def convertStrikes(fp):
   return FaultScanner.convertStrikes(True,-90.0,fp)
 
 def plot3(f,g=None,cmin=None,cmax=None,cmap=None,clab=None,cint=None,
-          xyz=None,cells=None,skins=None,smax=0.0,
+          xyz=None,cells=None,skins=None,smax=0.0,slices=None,
           links=False,curve=False,trace=False,png=None):
   n1 = len(f[0][0])
   n2 = len(f[0])
@@ -418,14 +428,17 @@ def plot3(f,g=None,cmin=None,cmax=None,cmap=None,clab=None,cint=None,
         lg = LineGroup(xyz)
         sg.addChild(lg)
     sf.world.addChild(sg)
-  ipg.setSlices(370,105,34)
-  #ipg.setSlices(370,159,34)
-  if cbar:
-    sf.setSize(985,700)
-    #sf.setSize(837,700)
+  if slices:
+    k1,k2,k3 = slices
   else:
-    sf.setSize(848,700)
-    #sf.setSize(700,700)
+    k1,k2,k3 = (370,105,34) # most plots use these
+  ipg.setSlices(k1,k2,k3)
+  if cbar:
+    sf.setSize(985,700) # for sch data
+    #sf.setSize(837,700) # for fake data
+  else:
+    sf.setSize(848,700) # for sch data
+    #sf.setSize(700,700) # for fake data
   vc = sf.getViewCanvas()
   vc.setBackground(Color.WHITE)
   radius = 0.5*sqrt(n1*n1+n2*n2+n3*n3)
