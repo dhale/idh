@@ -26,7 +26,11 @@ fttfile = "ftt" # fault dip thinned
 fs1file = "fs1" # fault slip (1st component)
 fs2file = "fs2" # fault slip (2nd component)
 fs3file = "fs3" # fault slip (3rd component)
+ft1file = "ft1" # fault slip interpolated (1st component)
+ft2file = "ft2" # fault slip interpolated (2nd component)
+ft3file = "ft3" # fault slip interpolated (3rd component)
 fskbase = "fsk" # fault skin (basename only)
+fslbase = "fsl" # fault skins after reskinning (basename only)
 
 # These parameters control the scan over fault strikes and dips.
 sigmaPhi,sigmaTheta = 8,40
@@ -44,21 +48,21 @@ maxThrow = 20.0
 
 # Directory for saved png images. If None, png images will not be saved;
 # otherwise, must create the specified directory before running this script.
-pngDir = None
-#pngDir = "./png/"
+#pngDir = None
+pngDir = "./png/"
 
 # Processing begins here. When experimenting with one part of this demo, we
 # can comment out other parts that have already written results to files.
 # We can avoid most computations entirely be setting plotOnly to True.
-plotOnly = True
+plotOnly = False
 def main(args):
   #goDisplay()
   #goSlopes()
   #goScan()
   #goThin()
   #goSmooth()
-  #goSkin()
-  goSlip()
+  goSkin()
+  #goSlip()
   #goUnfault()
 
 def goDisplay():
@@ -197,8 +201,8 @@ def goSkin():
 def goSlip():
   print "goSlip ..."
   gx = readImage(gxfile)
-  skins = readSkins(fskbase)
   if not plotOnly:
+    skins = readSkins(fskbase)
     gsx = readImage(gsxfile)
     p2 = readImage(p2file)
     p3 = readImage(p3file)
@@ -214,37 +218,42 @@ def goSlip():
     fsk.setMinMaxThrow(minThrow,maxThrow)
     skins = fsk.reskin(skins)
     print ", after =",len(skins)
-    removeAllSkinFiles(fskbase)
-    writeSkins(fskbase,skins)
+    removeAllSkinFiles(fslbase)
+    writeSkins(fslbase,skins)
     smark = -999.999
     s1,s2,s3 = fsl.getDipSlips(skins,smark)
-    s1,s2,s3 = fsl.interpolateDipSlips([s1,s2,s3],smark)
     writeImage(fs1file,s1)
     writeImage(fs2file,s2)
     writeImage(fs3file,s3)
+    t1,t2,t3 = fsl.interpolateDipSlips([s1,s2,s3],smark)
+    writeImage(ft1file,t1)
+    writeImage(ft2file,t2)
+    writeImage(ft3file,t3)
   else:
+    skins = readSkins(fslbase)
     s1 = readImage(fs1file)
-    s2 = readImage(fs2file)
-    s3 = readImage(fs3file)
+    t1 = readImage(ft1file)
+    t2 = readImage(ft2file)
+    t3 = readImage(ft3file)
   plot3(gx,skins=skins,png="skinsfl")
   plot3(gx,skins=skins,smax=10.0,png="skinss1")
   plot3(gx,s1,cmin=0.0,cmax=10.0,cmap=jetFill(0.3),
         clab="Fault throw (samples)",png="gxs1")
-  plot3(gx,s1,cmin=0.0,cmax=10.0,cmap=jetFill(0.3),
-        clab="Vertical shift (samples)",png="gxs1i")
-  plot3(gx,s2,cmin=-2.0,cmax=2.0,cmap=jetFill(0.3),
-        clab="Inline shift (samples)",png="gxs2i")
-  plot3(gx,s3,cmin=-2.0,cmax=2.0,cmap=jetFill(0.3),
-        clab="Crossline shift (samples)",png="gxs3i")
+  plot3(gx,t1,cmin=0.0,cmax=10.0,cmap=jetFill(0.3),
+        clab="Vertical shift (samples)",png="gxt1")
+  plot3(gx,t2,cmin=-2.0,cmax=2.0,cmap=jetFill(0.3),
+        clab="Inline shift (samples)",png="gxt2")
+  plot3(gx,t3,cmin=-2.0,cmax=2.0,cmap=jetFill(0.3),
+        clab="Crossline shift (samples)",png="gxt3")
 
 def goUnfault():
   print "goUnfault ..."
   gx = readImage(gxfile)
   if not plotOnly:
-    fs1 = readImage(fs1file)
-    fs2 = readImage(fs2file)
-    fs3 = readImage(fs3file)
-    gw = FaultSlipper.unfault([fs1,fs2,fs3],gx)
+    ft1 = readImage(ft1file)
+    ft2 = readImage(ft2file)
+    ft3 = readImage(ft3file)
+    gw = FaultSlipper.unfault([ft1,ft2,ft3],gx)
     writeImage(gwfile,gw)
   else:
     gw = readImage(gwfile)
