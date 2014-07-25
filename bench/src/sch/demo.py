@@ -62,16 +62,16 @@ def main(args):
   #goScan()
   #goThin()
   #goSmooth()
-  #goSkin()
+  goSkin()
   #goSlip()
-  goUnfault()
+  #goUnfault()
 
 def goDisplay():
   print "goDisplay ..."
   gx = readImage(gxfile)
   plot3(gx)
-  gx = slog(gx)
-  plot3(gx)
+  #gx = slog(gx)
+  #plot3(gx)
 
 def goSlopes():
   print "goSlopes ..."
@@ -443,6 +443,7 @@ def plot3(f,g=None,cmin=None,cmax=None,cmap=None,clab=None,cint=None,
   vc.setBackground(Color.WHITE)
   radius = 0.5*sqrt(n1*n1+n2*n2+n3*n3)
   ov = sf.getOrbitView()
+  ov.setEyeToScreenDistance(3018.87) # for consistency with brooks
   ov.setWorldSphere(BoundingSphere(0.5*n1,0.5*n2,0.5*n3,radius))
   #ov.setAzimuthAndElevation(25.0,20.0)
   ov.setAzimuthAndElevation(150.0,15.0)
