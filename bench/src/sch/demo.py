@@ -61,8 +61,8 @@ def main(args):
   #goSlopes()
   #goScan()
   #goThin()
-  #goSmooth()
-  goSkin()
+  goSmooth()
+  #goSkin()
   #goSlip()
   #goUnfault()
 

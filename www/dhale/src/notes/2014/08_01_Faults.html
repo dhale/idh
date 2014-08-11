@@ -1,0 +1,59 @@
+<h3>Image processing for faults</h3>
+<p>August 1, 2014</p>
+<p>
+I am writing this note while travelling to Australia in the first leg of a <a
+href="http://www.seg.org/education/lectures-courses/distinguished-lecturers/fall2014/hale-abstract">
+worldwide lecture tour for the Society of Exploration Geophysicists</a>. I am
+super excited to be doing this, for some obvious reasons, but also because
+this tour gave me a perfect excuse for new research of seismic image
+processing for geologic faults.
+</p><p>
+</p><dl class="img first">
+  <dt><img src="images/BeforeAndAfterUnfaulting.gif" width="420" alt=""/></dt>
+  <dd><em>
+    Vertical slices of a 3D seismic image, before and after unfaulting.
+  </em></dd>
+</dl><p>
+The 3D seismic image of the onshore Schoonebeek oil field in the Netherlands
+was provided by Kees Rutten and Bob Howard, via <a
+href="https://www.tno.nl/index.cfm?Taal=2">TNO, a Dutch research
+organization</a>. It's a geologically beautiful high-resolution image, with
+numerous intersecting faults. Displayed above are vertical slices of this 3D
+seismic image, before and after unfaulting. The vertical white line represents
+the intersection of orthogonal vertical slices through the 3D image.
+</p><p>
+The methods for locating faults and estimating fault slips are entirely
+automatic, and consist mostly of some well-known image processing techniques
+combined in ways that I describe in the SEG lecture.
+</p><p>
+Unfaulting here does not imply a reversal of geologic time, a restoration of
+the subsurface to some original unfaulted state. Rather, unfaulting is merely
+a simply way to assess the accuracy of the estimated fault locations and
+slips. After unfaulting, subsurface reflectors should appear more continuous,
+and this increased continuity is clearly apparent. But not everywhere, and
+shortcomings are <em>opportunities</em> for future research.
+</p><p>
+One shortcoming is that the footwall side of every fault has been constrained
+to not move during unfaulting. Where faults intersect, this constraint leads
+to some kinky unfaulted seismic reflectors. These do not affect our visual
+assessment of estimated fault slips, but how might we do better?
+</p><p>
+While thinking about that question, you can test this processing with your own
+3D seismic images, because all of the <a
+href="https://github.com/dhale/ipf">image processing software</a> used here is
+freely available with an <a
+href="https://github.com/dhale/ipf/blob/master/LICENSE.txt"> open-source
+license</a>. That license enables companies to use this software in commercial
+software products. Some have already done so, because an earlier version (now
+about two years old) has been available with the same open-source license.
+</p><p>
+If you download the latest version, note that it includes software for
+generating synthetic 3D images for testing. You can modify this software to
+answer some good questions. For example, what slips are estimated at locations
+where two conjugate faults intersect? (You can see such intersections in the
+image slices displayed above.)
+</p><p>
+If you do build and run the software, I hope you will let me know. And if you
+also attend the SEG lecture, please introduce yourself. I look forward to
+meeting you.
+</p>
