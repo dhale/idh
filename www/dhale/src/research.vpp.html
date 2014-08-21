@@ -14,6 +14,42 @@
 
 <h3>
 <a name="fst"></a>
+Implementing an anisotropic and spatially varying Matern model
+covariance with smoothing filters
+</h3>
+<dl class="img first">
+  <dt><img src="${base}/images/SimulatedPorosity.png" 
+       width="200" alt=""/>
+  </dt>
+  <dd>
+    While known to be an important aspect of geostatistical simulations and
+    inverse problems, an a priori model covariance can be difficult to specify
+    and implement, especially where that model covariance is both anisotropic
+    and spatially varying. The popular Matern covariance function is extended
+    to handle such complications, and is implemented as a cascade of numerical
+    solutions to partial differential equations. In effect, each solution is
+    equivalent to application of an anisotropic and spatially varying
+    smoothing filter. Suitable filter coefficients can be obtained from
+    auxiliary data, such as seismic images. An example with simulated
+    porosities demonstrates the effective use of a Matern model covariance
+    implemented in this way.
+  </dd>
+  <dd>
+    <a href="http://www.mines.edu/~dhale">Hale</a>, D., 2013,
+    <cite>
+      CWP Report 815.
+    </cite>
+  </dd>
+  <dd>
+    <a
+    href="${base}/papers/Hale14ImplementingAnAnisotropicAndSpatiallyVaryingMaternModelCovarianceWithSmoothingFilters.pdf">
+      [Report]
+    </a>
+  </dd>
+</dl>
+
+<h3>
+<a name="fst"></a>
 Smooth dynamic warping
 </h3>
 <dl class="img first">
