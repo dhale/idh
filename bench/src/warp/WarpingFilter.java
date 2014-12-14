@@ -11,7 +11,7 @@ import edu.mines.jtk.interp.*;
 import static edu.mines.jtk.util.ArrayMath.*;
 
 /**
- * Warps a sequence or image, with anti-alias filtering, if necessary. 
+ * Warps a sequence or image, with care taken to prevent aliasing.
  * <p>
  * Warping of a sequence x[i] is defined by y[i] = x(u[i]), where u[i] is a
  * warping sequence of values (with dimensionless units of samples) that need
@@ -85,11 +85,13 @@ public class WarpingFilter {
     float[] y = new float[nu];
     _si.interpolate(nx,1.0,0.0,x,nu,u,y);
 
-    // Optional scaling of amplitudes by du.
+    // Optional scaling of amplitudes by u'(t). If oversampling, then scaling
+    // by r is necessary because the time sampling interval is now 1/r. So we
+    // must multiply by r when approximating u'(t) with (u[i]-u[i-1])/(1/r).
     if (_amplitudeScaling) {
-      y[0] *= u[1]-u[0];
+      y[0] *= r*(u[1]-u[0]);
       for (int i=1; i<nu; ++i)
-        y[i] *= u[i]-u[i-1];
+        y[i] *= r*(u[i]-u[i-1]);
     }
 
     // If oversampled, apply anti-alias filtering before subsampling to obtain

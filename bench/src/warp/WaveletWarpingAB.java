@@ -56,7 +56,7 @@ public class WaveletWarpingAB {
   {
     int nt = u.length;
 
-    // Matrix Q = [F  -SLG]'[F  -SLG].
+    // Matrix Q = [F  -SG]'[F  -SG].
     int nc = na+nb;
     DMatrix q = new DMatrix(nc,nc);
     for (int ia=0,ic=0,ilag=ka; ia<na; ++ia,++ic,++ilag) {
@@ -85,6 +85,7 @@ public class WaveletWarpingAB {
     // Get coefficients a and b from eigenvector for smallest eigenvalue.
     DMatrixEvd evd = new DMatrixEvd(q);
     DMatrix v = evd.getV().get(0,nc-1,0,0);
+    dump(evd.getRealEigenvalues());
     float[] a = new float[na];
     float[] b = new float[nb];
     for (int ia=0,ic=0; ia<na; ++ia,++ic)

@@ -21,12 +21,23 @@ n1,n2 = s1.count,s2.count
 fmin,fmax = -3.0,3.0
 emin,emax = -3.0,3.0
 pmin,pmax = -3.0,3.0
-
+seismicDir = "/Users/dhale/Desktop/"
 
 def main(args):
   #slopesLsf()
   #slopesPwd()
-  compare()
+  #compare()
+  sergey()
+
+def sergey():
+  for nrms in [0.0,0.5,1.0]:
+    f,p = FakeData.seismicAndSlopes2d2014A(nrms)
+    plot(f,cmin=fmin,cmax=fmax,title="input image")
+    plot(p,cmin=pmin,cmax=pmax,title="known slopes")
+    fname = "f"+str(int(nrms*10))
+    pname = "p"
+    writeImage(fname,f)
+    writeImage(pname,p)
 
 def compare():
   sigma1,sigma2 = 12,2

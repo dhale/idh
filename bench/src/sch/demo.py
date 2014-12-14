@@ -13,7 +13,8 @@ n1,n2,n3 = s1.count,s2.count,s3.count
 g0file  = "g0" # raw input image
 gxfile  = "gx" # input image, after bilateral filtering
 gsxfile = "gsx" # image after lsf with sharp faults
-gwfile  = "gw" # image after unfaulting
+#gwfile  = "gw" # image after unfaulting
+gwfile  = "gwc" # image after unfaulting # Xinming's
 epfile  = "ep" # eigenvalue-derived planarity
 p2file  = "p2" # inline slopes
 p3file  = "p3" # crossline slopes
@@ -61,8 +62,8 @@ def main(args):
   #goSlopes()
   #goScan()
   #goThin()
-  goSmooth()
-  #goSkin()
+  #goSmooth()
+  goSkin()
   #goSlip()
   #goUnfault()
 
@@ -195,7 +196,9 @@ def goSkin():
     plot3(gx,cells=cells,png="cells")
   else:
     skins = readSkins(fskbase)
-  plot3(gx,skins=skins,png="skins")
+  plot3(gsx,skins=skins,png="skins")
+  for index in [8,9]:
+    plot3(gsx,skins=[skins[index]],png="skins")
   #for iskin,skin in enumerate(skins):
   #  plot3(gx,skins=[skin],links=True,png="skin"+str(iskin))
 
@@ -259,16 +262,16 @@ def goUnfault():
   else:
     gw = readImage(gwfile)
   plot3(gx,clab="Amplitude")
-  plot3(gw,clab="Amplitude",png="gw")
+  plot3(gw,clab="Amplitude",png="gwc")
   slices = (370,159,34)
   plot3(gx,clab="Amplitude",slices=slices,png="gx159")
-  plot3(gw,clab="Amplitude",slices=slices,png="gw159")
+  plot3(gw,clab="Amplitude",slices=slices,png="gwc159")
   slices = (370,208,34)
   plot3(gx,clab="Amplitude",slices=slices,png="gx208")
-  plot3(gw,clab="Amplitude",slices=slices,png="gw208")
+  plot3(gw,clab="Amplitude",slices=slices,png="gwc208")
   slices = (370,288,34)
   plot3(gx,clab="Amplitude",slices=slices,png="gx288")
-  plot3(gw,clab="Amplitude",slices=slices,png="gw288")
+  plot3(gw,clab="Amplitude",slices=slices,png="gwc288")
   """
   sf = SimpleFrame(AxesOrientation.XRIGHT_YOUT_ZDOWN)
   ipgw = sf.addImagePanels(s1,s2,s3,gw)

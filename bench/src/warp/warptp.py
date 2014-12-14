@@ -37,26 +37,27 @@ def main(args):
 
 def goShifts():
   sz,fs = resample(logs,curve)
-  fs = [fs[0],fs[4],fs[9],fs[14],fs[17],fs[20]] # deepest 6 velocity logs
-  #fs = [fs[0],fs[4],fs[9],fs[11],fs[14],fs[17],fs[20]]
-  #fs = [fs[ 1],fs[ 2],fs[ 3],fs[ 4],fs[ 7],
-  #      fs[11],fs[21],fs[22],fs[33],fs[35],
-  #      fs[43],fs[48],fs[50],fs[56],fs[66],
-  #      fs[81],fs[88],fs[163]] # deepest 18 density logs
+  if curve=="v":
+    #fs = [fs[0],fs[4],fs[9],fs[14],fs[17],fs[20]] # deepest 6 velocity logs
+    fs = [fs[0],fs[4],fs[9],fs[11],fs[14],fs[17],fs[20]] # 7 velocity logs
+  elif curve=="d":
+    fs = [fs[ 1],fs[ 2],fs[ 3],fs[ 4],fs[ 7],
+          fs[11],fs[21],fs[22],fs[33],fs[35],
+          fs[43],fs[48],fs[50],fs[56],fs[66],
+          fs[81],fs[88],fs[163]] # deepest 18 density logs
   nk,nl = len(fs[0]),len(fs)
+  sl = Sampling(nl,1.0,1.0)
   wlw.setPowError(0.25)
-  wlw.setMaxShift(250)
+  wlw.setMaxShift(350)
   s = wlw.findShifts(fs)
-  gs = wlw.applyShifts(fs,s)
-  s = mul(1000*sz.delta,s) # convert shifts to m
-  freplace = 2.0
-  if curve=="d":
-    freplace = 1.0
-  fclips = (2.0,6.0)
-  if curve=="d":
-    fclips = (2.0,2.8)
-  fs = wlw.replaceNulls(fs,freplace)
-  gs = wlw.replaceNulls(gs,freplace)
+  cs = [Color.BLACK,
+    Color.RED,Color.GREEN,Color.BLUE,
+    Color.CYAN,Color.MAGENTA,Color.YELLOW]
+  sp = SimplePlot(SimplePlot.Origin.LOWER_LEFT)
+  sp.setSize(1200,600)
+  for i,si in enumerate(s):
+    pv = sp.addPoints(si)
+    pv.setLineColor(cs[i%len(cs)])
   """
   sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
   sp.setSize(650,550)
@@ -69,23 +70,33 @@ def goShifts():
   pv.setInterpolation(PixelsView.Interpolation.NEAREST)
   pv.setColorModel(cjet)
   """
+  gs = wlw.applyShifts(fs,s)
+  s = mul(1000*sz.delta,s) # convert shifts to m
+  freplace = 2.0
+  if curve=="d":
+    freplace = 1.0
+  fclips = (2.0,6.0)
+  if curve=="d":
+    fclips = (2.0,2.8)
+  fs = wlw.replaceNulls(fs,freplace)
+  gs = wlw.replaceNulls(gs,freplace)
   sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
-  sp.setSize(650,550)
+  sp.setSize(450,850)
   sp.setVLabel("Depth (km)")
   sp.setHLabel("Log index")
   sp.addColorBar("Velocity (km/s)")
   sp.plotPanel.setColorBarWidthMinimum(90)
-  pv = sp.addPixels(sz,Sampling(nl),fs)
+  pv = sp.addPixels(sz,sl,fs)
   pv.setInterpolation(PixelsView.Interpolation.NEAREST)
   pv.setColorModel(cjet)
   pv.setClips(fclips[0],fclips[1])
   sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
-  sp.setSize(650,550)
+  sp.setSize(450,850)
   sp.setVLabel("Relative geologic time")
   sp.setHLabel("Log index")
   sp.addColorBar("Velocity (km/s)")
   sp.plotPanel.setColorBarWidthMinimum(90)
-  pv = sp.addPixels(sz,Sampling(nl),gs)
+  pv = sp.addPixels(sz,sl,gs)
   pv.setInterpolation(PixelsView.Interpolation.NEAREST)
   pv.setColorModel(cjet)
   pv.setClips(fclips[0],fclips[1])
@@ -134,8 +145,9 @@ def goWarping():
       pv.setLineColor(Color.RED)
 
 def goErrors():
-  pairs = [(0,4),(4,9),(9,14),(14,17),(17,20)]
-  #pairs = [(9,14)]
+  # 0 4 9 (11) 14 17 20 # 11 not one of the six deepest velocity logs
+  #pairs = [(0,4),(4,9),(9,14),(14,17),(17,20)]
+  pairs = [(11,20)] # this pair shows errors shallow
   sz,f = resample(logs,curve)
   wlw.setPowError(0.25)
   wlw.setMaxShift(300)

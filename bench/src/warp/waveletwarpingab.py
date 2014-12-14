@@ -1,4 +1,3 @@
-
 #############################################################################
 # Demo wavelet estimation from warping.
 # This version minimizes || Fa - HSLGb || such that ||[a b]|| = 1.
@@ -54,40 +53,45 @@ def goWarpingFilterTest():
 def goSimpleTest():
   nt,ni = 681,7 # number of time samples; number of impulses
   freq,decay = 0.08,0.05 # peak frequency and decay for wavelet
-  na,ka = 9,-4 # sampling for inverse wavelet A
-  nb,kb = 9,-4 # sampling for inverse wavelet B
+  na,ka = 3,0 # sampling for inverse wavelet A
+  nb,kb = 3,0 # sampling for inverse wavelet B
   nc,kc = 181,-90 # sampling for wavelet C
   nd,kd = 181,-90 # sampling for wavelet D
   dt,ft = 0.004,0.000 # used for plotting only
   tmin,tmax = 0,nt-1
   st = Sampling(nt,dt,ft)
-  for mp in [False]: # True, for minimum-phase; False for other
-    ck = getWavelet(freq,decay,nc,kc,True) # known wavelet C
-    dk = getWavelet(freq,decay,nc,kc,False) # known wavelet D
+  for mp in [True]: # True, for minimum-phase; False for other
+    ck = getWavelet(freq,decay,nc,kc,mp) # known wavelet C
+    dk = getWavelet(freq,decay,nc,kc,mp) # known wavelet D
     normalizeMax(ck)
     normalizeMax(dk)
-    for r0,r1 in [(2.00,1.00)]: # <1 for stretch; >1 for squeeze
+    for r0,r1 in [(2.00,0.1)]: # <1 for stretch; >1 for squeeze
       title = "r0 = "+str(r0)+"  r1 = "+str(r1)
       if r0>1.0:
         u,p,q = logupq(r0,r1,nt,ni)
       else:
         u,p,q = nmoupq(r0,r1,nt,ni)
-      f = addWavelet(freq,decay,p,True)
-      g = addWavelet(freq,decay,q,False)
+      f = addWavelet(freq,decay,p,mp)
+      g = addWavelet(freq,decay,q,mp)
       ww = WaveletWarpingAB()
       ww.setTimeRange(tmin,tmax)
       aw,bw = ww.getInverseAB(na,ka,nb,kb,u,f,g) # estimated inverses A & B
-      #ak = ww.getWaveletH(nc,kc,ck,na,ka) # known inverse wavelet A
-      #dump(ak); dump(aw); dump(bw)
+      ak = ww.getWaveletH(nc,kc,ck,na,ka) # known inverse wavelet A
+      bk = ww.getWaveletH(nd,kd,dk,nb,kb) # known inverse wavelet B
+      dump(ak); dump(bk);
+      dump(aw); dump(bw)
       cw = ww.getWaveletH(na,ka,aw,nc,kc) # estimated wavelet C
       dw = ww.getWaveletH(nb,kb,bw,nd,kd) # estimated wavelet D
       sg = ww.applyS(u,g)
+      af = ww.applyA(na,ka,aw,f)
       bg = ww.applyA(nb,kb,bw,g)
       sbg = ww.applyS(u,bg)
       csbg = ww.applyH(nc,kc,cw,sbg)
       normalizeMax(cw)
       normalizeMax(dw)
       plotSequences(st,[f,g],labels=["f","g"],title=title)
+      plotSequences(st,[af,bg],labels=["Af","Bg"],title=title)
+      plotSequences(st,[af,sbg],labels=["Af","SBg"],title=title)
       plotSequences(st,[f,sg],labels=["f","Sg"],title=title)
       plotSequences(st,[f,csbg],labels=["f","CSBg"],title=title)
       plotWavelets(Sampling(nc,dt,kc*dt),[cw,ck],title=title+" C")
