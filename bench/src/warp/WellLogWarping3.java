@@ -10,7 +10,7 @@ import java.util.Random;
 
 import edu.mines.jtk.dsp.*;
 import edu.mines.jtk.interp.CubicInterpolator;
-import edu.mines.jtk.util.MedianFinder;
+import edu.mines.jtk.util.*;
 import static edu.mines.jtk.util.ArrayMath.*;
 
 // TESTING ONLY!
@@ -21,7 +21,7 @@ import edu.mines.jtk.mosaic.*;
 
 import dnp.CgSolver;
 import dnp.Vec;
-import dnp.VecArrayFloat2;
+import dnp.VecArrayDouble2;
 
 /**
  * Dynamic warping for alignment of well logs. 
@@ -70,7 +70,7 @@ import dnp.VecArrayFloat2;
  * @author Dave Hale, Colorado School of Mines
  * @version 2014.12.13
  */
-public class WellLogWarping {
+public class WellLogWarping3 {
 
   /**
    * Sets the maximum shift (lag).
@@ -103,6 +103,10 @@ public class WellLogWarping {
    */
   public void setNullValue(float vnull) {
     _vnull = vnull;
+  }
+
+  public void setSmallCount(double quantile) {
+    _cquan = (float)quantile;
   }
 
   /**
@@ -429,6 +433,7 @@ public class WellLogWarping {
         int[][] kl = findWarping(d);
         int[][] ij = convertWarping(kl,fi,gj);
         ps[ip] = new Pairs(il,jl,ij[0],ij[1]);
+        trace("il="+il+" jl="+jl+" np="+ps[ip].nzp);
       }
     }
     computeWeights(fs,ps);
@@ -438,29 +443,47 @@ public class WellLogWarping {
     int[][] t = new int[nl][nz];
     computeTzFromShifts(r,t);
 
-    // Outer iterations over CG solutions.
-    int maxouter = 5;
-    boolean converged = false;
-    for (int nouter=0; nouter<maxouter && !converged; ++nouter) {
-      //zero(r); // zero shifts before each set of inner CG iterations?
+    // Outer iterations over CG solutions, which depend on t[il][iz].
+    int maxouter = 3; // is this number sufficient? more than necessary?
+    for (int nouter=0; nouter<maxouter; ++nouter) {
 
-      // Inner preconditioned conjugate-gradient iterations.
-      int ninner = (nouter<maxouter-1)?5:5;
-      CgSolver cs = new CgSolver(0.001f,ninner);
-      float[][] b = makeRhs(ps,t);
-      A a = new A(ps,t,0.1);
-      M m = new M(100.0);
-      VecArrayFloat2 vb = new VecArrayFloat2(b);
-      VecArrayFloat2 vr = new VecArrayFloat2(r);
-      cs.solve(a,m,vb,vr);
+      // Inner preconditioned CG iterations.
+      int ninner = 20+20*nouter;
+      CgSolver cs = new CgSolver(1.0e-6,ninner);
+      double[][] b = makeRhs(ps,t);
+      double[][] q = new double[nl][nt];
+      VecArrayDouble2 vb = new VecArrayDouble2(b);
+      VecArrayDouble2 vq = new VecArrayDouble2(q);
+      A a = new A(_cquan,ps,t);
+      a.testSNND();
+      a.subtractMeanOverLogs(b);
+      //a.interpolateShiftsTranspose(b);
+      a.accumulateReverse(b);
+      a.swapFirstQWhereCountsAreSmall(b);
+      a.smoothWhereCountsAreSmall(b);
+      cs.solve(a,vb,vq);
+      a.smoothWhereCountsAreSmall(q);
+      a.swapFirstQWhereCountsAreSmall(q);
+      a.accumulateForward(q);
+      //a.interpolateShifts(q);
+      a.subtractMeanOverLogs(q);
+
+      // Interpolate or extrapolate shifts where we have no pairs.
+      copyFromDoubleToFloat(q,r);
       plotPoints(r);
+      //r = interpolateShifts(countPairs(_cquan,ps,t),r);
+      //plotPoints(r);
 
       // Ensure monotonically increasing z[il][it] = it-r[il][it].
       cleanShifts(r);
 
       // Update t[il][iz] by inverse interpolation of z[il][it].
-      computeTzFromShifts(r,t);
+      if (nouter<maxouter-1)
+        computeTzFromShifts(r,t);
     }
+
+    // Interpolate or extrapolate shifts where we have no pairs.
+    //r = interpolateShifts(countPairs(ps,t),r);
 
     return r;
   }
@@ -469,36 +492,35 @@ public class WellLogWarping {
     int np = ps.length;
     float[] wp = new float[np];
     float wsum = 0.0f;
-    for (int kp=0; kp<np; ++kp) {
-      Pairs p = ps[kp];
+    for (int ip=0; ip<np; ++ip) {
+      Pairs p = ps[ip];
       int il = p.il;
       int jl = p.jl;
       int nzp = p.nzp;
       int[] izs = p.izs;
       int[] jzs = p.jzs;
       float esum = 0.0f;
-      int nsum = 0;
-      for (int kzp=0; kzp<nzp; ++kzp) {
-        int iz = izs[kzp];
-        int jz = jzs[kzp];
+      for (int izp=0; izp<nzp; ++izp) {
+        int iz = izs[izp];
+        int jz = jzs[izp];
         esum += error(f[il][iz],f[jl][jz]);
-        nsum += 1;
       }
-      assert esum>0.0f:"esum>0.0f";
-      wp[kp] = pow(nsum/esum,4.0f);
-      wsum += wp[kp];
+      //assert esum>0.0f:"esum>0.0f";
+      wp[ip] = (esum==0.0f)?1.0f:pow(nzp/esum,4.0f); // What power is best?
+      wsum += wp[ip];
     }
-    mul(1.0f/wsum,wp,wp);
+    mul(1.0f/wsum,wp,wp); // normalize weights
     float wscl = 1.0f/wsum;
-    for (int kp=0; kp<np; ++kp) {
-      Pairs p = ps[kp];
+    for (int ip=0; ip<np; ++ip) {
+      Pairs p = ps[ip];
       int il = p.il;
       int jl = p.jl;
       int nzp = p.nzp;
       float[] ws = p.ws;
-      trace("il="+il+" jl="+jl+" w="+wp[kp]);
-      for (int kzp=0; kzp<nzp; ++kzp) {
-        ws[kzp] = wp[kp];
+      trace("il="+il+" jl="+jl+" w="+wp[ip]);
+      for (int izp=0; izp<nzp; ++izp) {
+        ws[izp] = wp[ip];
+        //ws[izp] = 1.0f; // experiment with uniform weights
       }
     }
   }
@@ -730,12 +752,35 @@ public class WellLogWarping {
     return g;
   }
 
-  public float[] toFloat(int[] i) {
-    int n = i.length;
-    float[] f = new float[n];
-    for (int j=0; j<n; ++j)
-      f[j] = (float)i[j];
-    return f;
+  public static float[] copyFromDoubleToFloat(double[] x) {
+    float[] y = new float[x.length];
+    copyFromDoubleToFloat(x,y);
+    return y;
+  }
+  public static float[][] copyFromDoubleToFloat(double[][] x) {
+    float[][] y = new float[x.length][x[0].length];
+    copyFromDoubleToFloat(x,y);
+    return y;
+  }
+  public static void copyFromDoubleToFloat(double[] x, float[] y) {
+    int n = x.length;
+    for (int i=0; i<n; ++i)
+      y[i] = (float)x[i];
+  }
+  public static void copyFromDoubleToFloat(double[][] x, float[][] y) {
+    int n = x.length;
+    for (int i=0; i<n; ++i)
+      copyFromDoubleToFloat(x[i],y[i]);
+  }
+  public static void copyFromFloatToDouble(float[] x, double[] y) {
+    int n = x.length;
+    for (int i=0; i<n; ++i)
+      y[i] = x[i];
+  }
+  public static void copyFromFloatToDouble(float[][] x, double[][] y) {
+    int n = x.length;
+    for (int i=0; i<n; ++i)
+      copyFromFloatToDouble(x[i],y[i]);
   }
 
   ///////////////////////////////////////////////////////////////////////////
@@ -745,6 +790,7 @@ public class WellLogWarping {
   private float _epow = 1.0f;
   private float _enull = -FLT_MIN;
   private float _vnull = -999.2500f;
+  private float _cquan = 0.1f;
 
   /**
    * Arrays of pairs of depth sample indices (iz,jz) with weights w. The
@@ -772,57 +818,184 @@ public class WellLogWarping {
    * subracts the mean over logs (indexed by l) of r(t,l).
    */
   private static class A implements CgSolver.A {
-    A(Pairs[] ps, int[][] t, double eps) {
+    A(double cq, Pairs[] ps, int[][] t) {
       _ps = ps;
       _t = t;
-      _eps = (float)eps;
+      _c = countPairs(cq,ps,t);
+      dump(_c);
+    }
+    public void testSNND() {
+      int nl = _t.length;
+      int nt = _t[0].length;
+      double[][] x = sub(randdouble(nt,nl),0.5);
+      double[][] y = sub(randdouble(nt,nl),0.5);
+      double[][] ax = zerodouble(nt,nl);
+      double[][] ay = zerodouble(nt,nl);
+      VecArrayDouble2 vx = new VecArrayDouble2(x);
+      VecArrayDouble2 vy = new VecArrayDouble2(y);
+      VecArrayDouble2 vax = new VecArrayDouble2(ax);
+      VecArrayDouble2 vay = new VecArrayDouble2(ay);
+      apply(vx,vax);
+      apply(vy,vay);
+      double xay = vx.dot(vay);
+      double yax = vy.dot(vax);
+      double xax = vx.dot(vax);
+      double yay = vy.dot(vay);
+      trace("xay="+xay+" yax="+yax);
+      trace("xax="+xax+" yay="+yay);
+      assert abs(yax-xay)<1.0e-6*max(abs(xay),abs(yax)) : "is symmetric";
+      assert xax>=0.0 : "is non-negative definite";
+      assert yay>=0.0 : "is non-negative definite";
     }
     public void apply(Vec vx, Vec vy) {
-      float[][] x = ((VecArrayFloat2)vx).getArray();
-      float[][] y = ((VecArrayFloat2)vy).getArray();
-      applyLhs(_ps,_t,_eps,x,y);
-    }
-    private Pairs[] _ps;
-    private int[][] _t;
-    private float _eps;
-  }
-  private static class M implements CgSolver.A {
-    public M(double sigma) {
-      _ref = new RecursiveExponentialFilter(sigma);
-      _ref.setEdges(RecursiveExponentialFilter.Edges.OUTPUT_ZERO_SLOPE);
-    }
-    public void apply(Vec vx, Vec vy) {
-      float[][] x = ((VecArrayFloat2)vx).getArray();
-      float[][] y = ((VecArrayFloat2)vy).getArray();
+      double[][] x = ((VecArrayDouble2)vx).getArray();
+      double[][] y = ((VecArrayDouble2)vy).getArray();
       int nl = x.length;
       int nt = x[0].length;
       copy(x,y);
+      smoothWhereCountsAreSmall(y);
+      swapFirstQWhereCountsAreSmall(y);
+      accumulateForward(y);
+      //interpolateShifts(y);
       subtractMeanOverLogs(y);
-      smoothOverTime(y);
+      applyLhs(_ps,_t,copy(y),y);
       subtractMeanOverLogs(y);
+      //interpolateShiftsTranspose(y);
+      accumulateReverse(y);
+      swapFirstQWhereCountsAreSmall(y);
+      smoothWhereCountsAreSmall(y);
     }
-    private RecursiveExponentialFilter _ref;
-    private void smoothOverTime(float[][] r) {
-      _ref.apply1(r,r);
-    }
-    private void subtractMeanOverLogs(float[][] r) {
+    public void accumulateForward(double[][] r) {
       int nl = r.length;
       int nt = r[0].length;
-      float[] rsum = new float[nt];
+      for (int il=0; il<nl; ++il) {
+        for (int it=1; it<nt; ++it) {
+          r[il][it] += r[il][it-1];
+        }
+      }
+    }
+    public void accumulateReverse(double[][] r) {
+      int nl = r.length;
+      int nt = r[0].length;
+      for (int il=0; il<nl; ++il) {
+        for (int it=nt-2; it>=0; --it) {
+          r[il][it] += r[il][it+1];
+        }
+      }
+    }
+    public void subtractMeanOverLogs(double[][] r) {
+      int nl = r.length;
+      int nt = r[0].length;
+      double[] rsum = new double[nt];
       for (int il=0; il<nl; ++il)
         add(r[il],rsum,rsum); // sum over logs
-      mul(1.0f/nl,rsum,rsum); // mean over logs
+      mul(1.0/nl,rsum,rsum); // mean over logs
       for (int il=0; il<nl; ++il)
         sub(r[il],rsum,r[il]); // subtract mean
     }
+    public void interpolateShifts(double[][] r) {
+      WellLogWarping3.interpolateShifts(_c,r);
+    }
+    public void interpolateShiftsTranspose(double[][] r) {
+      WellLogWarping3.interpolateShiftsTranspose(_c,r);
+    }
+    public void smoothWhereCountsAreSmall(double[][] r) {
+      WellLogWarping3.smoothWhereCountsAreSmall(_c,r);
+    }
+    public void swapFirstQWhereCountsAreSmall(double[][] r) {
+      WellLogWarping3.swapFirstQWhereCountsAreSmall(_c,r);
+    }
+
+    private Pairs[] _ps;
+    private int[][] _t,_c;
   }
 
-  private static float[][] makeRhs(Pairs[] ps, int[][] t) {
+  private static int[][] countPairs(double cq, Pairs[] ps, int[][] t) {
+    int np = ps.length; // number of log pairs
+    int nl = t.length; // number of logs
+    int nt = t[0].length; // number of times (= number of depths)
+    int[][] c = new int[nl][nt];
+    for (int ip=0; ip<np; ++ip) { // for all log pairs, ...
+      Pairs p = ps[ip];
+      int il = p.il;
+      int jl = p.jl;
+      int nzp = p.nzp;
+      int[] izs = p.izs;
+      int[] jzs = p.jzs;
+      for (int kzp=0; kzp<nzp; ++kzp) {
+        int iz = izs[kzp];
+        int jz = jzs[kzp];
+        int it = t[il][iz];
+        int jt = t[jl][jz];
+        if (0<=it && it<nt && 0<=jt && jt<nt) {
+          c[il][it] += 1;
+          c[jl][jt] += 1;
+        }
+      }
+    }
+    /*
+    int cm = quantile(cq,c);
+    trace("cm="+cm);
+    for (int ip=0; ip<np; ++ip) { // for all log pairs, ...
+      Pairs p = ps[ip];
+      int il = p.il;
+      int jl = p.jl;
+      int itf = firstNotSmall(cm,c[il]);
+      int jtf = firstNotSmall(cm,c[jl]);
+      int itl = lastNotSmall(cm,c[il]);
+      int jtl = lastNotSmall(cm,c[jl]);
+    }
+    for (int il=0; il<nl; ++il) {
+      int itf = firstNotSmall(cm,c[il]);
+      int itl = lastNotSmall(cm,c[il]);
+      for (int it=0; it<nt; ++it) {
+        if (it<itf || it>itl || c[il][it]<cm)
+          c[il][it] = 0;
+      }
+    }
+    */
+    return c;
+  }
+  private static int quantile(double q, int[][] c) {
+    int[] cf = flatten(c);
+    int nc = cf.length;
+    int ncz = 0;
+    for (int i=0; i<nc; ++i) {
+      if (cf[i]==0)
+        ++ncz;
+    }
+    int ncn = nc-ncz;
+    int[] cn = new int[ncn];
+    for (int i=0,j=0; i<nc; ++i) {
+      if (cf[i]!=0) {
+        cn[j++] = cf[i];
+      }
+    }
+    int k = (int)(q*(ncn-1));
+    quickPartialSort(k,cn);
+    return cn[k];
+  }
+  private static int firstNotSmall(int cm, int[] c) {
+    int n = c.length;
+    int j = 0;
+    for (int i=0; i<n && c[i]<cm; ++i)
+      ++j;
+    return j;
+  }
+  private static int lastNotSmall(int cm, int[] c) {
+    int n = c.length;
+    int j = n-1;
+    for (int i=n-1; i>=0 && c[i]<cm; --i)
+      --j;
+    return j;
+  }
+
+  private static double[][] makeRhs(Pairs[] ps, int[][] t) {
     int np = ps.length; // number of log pairs
     int nl = t.length; // number of logs
     int nz = t[0].length; // number of depths (and times)
     int nt = nz;
-    float[][] y = new float[nl][nt]; // output rhs
+    double[][] y = new double[nl][nt]; // output rhs
     for (int ip=0; ip<np; ++ip) { // for all log pairs, ...
       Pairs p = ps[ip];
       int il = p.il;
@@ -831,17 +1004,17 @@ public class WellLogWarping {
       int[] izs = p.izs;
       int[] jzs = p.jzs;
       float[] ws = p.ws;
-      float[] yi = y[il];
-      float[] yj = y[jl];
+      double[] yi = y[il];
+      double[] yj = y[jl];
       for (int kzp=0; kzp<nzp; ++kzp) { // for all index pairs (i,j), ...
         int iz = izs[kzp];
         int jz = jzs[kzp];
         int it = t[il][iz];
         int jt = t[jl][jz];
         if (0<=it && it<nt && 0<=jt && jt<nt) {
-          float wk = ws[kzp];
-          float scl = wk*wk;
-          float dif = jz-iz;
+          double wk = ws[kzp];
+          double scl = wk*wk;
+          double dif = jz-iz;
           dif *= scl;
           yi[it] += dif;
           yj[jt] -= dif;
@@ -852,20 +1025,22 @@ public class WellLogWarping {
   }
 
   private static void applyLhs(
-      Pairs[] ps, int[][] t, float eps, float[][] x, float[][] y) {
+      Pairs[] ps, int[][] t, double[][] x, double[][] y) {
     int np = ps.length; // number of log pairs
     int nl = x.length; // number of logs
     int nt = x[0].length; // number of times (and depths)
     zero(y); // zero y before accumulating below
+    //trace("applyLhs: np="+np);
     for (int ip=0; ip<np; ++ip) { // for all log pairs, ...
       Pairs p = ps[ip];
       int il = p.il;
       int jl = p.jl;
-      float[] xi = x[il];
-      float[] xj = x[jl];
-      float[] yi = y[il];
-      float[] yj = y[jl];
+      double[] xi = x[il];
+      double[] xj = x[jl];
+      double[] yi = y[il];
+      double[] yj = y[jl];
       int nzp = p.nzp;
+      //trace("  applyLhs: nzp="+nzp+" nl="+nl+" nt="+nt);
       int[] izs = p.izs;
       int[] jzs = p.jzs;
       float[] ws = p.ws;
@@ -874,26 +1049,16 @@ public class WellLogWarping {
         int jz = jzs[kzp];
         int it = t[il][iz];
         int jt = t[jl][jz];
+        //trace("  applyLhs: iz="+iz+" jz="+jz+" it="+it+" jt="+jt);
         if (0<=it && it<nt && 0<=jt && jt<nt) {
-          float wk = ws[kzp];
-          float scl = wk*wk;
-          float dif = 0.0f;
+          double wk = ws[kzp];
+          double scl = wk*wk;
+          double dif = 0.0f;
           dif += xi[it];
           dif -= xj[jt];
           dif *= scl;
           yi[it] += dif;
           yj[jt] -= dif;
-        }
-      }
-      float scl = eps*eps;
-      for (int kl=0; kl<nl; ++kl) {
-        for (int kt=1; kt<nt; ++kt) {
-          float dif = 0.0f;
-          dif += x[kl][kt  ];
-          dif -= x[kl][kt-1];
-          dif *= scl;
-          y[kl][kt  ] += dif;
-          y[kl][kt-1] -= dif;
         }
       }
     }
@@ -961,13 +1126,7 @@ public class WellLogWarping {
     return -1;
   }
 
-  /**
-   * Linear interpolation and constant extrapolation of known shifts s. Known
-   * shifts are marked by non-zero counts c. That is, c[k]==0.0f if and only
-   * if s[k] is unknown. This method assumes that s contains at least one
-   * known shift.
-   */
-  private static float[] interpolateShifts(float[] c, float[] s) {
+  private static float[] constrainDeltas(float[] c, float[] s) {
     int n = s.length;
     float[] t = new float[n];
     int klo = -1; // lower index of known shift
@@ -984,17 +1143,177 @@ public class WellLogWarping {
         if (klo<0) { // if no known shift with index klo < k
           t[k] = s[kup]; // copy shift at upper index kup
         } else if (kup>=n) { // else if no known shift with index kup > k
-          t[k] = s[klo]; // copy shift at lower index klo
+          t[k] = s[klo]; // copy shift with lower index klo
         } else { // else, linearly interpolate two known shifts
-          float whi = (float)(k-klo)/(float)(kup-klo);
-          float wlo = 1.0f-whi;
-          t[k] = wlo*s[klo]+whi*s[kup];
+          float wup = (float)(k-klo)/(float)(kup-klo);
+          float wlo = 1.0f-wup;
+          t[k] = wlo*s[klo]+wup*s[kup];
         }
       }
     }
     return t;
   }
-  private static float[][] interpolateShifts(float[][] c, float[][] s) {
+
+  private static final int CSMALL = 1;
+  private static void smoothWhereCountsAreSmall(int[] c, double[] q) {
+    int n = c.length;
+    for (int k=0; k<n; ++k) {
+      if (c[k]<CSMALL) {
+        int klo = k;
+        int kup = k+1;
+        while (kup<n && c[kup]<CSMALL)
+          ++kup;
+        // klo is index of first sample in gap
+        // khi is index of first sample beyond gap
+        if (klo==0 || kup==n) {
+          for (int kz=klo; kz<kup; ++kz)
+            q[kz] = 0.0;
+        } else {
+          double qsum = 0.0;
+          for (int ka=klo; ka<=kup; ++ka)
+            qsum += q[ka];
+          double qavg = qsum/(1+kup-klo);
+          for (int ka=klo; ka<=kup; ++ka)
+            q[ka] = qavg;
+        }
+        k = kup;
+      }
+    }
+  }
+  private static void smoothWhereCountsAreSmall(int[][] c, double[][] q) {
+    int nl = c.length;
+    for (int il=0; il<nl; ++il)
+      smoothWhereCountsAreSmall(c[il],q[il]);
+  }
+  private static void swapFirstQWhereCountsAreSmall(int[] c, double[] q) {
+    int n = c.length;
+    int k = 0;
+    while (k<n && c[k]<CSMALL)
+      ++k;
+    if (k<n) {
+      double q0 = q[0];
+      q[0] = q[k];
+      q[k] = q0;
+    }
+  }
+  private static void swapFirstQWhereCountsAreSmall(int[][] c, double[][] q) {
+    int nl = c.length;
+    for (int il=0; il<nl; ++il)
+      swapFirstQWhereCountsAreSmall(c[il],q[il]);
+  }
+
+  /**
+   * Linear interpolation and constant extrapolation of known shifts s. Known
+   * shifts are marked by non-zero counts c. That is, c[k]==0.0f if and only
+   * if s[k] is unknown. This method assumes that s contains at least one
+   * known shift.
+   */
+  private static double[] interpolateShifts(int[] c, double[] s) {
+    int n = s.length;
+    double[] t = new double[n];
+    int klo = -1; // lower index of known shift
+    int kup = -1; // upper index of known shift
+    for (int k=0; k<n; ++k) {
+      //trace("k="+k+" c[k]="+c[k]+" s[k]="+s[k]);
+      if (c[k]!=0) { // if shift is known, ...
+        t[k] = s[k]; // copy it
+        klo = k; // update index of last known shift
+      } else { // else, if shift is unknown, ...
+        if (kup<k) { // if necessary, find next known shift
+          for (kup=k+1; kup<n && c[kup]==0; ++kup)
+            ;
+        }
+        if (klo<0) { // if no known shift with index klo < k
+          t[k] = s[kup]; // gather shift from upper index kup
+        } else if (kup>=n) { // else if no known shift with index kup > k
+          t[k] = s[klo]; // gather shift from lower index klo
+        } else { // else, linearly interpolate two known shifts
+          double wup = (double)(k-klo)/(double)(kup-klo);
+          double wlo = 1.0-wup;
+          t[k] = wlo*s[klo]+wup*s[kup];
+        }
+      }
+    }
+    return t;
+  }
+  private static double[] interpolateShiftsTranspose(int[] c, double[] s) {
+    int n = s.length;
+    double[] t = new double[n];
+    int klo = -1; // lower index of known shift
+    int kup = -1; // upper index of known shift
+    for (int k=0; k<n; ++k) {
+      if (c[k]!=0) { // if shift is known, ...
+        t[k] = s[k]; // copy it
+        klo = k; // update index of last known shift
+      } else { // else, if shift is unknown, ...
+        if (kup<k) { // if necessary, find next known shift
+          for (kup=k+1; kup<n && c[kup]==0; ++kup)
+            ;
+        }
+        if (klo<0) { // if no known shift with index klo < k
+          t[kup] += s[k]; // scatter shift to upper index kup
+        } else if (kup>=n) { // else if no known shift with index kup > k
+          t[klo] += s[k]; // scatter shift to lower index klo
+        } else { // else, between two known shifts
+          double wup = (double)(k-klo)/(double)(kup-klo);
+          double wlo = 1.0-wup;
+          t[klo] += wlo*s[k]; // scatter shift to lower
+          t[kup] += wup*s[k]; // scatter shift to upper
+        }
+      }
+    }
+    return t;
+  }
+  private static double[][] interpolateShifts(int[][] c, double[][] s) {
+    int n = s.length;
+    double[][] t = new double[n][];
+    for (int l=0; l<n; ++l)
+      t[l] = interpolateShifts(c[l],s[l]);
+    return t;
+  }
+  private static double[][] interpolateShiftsTranspose(
+      int[][] c, double[][] s) {
+    int n = s.length;
+    double[][] t = new double[n][];
+    for (int l=0; l<n; ++l)
+      t[l] = interpolateShiftsTranspose(c[l],s[l]);
+    return t;
+  }
+
+  /**
+   * Linear interpolation and constant extrapolation of known shifts s. Known
+   * shifts are marked by non-zero counts c. That is, c[k]==0.0f if and only
+   * if s[k] is unknown. This method assumes that s contains at least one
+   * known shift.
+   */
+  private static float[] interpolateShifts(int[] c, float[] s) {
+    int n = s.length;
+    float[] t = new float[n];
+    int klo = -1; // lower index of known shift
+    int kup = -1; // upper index of known shift
+    for (int k=0; k<n; ++k) {
+      if (c[k]!=0) { // if shift is known, ...
+        t[k] = s[k]; // copy it
+        klo = k; // update index of last known shift
+      } else { // else, if shift is unknown, ...
+        if (kup<k) { // if necessary, find next known shift
+          for (kup=k+1; kup<n && c[kup]==0; ++kup)
+            ;
+        }
+        if (klo<0) { // if no known shift with index klo < k
+          t[k] = s[kup]; // copy shift at upper index kup
+        } else if (kup>=n) { // else if no known shift with index kup > k
+          t[k] = s[klo]; // copy shift with lower index klo
+        } else { // else, linearly interpolate two known shifts
+          float wup = (float)(k-klo)/(float)(kup-klo);
+          float wlo = 1.0f-wup;
+          t[k] = wlo*s[klo]+wup*s[kup];
+        }
+      }
+    }
+    return t;
+  }
+  private static float[][] interpolateShifts(int[][] c, float[][] s) {
     int n = s.length;
     float[][] t = new float[n][];
     for (int l=0; l<n; ++l)
@@ -1032,14 +1351,42 @@ public class WellLogWarping {
     return si;
   }
 
+  private static void xcleanShifts(int mt, int[] c, float[] r) {
+    int nt = r.length;
+    for (int it=1; it<nt; ++it) {
+      if (r[it]>r[it-1]+0.99f)
+        r[it] = r[it-1]+0.99f;
+    }
+    for (int it=nt-2; it>=0; --it) {
+      if (r[it]<r[it+1]-0.99f)
+        r[it] = r[it+1]-0.99f;
+    }
+    int jf = firstNotSmall(1,c);
+    int jl = lastNotSmall(1,c);
+    float rf = r[jf+mt];
+    float rl = r[jl-mt];
+    for (int jt=0; jt<mt; ++jt) {
+      r[jf+jt] = rf;
+      r[jl-jt] = rl;
+    }
+  }
+  private static void xcleanShifts(int[][] c, float[][] r) {
+    int mt = (int)max(r);
+    int nl = r.length;
+    for (int il=0; il<nl; ++il)
+      xcleanShifts(mt,c[il],r[il]);
+  }
+
   private static void cleanShifts(float[] r) {
     int nt = r.length;
     for (int it=1; it<nt; ++it) {
       if (r[it]>r[it-1]+0.99f)
         r[it] = r[it-1]+0.99f;
     }
-    //r[   0] = r[   1]; // ensures constant extrapolation of shifts
-    //r[nt-1] = r[nt-2]; // ensures constant extrapolation of shifts
+    for (int it=nt-2; it>=0; --it) {
+      if (r[it]<r[it+1]-0.99f)
+        r[it] = r[it+1]-0.99f;
+    }
   }
   private static void cleanShifts(float[][] r) {
     for (float[] ri:r)
@@ -1116,6 +1463,9 @@ public class WellLogWarping {
     return e;
   }
 
+  private static void plotPoints(double[][] s) {
+    plotPoints(copyFromDoubleToFloat(s));
+  }
   private static void plotPoints(float[][] s) {
     Color[] colors = {
       Color.BLACK,
@@ -1123,13 +1473,13 @@ public class WellLogWarping {
       Color.CYAN,Color.MAGENTA,Color.YELLOW,
     };
     int ncolor = colors.length;
-    SimplePlot sp = new SimplePlot();
+    SimplePlot sp = new SimplePlot(SimplePlot.Origin.UPPER_LEFT);
+    sp.setSize(450,850);
     int ns = s.length;
     for (int is=0; is<ns; ++is) {
       PointsView pv = sp.addPoints(s[is]);
       pv.setLineColor(colors[is%ncolor]);
     }
-    sp.setSize(1200,600);
   }
 
   private static void plotPixels(float[][] s) {
@@ -1139,6 +1489,12 @@ public class WellLogWarping {
     pv.setInterpolation(PixelsView.Interpolation.NEAREST);
     sp.addColorBar();
   }
-    
 
+  public float[] toFloat(int[] i) {
+    int n = i.length;
+    float[] f = new float[n];
+    for (int j=0; j<n; ++j)
+      f[j] = (float)i[j];
+    return f;
+  }
 }
