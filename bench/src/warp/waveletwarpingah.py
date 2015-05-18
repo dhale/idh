@@ -1,12 +1,11 @@
 #############################################################################
 # Demo wavelet estimation from warping.
-# This version minimizes || Fa - HSLGb || such that ||[a b]|| = 1.
-# where a and b are inverses of wavelets in f and g, respectively.
+# This version minimizes || f - HSAg || such that a0 = 1.
 
 from imports import *
 
 from edu.mines.jtk.dsp.Conv import *
-from warp import WaveletWarpingAB
+from warp import WaveletWarpingAH
 from warp import WarpingFilter
 
 #############################################################################
@@ -15,123 +14,133 @@ from warp import WarpingFilter
 pngDir = None
 
 def main(args):
-  #goSimpleTest()
-  #goWarpingFilterTest()
-  goSino()
+  #goTest()
+  #goSinoImages()
+  goSinoTraces()
 
-def goSimpleTest():
-  nt,ni = 981,50 # number of time samples; number of impulses
-  freq,decay = 0.08,0.05 # peak frequency and decay for wavelet
-  na,ka = 3,0 # sampling for inverse wavelet A
-  nb,kb = 3,0 # sampling for inverse wavelet B
+def goTest():
+  nt,ni = 981,500 # number of time samples; number of impulses
+  ffreq,fdecay = 0.08,0.05 # peak frequency and decay for wavelet
+  gfreq,gdecay = 0.08,0.05 # peak frequency and decay for wavelet
+  na,ka = 11,-5 # sampling for inverse wavelet A
+  nb,kb = 11,-5 # sampling for inverse wavelet B
   nc,kc = 181,-90 # sampling for wavelet C
   nd,kd = 181,-90 # sampling for wavelet D
   dt,ft = 0.004,0.000 # used for plotting only
-  tmin,tmax = 0,nt-1
   st = Sampling(nt,dt,ft)
-  for mp in [True]: # True, for minimum-phase; False for other
-    ck = getWavelet(freq,decay,nc,kc,mp) # known wavelet C
-    dk = getWavelet(freq,decay,nc,kc,mp) # known wavelet D
+  for mp in [False]: # True, for minimum-phase; False for mixed-phase
+    ck = getWavelet(ffreq,fdecay,nc,kc,mp) # known wavelet C
+    dk = getWavelet(gfreq,gdecay,nc,kc,mp) # known wavelet D
     normalizeMax(ck)
     normalizeMax(dk)
     #for r0,r1 in [(3.0,1.5),(2.0,2.0)]: # <1 for stretch; >1 for squeeze
     for r0,r1 in [(3.0,1.5)]: # <1 for stretch; >1 for squeeze
       title = "r0 = "+str(r0)+"  r1 = "+str(r1)
-      if r0>1.0:
-        u,p,q = logupq(r0,r1,nt,ni)
-      else:
-        u,p,q = nmoupq(r0,r1,nt,ni)
-      f = addWavelet(freq,decay,p,mp)
-      g = addWavelet(freq,decay,q,mp)
-      ww = WaveletWarpingAB()
-      ww.setTimeRange(tmin,tmax)
-      aw,bw = ww.getInverseAB(na,ka,nb,kb,u,f,g) # estimated inverses A & B
-      ak = ww.getInverse(nc,kc,ck,na,ka) # known inverse wavelet A
-      bk = ww.getInverse(nd,kd,dk,nb,kb) # known inverse wavelet B
-      #dump(ak); dump(bk);
-      dump(aw); dump(bw)
-      cw = ww.getInverse(na,ka,aw,nc,kc) # estimated wavelet C
-      dw = ww.getInverse(nb,kb,bw,nd,kd) # estimated wavelet D
+      u,p,q = logupq(r0,r1,nt,ni)
+      f = addWavelet(ffreq,fdecay,p,mp)
+      g = addWavelet(gfreq,fdecay,q,mp)
+      ww = WaveletWarpingAH()
+      ww.setTimeRange(0,nt/2)
+      ww.setStabilityFactor(0.0001)
+      ww.setMaxIterations(40)
+      #bw,cw = ww.getAHSimple(nb,kb,nc,kc,u,f,g);
+      bw,cw = ww.getAHNewton(nb,kb,nc,kc,u,f,g);
+      #bw,cw = ww.getAHGaussNewton(nb,kb,nc,kc,u,f,g);
+      print "rmse =",ww.rms(sub(f,ww.applyHSA(nb,kb,bw,nc,kc,cw,u,g)))
+      dump(bw);
+      dw = ww.getWavelet(nd,kd,nb,kb,bw)
       sg = ww.warp(u,g)
-      af = ww.convolve(na,ka,aw,f)
       bg = ww.convolve(nb,kb,bw,g)
       sbg = ww.warp(u,bg)
       csbg = ww.convolve(nc,kc,cw,sbg)
       normalizeMax(cw)
       normalizeMax(dw)
       plotSequences(st,[f,g],labels=["f","g"],title=title)
-      plotSequences(st,[af,bg],labels=["Af","Bg"],title=title)
-      plotSequences(st,[af,sbg],labels=["Af","SBg"],title=title)
       plotSequences(st,[f,sg],labels=["f","Sg"],title=title)
       plotSequences(st,[f,csbg],labels=["f","CSBg"],title=title)
       plotWavelets(Sampling(nc,dt,kc*dt),[cw,ck],title=title+" C")
       plotWavelets(Sampling(nd,dt,kd*dt),[dw,dk],title=title+" D")
 
-def goWarpingFilterTest():
-  nt,ni = 481,4 # number of time samples; number of impulses
-  freq,decay = 0.08,0.05 # peak frequency and decay for wavelet
-  #na,ka = 11,-5 # sampling for inverse wavelet A
-  na,ka = 81,-20 # sampling for inverse wavelet A
-  nh,kh = 181,-90 # sampling for wavelet H
-  dt,ft = 0.004,0.000 # used for plotting only
-  tmin,tmax = 0,nt-1
-  sfac = 1.00
-  wha = 10.0
-  st = Sampling(nt,dt,ft)
-  for mp in [False]: # True, for minimum-phase; False for other
-    hk = getWavelet(freq,decay,nh,kh,mp) # known wavelet
-    for r0,r1 in [(0.0,0.9),(2.0,1.0)]: # <1 for stretch; >1 for squeeze
-      title = "r0 = "+str(r0)+"  r1 = "+str(r1)
-      aw = zerofloat(na); aw[-ka] = 1.0
-      hw = zerofloat(nh); hw[-kh] = 1.0
-      if r0<1.0:
-        u,p,q = nmoupq(r0,r1,nt,ni)
-      else:
-        u,p,q = logupq(r0,r1,nt,ni)
-      f = addWavelet(freq,decay,p,mp)
-      g = addWavelet(freq,decay,q,mp)
-      wf = WarpingFilter()
-      sq = wf.apply(u,q)
-      sg = wf.apply(u,g)
-      plotSequences(st,[p,q],labels=["p","q"],title=title)
-      plotSequences(st,[p,sq],labels=["p","Sq"],title=title)
-      #plotSequences(st,[f,g],labels=["f","g"],title=title)
-      #plotSequences(st,[f,sg],labels=["f","Sg"],title=title)
-
-def goSino():
-  na,ka = 1,0 # sampling for inverse A of wavelet in PP image
-  nb,kb = 1,0 # sampling for inverse B of wavelet in PS image
-  nc,kc = 201,-100 # sampling for wavelet C in PP image
-  nd,kd = 201,-100 # sampling for wavelet D in PS image
+def goSinoTraces():
+  na,ka = 41,-20 # sampling for inverse A
+  nh,kh = 41,-20 # sampling for wavelet H
   nt,dt,ft = 501,0.004,0.000 # used for plotting only
-  nx,dx,fx = 21,0.015,0.000
   #nx,dx,fx = 721,0.015,0.000
   sa = Sampling(na,dt,ka*dt)
-  sb = Sampling(nb,dt,kb*dt)
-  sc = Sampling(nc,dt,kc*dt)
-  sd = Sampling(nd,dt,kd*dt)
+  sh = Sampling(nh,dt,kh*dt)
+  st = Sampling(nt,dt,ft)
+  f,g,u = getSinoTraces(16) # PP trace f(t), PS trace g(u), and warping u(t)
+  ww = WaveletWarpingAH()
+  ww.setTimeRange(100,500) # PP time window
+  ww.setStabilityFactor(0.001) # stability factor
+  ww.setMaxIterations(100) # max Gauss-Newton iterations
+  a,h = ww.getAHGaussNewton(na,ka,nh,kh,u,f,g)
+  sg = ww.warp(u,g)
+  ag = ww.convolve(na,ka,a,g)
+  sag = ww.warp(u,ag)
+  hsag = ww.convolve(nh,kh,h,sag)
+  dump(a)
+  g = copy(nt,g)
+  sg = copy(nt,sg)
+  sag = copy(nt,sag)
+  hsag = copy(nt,hsag)
+  fmhsag= sub(f,hsag)
+  plotWavelets(sa,[a],title="A")
+  plotWavelets(sh,[h],title="H")
+  plotTraces(st,[f,hsag,fmhsag],labels=["f","HSAg","f-HSAg"])
+def getSinoTraces(m2=1):
+  dataDir = "/data/seis/sino/warp/"
+  n1f,n1g,d1,f1 = 501,852,0.004,0.0
+  n2,d2,f2 =  721,0.0150,0.000
+  f = readImage(dataDir+"pp.dat",n1f,n2)
+  g = readImage(dataDir+"ps.dat",n1g,n2)
+  u = readImage(dataDir+"shifts.dat",n1f,n2)
+  u = add(u,rampfloat(0.0,1.0,0.0,n1f,n2))
+  i2 = 300 # first trace in stack
+  fs = copy(f[i2])
+  gs = copy(g[i2])
+  us = copy(u[i2])
+  for j2 in range(1,m2):
+    add(f[i2+j2],fs,fs)
+    add(g[i2+j2],gs,gs)
+    add(u[i2+j2],us,us)
+  mul(1.0/m2,fs,fs)
+  mul(1.0/m2,gs,gs)
+  mul(1.0/m2,us,us)
+  gain(100,fs)
+  gain(100,gs)
+  return fs,gs,us
+
+def goSinoImages():
+  na,ka = 21,-10 # sampling for inverse A
+  nh,kh = 81,-40 # sampling for wavelet H
+  nt,dt,ft = 501,0.004,0.000 # used for plotting only
+  #nx,dx,fx = 721,0.015,0.000
+  nx,dx,fx = 101,0.015,0.000
+  sa = Sampling(na,dt,ka*dt)
+  sh = Sampling(nh,dt,kh*dt)
   st = Sampling(nt,dt,ft)
   sx = Sampling(nx,dx,fx)
-  tmin,tmax = 100,400 # PP time window
-  sfac = 0.0 # stabilization factor
+  tmin,tmax = 100,500 # PP time window
   f,g,u = getSinoImages() # PP image, PS image, and warping u(t,x)
-  ww = WaveletWarpingAB()
-  ww.setTimeRange(tmin,tmax)
-  ww.setStabilityFactor(sfac)
-  aw,bw = ww.getInverseAB(na,ka,nb,kb,u,f,g) # estimated inverses A & B
-  dump(aw); dump(bw)
-  cw = ww.getInverse(na,ka,aw,nc,kc) # estimated wavelet C
-  dw = ww.getInverse(nb,kb,bw,nd,kd) # estimated wavelet D
+  ww = WaveletWarpingAH()
+  ww.setTimeRange(100,400) # PP time window
+  ww.setStabilityFactor(0.0001) # stability factor
+  ww.setMaxIterations(20) # max Gauss-Newton iterations
+  a,h = ww.getAHGaussNewton(na,ka,nh,kh,u,f,g)
+  dump(a)
   sg = ww.warp(u,g)
-  af = ww.convolve(na,ka,aw,f)
-  bg = ww.convolve(nb,kb,bw,g)
-  sbg = ww.warp(u,bg)
-  csbg = ww.convolve(nc,kc,cw,sbg)
+  ag = ww.convolve(na,ka,a,g)
+  sag = ww.warp(u,ag)
+  hsag = ww.convolve(nh,kh,h,sag)
+  normalizeRms(f)
+  normalizeRms(sg)
+  normalizeRms(hsag)
   plotImage(st,sx,f,zoom=True,png="f")
-  plotImage(st,sx,sg,zoom=True,png="sg")
-  plotImage(st,sx,csbg,zoom=True,png="csbg")
-  plotWaveletsPpPs(sc,cw,dw,png="cd")
-
+  plotWavelets(sa,[a],title="A")
+  plotWavelets(sh,[h],title="H")
+  plotImage(st,sx,sg,zoom=True,png="Sg")
+  plotImage(st,sx,hsag,zoom=True,png="HSAg")
 def getSinoImages():
   dataDir = "/data/seis/sino/warp/"
   n1f,n1g,d1,f1 = 501,852,0.004,0.0
@@ -140,9 +149,9 @@ def getSinoImages():
   g = readImage(dataDir+"ps.dat",n1g,n2)
   u = readImage(dataDir+"shifts.dat",n1f,n2)
   u = add(u,rampfloat(0.0,1.0,0.0,n1f,n2))
-  f = copy(n1f,21,0,400,f)
-  g = copy(n1g,21,0,400,g)
-  u = copy(n1f,21,0,400,u)
+  f = copy(n1f,101,0,300,f)
+  g = copy(n1g,101,0,300,g)
+  u = copy(n1f,101,0,300,u)
   gain(100,f)
   gain(100,g)
   return f,g,u
@@ -168,10 +177,18 @@ def normalizeMax(f):
     scale = -1.0/minf
   return mul(scale,f,f)
 
+def normalizePow(f):
+  scale = 1.0/sqrt(sum(mul(f,f)))
+  mul(scale,f,f)
+
 def normalizeRms(f):
   mul(1.0/rms(f),f,f)
+def normalizeRms1(f):
+  mul(1.0/rms1(f),f,f)
 def rms(f):
   return sqrt(sum(mul(f,f))/len(f)/len(f[0]))
+def rms1(f):
+  return sqrt(sum(mul(f,f))/len(f))
 
 def logupq(r0,r1,nt,ni):
   rand = Random(3)
@@ -338,6 +355,21 @@ def plotSequences(st,xs,labels=None,title=None):
   if title:
     pp.setTitle(title)
 
+def plotTraces(st,xs,labels=None,title=None):
+  nx = len(xs)
+  pp = PlotPanel(nx,1)
+  for ix,xi in enumerate(xs):
+    pv = pp.addPoints(ix,0,st,xi)
+    pp.setVLimits(ix,-3.0,3.0)
+    if labels:
+      pp.setVLabel(ix,labels[ix])
+  pp.setHLabel("Time (s)")
+  pf = PlotFrame(pp)
+  pf.setSize(1400,700)
+  pf.setVisible(True)
+  if title:
+    pp.setTitle(title)
+
 def plotWavelets(st,hs,hmax=None,title=None):
   sp = SimplePlot()
   ls = [PointsView.Line.SOLID,PointsView.Line.DASH,PointsView.Line.DOT]
@@ -369,7 +401,8 @@ def plotImage(st,sx,f,zoom=False,png=None):
   pv = sp.addPixels(st,sx,f)
   pv.setClips(-2.0,2.0)
   if zoom:
-    sp.setVLimits(0.400,1.600) # zoom consistent with tmin,tmax = 100,400
+    #sp.setVLimits(0.400,1.600) # zoom consistent with tmin,tmax = 100,400
+    sp.setVLimits(0.400,2.000) # zoom consistent with tmin,tmax = 100,500
   sp.setHLabel("Distance (km)")
   sp.setVLabel("PP time (s)")
   if pngDir and png:

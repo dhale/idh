@@ -57,7 +57,7 @@ public class WarpingFilter {
   }
 
   /**
-   * Returns a warped sequency y[i] = x(u[i]).
+   * Returns a warped sequence y[i] = x(u[i]).
    * The number of samples in the returned sequence y[i] equals the number of
    * values in the warping sequence u[i], which need not equal the number of
    * samples in the input sequence x[i].
@@ -78,7 +78,7 @@ public class WarpingFilter {
     if (r>1.0f) {
       nu = 1+(int)(r*(nu-1));
       u = monoResample(u,nu);
-      //trace("nx="+nx+" ny="+ny+" nu="+nu);
+      //trace("r="+r+" nx="+nx+" ny="+ny+" nu="+nu);
     }
 
     // Sinc interpolation for y[i] = x(u[i]).
@@ -104,6 +104,22 @@ public class WarpingFilter {
     return y;
   }
 
+  /**
+   * Returns a warped image y[i2][i1] = x[i2](u[i2][i1]).
+   * The dimensions of the output image y equal those of warping image u, and
+   * need not equal the dimensions of the input image x.
+   * @param u the warping image u[i2][i1].
+   * @param x the input image x[i2][i1].
+   * @return the warped image y[i2][i1].
+   */
+  public float[][] apply(float[][] u, float[][] x) {
+    int n2 = u.length;
+    float[][] y = new float[n2][];
+    for (int i2=0; i2<n2; ++i2)
+      y[i2] = apply(u[i2],x[i2]);
+    return y;
+  }
+
   ///////////////////////////////////////////////////////////////////////////
   // private
 
@@ -126,12 +142,8 @@ public class WarpingFilter {
     int nx = x.length;
     int ny = y.length;
     float dy = (nx-1.0f)/(ny-1.0f);
-    float[] tx = new float[nx];
-    float[] ty = new float[ny];
-    for (int ix=0; ix<nx; ++ix)
-      tx[ix] = ix;
-    for (int iy=0; iy<ny; ++iy)
-      ty[iy] = iy*dy;
+    float[] tx = rampfloat(0.0f,1.0f,nx);
+    float[] ty = rampfloat(0.0f,dy,ny);
     CubicInterpolator ci = new CubicInterpolator(tx,x);
     ci.interpolate(ty,y);
     y[0] = x[0];
@@ -177,13 +189,6 @@ public class WarpingFilter {
       if (r<du)
         r = du;
     }
-    return r;
-  }
-  private float dumax(float[][] u) {
-    int n = u.length;
-    float r = 0.0f;
-    for (int i=0; i<n; ++i)
-      r = max(r,dumax(u[i]));
     return r;
   }
 

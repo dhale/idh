@@ -38,6 +38,10 @@ public class WaveletWarpingAB {
     _itmax = itmax;
   }
 
+  public void setStabilityFactor(double sfac) {
+    _sfac = (float)sfac;
+  }
+
   /**
    * Returns inverse wavelets a and b estimated by warping.
    * The two sequences f and g are related by f[t] ~ g[u[t]].
@@ -50,13 +54,11 @@ public class WaveletWarpingAB {
    * @param g array of samples for sequence g[t]
    * @return array {a,b} of coefficients for inverse wavelets a and b.
    */
-  public float[][] getInverseAB(
+  public float[][] getInverseABQ(
     int na, int ka, int nb, int kb, 
     float[] u, float[] f, float[] g)
   {
-    int nt = u.length;
-
-    // Matrix Q = [F  -SG]'[F  -SG].
+    // Matrix Q = [F | -SG]'[F | -SG].
     int nc = na+nb;
     DMatrix q = new DMatrix(nc,nc);
     for (int ia=0,ic=0,ilag=ka; ia<na; ++ia,++ic,++ilag) {
@@ -66,83 +68,243 @@ public class WaveletWarpingAB {
         q.set(ic,jc,dot(fi,fj));
       }
       for (int jb=0,jc=na,jlag=kb; jb<nb; ++jb,++jc,++jlag) {
-        float[] gj = applyS(u,delay(jlag,g));
+        float[] gj = warp(u,delay(jlag,g));
         q.set(ic,jc,-dot(fi,gj));
       }
     }
     for (int ib=0,ic=na,ilag=kb; ib<nb; ++ib,++ic,++ilag) {
-      float[] gi = applyS(u,delay(ilag,g));
+      float[] gi = warp(u,delay(ilag,g));
       for (int ja=0,jc=0,jlag=ka; ja<na; ++ja,++jc,++jlag) {
         float[] fj = delay(jlag,f);
         q.set(ic,jc,-dot(gi,fj));
       }
       for (int jb=0,jc=na,jlag=kb; jb<nb; ++jb,++jc,++jlag) {
-        float[] gj = applyS(u,delay(jlag,g));
+        float[] gj = warp(u,delay(jlag,g));
         q.set(ic,jc,dot(gi,gj));
       }
     }
 
     // Get coefficients a and b from eigenvector for smallest eigenvalue.
+    return abFromQ(na,nb,q);
+  }
+  private static float[][] abFromQ(int na, int nb, DMatrix q) {
+    int nc = na+nb;
     DMatrixEvd evd = new DMatrixEvd(q);
     DMatrix v = evd.getV().get(0,nc-1,0,0);
-    dump(evd.getRealEigenvalues());
+    double[] ev = evd.getRealEigenvalues();
+    trace("edelta = "+(ev[1]-ev[0])/(FLT_EPSILON*ev[nc-1]));
+    //dump(evd.getRealEigenvalues());
     float[] a = new float[na];
     float[] b = new float[nb];
     for (int ia=0,ic=0; ia<na; ++ia,++ic)
       a[ia] = (float)v.get(ic,0);
     for (int ib=0,ic=na; ib<nb; ++ib,++ic)
       b[ib] = (float)v.get(ic,0);
+    return new float[][]{a,b};
+  }
 
+  public float[][] getInverseAB(
+    int na, int ka, int nb, int kb, 
+    float[] u, float[] f, float[] g)
+  {
+    trace("getInverseAB: begin");
+    DMatrix aa = new DMatrix(na,na);
+    for (int ia=0,ilag=ka; ia<na; ++ia,++ilag) {
+      float[] fi = delay(ilag,f);
+      for (int ja=0,jlag=ka; ja<na; ++ja,++jlag) {
+        if (ia<=ja) {
+          float[] fj = delay(jlag,f);
+          aa.set(ia,ja,dot(fi,fj));
+        } else {
+          aa.set(ia,ja,aa.get(ja,ia));
+        }
+      }
+    }
+    DMatrix bb = new DMatrix(nb,nb);
+    for (int ib=0,ilag=kb; ib<nb; ++ib,++ilag) {
+      float[] gi = warp(u,delay(ilag,g));
+      for (int jb=0,jlag=kb; jb<nb; ++jb,++jlag) {
+        if (ib<=jb) {
+          float[] gj = warp(u,delay(jlag,g));
+          bb.set(ib,jb,dot(gi,gj));
+        } else {
+          bb.set(ib,jb,bb.get(jb,ib));
+        }
+      }
+    }
+    DMatrix ab = new DMatrix(na,nb);
+    DMatrix ba = new DMatrix(nb,na);
+    for (int ia=0,ilag=ka; ia<na; ++ia,++ilag) {
+      float[] fi = delay(ilag,f);
+      for (int jb=0,jlag=kb; jb<nb; ++jb,++jlag) {
+        float[] gj = warp(u,delay(jlag,g));
+        double abij = -dot(fi,gj);
+        ab.set(ia,jb,abij);
+        ba.set(jb,ia,abij);
+      }
+    }
+    float[][] abs = abSolve(aa,ab,ba,bb);
+    trace("getInverseAB: done");
+    return abs;
+  }
+  public float[][] getInverseAB(
+    int na, int ka, int nb, int kb, 
+    float[][] u, float[][] f, float[][] g)
+  {
+    trace("getInverseAB: begin");
+    DMatrix aa = new DMatrix(na,na);
+    for (int ia=0,ilag=ka; ia<na; ++ia,++ilag) {
+      float[][] fi = delay(ilag,f);
+      for (int ja=0,jlag=ka; ja<na; ++ja,++jlag) {
+        if (ia<=ja) {
+          float[][] fj = delay(jlag,f);
+          aa.set(ia,ja,dot(fi,fj));
+        } else {
+          aa.set(ia,ja,aa.get(ja,ia));
+        }
+      }
+    }
+    DMatrix bb = new DMatrix(nb,nb);
+    for (int ib=0,ilag=kb; ib<nb; ++ib,++ilag) {
+      float[][] gi = warp(u,delay(ilag,g));
+      for (int jb=0,jlag=kb; jb<nb; ++jb,++jlag) {
+        if (ib<=jb) {
+          float[][] gj = warp(u,delay(jlag,g));
+          bb.set(ib,jb,dot(gi,gj));
+        } else {
+          bb.set(ib,jb,bb.get(jb,ib));
+        }
+      }
+    }
+    DMatrix ab = new DMatrix(na,nb);
+    DMatrix ba = new DMatrix(nb,na);
+    for (int ia=0,ilag=ka; ia<na; ++ia,++ilag) {
+      float[][] fi = delay(ilag,f);
+      for (int jb=0,jlag=kb; jb<nb; ++jb,++jlag) {
+        float[][] gj = warp(u,delay(jlag,g));
+        double abij = -dot(fi,gj);
+        ab.set(ia,jb,abij);
+        ba.set(jb,ia,abij);
+      }
+    }
+    float[][] abc = abSolve(aa,ab,ba,bb);
+    trace("getInverseAB: done");
+    return abc;
+  }
+  private static float[][] abSolve(
+    DMatrix aa, DMatrix ab, DMatrix ba, DMatrix bb)
+  {
+    assert aa.isSymmetric();
+    assert bb.isSymmetric();
+    assert ab.equals(ba.transpose());
+    aa.set(0,0,4.0);
+    bb.set(0,0,9.0);
+    ab.set(0,0,-6.0);
+    ba.set(0,0,-6.0);
+    int na = aa.getN();
+    int nb = bb.getN();
+    trace("na="+na+" nb="+nb+" aa,bb,ab:");
+    trace(aa.toString());
+    trace(bb.toString());
+    trace(ab.toString());
+    DMatrix ai = DMatrix.identity(na,na);
+    DMatrix bi = DMatrix.identity(nb,nb);
+    DMatrix aam,bbm;
+    DMatrixEvd aevd = null;
+    DMatrixEvd bevd = null;
+    double ea = 0.0; // eigenvalue associated with a
+    double eb = 0.0; // eigenvalue associated with b
+    double ebmax = bb.normF()/nb;
+    double ebmin = -ebmax;
+    int neb = 101;
+    double deb = (ebmax-ebmin)/(neb-1);
+    for (int ieb=0; ieb<neb; ++ieb) {
+      double ebi = ebmin+ieb*deb;
+      bbm = bb.minus(bi.times(ebi)).inverse();
+      aam = aa.minus(ab.times(bbm.times(ba)));
+      aevd = new DMatrixEvd(aam);
+      double[] eas = aevd.getRealEigenvalues();
+      for (int ia=0; ia<na; ++ia) {
+        double eai = eas[ia];
+        aam = aa.minus(ai.times(eai)).inverse();
+        bbm = bb.minus(ba.times(aam.times(ab)));
+        bevd = new DMatrixEvd(bbm);
+        double[] ebs = bevd.getRealEigenvalues();
+        for (int ib=0; ib<nb; ++ib) {
+        }
+      }
+      bbm = bb.minus(bi.times(ebi)).inverse();
+      aam = aa.minus(ab.times(bbm.times(ba)));
+      aevd = new DMatrixEvd(aam);
+      double eai = aevd.getRealEigenvalues()[0];
+      trace("ea="+eai+" eb="+ebi+" sum="+(eai+ebi));
+      if (eai+ebi<ea+eb) {
+        ea = eai;
+        eb = ebi;
+      }
+    }
+    bbm = bb.minus(bi.times(eb)).inverse();
+    aam = aa.minus(ab.times(bbm.times(ba)));
+    aevd = new DMatrixEvd(aam);
+    aam = aa.minus(ai.times(ea)).inverse();
+    bbm = bb.minus(ba.times(aam.times(ab)));
+    bevd = new DMatrixEvd(bbm);
+    ea = aevd.getRealEigenvalues()[0];
+    eb = bevd.getRealEigenvalues()[0];
+    DMatrix av = aevd.getV().get(0,na-1,0,0);
+    DMatrix bv = bevd.getV().get(0,nb-1,0,0);
+    DMatrix aerr = aa.times(av).minus(ab.times(bv).minus(av.times(ea)));
+    DMatrix berr = bb.times(bv).minus(ba.times(av).minus(bv.times(eb)));
+    trace("aerr=\n"+aerr);
+    trace("berr=\n"+berr);
+    float[] a = new float[na];
+    float[] b = new float[nb];
+    for (int ia=0; ia<na; ++ia)
+      a[ia] = (float)av.get(ia,0);
+    for (int ib=0; ib<nb; ++ib)
+      b[ib] = (float)bv.get(ib,0);
     return new float[][]{a,b};
   }
 
   /**
-   * Estimates the wavelet h from the inverse wavelet a.
-   * @param na number of samples in the inverse wavelet a.
+   * Estimates the inverse h of a specified wavelet a.
+   * @param na number of samples in the wavelet a.
    * @param ka the sample index for a[0].
-   * @param a array of coefficients for the inverse wavelet a.
+   * @param a array of coefficients for the wavelet a.
    * @param nh number of samples in the wavelet h.
    * @param kh the sample index for h[0].
    */
-  public float[] getWaveletH(int na, int ka, float[] a, int nh, int kh) {
+  public float[] getInverse(int na, int ka, float[] a, int nh, int kh) {
     float[] one = {1.0f};
     float[] ca1 = new float[nh];
     float[] caa = new float[nh];
     xcor(na,ka,a,1,0,one,nh,kh,ca1);
     xcor(na,ka,a,na,ka,a,nh, 0,caa);
-    caa[0] *= _sfac;
+    caa[0] *= 1.0+_sfac;
     SymmetricToeplitzFMatrix stm = new SymmetricToeplitzFMatrix(caa);
     return stm.solve(ca1);
   }
 
   /**
-   * Applies the specified inverse wavelet A.
-   * @param na number of samples in the inverse wavelet a.
-   * @param ka the sample index for a[0].
-   * @param a array of coefficients for the inverse wavelet a.
-   * @param f array with input sequence f(t).
-   * @return array with filtered output sequence.
-   */
-  public float[] applyA(int na, int ka, float[] a, float[] f) {
-    return convolve(na,ka,a,f);
-  }
-  public float[][] applyA(int na, int ka, float[] a, float[][] f) {
-    return convolve(na,ka,a,f);
-  }
-
-  /**
-   * Applies the specified wavelet H.
-   * @param nh number of samples in the wavelet h.
+   * Convolves with the specified filter h.
+   * @param nh number of samples in h.
    * @param kh the sample index for h[0].
-   * @param h array of coefficients for the wavelet h.
-   * @param f array with input sequence f(t).
-   * @return array with filtered output sequence.
+   * @param h input array of coefficients in h.
+   * @param f input array with input sequence f.
+   * @return output array with filtered sequence h*f.
    */
-  public float[] applyH(int nh, int kh, float[] h, float[] f) {
-    return convolve(nh,kh,h,f);
+  public static float[] convolve(int nh, int kh, float[] h, float[] f) {
+    int n = f.length;
+    float[] g = new float[n];
+    convolve(nh,kh,h,f,g);
+    return g;
   }
-  public float[][] applyH(int nh, int kh, float[] h, float[][] f) {
-    return convolve(nh,kh,h,f);
+  public static float[][] convolve(int nh, int kh, float[] h, float[][] f) {
+    int n = f.length;
+    float[][] g = new float[n][];
+    for (int i=0; i<n; ++i)
+      g[i] = convolve(nh,kh,h,f[i]);
+    return g;
   }
 
   /**
@@ -152,11 +314,15 @@ public class WaveletWarpingAB {
    * @param f array with input sequence f(t).
    * @return array with warped output sequence.
    */
-  public float[] applyS(float[] u, float[] f) {
-    return warp(u,f);
+  public float[] warp(float[] u, float[] x) {
+    return _wf.apply(u,x);
   }
-  public float[][] applyS(float[][] u, float[][] f) {
-    return warp(u,f);
+  public float[][] warp(float[][] u, float[][] x) {
+    int n = u.length;
+    float[][] y = new float[n][];
+    for (int i=0; i<n; ++i)
+      y[i] = warp(u[i],x[i]);
+    return y;
   }
 
   /**
@@ -180,9 +346,9 @@ public class WaveletWarpingAB {
     float[] u, float[] f) 
   {
     int nt = f.length;
-    float[] af = applyA(na,ka,a,f);
-    float[] saf = applyS(u,af);
-    float[] hsaf = applyH(nh,kh,h,saf);
+    float[] af = convolve(na,ka,a,f);
+    float[] saf = warp(u,af);
+    float[] hsaf = convolve(nh,kh,h,saf);
     return hsaf;
   }
   public float[][] applyHSA(
@@ -191,9 +357,9 @@ public class WaveletWarpingAB {
     float[][] u, float[][] f) 
   {
     int nt = f.length;
-    float[][] af = applyA(na,ka,a,f);
-    float[][] saf = applyS(u,af);
-    float[][] hsaf = applyH(nh,kh,h,saf);
+    float[][] af = convolve(na,ka,a,f);
+    float[][] saf = warp(u,af);
+    float[][] hsaf = convolve(nh,kh,h,saf);
     return hsaf;
   }
 
@@ -204,8 +370,11 @@ public class WaveletWarpingAB {
   private static final SincInterpolator _si =
     SincInterpolator.fromErrorAndFrequency(0.01,0.40);
   private static final WarpingFilter _wf = new WarpingFilter();
+  static {
+    _wf.setOversamplingLimit(3.0);
+  }
 
-  private double _sfac = 1.0;
+  private float _sfac = 0.0f;
   private int _itmin = -1;
   private int _itmax = -1;
 
@@ -216,69 +385,14 @@ public class WaveletWarpingAB {
     double sum = 0.0;
     for (int it=itlo; it<=ithi; ++it) 
       sum += x[it]*y[it];
-    return sum;
+    return sum/(1+ithi-itlo);
   }
   private double dot(float[][] x, float[][] y) {
     int n = x.length;
     double sum = 0.0;
     for (int i=0; i<n; ++i) 
       sum += dot(x[i],y[i]);
-    return sum;
-  }
-
-  /**
-   * Returns the largest squeezing r(t) = u'(t) not greater than rmax.
-   * If less than or equal to one, then no squeezing is implied by u(t).
-   */
-  private float squeezing(float rmax, float[] u) {
-    int nt = u.length;
-    int itlo = max(1,_itmin);
-    int ithi = min(_itmax,nt-1);
-    float r = 0.0f;
-    for (int it=itlo; it<=ithi; ++it) {
-      float du = u[it]-u[it-1];
-      if (r<du)
-        r = du;
-    }
-    return min(r,rmax);
-  }
-  private float squeezing(float rmax, float[][] u) {
-    int n = u.length;
-    float r = 0.0f;
-    for (int i=0; i<n; ++i)
-      r = max(r,squeezing(rmax,u[i]));
-    return r;
-  }
-
-  /**
-   * If necessary, applies an anti-alias filter to the sequence x(t).
-   * An anti-alias filter is necessary if the warping includes squeezing.
-   */
-  private float[] aaf(float rmax, float[] u, float[] x) {
-    int nt = x.length;
-    float r = squeezing(RMAX,u);
-    if (r>1.0) {
-      float[] y = new float[nt];
-      BandPassFilter aaf = new BandPassFilter(0.0,0.5/r,0.10/r,0.01);
-      aaf.apply(x,y);
-      return y;
-    } else {
-      return copy(x);
-    }
-  }
-  private float[][] aaf(float rmax, float[][] u, float[][] x) {
-    float r = squeezing(RMAX,u);
-    if (r>1.0) {
-      int nx = x.length;
-      int nt = x[0].length;
-      float[][] y = new float[nx][nt];
-      BandPassFilter aaf = new BandPassFilter(0.0,0.5/r,0.10/r,0.01);
-      for (int ix=0; ix<nx; ++ix)
-        aaf.apply(x[ix],y[ix]);
-      return y;
-    } else {
-      return copy(x);
-    }
+    return sum/n;
   }
 
   /**
@@ -306,48 +420,20 @@ public class WaveletWarpingAB {
   }
 
   /**
-   * Returns y(t) = x(u(t)).
+   * Computes y(t) = h(t)*x(t), where * denotes convolution.
    */
-  private float[] warp(float[] u, float[] x) {
-    return _wf.apply(u,x);
-  }
-  private float[][] warp(float[][] u, float[][] x) {
-    int n = u.length;
-    float[][] y = new float[n][];
-    for (int i=0; i<n; ++i)
-      y[i] = warp(u[i],x[i]);
-    return y;
-  }
-
-  /**
-   * Returns y(t) = h(t)*x(t), where * denotes convolution.
-   */
-  private static float[] convolve(int nh, int kh, float[] h, float[] x) {
-    int nt = x.length;
-    float[] y = new float[nt];
-    convolve(nh,kh,h,x,y);
-    return y;
-  }
   private static void convolve(
     int nh, int kh, float[] h, float[] f,  float[] g)
   {
     int nt = f.length;
     conv(nh,kh,h,nt,0,f,nt,0,g);
   }
-  private static float[][] convolve(int nh, int kh, float[] h, float[][] x) {
-    int n = x.length;
-    int nt = x[0].length;
-    float[][] y = new float[n][nt];
-    for (int i=0; i<n; ++i)
-      convolve(nh,kh,h,x[i],y[i]);
-    return y;
-  }
 
   private float rms(float[] x) {
-    return (float)sqrt(dot(x,x)/x.length);
+    return (float)sqrt(dot(x,x));
   }
   public float rms(float[][] x) {
-    return (float)sqrt(dot(x,x)/x.length/x[0].length);
+    return (float)sqrt(dot(x,x));
   }
 
   private static void trace(String s) {
