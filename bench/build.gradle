@@ -1,7 +1,6 @@
 apply plugin: 'java'
-//apply plugin: 'scala'
 
-defaultTasks 'compileJava'//,'compileScala'
+defaultTasks 'compileJava'
 
 description = "Dave's research"
 sourceCompatibility = 1.7
@@ -14,17 +13,18 @@ sourceSets {
       srcDir 'src'
       exclude '**/new/**','**/old/**'
     }
-//    scala {
-//      srcDir 'src'
-//      exclude '**/new/**','**/old/**'
-//    }
   }
 }
 
-//repositories.mavenCentral() // for Scala jars
+jar {
+  baseName 'idh'
+  manifest {
+    attributes 'Implementation-Title': project.description
+  }
+}
+
 dependencies {
   compile fileTree('../../jtk/build/libs') // for edu_mines_jtk.jar
   compile fileTree('../../jtk/libs') // jars provided with the Mines JTK
   compile fileTree('libs') // jars used in research, not in the Mines JTK
-//  compile 'org.scala-lang:scala-library:2.10.+' // contains Scala jars
 }
