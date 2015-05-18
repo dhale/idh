@@ -21,8 +21,8 @@ from edu.mines.jtk.util.ArrayMath import *
 from tp import *
 from warp import *
 
-wlw = WellLogWarping()
-curve = "v"
+wlw = WellLogWarping5()
+curve = "v" # "r" for random, "v" for velocity, "d" for density
 logs = None
 
 def main(args):
@@ -36,25 +36,46 @@ def main(args):
   #goMesh()
 
 def goShifts():
-  sz,fs = resample(logs,curve)
-  if curve=="v":
-    #fs = [fs[0],fs[4],fs[9],fs[14],fs[17],fs[20]] # deepest 6 velocity logs
+  if curve=="r":
+    epow = 0.25; smax = 250
+    fr = randomLog(2000)
+    fs = [fr,shiftLog(80,fr),shiftLog(-100,fr),shiftLog(100,fr)]
+  elif curve=="v":
+    freplace = 2.0; fclips = (2.0,6.0)
+    epow = 0.25; smax = 250
+    sz,fs = resample(logs,curve)
+    #fs = [fs[4],fs[14],fs[17],fs[20]] # 4 velocity logs
+    #fs = [fs[0],fs[4],fs[9],fs[14],fs[17],fs[20]] # 6 velocity logs
     fs = [fs[0],fs[4],fs[9],fs[11],fs[14],fs[17],fs[20]] # 7 velocity logs
   elif curve=="d":
+    freplace = 1.0; fclips = (2.0,2.8)
+    epow = 0.125; smax = 250
+    sz,fs = resample(logs,curve)
     fs = [fs[ 1],fs[ 2],fs[ 3],fs[ 4],fs[ 7],
           fs[11],fs[21],fs[22],fs[33],fs[35],
           fs[43],fs[48],fs[50],fs[56],fs[66],
           fs[81],fs[88],fs[163]] # deepest 18 density logs
-  nk,nl = len(fs[0]),len(fs)
+  elif curve=="g":
+    freplace = 30.0; fclips = (30.0,160.0)
+    epow = 0.125; smax = 250
+    sz,fs = resample(logs,curve)
+    fs = [fs[6],fs[16],fs[18],fs[31],fs[32],fs[33],fs[36],
+          fs[38],fs[40],fs[55],fs[86]]
+  nz,nl = len(fs[0]),len(fs)
+  sz = Sampling(nz,1.0,0.0)
+  #for il in range(nl):
+  #  fs[il] = reverse(fs[il])
   sl = Sampling(nl,1.0,1.0)
-  wlw.setPowError(0.25)
-  wlw.setMaxShift(350)
+  wlw.setPowError(epow)
+  wlw.setMaxShift(smax)
   s = wlw.findShifts(fs)
+  #fs = wlw.applyShifts(fs,s)
+  #s = wlw.findShifts(fs)
   cs = [Color.BLACK,
     Color.RED,Color.GREEN,Color.BLUE,
     Color.CYAN,Color.MAGENTA,Color.YELLOW]
-  sp = SimplePlot(SimplePlot.Origin.LOWER_LEFT)
-  sp.setSize(1200,600)
+  sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
+  sp.setSize(450,850)
   for i,si in enumerate(s):
     pv = sp.addPoints(si)
     pv.setLineColor(cs[i%len(cs)])
@@ -72,12 +93,6 @@ def goShifts():
   """
   gs = wlw.applyShifts(fs,s)
   s = mul(1000*sz.delta,s) # convert shifts to m
-  freplace = 2.0
-  if curve=="d":
-    freplace = 1.0
-  fclips = (2.0,6.0)
-  if curve=="d":
-    fclips = (2.0,2.8)
   fs = wlw.replaceNulls(fs,freplace)
   gs = wlw.replaceNulls(gs,freplace)
   sp = SimplePlot(SimplePlot.Origin.UPPER_LEFT)
@@ -154,40 +169,46 @@ def goErrors():
   for pair in pairs:
     ia,ib = pair[0],pair[1]
     e = wlw.computeErrors(f[ia],f[ib])
-    wlw.interpolateOddErrors(e)
-    nl,nk = len(e[0]),len(e)
-    lmax = (nl-1)/2
-    lmin = -lmax
-    sl = Sampling(nl,1,lmin)
-    sk = Sampling(nk,1,0)
-    title = "("+str(ia)+","+str(ib)+")"
-    sp = SimplePlot()
-    sp.setSize(750,500)
-    sp.setTitle(title)
-    sp.setHLabel("Depth index k")
-    sp.setVLabel("Lag index l")
-    sp.setHFormat("%5f")
-    pv = sp.addPixels(sk,sl,transpose(e))
-    pv.setColorModel(cjet)
-    pv.setInterpolation(PixelsView.Interpolation.NEAREST)
-    pv.setPercentiles(0,100)
-    d = wlw.accumulateErrors(e)
-    wlw.interpolateOddErrors(d)
-    sp = SimplePlot()
-    sp.setSize(750,500)
-    sp.setTitle(title)
-    sp.setHLabel("Depth index k")
-    sp.setVLabel("Lag index l")
-    sp.setHFormat("%5f")
-    pv = sp.addPixels(sk,sl,transpose(d))
-    pv.setColorModel(cjet)
-    pv.setInterpolation(PixelsView.Interpolation.NEAREST)
-    pv.setPercentiles(0,90)
-    kw,lw = wlw.findWarping(d)
-    kw = wlw.toFloat(kw)
-    lw = wlw.toFloat(lw)
-    pv = sp.addPoints(kw,lw)
-    pv.setLineColor(Color.WHITE)
+    for flip in [False,True]: # testing
+      if flip:
+        ne = len(e)
+        ec = copy(e)
+        for ie in range(ne):
+          e[ie] = ec[ne-ie-1]
+      wlw.interpolateOddErrors(e)
+      nl,nk = len(e[0]),len(e)
+      lmax = (nl-1)/2
+      lmin = -lmax
+      sl = Sampling(nl,1,lmin)
+      sk = Sampling(nk,1,0)
+      title = "("+str(ia)+","+str(ib)+")"
+      sp = SimplePlot()
+      sp.setSize(750,500)
+      sp.setTitle(title)
+      sp.setHLabel("Depth index k")
+      sp.setVLabel("Lag index l")
+      sp.setHFormat("%5f")
+      pv = sp.addPixels(sk,sl,transpose(e))
+      pv.setColorModel(cjet)
+      pv.setInterpolation(PixelsView.Interpolation.NEAREST)
+      pv.setPercentiles(0,100)
+      d = wlw.accumulateErrors(e)
+      wlw.interpolateOddErrors(d)
+      sp = SimplePlot()
+      sp.setSize(750,500)
+      sp.setTitle(title)
+      sp.setHLabel("Depth index k")
+      sp.setVLabel("Lag index l")
+      sp.setHFormat("%5f")
+      pv = sp.addPixels(sk,sl,transpose(d))
+      pv.setColorModel(cjet)
+      pv.setInterpolation(PixelsView.Interpolation.NEAREST)
+      pv.setPercentiles(0,90)
+      kw,lw = wlw.findWarping(d)
+      kw = wlw.toFloat(kw)
+      lw = wlw.toFloat(lw)
+      pv = sp.addPoints(kw,lw)
+      pv.setLineColor(Color.WHITE)
 
 def goResample():
   nlog = len(logs)
@@ -294,6 +315,26 @@ def resample(logs,curve):
   #print "resample  after: nz =",nz," dz =",dz," fz =",fz
   fs = wlw.resampleLogs(sz,zs,fs)
   return sz,fs
+
+def randomLog(nz):
+  rand = Random(3)
+  mz = nz/2
+  f = fillfloat(-999.2500,nz)
+  r = add(2.0,mul(4.0,randfloat(rand,mz)))
+  copy(mz,0,r,nz/4,f)
+  return f
+
+def shiftLog(s,f):
+  ns = int(s)
+  nz = len(f)
+  g = fillfloat(-999.2500,nz)
+  if ns>=0:
+    mz = max(0,nz-ns)
+    copy(mz,0,f,ns,g)
+  else:
+    mz = max(0,nz+ns)
+    copy(mz,-ns,f,0,g)
+  return g
 
 def readLogSamples(set,type,smooth=0):
   """ 
