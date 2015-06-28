@@ -22,7 +22,7 @@
 #############################################################################
 ## header
 <div id="header">
-  <h1>dave hale @ mines</h1>
+  <h1>dave hale (while @ mines)</h1>
 </div>
 
 #############################################################################
@@ -48,11 +48,6 @@
     <li><a href="${base}/software.html" class="active">software</a></li>
 #else
     <li><a href="${base}/software.html">software</a></li>
-#end
-#if( ${active}=="calendar" )
-    <li><a href="${base}/calendar.html" class="active">calendar</a></li>
-#else
-    <li><a href="${base}/calendar.html">calendar</a></li>
 #end
 #if( ${active}=="notebook" )
     <li><a href="${base}/notebook.html" class="active">notebook</a></li>
